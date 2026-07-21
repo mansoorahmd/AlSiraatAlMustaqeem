@@ -1,35 +1,36 @@
 // Shows the verbatim phrases in an ayah that recur elsewhere, each with the
-// places it also appears — a ready-made trail of the Book's own repetition.
+// places it also appears. Jumping to an occurrence lights the phrase there too
+// (the echo lens). Data is fetched by the parent so the span can be highlighted
+// inline at the same time.
 
-import { api } from "../../api/client";
-import { useAsync } from "../../hooks/useAsync";
 import { useAppDispatch } from "../../state/store";
+import type { Echo } from "../../api/types";
 
-export function EchoPanel({ verseKey }: { verseKey: string }) {
+export function EchoPanel({ echoes, loading }: { echoes: Echo[]; loading?: boolean }) {
   const dispatch = useAppDispatch();
-  const echoes = useAsync(() => api.verseEchoes(verseKey), [verseKey]);
 
-  if (echoes.loading) return <div className="echo-panel loading">…</div>;
-  const data = echoes.data ?? [];
-  if (data.length === 0) return null;
+  if (loading) return <div className="echo-panel loading">…</div>;
+  if (echoes.length === 0) return null;
 
   return (
     <div className="echo-panel">
-      {data.map((e, i) => (
+      {echoes.map((e, i) => (
         <div key={i} className="echo-item">
           <div className="echo-phrase quran" dir="rtl">{e.phrase}</div>
           <div className="echo-meta">
-            recurs in {e.verses.length} other ayah{e.verses.length > 1 ? "s" : ""}:
+            recurs in {e.occurrences.length} other ayah{e.occurrences.length > 1 ? "s" : ""} — jump to light it there:
           </div>
           <div className="echo-verses">
-            {e.verses.map((k) => (
+            {e.occurrences.map((o) => (
               <button
-                key={k}
+                key={o.verseKey}
                 className="chip echo-chip"
-                title={`Go to ${k}`}
-                onClick={() => dispatch({ type: "jumpToVerse", verseKey: k })}
+                title={`Go to ${o.verseKey} and highlight this phrase`}
+                onClick={() =>
+                  dispatch({ type: "jumpToEcho", verseKey: o.verseKey, start: o.start, length: e.length })
+                }
               >
-                {k}
+                {o.verseKey}
               </button>
             ))}
           </div>

@@ -76,7 +76,7 @@ export interface Echo {
   words: string[];
   start: number; // 1-based word index in the verse
   length: number;
-  verses: string[]; // other verse keys where the phrase occurs
+  occurrences: { verseKey: string; start: number }[]; // other places (+ start word)
   count: number; // total occurrences (incl. this verse)
 }
 

@@ -35,6 +35,8 @@ export interface AppState {
   jumpToVerseKey: string | null;
   /** the word a trail matched on — kept lit while on that hop */
   trailHighlight: { verseKey: string; wordPosition: number | null } | null;
+  /** an echo phrase span to light where it lands — the echo lens */
+  echoHighlight: { verseKey: string; start: number; end: number } | null;
 }
 
 export type Action =
@@ -52,6 +54,7 @@ export type Action =
   | { type: "setFocusCase"; caseId: string | null }
   | { type: "setFocusAyah"; verseKey: string | null }
   | { type: "jumpToVerse"; verseKey: string; wordPosition?: number | null }
+  | { type: "jumpToEcho"; verseKey: string; start: number; length: number }
   | { type: "clearJump" }
   | { type: "hydratePrefs"; reading: Partial<ReadingState> };
 
@@ -65,6 +68,7 @@ const initialState: AppState = {
   activeTrailId: null,
   jumpToVerseKey: null,
   trailHighlight: null,
+  echoHighlight: null,
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -72,7 +76,7 @@ function reducer(state: AppState, action: Action): AppState {
     case "setTab":
       return { ...state, tab: action.tab };
     case "setSurah":
-      return { ...state, reading: { ...state.reading, surahId: action.surahId } };
+      return { ...state, reading: { ...state.reading, surahId: action.surahId }, echoHighlight: null };
     case "setScript":
       return { ...state, reading: { ...state.reading, script: action.script } };
     case "setTranslationOn":
@@ -129,6 +133,25 @@ function reducer(state: AppState, action: Action): AppState {
           action.wordPosition != null
             ? { verseKey: action.verseKey, wordPosition: action.wordPosition }
             : null,
+        reading: Number.isFinite(chapter)
+          ? { ...state.reading, surahId: chapter }
+          : state.reading,
+        // a plain jump clears any echo-lens highlight
+        echoHighlight: null,
+      };
+    }
+    case "jumpToEcho": {
+      const chapter = parseInt(action.verseKey.split(":")[0], 10);
+      return {
+        ...state,
+        tab: "read",
+        jumpToVerseKey: action.verseKey,
+        trailHighlight: null,
+        echoHighlight: {
+          verseKey: action.verseKey,
+          start: action.start,
+          end: action.start + action.length - 1,
+        },
         reading: Number.isFinite(chapter)
           ? { ...state.reading, surahId: chapter }
           : state.reading,

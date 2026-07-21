@@ -16,17 +16,19 @@ describe("verbatim echoes", () => {
     const echoes = await get("/api/v1/verses/55:13/echoes");
     expect(Array.isArray(echoes)).toBe(true);
     // the refrain فبأي آلاء ربكما تكذبان recurs ~30 more times in the surah
-    const refrain = echoes.find((e: any) => e.verses.length >= 10);
+    const refrain = echoes.find((e: any) => e.occurrences.length >= 10);
     expect(refrain, "expected a phrase repeated in ≥10 other verses").toBeTruthy();
     expect(refrain.length).toBeGreaterThanOrEqual(3);
-    // every occurrence is elsewhere in Ar-Rahman (chapter 55)
-    expect(refrain.verses.every((v: string) => v.startsWith("55:"))).toBe(true);
-    expect(refrain.verses).not.toContain("55:13");
+    const keys = refrain.occurrences.map((o: any) => o.verseKey);
+    // every occurrence is elsewhere in Ar-Rahman (chapter 55), with a start pos
+    expect(keys.every((v: string) => v.startsWith("55:"))).toBe(true);
+    expect(keys).not.toContain("55:13");
+    expect(refrain.occurrences.every((o: any) => o.start >= 1)).toBe(true);
   });
 
   it("basmala (1:1) echoes in 27:30", async () => {
     const echoes = await get("/api/v1/verses/1:1/echoes");
-    const all = echoes.flatMap((e: any) => e.verses);
+    const all = echoes.flatMap((e: any) => e.occurrences.map((o: any) => o.verseKey));
     expect(all).toContain("27:30");
   });
 

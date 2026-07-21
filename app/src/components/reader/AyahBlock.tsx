@@ -13,7 +13,9 @@ import { NotesPanel } from "./NotesPanel";
 import { EchoPanel } from "./EchoPanel";
 import { arabicIndic } from "./format";
 import type { FocusReason, FocusBase } from "./focus";
-import type { NoteRecord } from "../../persistence/types";
+import type { NoteRecord, HighlightRange } from "../../persistence/types";
+
+const ECHO_WASH = "#fde68a"; // amber highlight for repeated spans
 
 export interface AyahCaseRef {
   caseId: string;
@@ -55,6 +57,8 @@ interface Props {
   onNotesChanged?: () => void;
   /** this ayah contains a phrase repeated verbatim elsewhere (V10 echoes) */
   hasEcho?: boolean;
+  /** echo-lens: a word-position span to keep lit in this verse after a jump */
+  echoHighlightRange?: { start: number; end: number } | null;
   onWordTap: (
     verseKey: string,
     position: number,
@@ -83,7 +87,7 @@ const spacedRoot = (r: string) => r.split("").join(" ");
 export const AyahBlock = memo(function AyahBlock({
   verse, translationOn, translationId, myGlossOn, formStatus, caseRefs, rareRoots, highlightWord,
   focusRoots, focusLinked, focusPattern, focusTarget, focusReason, focusBase, focusBaseSurah,
-  focusThisSurah, verseNotes, onNotesChanged, hasEcho, onWordTap,
+  focusThisSurah, verseNotes, onNotesChanged, hasEcho, echoHighlightRange, onWordTap,
 }: Props) {
   const text = typeof verse.text === "string" ? verse.text : "";
   const words = verse.words ?? null;
@@ -92,6 +96,24 @@ export const AyahBlock = memo(function AyahBlock({
   const [whyOpen, setWhyOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [echoOpen, setEchoOpen] = useState(false);
+
+  // echoes for this verse, fetched only while the panel is open
+  const echoData = useAsync(
+    () => (echoOpen ? api.verseEchoes(verse.verse_key) : Promise.resolve([])),
+    [echoOpen, verse.verse_key],
+  );
+  // spans to wash amber: every repeated phrase while the panel is open, plus
+  // the echo-lens span we followed here (persists after a jump). Positions come
+  // straight from the index (word ordinals), which align with VerseText.
+  const echoRanges: HighlightRange[] = [];
+  if (echoOpen) {
+    for (const e of echoData.data ?? []) {
+      echoRanges.push({ start: e.start, end: e.start + e.length - 1, color: ECHO_WASH });
+    }
+  }
+  if (echoHighlightRange) {
+    echoRanges.push({ start: echoHighlightRange.start, end: echoHighlightRange.end, color: ECHO_WASH });
+  }
 
   const noteCount = verseNotes?.length ?? 0;
   const notedWords = new Set(
@@ -112,6 +134,7 @@ export const AyahBlock = memo(function AyahBlock({
         <VerseText
           text={text}
           highlightPosition={highlightWord ?? null}
+          highlightRanges={echoRanges.length ? echoRanges : undefined}
           focusFor={(position) => {
             if (!words) return null;
             const root = words.find((w) => w.position === position)?.root;
@@ -183,7 +206,7 @@ export const AyahBlock = memo(function AyahBlock({
         )}
       </p>
 
-      {echoOpen && <EchoPanel verseKey={verse.verse_key} />}
+      {echoOpen && <EchoPanel echoes={echoData.data ?? []} loading={echoData.loading} />}
 
       {notesOpen && (
         <div className="ayah-notes">

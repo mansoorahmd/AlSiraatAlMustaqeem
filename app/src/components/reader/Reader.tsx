@@ -27,7 +27,7 @@ interface Props {
 }
 
 export function Reader({ chapters, onBackToIndex }: Props) {
-  const { reading, activeTrailId, jumpToVerseKey, trailHighlight, focusCaseId, focusAyahKey } =
+  const { reading, activeTrailId, jumpToVerseKey, trailHighlight, echoHighlight, focusCaseId, focusAyahKey } =
     useAppState();
   const dispatch = useAppDispatch();
   const { surahId, script, translationOn, myGlossOn, fontScale } = reading;
@@ -408,6 +408,11 @@ export function Reader({ chapters, onBackToIndex }: Props) {
             verseNotes={notesMap.get(v.verse_key) ?? null}
             onNotesChanged={bumpNotes}
             hasEcho={echoSet.has(v.verse_key)}
+            echoHighlightRange={
+              echoHighlight?.verseKey === v.verse_key
+                ? { start: echoHighlight.start, end: echoHighlight.end }
+                : null
+            }
             onWordTap={onWordTap}
           />
         ))}

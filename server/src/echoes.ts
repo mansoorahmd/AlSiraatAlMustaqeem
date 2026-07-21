@@ -18,8 +18,8 @@ export interface Echo {
   /** 1-based word index where the phrase starts in the queried verse */
   start: number;
   length: number;
-  /** distinct other verse keys where this exact phrase also occurs */
-  verses: string[];
+  /** other places the phrase occurs: verse key + 1-based start word index */
+  occurrences: { verseKey: string; start: number }[];
   /** total occurrences across the Book (including this verse) */
   count: number;
 }
@@ -114,13 +114,21 @@ export class EchoIndex {
       }
       const others = bestOcc.filter((h) => !(h.verse === verseKey && h.pos === s));
       if (others.length === 0) continue;
-      const verses = [...new Set(others.map((h) => h.verse))].sort((a, b) => cnum(a) - cnum(b) || this.meta.get(a)![1] - this.meta.get(b)![1]);
+      // one entry per verse (its earliest position), so each chip jumps cleanly
+      const byVerse = new Map<string, number>();
+      for (const h of others) {
+        const cur = byVerse.get(h.verse);
+        if (cur == null || h.pos + 1 < cur) byVerse.set(h.verse, h.pos + 1);
+      }
+      const occurrences = [...byVerse.entries()]
+        .map(([verseKey, start]) => ({ verseKey, start }))
+        .sort((a, b) => cnum(a.verseKey) - cnum(b.verseKey) || this.meta.get(a.verseKey)![1] - this.meta.get(b.verseKey)![1]);
       found.push({
         phrase: w.slice(s, s + len).join(" "),
         words: w.slice(s, s + len),
         start: s + 1,
         length: len,
-        verses,
+        occurrences,
         count: bestOcc.length,
       });
     }
