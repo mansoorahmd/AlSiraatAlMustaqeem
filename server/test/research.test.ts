@@ -75,4 +75,18 @@ describe("research store round-trip", () => {
     expect(store.getRootMeaning("hdy").meaning).toBe("");
     expect(store.listRootMeanings().map((r) => r.root)).not.toContain("hdy");
   });
+
+  it("motifs: create, tag roots, query by root, remove, delete", () => {
+    store.saveMotif({ id: "m1", name: "Light & darkness", note: "" });
+    store.addMotifRoot("m1", "nwr");
+    store.addMotifRoot("m1", "Zlm");
+    store.addMotifRoot("m1", "nwr"); // idempotent
+    const m = store.listMotifs().find((x) => x.id === "m1")!;
+    expect(m.roots.sort()).toEqual(["Zlm", "nwr"]);
+    expect(store.motifsForRoot("nwr").map((x) => x.id)).toEqual(["m1"]);
+    store.removeMotifRoot("m1", "Zlm");
+    expect(store.listMotifs().find((x) => x.id === "m1")!.roots).toEqual(["nwr"]);
+    expect(store.deleteMotif("m1")).toBe(true);
+    expect(store.motifsForRoot("nwr")).toHaveLength(0);
+  });
 });

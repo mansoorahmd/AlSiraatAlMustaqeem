@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
-import { archive } from "../persistence/db";
+import { archive, newId } from "../persistence/db";
 import { useAppState, useAppDispatch } from "../state/store";
 
 const spaced = (r: string) => r.split("").join(" ");
@@ -33,9 +33,10 @@ interface Props {
   rootBuckwalter: string;
   rootArabic: string;
   onBack: () => void;
+  onOpenRoot?: (buckwalter: string, arabic: string) => void;
 }
 
-export function RootDetail({ rootBuckwalter, rootArabic, onBack }: Props) {
+export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: Props) {
   const { reading } = useAppState();
   const dispatch = useAppDispatch();
 
@@ -45,6 +46,32 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack }: Props) {
     [rootBuckwalter, reading.script],
   );
   const saved = useAsync(() => archive.rootMeanings.get(rootBuckwalter), [rootBuckwalter]);
+  const links = useAsync(
+    () => api.rootLinkages(rootBuckwalter, { scope: "ayah", limit: 16 }),
+    [rootBuckwalter],
+  );
+
+  // motifs (بيوت) this root belongs to, + all motifs for the picker
+  const [motifV, setMotifV] = useState(0);
+  const refreshMotifs = () => setMotifV((v) => v + 1);
+  const motifsIn = useAsync(() => archive.motifs.forRoot(rootBuckwalter), [rootBuckwalter, motifV]);
+  const allMotifs = useAsync(() => archive.motifs.all(), [motifV]);
+  const [newMotif, setNewMotif] = useState("");
+
+  const inIds = new Set((motifsIn.data ?? []).map((m) => m.id));
+  const available = (allMotifs.data ?? []).filter((m) => !inIds.has(m.id));
+
+  const addToMotif = async (id: string) => { await archive.motifs.addRoot(id, rootBuckwalter); refreshMotifs(); };
+  const removeFromMotif = async (id: string) => { await archive.motifs.removeRoot(id, rootBuckwalter); refreshMotifs(); };
+  const createMotif = async () => {
+    const name = newMotif.trim();
+    if (!name) return;
+    const id = newId("motif");
+    await archive.motifs.save({ id, name });
+    await archive.motifs.addRoot(id, rootBuckwalter);
+    setNewMotif("");
+    refreshMotifs();
+  };
 
   const [current, setCurrent] = useState("");   // the saved meaning shown read-only
   const [draft, setDraft] = useState("");         // the editor buffer
@@ -119,6 +146,66 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack }: Props) {
         ) : (
           <p className="root-mine-empty">No meaning of your own yet — add one to sit beside the lexicons.</p>
         )}
+      </section>
+
+      {/* motifs (بيوت) — reader-defined collections this root belongs to */}
+      <section className="root-motifs">
+        <h2 className="root-section-title">بيوت · Motifs</h2>
+        <div className="root-motif-chips">
+          {(motifsIn.data ?? []).map((m) => (
+            <span key={m.id} className="motif-chip in">
+              {m.name || "untitled"}
+              <button className="motif-x" title="Remove from motif" onClick={() => removeFromMotif(m.id)}>✕</button>
+            </span>
+          ))}
+          {(motifsIn.data ?? []).length === 0 && (
+            <span className="root-mine-empty">Not in any motif yet.</span>
+          )}
+        </div>
+        <div className="root-motif-add">
+          {available.length > 0 && (
+            <select
+              className="settings-select"
+              value=""
+              onChange={(e) => { if (e.target.value) addToMotif(e.target.value); }}
+            >
+              <option value="">add to motif…</option>
+              {available.map((m) => (
+                <option key={m.id} value={m.id}>{m.name || "untitled"}</option>
+              ))}
+            </select>
+          )}
+          <input
+            className="motif-new-input"
+            placeholder="new motif (بيت) name…"
+            value={newMotif}
+            onChange={(e) => setNewMotif(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") createMotif(); }}
+          />
+          <button className="ink-action" onClick={createMotif} disabled={!newMotif.trim()}>＋ Create</button>
+        </div>
+      </section>
+
+      {/* collocations — the roots this one keeps company with */}
+      <section>
+        <h2 className="root-section-title">Collocations · the company it keeps</h2>
+        {links.loading && <p className="loading">Weighing co-occurrences…</p>}
+        {links.data && links.data.length === 0 && (
+          <p className="home-empty">No strong co-occurring roots.</p>
+        )}
+        <div className="root-colloc">
+          {(links.data ?? []).map((l) => (
+            <button
+              key={l.root_buckwalter}
+              className="colloc-chip"
+              title={`co-occurs ${l.cooccur}× · strength ${l.score.toFixed(2)}${onOpenRoot ? " · open" : ""}`}
+              onClick={() => onOpenRoot?.(l.root_buckwalter, l.root_arabic)}
+            >
+              <span className="quran">{spaced(l.root_arabic)}</span>
+              <span className="colloc-strength">{l.cooccur}×</span>
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* dictionary lexicons */}

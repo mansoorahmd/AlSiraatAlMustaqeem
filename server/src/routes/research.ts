@@ -69,5 +69,26 @@ export function researchRoutes(state: AppState): Hono {
     return c.json({ deleted: c.req.param("root") });
   });
 
+  // motifs (بيوت)
+  r.get("/research/motifs", (c) => c.json(s.listMotifs()));
+  r.get("/research/motifs/by-root/:root", (c) => c.json(s.motifsForRoot(c.req.param("root"))));
+  r.put("/research/motifs/:id", async (c) => {
+    const doc = await c.req.json();
+    if (doc?.id !== c.req.param("id")) return c.json({ detail: "document id does not match URL" }, 400);
+    return c.json(s.saveMotif(doc));
+  });
+  r.delete("/research/motifs/:id", (c) => {
+    if (!s.deleteMotif(c.req.param("id"))) return c.json({ detail: `motif not found: ${c.req.param("id")}` }, 404);
+    return c.json({ deleted: c.req.param("id") });
+  });
+  r.put("/research/motifs/:id/roots/:root", (c) => {
+    s.addMotifRoot(c.req.param("id"), c.req.param("root"));
+    return c.json({ ok: true });
+  });
+  r.delete("/research/motifs/:id/roots/:root", (c) => {
+    s.removeMotifRoot(c.req.param("id"), c.req.param("root"));
+    return c.json({ ok: true });
+  });
+
   return r;
 }

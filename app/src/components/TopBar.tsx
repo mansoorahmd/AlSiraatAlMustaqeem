@@ -12,6 +12,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "investigate", label: "Investigate" },
   { id: "vault", label: "Vault" },
   { id: "roots", label: "Roots" },
+  { id: "motifs", label: "Motifs" },
 ];
 
 const SCRIPTS: { id: Script; label: string }[] = [

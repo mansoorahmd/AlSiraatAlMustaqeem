@@ -574,6 +574,68 @@ a { color: var(--lapis); }
 .root-occ-chip { cursor: pointer; font-variant-numeric: tabular-nums; }
 .root-occ-chip:hover { background: rgba(37, 99, 235, 0.12); }
 
+/* collocations */
+.root-colloc { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.colloc-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: 999px;
+  background: var(--wash, rgba(37,99,235,0.05));
+  cursor: pointer;
+}
+.colloc-chip:hover { border-color: var(--lapis); background: rgba(37,99,235,0.1); }
+.colloc-chip .quran { font-size: 1.1rem; color: var(--gold); }
+.colloc-strength { font-size: var(--fs-label); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+/* motifs on the root page */
+.root-motifs { border: 1px solid var(--paper-edge); border-radius: 12px; padding: 0.7rem 0.9rem; }
+.root-motif-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.2rem 0 0.5rem; }
+.motif-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(180, 83, 9, 0.1);
+  border: 1px solid var(--gold-soft, rgba(180,83,9,0.35));
+  color: var(--gold);
+  font-size: var(--fs-small);
+}
+.motif-x, .motif-del {
+  border: none; background: none; cursor: pointer; color: var(--ink-faint);
+  font-size: 0.75rem; line-height: 1; padding: 0;
+}
+.motif-x:hover, .motif-del:hover { color: #b91c1c; }
+.root-motif-add { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.motif-new-input {
+  font: inherit; font-size: var(--fs-small);
+  padding: 0.35rem 0.5rem; border: 1px solid var(--paper-edge); border-radius: 8px;
+  background: var(--paper); color: var(--ink); min-width: 12rem;
+}
+.motif-new-input:focus { outline: none; border-color: var(--gold); }
+
+/* motifs browse screen */
+.motif-create { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.motif-cards { display: flex; flex-direction: column; gap: 0.8rem; }
+.motif-card { border: 1px solid var(--paper-edge); border-radius: 12px; padding: 0.7rem 0.9rem; background: var(--paper); }
+.motif-card-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.motif-name {
+  flex: 1; font: inherit; font-size: 1rem; font-weight: 600; color: var(--ink);
+  border: 1px solid transparent; border-radius: 6px; padding: 0.2rem 0.4rem; background: transparent;
+}
+.motif-name:hover { border-color: var(--paper-edge); }
+.motif-name:focus { outline: none; border-color: var(--lapis); background: var(--paper); }
+.motif-count {
+  font-size: var(--fs-label); color: var(--ink-soft); background: var(--wash, rgba(37,99,235,0.06));
+  border-radius: 999px; padding: 0 0.45rem; font-variant-numeric: tabular-nums;
+}
+.motif-root-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.motif-root-chip { cursor: pointer; font-size: 1.1rem; color: var(--gold); }
+.motif-root-chip:hover { background: rgba(180, 83, 9, 0.14); }
+
 /* --- search + arabic keyboard --- */
 .search-bar { display: flex; gap: 0.5rem; align-items: stretch; margin-bottom: 0.6rem; }
 .search-input {

@@ -7,7 +7,7 @@
 // A one-time migration pushes any pre-existing IndexedDB cases/trails to the
 // server the first time the app runs after this change.
 
-import type { CaseRecord, VaultEntry, TrailRecord, PrefsRecord, NoteRecord, UserRootMeaning } from "./types";
+import type { CaseRecord, VaultEntry, TrailRecord, PrefsRecord, NoteRecord, UserRootMeaning, Motif } from "./types";
 
 const DB_NAME = "alsiraat-archive";
 const DB_VERSION = 1;
@@ -236,6 +236,34 @@ export const archive = {
     remove: async (root: string): Promise<void> => {
       await ensureMigrated();
       return srvDelete(`/root-meanings/${encodeURIComponent(root)}`);
+    },
+  },
+
+  /** Motifs (بيوت) — reader-defined root collections, research.db. */
+  motifs: {
+    all: async (): Promise<Motif[]> => {
+      await ensureMigrated();
+      return srvGet<Motif[]>("/motifs");
+    },
+    forRoot: async (root: string): Promise<Motif[]> => {
+      await ensureMigrated();
+      return srvGet<Motif[]>(`/motifs/by-root/${encodeURIComponent(root)}`);
+    },
+    save: async (m: { id: string; name: string; note?: string; createdAt?: number }): Promise<Motif> => {
+      await ensureMigrated();
+      return srvPut<Motif>(`/motifs/${encodeURIComponent(m.id)}`, { note: "", ...m });
+    },
+    remove: async (id: string): Promise<void> => {
+      await ensureMigrated();
+      return srvDelete(`/motifs/${encodeURIComponent(id)}`);
+    },
+    addRoot: async (id: string, root: string): Promise<void> => {
+      await ensureMigrated();
+      await srvPut(`/motifs/${encodeURIComponent(id)}/roots/${encodeURIComponent(root)}`, {});
+    },
+    removeRoot: async (id: string, root: string): Promise<void> => {
+      await ensureMigrated();
+      return srvDelete(`/motifs/${encodeURIComponent(id)}/roots/${encodeURIComponent(root)}`);
     },
   },
 

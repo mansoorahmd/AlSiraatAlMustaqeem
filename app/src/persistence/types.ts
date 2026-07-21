@@ -137,6 +137,16 @@ export interface UserRootMeaning {
   updatedAt: number;
 }
 
+/** a motif (بيت) — a reader-defined collection of roots sharing a linguistic motif */
+export interface Motif {
+  id: string;
+  name: string;
+  note: string;
+  roots: string[]; // root_buckwalter
+  createdAt?: number;
+  updatedAt: number;
+}
+
 export type NoteKind = "note" | "question";
 
 /** A note or question the reader attaches to an ayah or a specific word.

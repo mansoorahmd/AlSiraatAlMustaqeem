@@ -8,7 +8,7 @@ import {
 import type { Script } from "../api/types";
 import { archive } from "../persistence/db";
 
-export type Tab = "home" | "read" | "search" | "investigate" | "vault" | "roots";
+export type Tab = "home" | "read" | "search" | "investigate" | "vault" | "roots" | "motifs";
 
 export interface ReadingState {
   surahId: number;
@@ -39,6 +39,8 @@ export interface AppState {
   trailHighlight: { verseKey: string; wordPosition: number | null } | null;
   /** an echo phrase span to light where it lands — the echo lens */
   echoHighlight: { verseKey: string; start: number; end: number } | null;
+  /** a root to open on the Roots tab's lexicon page (from Motifs, etc.) */
+  openRoot: { buckwalter: string; arabic: string } | null;
 }
 
 export type Action =
@@ -58,6 +60,7 @@ export type Action =
   | { type: "setFocusAyah"; verseKey: string | null }
   | { type: "jumpToVerse"; verseKey: string; wordPosition?: number | null }
   | { type: "jumpToEcho"; verseKey: string; start: number; length: number }
+  | { type: "openRoot"; root: { buckwalter: string; arabic: string } | null }
   | { type: "clearJump" }
   | { type: "hydratePrefs"; reading: Partial<ReadingState> };
 
@@ -72,6 +75,7 @@ const initialState: AppState = {
   jumpToVerseKey: null,
   trailHighlight: null,
   echoHighlight: null,
+  openRoot: null,
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -163,6 +167,8 @@ function reducer(state: AppState, action: Action): AppState {
           : state.reading,
       };
     }
+    case "openRoot":
+      return { ...state, openRoot: action.root, tab: action.root ? "roots" : state.tab };
     case "clearJump":
       return { ...state, jumpToVerseKey: null };
     case "hydratePrefs":
@@ -172,7 +178,7 @@ function reducer(state: AppState, action: Action): AppState {
 
 export function tabFromHash(): Tab {
   const h = typeof window !== "undefined" ? window.location.hash.replace(/^#\/?/, "") : "";
-  return h === "read" || h === "search" || h === "investigate" || h === "vault" || h === "roots"
+  return h === "read" || h === "search" || h === "investigate" || h === "vault" || h === "roots" || h === "motifs"
     ? h
     : "home";
 }

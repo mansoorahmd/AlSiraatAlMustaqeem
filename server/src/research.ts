@@ -45,6 +45,17 @@ CREATE INDEX IF NOT EXISTS idx_notes_verse ON notes(verse_key);
 CREATE TABLE IF NOT EXISTS user_root_meanings (
     root TEXT PRIMARY KEY, meaning TEXT NOT NULL DEFAULT '', updated_at INTEGER NOT NULL
 );
+
+-- motifs (بيوت): reader-defined collections that group roots by a linguistic motif
+CREATE TABLE IF NOT EXISTS motifs (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS motif_roots (
+    motif_id TEXT NOT NULL, root TEXT NOT NULL, added_at INTEGER NOT NULL,
+    PRIMARY KEY (motif_id, root)
+);
+CREATE INDEX IF NOT EXISTS idx_motif_roots_root ON motif_roots(root);
 `;
 
 const NOTE_MIGRATIONS: [string, string][] = [
@@ -229,5 +240,56 @@ export class ResearchStore {
   }
   deleteRootMeaning(root: string): boolean {
     return Number(this.db.run("DELETE FROM user_root_meanings WHERE root = ?", [root]).changes) > 0;
+  }
+
+  // -- motifs (بيوت) --
+  private motifRoots(id: string): string[] {
+    return this.db
+      .query<{ root: string }>("SELECT root FROM motif_roots WHERE motif_id = ? ORDER BY added_at", [id])
+      .map((r) => r.root);
+  }
+  listMotifs(): Doc[] {
+    return this.db
+      .query<{ id: string; name: string; note: string; created_at: number; updated_at: number }>(
+        "SELECT * FROM motifs ORDER BY updated_at DESC",
+      )
+      .map((m) => ({
+        id: m.id, name: m.name, note: m.note,
+        roots: this.motifRoots(m.id), createdAt: m.created_at, updatedAt: m.updated_at,
+      }));
+  }
+  motifsForRoot(root: string): Doc[] {
+    return this.db
+      .query<{ id: string; name: string; note: string; created_at: number; updated_at: number }>(
+        `SELECT m.* FROM motifs m JOIN motif_roots mr ON mr.motif_id = m.id
+         WHERE mr.root = ? ORDER BY m.name`,
+        [root],
+      )
+      .map((m) => ({ id: m.id, name: m.name, note: m.note, roots: this.motifRoots(m.id), createdAt: m.created_at, updatedAt: m.updated_at }));
+  }
+  saveMotif(doc: Doc): Doc {
+    const t = now();
+    const id = doc.id;
+    this.db.run(
+      `INSERT INTO motifs (id, name, note, created_at, updated_at) VALUES (?,?,?,?,?)
+       ON CONFLICT(id) DO UPDATE SET name=excluded.name, note=excluded.note, updated_at=excluded.updated_at`,
+      [id, doc.name ?? "", doc.note ?? "", doc.createdAt ?? t, t],
+    );
+    return { id, name: doc.name ?? "", note: doc.note ?? "", roots: this.motifRoots(id), updatedAt: t };
+  }
+  deleteMotif(id: string): boolean {
+    this.db.run("DELETE FROM motif_roots WHERE motif_id = ?", [id]);
+    return Number(this.db.run("DELETE FROM motifs WHERE id = ?", [id]).changes) > 0;
+  }
+  addMotifRoot(id: string, root: string): void {
+    this.db.run(
+      "INSERT INTO motif_roots (motif_id, root, added_at) VALUES (?,?,?) ON CONFLICT DO NOTHING",
+      [id, root, now()],
+    );
+    this.db.run("UPDATE motifs SET updated_at = ? WHERE id = ?", [now(), id]);
+  }
+  removeMotifRoot(id: string, root: string): void {
+    this.db.run("DELETE FROM motif_roots WHERE motif_id = ? AND root = ?", [id, root]);
+    this.db.run("UPDATE motifs SET updated_at = ? WHERE id = ?", [now(), id]);
   }
 }

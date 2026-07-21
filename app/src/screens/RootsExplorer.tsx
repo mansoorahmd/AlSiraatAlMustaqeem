@@ -3,10 +3,10 @@
 // where the most distinctive language lives, so "unique first" is the default.
 // Click a root to jump to its first occurrence in the reader.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
-import type { RootSummary } from "../api/types";
+import { useAppState, useAppDispatch } from "../state/store";
 import { RootDetail } from "./RootDetail";
 import { ArabicKeyboard } from "../components/ArabicKeyboard";
 
@@ -14,11 +14,18 @@ const spaced = (r: string) => r.split("").join(" ");
 const MAX_SHOWN = 200;
 
 export function RootsExplorer() {
+  const { openRoot } = useAppState();
+  const dispatch = useAppDispatch();
   const roots = useAsync(() => api.listRoots({ limit: 2000 }), []);
   const [rarestFirst, setRarestFirst] = useState(true);
   const [query, setQuery] = useState("");
   const [kbOpen, setKbOpen] = useState(false);
-  const [selected, setSelected] = useState<RootSummary | null>(null);
+  const [selected, setSelected] = useState<{ buckwalter: string; arabic: string } | null>(null);
+
+  // opened from elsewhere (Motifs, collocations) → jump straight to the page
+  useEffect(() => {
+    if (openRoot) { setSelected(openRoot); dispatch({ type: "openRoot", root: null }); }
+  }, [openRoot, dispatch]);
 
   const filtered = useMemo(() => {
     const all = roots.data ?? [];
@@ -43,9 +50,10 @@ export function RootsExplorer() {
   if (selected) {
     return (
       <RootDetail
-        rootBuckwalter={selected.root_buckwalter}
-        rootArabic={selected.root_arabic}
+        rootBuckwalter={selected.buckwalter}
+        rootArabic={selected.arabic}
         onBack={() => setSelected(null)}
+        onOpenRoot={(buckwalter, arabic) => setSelected({ buckwalter, arabic })}
       />
     );
   }
@@ -109,7 +117,11 @@ export function RootsExplorer() {
           <ul className="roots-list">
             {shown.map((r) => (
               <li key={r.root_buckwalter}>
-                <button className="roots-row" onClick={() => setSelected(r)} title="Open the lexicon page">
+                <button
+                  className="roots-row"
+                  onClick={() => setSelected({ buckwalter: r.root_buckwalter, arabic: r.root_arabic })}
+                  title="Open the lexicon page"
+                >
                   <span className="roots-ar quran">{spaced(r.root_arabic)}</span>
                   <span className="roots-count-badge" title={`${r.total_occurrences} occurrences`}>
                     {r.total_occurrences}×
