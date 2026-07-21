@@ -28,7 +28,7 @@ jump-to-ayah).
 > FastAPI service was ported 1:1 to `/server` (Hono + node:sqlite), parity-
 > tested, and is now the sole backend. One npm workspace, `npm run dev`.
 
-Now building: **V10 verbatim echoes (≡)**. Later: curated case files
+Now building: **V11 research home** (dashboard). Later: curated case files
 (onboarding), vault-wide lexicon export, reader polish/accessibility.
 
 > **Pivot 1 (after V3 review):** cases are sparked by a *word*; the unit of
@@ -453,7 +453,7 @@ question across the Book — each with its location (verse key · surah, word in
 gold) and a jump-to-the-ayah action; answered questions drop off. Backend
 already served it via `/research/notes`; frontend `OpenQuestions` + badge.
 
-### V10 — Verbatim echoes (≡)  ← building
+### V10 — Verbatim echoes (≡) ✅
 The Book's own repetition, surfaced. Contiguous phrases that recur **word-for-
 word** across the Quran (refrains like *fabiʾayyi ālāʾi rabbikumā tukadhdhibān*,
 recurring formulas, the basmala) are detected and marked in the reader.
@@ -472,8 +472,23 @@ Design:
   pattern; no fragile sub-word highlight in v1.
 - New: `EchoPanel` component; `VerseText`/`AyahBlock` echo mark; server
   `echoes.ts` + routes; unit tests over known repeats.
-- v2 (later): inline highlight of the exact repeated span; "echo lens" that
-  walks all occurrences like the focus trail.
+- **v2 shipped:** inline **amber highlight** of the exact repeated span
+  (positions come straight from the index, so no fragile fold-matching);
+  **echo lens** — clicking an occurrence jumps there and lights the phrase in
+  place; **compare here** — pulls the other ayahs *inline*, stacked and
+  highlighted, so you read them without leaving your spot; each labelled with a
+  full **verse key · surah name** reference.
+
+### V11 — Research home (dashboard) ← building
+The workbench you return to. A **Home** tab that ties the scattered research
+artifacts into one landing view, each with a one-click jump:
+- **Continue** — the surah you were reading.
+- **Open cases** — open/partial investigations (title, subject, desk size).
+- **Open questions** — unanswered questions across the Book.
+- **Recent trails** — expeditions to resume.
+- **Established meanings** — count of forms you've settled, into the vault.
+Read-only over existing stores (`archive.cases/trails/notes`, `form-status`);
+new `Home` screen + `home` tab (the default landing).
 
 ### Remaining / future (not committed)
 - **Curated case files** — authored mysteries with ordered clues; the first

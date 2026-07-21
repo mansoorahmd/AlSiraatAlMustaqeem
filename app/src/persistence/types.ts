@@ -130,6 +130,13 @@ export interface PrefsRecord {
   value: unknown;
 }
 
+/** the reader's own meaning for a root, saved alongside the dictionaries */
+export interface UserRootMeaning {
+  root: string; // root_buckwalter
+  meaning: string;
+  updatedAt: number;
+}
+
 export type NoteKind = "note" | "question";
 
 /** A note or question the reader attaches to an ayah or a specific word.

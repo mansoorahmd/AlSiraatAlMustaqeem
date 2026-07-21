@@ -67,7 +67,7 @@ export const api = {
     get<Verse[]>("/phrase-search", { q, script, limit }),
 
   // roots
-  listRoots: (opts: { order_by?: string; limit?: number; offset?: number } = {}) =>
+  listRoots: (opts: { order_by?: string; descending?: boolean; limit?: number; offset?: number } = {}) =>
     get<RootSummary[]>("/roots", opts),
   root: (root: string) => get<RootDetail>(`/roots/${encodeURIComponent(root)}`),
   rootOccurrences: (root: string, script: Script = "uthmani", limit = 3000) =>

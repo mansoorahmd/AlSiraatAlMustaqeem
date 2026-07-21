@@ -40,6 +40,11 @@ CREATE TABLE IF NOT EXISTS notes (
     lemma TEXT, root TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_notes_verse ON notes(verse_key);
+
+-- the reader's own meaning for a root, saved alongside the dictionary lexicons
+CREATE TABLE IF NOT EXISTS user_root_meanings (
+    root TEXT PRIMARY KEY, meaning TEXT NOT NULL DEFAULT '', updated_at INTEGER NOT NULL
+);
 `;
 
 const NOTE_MIGRATIONS: [string, string][] = [
@@ -192,5 +197,37 @@ export class ResearchStore {
   }
   deleteNote(id: string): boolean {
     return Number(this.db.run("DELETE FROM notes WHERE id = ?", [id]).changes) > 0;
+  }
+
+  // -- user root meanings --
+  getRootMeaning(root: string): Doc {
+    const row = this.db.one<{ root: string; meaning: string; updated_at: number }>(
+      "SELECT root, meaning, updated_at FROM user_root_meanings WHERE root = ?", [root],
+    );
+    return { root, meaning: row?.meaning ?? "", updatedAt: row?.updated_at ?? 0 };
+  }
+  listRootMeanings(): Doc[] {
+    return this.db
+      .query<{ root: string; meaning: string; updated_at: number }>(
+        "SELECT root, meaning, updated_at FROM user_root_meanings ORDER BY updated_at DESC",
+      )
+      .map((r) => ({ root: r.root, meaning: r.meaning, updatedAt: r.updated_at }));
+  }
+  setRootMeaning(root: string, meaning: string): Doc {
+    const t = now();
+    const text = (meaning ?? "").trim();
+    if (!text) {
+      this.db.run("DELETE FROM user_root_meanings WHERE root = ?", [root]);
+      return { root, meaning: "", updatedAt: t };
+    }
+    this.db.run(
+      `INSERT INTO user_root_meanings (root, meaning, updated_at) VALUES (?,?,?)
+       ON CONFLICT(root) DO UPDATE SET meaning=excluded.meaning, updated_at=excluded.updated_at`,
+      [root, text, t],
+    );
+    return { root, meaning: text, updatedAt: t };
+  }
+  deleteRootMeaning(root: string): boolean {
+    return Number(this.db.run("DELETE FROM user_root_meanings WHERE root = ?", [root]).changes) > 0;
   }
 }

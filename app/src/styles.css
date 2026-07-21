@@ -403,6 +403,177 @@ a { color: var(--lapis); }
 .settings-select:focus { outline: none; border-color: var(--lapis); }
 .settings-select:disabled { opacity: 0.5; }
 
+/* --- research home / dashboard --- */
+.home-head { text-align: center; margin-bottom: 1.2rem; }
+.home-title { font-size: 2rem; color: var(--ink); margin: 0; }
+.home-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 1.4rem;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: 12px;
+  background: var(--paper);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+}
+.stat:hover { box-shadow: var(--shadow-lift); transform: translateY(-1px); }
+.stat-n { font-size: 1.6rem; font-weight: 700; color: var(--lapis); font-variant-numeric: tabular-nums; }
+.stat-l { font-size: var(--fs-label); color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; }
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1rem;
+}
+.home-card {
+  border: 1px solid var(--paper-edge);
+  border-radius: 14px;
+  background: var(--paper);
+  padding: 0.9rem 1rem;
+}
+.home-card-title { font-size: 0.95rem; margin: 0 0 0.6rem; color: var(--ink); }
+.home-empty { font-size: var(--fs-small); color: var(--ink-soft); margin: 0.3rem 0; }
+.home-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.home-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--wash, rgba(37, 99, 235, 0.04));
+  cursor: pointer;
+  text-align: start;
+}
+.home-row:hover { border-color: var(--paper-edge); background: rgba(37, 99, 235, 0.09); }
+.home-row-main { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.home-row-main.quran { font-size: 1.15rem; }
+.home-q-text { font-size: var(--fs-small); }
+.home-row-meta { flex: none; font-size: var(--fs-label); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.home-q, .home-trail { flex: none; font-size: 0.85rem; }
+.home-lex { font-size: var(--fs-small); color: var(--ink); margin: 0 0 0.4rem; }
+.home-lex-n {
+  border: none; background: none; cursor: pointer;
+  font-size: 1.3rem; font-weight: 700; color: var(--lapis);
+  font-variant-numeric: tabular-nums; padding: 0;
+}
+
+/* --- roots explorer --- */
+.roots-toolbar {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+.roots-filter {
+  flex: 1;
+  min-width: 14rem;
+  font: inherit;
+  font-size: var(--fs-small);
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.roots-filter:focus { outline: none; border-color: var(--lapis); }
+.roots-order { display: inline-flex; gap: 0.3rem; }
+.roots-count { font-size: var(--fs-label); color: var(--ink-soft); margin: 0 0 0.6rem; }
+.roots-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.roots-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 6rem 3.5rem 5rem 1fr;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--wash, rgba(37, 99, 235, 0.04));
+  cursor: pointer;
+  text-align: start;
+}
+.roots-row:hover { border-color: var(--paper-edge); background: rgba(37, 99, 235, 0.09); }
+.roots-ar { font-size: 1.2rem; color: var(--gold); }
+.roots-count-badge {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-small);
+  color: var(--lapis);
+  font-weight: 600;
+  text-align: end;
+}
+.roots-forms { font-size: var(--fs-label); color: var(--ink-soft); }
+.roots-meaning { font-size: var(--fs-small); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* --- root detail (lexicon page) --- */
+.root-back { margin-bottom: 0.8rem; }
+.root-detail-head { text-align: center; margin-bottom: 1rem; }
+.root-detail-ar { font-size: 2.4rem; color: var(--gold); margin: 0; }
+.root-section-title { font-size: 1rem; color: var(--ink); margin: 1.2rem 0 0.5rem; }
+.root-mine {
+  border: 1px solid var(--gold-soft, rgba(180, 83, 9, 0.35));
+  background: rgba(180, 83, 9, 0.05);
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+}
+.root-mine .root-section-title { margin-top: 0; color: var(--gold); }
+.root-mine-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.root-mine-edit { font-size: var(--fs-label); }
+.root-mine-text {
+  margin: 0.3rem 0 0;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+.root-mine-empty { margin: 0.3rem 0 0; font-size: var(--fs-small); color: var(--ink-soft); font-style: italic; }
+.root-mine-input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: var(--fs-small);
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  resize: vertical;
+}
+.root-mine-input:focus { outline: none; border-color: var(--gold); }
+.root-mine-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem; margin-top: 0.4rem; }
+.root-saved { font-size: var(--fs-label); color: #15803d; }
+.root-error { font-size: var(--fs-label); color: #b91c1c; }
+.root-lex-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.root-lex-entry { border: 1px solid var(--paper-edge); border-radius: 10px; padding: 0.5rem 0.7rem; background: var(--paper); }
+.root-lex-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+.root-lex-lang { font-size: var(--fs-label); color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; }
+.root-lex-text { margin: 0; font-size: var(--fs-small); color: var(--ink); line-height: 1.6; }
+.root-lex-text.quran { font-size: 1.15rem; line-height: 2; }
+.root-forms { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.root-form-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: 999px;
+  background: var(--wash, rgba(37,99,235,0.05));
+}
+.root-form-chip .quran { font-size: 1.1rem; color: var(--ink); }
+.root-form-meta { font-size: var(--fs-label); color: var(--ink-soft); }
+.root-occ { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.root-occ-chip { cursor: pointer; font-variant-numeric: tabular-nums; }
+.root-occ-chip:hover { background: rgba(37, 99, 235, 0.12); }
+
 .reader-sheet { max-width: none; }
 
 /* per-script fonts */

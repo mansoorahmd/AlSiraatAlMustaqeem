@@ -7,7 +7,7 @@
 // A one-time migration pushes any pre-existing IndexedDB cases/trails to the
 // server the first time the app runs after this change.
 
-import type { CaseRecord, VaultEntry, TrailRecord, PrefsRecord, NoteRecord } from "./types";
+import type { CaseRecord, VaultEntry, TrailRecord, PrefsRecord, NoteRecord, UserRootMeaning } from "./types";
 
 const DB_NAME = "alsiraat-archive";
 const DB_VERSION = 1;
@@ -216,6 +216,26 @@ export const archive = {
     remove: async (id: string): Promise<void> => {
       await ensureMigrated();
       return srvDelete(`/notes/${encodeURIComponent(id)}`);
+    },
+  },
+
+  /** The reader's own meaning per root — research.db, alongside the lexicons. */
+  rootMeanings: {
+    get: async (root: string): Promise<UserRootMeaning> => {
+      await ensureMigrated();
+      return srvGet<UserRootMeaning>(`/root-meanings/${encodeURIComponent(root)}`);
+    },
+    all: async (): Promise<UserRootMeaning[]> => {
+      await ensureMigrated();
+      return srvGet<UserRootMeaning[]>("/root-meanings");
+    },
+    set: async (root: string, meaning: string): Promise<UserRootMeaning> => {
+      await ensureMigrated();
+      return srvPut<UserRootMeaning>(`/root-meanings/${encodeURIComponent(root)}`, { meaning });
+    },
+    remove: async (root: string): Promise<void> => {
+      await ensureMigrated();
+      return srvDelete(`/root-meanings/${encodeURIComponent(root)}`);
     },
   },
 

@@ -57,5 +57,17 @@ export function researchRoutes(state: AppState): Hono {
     return c.json({ deleted: c.req.param("id") });
   });
 
+  // user root meanings
+  r.get("/research/root-meanings", (c) => c.json(s.listRootMeanings()));
+  r.get("/research/root-meanings/:root", (c) => c.json(s.getRootMeaning(c.req.param("root"))));
+  r.put("/research/root-meanings/:root", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { meaning?: string };
+    return c.json(s.setRootMeaning(c.req.param("root"), body.meaning ?? ""));
+  });
+  r.delete("/research/root-meanings/:root", (c) => {
+    s.deleteRootMeaning(c.req.param("root"));
+    return c.json({ deleted: c.req.param("root") });
+  });
+
   return r;
 }

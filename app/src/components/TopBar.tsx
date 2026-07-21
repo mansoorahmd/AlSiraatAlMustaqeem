@@ -6,9 +6,11 @@ import type { Script } from "../api/types";
 import { OpenQuestions } from "./OpenQuestions";
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: "home", label: "Home" },
   { id: "read", label: "Read" },
   { id: "investigate", label: "Investigate" },
   { id: "vault", label: "Vault" },
+  { id: "roots", label: "Roots" },
 ];
 
 const SCRIPTS: { id: Script; label: string }[] = [

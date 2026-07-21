@@ -64,4 +64,15 @@ describe("research store round-trip", () => {
     expect(store.listNotes({ lemma: "ءَالَآء" }).map((n) => n.id).sort()).toEqual(["q1", "q2"]);
     expect(store.deleteNote("n1")).toBe(true);
   });
+
+  it("user root meanings: set / get / clear", () => {
+    expect(store.getRootMeaning("hdy").meaning).toBe(""); // none yet
+    store.setRootMeaning("hdy", "to guide, show the way");
+    expect(store.getRootMeaning("hdy").meaning).toBe("to guide, show the way");
+    expect(store.listRootMeanings().map((r) => r.root)).toContain("hdy");
+    // saving empty clears it
+    store.setRootMeaning("hdy", "   ");
+    expect(store.getRootMeaning("hdy").meaning).toBe("");
+    expect(store.listRootMeanings().map((r) => r.root)).not.toContain("hdy");
+  });
 });

@@ -8,7 +8,7 @@ import {
 import type { Script } from "../api/types";
 import { archive } from "../persistence/db";
 
-export type Tab = "read" | "investigate" | "vault";
+export type Tab = "home" | "read" | "investigate" | "vault" | "roots";
 
 export interface ReadingState {
   surahId: number;
@@ -18,6 +18,8 @@ export interface ReadingState {
   translationId: number | null;
   myGlossOn: boolean; // show the reader's own established meanings under words
   fontScale: number; // 0.5 – 2.0
+  /** last ayah brought into view while reading — for "continue reading" */
+  lastVerseKey: string | null;
 }
 
 export interface AppState {
@@ -47,6 +49,7 @@ export type Action =
   | { type: "setTranslationId"; id: number | null }
   | { type: "setMyGlossOn"; on: boolean }
   | { type: "setFontScale"; scale: number }
+  | { type: "setLastVerse"; verseKey: string }
   | { type: "setActiveCase"; caseId: string | null }
   | { type: "openCaseStacked"; caseId: string }
   | { type: "backCase" }
@@ -60,7 +63,7 @@ export type Action =
 
 const initialState: AppState = {
   tab: tabFromHash(),
-  reading: { surahId: 1, script: "uthmani", translationOn: false, translationId: null, myGlossOn: true, fontScale: 1 },
+  reading: { surahId: 1, script: "uthmani", translationOn: false, translationId: null, myGlossOn: true, fontScale: 1, lastVerseKey: null },
   activeCaseId: null,
   caseStack: [],
   focusCaseId: null,
@@ -85,6 +88,9 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, reading: { ...state.reading, translationId: action.id } };
     case "setMyGlossOn":
       return { ...state, reading: { ...state.reading, myGlossOn: action.on } };
+    case "setLastVerse":
+      if (state.reading.lastVerseKey === action.verseKey) return state;
+      return { ...state, reading: { ...state.reading, lastVerseKey: action.verseKey } };
     case "setFontScale": {
       const fontScale = Math.min(2, Math.max(0.5, action.scale));
       return { ...state, reading: { ...state.reading, fontScale } };
@@ -166,7 +172,7 @@ function reducer(state: AppState, action: Action): AppState {
 
 export function tabFromHash(): Tab {
   const h = typeof window !== "undefined" ? window.location.hash.replace(/^#\/?/, "") : "";
-  return h === "investigate" || h === "vault" ? h : "read";
+  return h === "read" || h === "investigate" || h === "vault" || h === "roots" ? h : "home";
 }
 
 const StateCtx = createContext<AppState>(initialState);

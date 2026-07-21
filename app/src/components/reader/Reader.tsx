@@ -103,6 +103,38 @@ export function Reader({ chapters, onBackToIndex }: Props) {
   const echoKeys = useAsync(() => api.chapterEchoes(surahId), [surahId]);
   const echoSet = useMemo(() => new Set(echoKeys.data ?? []), [echoKeys.data]);
 
+  // remember the top-most ayah in view, so Home can "continue reading" there
+  const lastSeen = useRef<string | null>(reading.lastVerseKey);
+  useEffect(() => {
+    if (!verses.data) return;
+    const els = Array.from(
+      document.querySelectorAll<HTMLElement>(".reader-sheet .ayah[data-key]"),
+    );
+    if (!els.length) return;
+    const tops = new Map<string, number>();
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          const key = (e.target as HTMLElement).dataset.key!;
+          if (e.isIntersecting) tops.set(key, e.boundingClientRect.top);
+          else tops.delete(key);
+        }
+        let best: string | null = null;
+        let bestTop = Infinity;
+        for (const [k, top] of tops) if (top < bestTop) { bestTop = top; best = k; }
+        if (best && best !== lastSeen.current) {
+          lastSeen.current = best;
+          dispatch({ type: "setLastVerse", verseKey: best });
+        }
+      },
+      // a thin band near the top of the page = "what I'm currently reading"
+      { rootMargin: "-8% 0px -82% 0px" },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verses.data, surahId]);
+
   // scroll to a jumped-to verse once it is on the page
   useEffect(() => {
     if (!jumpToVerseKey || !verses.data) return;
