@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
 import { useAppState, useAppDispatch, type Tab } from "../state/store";
 import type { Script } from "../api/types";
+import { OpenQuestions } from "./OpenQuestions";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "read", label: "Read" },
@@ -67,6 +68,9 @@ export function TopBar() {
       </nav>
 
       <div className="spacer" />
+
+      {/* every unanswered question across the Book, one click away */}
+      <OpenQuestions />
 
       {/* reading settings — always available in the top toolbar */}
       <div className="settings-wrap" ref={settingsRef}>
