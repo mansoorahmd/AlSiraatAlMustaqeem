@@ -1,0 +1,275 @@
+[
+  {
+    "verse_key": "112:1",
+    "chapter_id": 112,
+    "verse_number": 1,
+    "verse_index": null,
+    "juz_number": 30,
+    "hizb_number": 60,
+    "rub_el_hizb_number": 240,
+    "page_number": 604,
+    "ruku_number": 556,
+    "manzil_number": 7,
+    "script": "uthmani",
+    "text": " قُلْ هُوَ ٱللَّهُ أَحَدٌ",
+    "words": [
+      {
+        "position": 1,
+        "arabic": "قُلْ",
+        "gloss": "Say",
+        "transliteration": "qul",
+        "lemma": "قَالَ",
+        "root": "قول",
+        "root_buckwalter": "qwl",
+        "pos": "Verb",
+        "pos_class": "Verbs"
+      },
+      {
+        "position": 2,
+        "arabic": "هُوَ",
+        "gloss": "He",
+        "transliteration": "huwa",
+        "lemma": null,
+        "root": null,
+        "root_buckwalter": null,
+        "pos": "Personal pronoun",
+        "pos_class": "Pronouns"
+      },
+      {
+        "position": 3,
+        "arabic": "ٱللَّهُ",
+        "gloss": "(is) Allah",
+        "transliteration": "l-lahu",
+        "lemma": "ٱللَّه",
+        "root": "اله",
+        "root_buckwalter": "Alh",
+        "pos": "Proper noun",
+        "pos_class": "Nouns"
+      },
+      {
+        "position": 4,
+        "arabic": "أَحَدٌ",
+        "gloss": "the One",
+        "transliteration": "aḥadun",
+        "lemma": "أَحَد",
+        "root": "احد",
+        "root_buckwalter": "AHd",
+        "pos": "Noun",
+        "pos_class": "Nouns"
+      },
+      {
+        "position": 5,
+        "arabic": null,
+        "gloss": "(1)",
+        "transliteration": null,
+        "lemma": null,
+        "root": null,
+        "root_buckwalter": null,
+        "pos": null,
+        "pos_class": null
+      }
+    ]
+  },
+  {
+    "verse_key": "112:2",
+    "chapter_id": 112,
+    "verse_number": 2,
+    "verse_index": null,
+    "juz_number": 30,
+    "hizb_number": 60,
+    "rub_el_hizb_number": 240,
+    "page_number": 604,
+    "ruku_number": 556,
+    "manzil_number": 7,
+    "script": "uthmani",
+    "text": "ٱللَّهُ ٱلصَّمَدُ",
+    "words": [
+      {
+        "position": 1,
+        "arabic": "ٱللَّهُ",
+        "gloss": "Allah",
+        "transliteration": "al-lahu",
+        "lemma": "ٱللَّه",
+        "root": "اله",
+        "root_buckwalter": "Alh",
+        "pos": "Proper noun",
+        "pos_class": "Nouns"
+      },
+      {
+        "position": 2,
+        "arabic": "ٱلصَّمَدُ",
+        "gloss": "the Eternal, the Absolute",
+        "transliteration": "l-ṣamadu",
+        "lemma": "صَّمَد",
+        "root": "صمد",
+        "root_buckwalter": "Smd",
+        "pos": "Noun",
+        "pos_class": "Nouns"
+      },
+      {
+        "position": 3,
+        "arabic": null,
+        "gloss": "(2)",
+        "transliteration": null,
+        "lemma": null,
+        "root": null,
+        "root_buckwalter": null,
+        "pos": null,
+        "pos_class": null
+      }
+    ]
+  },
+  {
+    "verse_key": "112:3",
+    "chapter_id": 112,
+    "verse_number": 3,
+    "verse_index": null,
+    "juz_number": 30,
+    "hizb_number": 60,
+    "rub_el_hizb_number": 240,
+    "page_number": 604,
+    "ruku_number": 556,
+    "manzil_number": 7,
+    "script": "uthmani",
+    "text": "لَمْ يَلِدْ وَلَمْ يُولَدْ",
+    "words": [
+      {
+        "position": 1,
+        "arabic": "لَمْ",
+        "gloss": "Not",
+        "transliteration": "lam",
+        "lemma": "لَم",
+        "root": null,
+        "root_buckwalter": null,
+        "pos": "Negative particle",
+        "pos_class": "Particles"
+      },
+      {
+        "position": 2,
+        "arabic": "يَلِدْ",
+        "gloss": "He begets",
+        "transliteration": "yalid",
+        "lemma": "وَلَدَ",
+        "root": "ولد",
+        "root_buckwalter": "wld",
+        "pos": "Verb",
+        "pos_class": "Verbs"
+      },
+      {
+        "position": 3,
+        "arabic": "وَلَمْ",
+        "gloss": "and not",
+        "transliteration": "walam",
+        "lemma": "لَم",
+        "root": null,
+        "root_buckwalter": null,
+        "pos": "Negative particle",
+        "pos_class": "Particles"
+      },
+      {
+        "position": 4,
+        "arabic": "يُولَدْ",
+        "gloss": "He is begotten",
+        "transliteration": "yūlad",
+        "lemma": "وَلَدَ",
+        "root": "ولد",
+        "root_buckwalter": "wld",
+        "pos": "Verb",
+        "pos_class": "Verbs"
+      },
+      {
+        "position": 5,
+        "arabic": null,
+        "gloss": "(3)",
+        "transliteration": null,
+        "lemma": null,
+        "root": null,
+        "root_buckwalter": null,
+        "pos": null,
+        "pos_class": null
+      }
+    ]
+  },
+  {
+    "verse_key": "112:4",
+    "chapter_id": 112,
+    "verse_number": 4,
+    "verse_index": null,
+    "juz_number": 30,
+    "hizb_number": 60,
+    "rub_el_hizb_number": 240,
+    "page_number": 604,
+    "ruku_number": 556,
+    "manzil_number": 7,
+    "script": "uthmani",
+    "text": "وَلَمْ يَكُن لَّهُۥ كُفُوًا أَحَدٌۢ",
+    "words": [
+      {
+        "position": 1,
+        "arabic": "وَلَمْ",
+        "gloss": "And not",
+        "transliteration": "walam",
+        "lemma": "لَم",
+        "root": null,
+        "root_buckwalter": null,
+        "pos": "Negative particle",
+        "pos_class": "Particles"
+      },
+      {
+        "position": 2,
+        "arabic": "يَكُن",
+        "gloss": "is",
+        "transliteration": "yakun",
+        "lemma": "كَانَ",
+        "root": "كون",
+        "root_buckwalter": "kwn",
+        "pos": "Verb",
+        "pos_class": "Verbs"
+      },
+      {
+        "position": 3,
+        "arabic": "لَّهُۥ",
+        "gloss": "for Him",
+        "transliteration": "lahu",
+        "lemma": null,
+        "root": null,
+        "root_buckwalter": null,
+        "pos": "Personal pronoun",
+        "pos_class": "Pronouns"
+      },
+      {
+        "position": 4,
+        "arabic": "كُفُوًا",
+        "gloss": "equivalent",
+        "transliteration": "kufuwan",
+        "lemma": "كُفُو",
+        "root": "كفا",
+        "root_buckwalter": "kfA",
+        "pos": "Noun",
+        "pos_class": "Nouns"
+      },
+      {
+        "position": 5,
+        "arabic": "أَحَدٌۢ",
+        "gloss": "any [one]",
+        "transliteration": "aḥadun",
+        "lemma": "أَحَد",
+        "root": "احد",
+        "root_buckwalter": "AHd",
+        "pos": "Noun",
+        "pos_class": "Nouns"
+      },
+      {
+        "position": 6,
+        "arabic": null,
+        "gloss": "(4)",
+        "transliteration": null,
+        "lemma": null,
+        "root": null,
+        "root_buckwalter": null,
+        "pos": null,
+        "pos_class": null
+      }
+    ]
+  }
+]

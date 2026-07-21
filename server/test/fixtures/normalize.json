@@ -1,0 +1,1045 @@
+{
+  "cases": [
+    {
+      "input": "ٱسْم",
+      "strip": "ٱسم",
+      "fold": "اسم",
+      "buck": "{som",
+      "affix": [
+        "اسم"
+      ],
+      "tokenize": [
+        "ٱسم"
+      ]
+    },
+    {
+      "input": "ٱللَّه",
+      "strip": "ٱلله",
+      "fold": "الله",
+      "buck": "{ll~ah",
+      "affix": [
+        "الله",
+        "الل",
+        "له"
+      ],
+      "tokenize": [
+        "ٱلله"
+      ]
+    },
+    {
+      "input": "رَّحْمَٰن",
+      "strip": "رحمن",
+      "fold": "رحمن",
+      "buck": "r~aHoma`n",
+      "affix": [
+        "رحمن"
+      ],
+      "tokenize": [
+        "رحمن"
+      ]
+    },
+    {
+      "input": "رَّحِيم",
+      "strip": "رحيم",
+      "fold": "رحيم",
+      "buck": "r~aHiym",
+      "affix": [
+        "رحيم"
+      ],
+      "tokenize": [
+        "رحيم"
+      ]
+    },
+    {
+      "input": "قَالَ",
+      "strip": "قال",
+      "fold": "قال",
+      "buck": "qaAla",
+      "affix": [
+        "قال"
+      ],
+      "tokenize": [
+        "قال"
+      ]
+    },
+    {
+      "input": "أَحَد",
+      "strip": "أحد",
+      "fold": "احد",
+      "buck": ">aHad",
+      "affix": [
+        "احد"
+      ],
+      "tokenize": [
+        "أحد"
+      ]
+    },
+    {
+      "input": "عَٰدِيَٰت",
+      "strip": "عديت",
+      "fold": "عديت",
+      "buck": "Ea`diya`t",
+      "affix": [
+        "عديت",
+        "عدي"
+      ],
+      "tokenize": [
+        "عديت"
+      ]
+    },
+    {
+      "input": "ضَبْح",
+      "strip": "ضبح",
+      "fold": "ضبح",
+      "buck": "DaboH",
+      "affix": [
+        "ضبح"
+      ],
+      "tokenize": [
+        "ضبح"
+      ]
+    },
+    {
+      "input": "تَبَّ",
+      "strip": "تب",
+      "fold": "تب",
+      "buck": "tab~a",
+      "affix": [
+        "تب"
+      ],
+      "tokenize": [
+        "تب"
+      ]
+    },
+    {
+      "input": "يَد",
+      "strip": "يد",
+      "fold": "يد",
+      "buck": "yad",
+      "affix": [
+        "يد"
+      ],
+      "tokenize": [
+        "يد"
+      ]
+    },
+    {
+      "input": "أَبٌ",
+      "strip": "أب",
+      "fold": "اب",
+      "buck": ">abN",
+      "affix": [
+        "اب"
+      ],
+      "tokenize": [
+        "أب"
+      ]
+    },
+    {
+      "input": "لَهَب",
+      "strip": "لهب",
+      "fold": "لهب",
+      "buck": "lahab",
+      "affix": [
+        "لهب",
+        "هب"
+      ],
+      "tokenize": [
+        "لهب"
+      ]
+    },
+    {
+      "input": "أَيُّهَا",
+      "strip": "أيها",
+      "fold": "ايها",
+      "buck": ">ay~uhaA",
+      "affix": [
+        "ايها",
+        "اي"
+      ],
+      "tokenize": [
+        "أيها"
+      ]
+    },
+    {
+      "input": "نَّاس",
+      "strip": "ناس",
+      "fold": "ناس",
+      "buck": "n~aAs",
+      "affix": [
+        "ناس"
+      ],
+      "tokenize": [
+        "ناس"
+      ]
+    },
+    {
+      "input": "ٱتَّقَىٰ",
+      "strip": "ٱتقى",
+      "fold": "اتقي",
+      "buck": "{t~aqaY`",
+      "affix": [
+        "اتقي",
+        "اتق"
+      ],
+      "tokenize": [
+        "ٱتقى"
+      ]
+    },
+    {
+      "input": "رَبّ",
+      "strip": "رب",
+      "fold": "رب",
+      "buck": "rab~",
+      "affix": [
+        "رب"
+      ],
+      "tokenize": [
+        "رب"
+      ]
+    },
+    {
+      "input": "ٱلَّذِى",
+      "strip": "ٱلذى",
+      "fold": "الذي",
+      "buck": "{l~a*iY",
+      "affix": [
+        "الذي",
+        "الذ",
+        "ذي"
+      ],
+      "tokenize": [
+        "ٱلذى"
+      ]
+    },
+    {
+      "input": "خَلَقَ",
+      "strip": "خلق",
+      "fold": "خلق",
+      "buck": "xalaqa",
+      "affix": [
+        "خلق"
+      ],
+      "tokenize": [
+        "خلق"
+      ]
+    },
+    {
+      "input": "مِن",
+      "strip": "من",
+      "fold": "من",
+      "buck": "min",
+      "affix": [
+        "من"
+      ],
+      "tokenize": [
+        "من"
+      ]
+    },
+    {
+      "input": "نَفْس",
+      "strip": "نفس",
+      "fold": "نفس",
+      "buck": "nafos",
+      "affix": [
+        "نفس"
+      ],
+      "tokenize": [
+        "نفس"
+      ]
+    },
+    {
+      "input": "وَٰحِدَة",
+      "strip": "وحدة",
+      "fold": "وحده",
+      "buck": "wa`Hidap",
+      "affix": [
+        "وحده",
+        "وحد",
+        "حد",
+        "حده"
+      ],
+      "tokenize": [
+        "وحدة"
+      ]
+    },
+    {
+      "input": "زَوْج",
+      "strip": "زوج",
+      "fold": "زوج",
+      "buck": "zawoj",
+      "affix": [
+        "زوج"
+      ],
+      "tokenize": [
+        "زوج"
+      ]
+    },
+    {
+      "input": "بَثَّ",
+      "strip": "بث",
+      "fold": "بث",
+      "buck": "bav~a",
+      "affix": [
+        "بث"
+      ],
+      "tokenize": [
+        "بث"
+      ]
+    },
+    {
+      "input": "رِجَال",
+      "strip": "رجال",
+      "fold": "رجال",
+      "buck": "rijaAl",
+      "affix": [
+        "رجال"
+      ],
+      "tokenize": [
+        "رجال"
+      ]
+    },
+    {
+      "input": "كَثِير",
+      "strip": "كثير",
+      "fold": "كثير",
+      "buck": "kaviyr",
+      "affix": [
+        "كثير",
+        "ثير"
+      ],
+      "tokenize": [
+        "كثير"
+      ]
+    },
+    {
+      "input": "نِسَآء",
+      "strip": "نساء",
+      "fold": "نساء",
+      "buck": "nisaA^'",
+      "affix": [
+        "نساء"
+      ],
+      "tokenize": [
+        "نساء"
+      ]
+    },
+    {
+      "input": "يَتَسَآءَلُ",
+      "strip": "يتساءل",
+      "fold": "يتساءل",
+      "buck": "yatasaA^'alu",
+      "affix": [
+        "يتساءل"
+      ],
+      "tokenize": [
+        "يتساءل"
+      ]
+    },
+    {
+      "input": "أَرْحَام",
+      "strip": "أرحام",
+      "fold": "ارحام",
+      "buck": ">aroHaAm",
+      "affix": [
+        "ارحام"
+      ],
+      "tokenize": [
+        "أرحام"
+      ]
+    },
+    {
+      "input": "إِنّ",
+      "strip": "إن",
+      "fold": "ان",
+      "buck": "<in~",
+      "affix": [
+        "ان"
+      ],
+      "tokenize": [
+        "إن"
+      ]
+    },
+    {
+      "input": "كَانَ",
+      "strip": "كان",
+      "fold": "كان",
+      "buck": "kaAna",
+      "affix": [
+        "كان",
+        "ان"
+      ],
+      "tokenize": [
+        "كان"
+      ]
+    },
+    {
+      "input": "عَلَىٰ",
+      "strip": "على",
+      "fold": "علي",
+      "buck": "EalaY`",
+      "affix": [
+        "علي",
+        "عل"
+      ],
+      "tokenize": [
+        "على"
+      ]
+    },
+    {
+      "input": "رَقِيب",
+      "strip": "رقيب",
+      "fold": "رقيب",
+      "buck": "raqiyb",
+      "affix": [
+        "رقيب"
+      ],
+      "tokenize": [
+        "رقيب"
+      ]
+    },
+    {
+      "input": "إِذَا",
+      "strip": "إذا",
+      "fold": "اذا",
+      "buck": "<i*aA",
+      "affix": [
+        "اذا"
+      ],
+      "tokenize": [
+        "إذا"
+      ]
+    },
+    {
+      "input": "زُلْزِلُ",
+      "strip": "زلزل",
+      "fold": "زلزل",
+      "buck": "zulozilu",
+      "affix": [
+        "زلزل"
+      ],
+      "tokenize": [
+        "زلزل"
+      ]
+    },
+    {
+      "input": "أَرْض",
+      "strip": "أرض",
+      "fold": "ارض",
+      "buck": ">aroD",
+      "affix": [
+        "ارض"
+      ],
+      "tokenize": [
+        "أرض"
+      ]
+    },
+    {
+      "input": "زِلْزَال",
+      "strip": "زلزال",
+      "fold": "زلزال",
+      "buck": "zilozaAl",
+      "affix": [
+        "زلزال"
+      ],
+      "tokenize": [
+        "زلزال"
+      ]
+    },
+    {
+      "input": "بَرَآءَة",
+      "strip": "براءة",
+      "fold": "براءه",
+      "buck": "baraA^'ap",
+      "affix": [
+        "براءه",
+        "براء",
+        "راء",
+        "راءه"
+      ],
+      "tokenize": [
+        "براءة"
+      ]
+    },
+    {
+      "input": "رَسُول",
+      "strip": "رسول",
+      "fold": "رسول",
+      "buck": "rasuwl",
+      "affix": [
+        "رسول"
+      ],
+      "tokenize": [
+        "رسول"
+      ]
+    },
+    {
+      "input": "إِلَىٰ",
+      "strip": "إلى",
+      "fold": "الي",
+      "buck": "<ilaY`",
+      "affix": [
+        "الي",
+        "ال"
+      ],
+      "tokenize": [
+        "إلى"
+      ]
+    },
+    {
+      "input": "عَٰهَدَ",
+      "strip": "عهد",
+      "fold": "عهد",
+      "buck": "Ea`hada",
+      "affix": [
+        "عهد"
+      ],
+      "tokenize": [
+        "عهد"
+      ]
+    },
+    {
+      "input": "مُشْرِك",
+      "strip": "مشرك",
+      "fold": "مشرك",
+      "buck": "mu$orik",
+      "affix": [
+        "مشرك",
+        "مشر"
+      ],
+      "tokenize": [
+        "مشرك"
+      ]
+    },
+    {
+      "input": "ضُحًى",
+      "strip": "ضحى",
+      "fold": "ضحي",
+      "buck": "DuHFY",
+      "affix": [
+        "ضحي",
+        "ضح"
+      ],
+      "tokenize": [
+        "ضحى"
+      ]
+    },
+    {
+      "input": "سُبْحَٰن",
+      "strip": "سبحن",
+      "fold": "سبحن",
+      "buck": "suboHa`n",
+      "affix": [
+        "سبحن",
+        "بحن"
+      ],
+      "tokenize": [
+        "سبحن"
+      ]
+    },
+    {
+      "input": "أَسْرَىٰ",
+      "strip": "أسرى",
+      "fold": "اسري",
+      "buck": ">asoraY`",
+      "affix": [
+        "اسري",
+        "اسر"
+      ],
+      "tokenize": [
+        "أسرى"
+      ]
+    },
+    {
+      "input": "عَبْد",
+      "strip": "عبد",
+      "fold": "عبد",
+      "buck": "Eabod",
+      "affix": [
+        "عبد"
+      ],
+      "tokenize": [
+        "عبد"
+      ]
+    },
+    {
+      "input": "لَيْل",
+      "strip": "ليل",
+      "fold": "ليل",
+      "buck": "layol",
+      "affix": [
+        "ليل",
+        "يل"
+      ],
+      "tokenize": [
+        "ليل"
+      ]
+    },
+    {
+      "input": "مَسْجِد",
+      "strip": "مسجد",
+      "fold": "مسجد",
+      "buck": "masojid",
+      "affix": [
+        "مسجد"
+      ],
+      "tokenize": [
+        "مسجد"
+      ]
+    },
+    {
+      "input": "حَرَام",
+      "strip": "حرام",
+      "fold": "حرام",
+      "buck": "HaraAm",
+      "affix": [
+        "حرام"
+      ],
+      "tokenize": [
+        "حرام"
+      ]
+    },
+    {
+      "input": "أَقْصَا",
+      "strip": "أقصا",
+      "fold": "اقصا",
+      "buck": ">aqoSaA",
+      "affix": [
+        "اقصا"
+      ],
+      "tokenize": [
+        "أقصا"
+      ]
+    },
+    {
+      "input": "بَٰرَكَ",
+      "strip": "برك",
+      "fold": "برك",
+      "buck": "ba`raka",
+      "affix": [
+        "برك",
+        "بر",
+        "رك"
+      ],
+      "tokenize": [
+        "برك"
+      ]
+    },
+    {
+      "input": "حَوْل",
+      "strip": "حول",
+      "fold": "حول",
+      "buck": "Hawol",
+      "affix": [
+        "حول"
+      ],
+      "tokenize": [
+        "حول"
+      ]
+    },
+    {
+      "input": "أَرَيْ",
+      "strip": "أري",
+      "fold": "اري",
+      "buck": ">arayo",
+      "affix": [
+        "اري",
+        "ار"
+      ],
+      "tokenize": [
+        "أري"
+      ]
+    },
+    {
+      "input": "ءَايَة",
+      "strip": "ءاية",
+      "fold": "ءايه",
+      "buck": "'aAyap",
+      "affix": [
+        "ءايه",
+        "ءاي"
+      ],
+      "tokenize": [
+        "ءاية"
+      ]
+    },
+    {
+      "input": "سَمِيع",
+      "strip": "سميع",
+      "fold": "سميع",
+      "buck": "samiyE",
+      "affix": [
+        "سميع",
+        "ميع"
+      ],
+      "tokenize": [
+        "سميع"
+      ]
+    },
+    {
+      "input": "بَصِير",
+      "strip": "بصير",
+      "fold": "بصير",
+      "buck": "baSiyr",
+      "affix": [
+        "بصير",
+        "صير"
+      ],
+      "tokenize": [
+        "بصير"
+      ]
+    },
+    {
+      "input": "تِّين",
+      "strip": "تين",
+      "fold": "تين",
+      "buck": "t~iyn",
+      "affix": [
+        "تين"
+      ],
+      "tokenize": [
+        "تين"
+      ]
+    },
+    {
+      "input": "زَّيْتُون",
+      "strip": "زيتون",
+      "fold": "زيتون",
+      "buck": "z~ayotuwn",
+      "affix": [
+        "زيتون",
+        "زيت"
+      ],
+      "tokenize": [
+        "زيتون"
+      ]
+    },
+    {
+      "input": "قَرَأَ",
+      "strip": "قرأ",
+      "fold": "قرا",
+      "buck": "qara>a",
+      "affix": [
+        "قرا"
+      ],
+      "tokenize": [
+        "قرأ"
+      ]
+    },
+    {
+      "input": "وَيْل",
+      "strip": "ويل",
+      "fold": "ويل",
+      "buck": "wayol",
+      "affix": [
+        "ويل",
+        "يل"
+      ],
+      "tokenize": [
+        "ويل"
+      ]
+    },
+    {
+      "input": "كُلّ",
+      "strip": "كل",
+      "fold": "كل",
+      "buck": "kul~",
+      "affix": [
+        "كل"
+      ],
+      "tokenize": [
+        "كل"
+      ]
+    },
+    {
+      "input": "الْحَمْدُ",
+      "strip": "الحمد",
+      "fold": "الحمد",
+      "buck": "AloHamodu",
+      "affix": [
+        "الحمد",
+        "حمد"
+      ],
+      "tokenize": [
+        "الحمد"
+      ]
+    },
+    {
+      "input": "ٱلرَّحْمَٰنِ",
+      "strip": "ٱلرحمن",
+      "fold": "الرحمن",
+      "buck": "{lra~Homa`ni",
+      "affix": [
+        "الرحمن",
+        "رحمن"
+      ],
+      "tokenize": [
+        "ٱلرحمن"
+      ]
+    },
+    {
+      "input": "الَّذِينَ",
+      "strip": "الذين",
+      "fold": "الذين",
+      "buck": "Ala~*iyna",
+      "affix": [
+        "الذين",
+        "الذ",
+        "ذين"
+      ],
+      "tokenize": [
+        "الذين"
+      ]
+    },
+    {
+      "input": "وَالْمُؤْمِنُونَ",
+      "strip": "والمؤمنون",
+      "fold": "والمؤمنون",
+      "buck": "waAlomu&ominuwna",
+      "affix": [
+        "والمؤمنون",
+        "والمؤمن",
+        "مؤمن",
+        "مؤمنون"
+      ],
+      "tokenize": [
+        "والمؤمنون"
+      ]
+    },
+    {
+      "input": "ه د ي",
+      "strip": "ه د ي",
+      "fold": "ه د ي",
+      "buck": "h d y",
+      "affix": [
+        "ه د ي",
+        "ه د "
+      ],
+      "tokenize": [
+        "ه",
+        "د",
+        "ي"
+      ]
+    },
+    {
+      "input": "hdy",
+      "strip": "hdy",
+      "fold": "hdy",
+      "buck": "hdy",
+      "affix": [
+        "hdy"
+      ],
+      "tokenize": []
+    },
+    {
+      "input": "الله",
+      "strip": "الله",
+      "fold": "الله",
+      "buck": "Allh",
+      "affix": [
+        "الله",
+        "الل",
+        "له"
+      ],
+      "tokenize": [
+        "الله"
+      ]
+    },
+    {
+      "input": "ﷲ",
+      "strip": "ﷲ",
+      "fold": "ﷲ",
+      "buck": "ﷲ",
+      "affix": [
+        "ﷲ"
+      ],
+      "tokenize": []
+    },
+    {
+      "input": "  الصِّرَاطَ  ",
+      "strip": "  الصراط  ",
+      "fold": "  الصراط  ",
+      "buck": "  AlSi~raATa  ",
+      "affix": [
+        "  الصراط  "
+      ],
+      "tokenize": [
+        "الصراط"
+      ]
+    }
+  ],
+  "roots": [
+    {
+      "input": "ابب",
+      "normalize_root": "Abb"
+    },
+    {
+      "input": "ابد",
+      "normalize_root": "Abd"
+    },
+    {
+      "input": "ابق",
+      "normalize_root": "Abq"
+    },
+    {
+      "input": "ابل",
+      "normalize_root": "Abl"
+    },
+    {
+      "input": "ابو",
+      "normalize_root": "Abw"
+    },
+    {
+      "input": "ابي",
+      "normalize_root": "Aby"
+    },
+    {
+      "input": "اتي",
+      "normalize_root": "Aty"
+    },
+    {
+      "input": "اثث",
+      "normalize_root": "Avv"
+    },
+    {
+      "input": "اثر",
+      "normalize_root": "Avr"
+    },
+    {
+      "input": "اثل",
+      "normalize_root": "Avl"
+    },
+    {
+      "input": "اثم",
+      "normalize_root": "Avm"
+    },
+    {
+      "input": "اجج",
+      "normalize_root": "Ajj"
+    },
+    {
+      "input": "اجر",
+      "normalize_root": "Ajr"
+    },
+    {
+      "input": "اجل",
+      "normalize_root": "Ajl"
+    },
+    {
+      "input": "احد",
+      "normalize_root": "AHd"
+    },
+    {
+      "input": "اخذ",
+      "normalize_root": "Ax*"
+    },
+    {
+      "input": "اخر",
+      "normalize_root": "Axr"
+    },
+    {
+      "input": "اخو",
+      "normalize_root": "Axw"
+    },
+    {
+      "input": "ادد",
+      "normalize_root": "Add"
+    },
+    {
+      "input": "ادي",
+      "normalize_root": "Ady"
+    },
+    {
+      "input": "اذن",
+      "normalize_root": "A*n"
+    },
+    {
+      "input": "اذي",
+      "normalize_root": "A*y"
+    },
+    {
+      "input": "ارب",
+      "normalize_root": "Arb"
+    },
+    {
+      "input": "ارض",
+      "normalize_root": "ArD"
+    },
+    {
+      "input": "ارك",
+      "normalize_root": "Ark"
+    },
+    {
+      "input": "ازر",
+      "normalize_root": "Azr"
+    },
+    {
+      "input": "ازز",
+      "normalize_root": "Azz"
+    },
+    {
+      "input": "ازف",
+      "normalize_root": "Azf"
+    },
+    {
+      "input": "اسر",
+      "normalize_root": "Asr"
+    },
+    {
+      "input": "اسس",
+      "normalize_root": "Ass"
+    },
+    {
+      "input": "اسف",
+      "normalize_root": "Asf"
+    },
+    {
+      "input": "اسن",
+      "normalize_root": "Asn"
+    },
+    {
+      "input": "اسو",
+      "normalize_root": "Asw"
+    },
+    {
+      "input": "اشر",
+      "normalize_root": "A$r"
+    },
+    {
+      "input": "اصر",
+      "normalize_root": "ASr"
+    },
+    {
+      "input": "اصل",
+      "normalize_root": "ASl"
+    },
+    {
+      "input": "افف",
+      "normalize_root": "Aff"
+    },
+    {
+      "input": "افق",
+      "normalize_root": "Afq"
+    },
+    {
+      "input": "افك",
+      "normalize_root": "Afk"
+    },
+    {
+      "input": "افل",
+      "normalize_root": "Afl"
+    },
+    {
+      "input": "ه د ي",
+      "normalize_root": "hdy"
+    },
+    {
+      "input": "hdy",
+      "normalize_root": "hdy"
+    },
+    {
+      "input": "هدي",
+      "normalize_root": "hdy"
+    }
+  ]
+}

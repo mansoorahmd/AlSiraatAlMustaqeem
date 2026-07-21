@@ -1,0 +1,57 @@
+[
+  {
+    "position": 1,
+    "arabic": "بِسْمِ",
+    "gloss": "In (the) name",
+    "transliteration": "bis'mi",
+    "lemma": "ٱسْم",
+    "root": "سمو",
+    "root_buckwalter": "smw",
+    "pos": "Noun",
+    "pos_class": "Nouns"
+  },
+  {
+    "position": 2,
+    "arabic": "ٱللَّهِ",
+    "gloss": "(of) Allah",
+    "transliteration": "l-lahi",
+    "lemma": "ٱللَّه",
+    "root": "اله",
+    "root_buckwalter": "Alh",
+    "pos": "Proper noun",
+    "pos_class": "Nouns"
+  },
+  {
+    "position": 3,
+    "arabic": "ٱلرَّحْمَٰنِ",
+    "gloss": "the Most Gracious",
+    "transliteration": "l-raḥmāni",
+    "lemma": "رَّحْمَٰن",
+    "root": "رحم",
+    "root_buckwalter": "rHm",
+    "pos": "Adjective",
+    "pos_class": "Nominals"
+  },
+  {
+    "position": 4,
+    "arabic": "ٱلرَّحِيمِ",
+    "gloss": "the Most Merciful",
+    "transliteration": "l-raḥīmi",
+    "lemma": "رَّحِيم",
+    "root": "رحم",
+    "root_buckwalter": "rHm",
+    "pos": "Adjective",
+    "pos_class": "Nominals"
+  },
+  {
+    "position": 5,
+    "arabic": null,
+    "gloss": "(1)",
+    "transliteration": null,
+    "lemma": null,
+    "root": null,
+    "root_buckwalter": null,
+    "pos": null,
+    "pos_class": null
+  }
+]

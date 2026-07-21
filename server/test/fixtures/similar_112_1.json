@@ -1,0 +1,1585 @@
+[
+  {
+    "verse_key": "72:18",
+    "chapter_id": 72,
+    "verse_number": 18,
+    "text": "وَأَنَّ ٱلْمَسَـٰجِدَ لِلَّهِ فَلَا تَدْعُوا۟ مَعَ ٱللَّهِ أَحَدًا",
+    "score": 0.4914,
+    "overlap": 0.6155,
+    "phrase": 0.5833,
+    "morphology": 0.1578,
+    "shared": [
+      "اله",
+      "احد"
+    ],
+    "pattern": [
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Adverbs",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "اله",
+      "احد"
+    ]
+  },
+  {
+    "verse_key": "18:26",
+    "chapter_id": 18,
+    "verse_number": 26,
+    "text": "قُلِ ٱللَّهُ أَعْلَمُ بِمَا لَبِثُوا۟ ۖ لَهُۥ غَيْبُ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضِ ۖ أَبْصِرْ بِهِۦ وَأَسْمِعْ ۚ مَا لَهُم مِّن دُونِهِۦ مِن وَلِىٍّ وَلَا يُشْرِكُ فِى حُكْمِهِۦٓ أَحَدًا",
+    "score": 0.4753,
+    "overlap": 0.3747,
+    "phrase": 0.5833,
+    "morphology": 0.5268,
+    "shared": [
+      "اله",
+      "قول",
+      "احد"
+    ],
+    "pattern": [
+      "Verbs",
+      "Nouns",
+      "Nominals",
+      "Pronouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Particles",
+      "Pronouns",
+      "Prepositions",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "112:4",
+    "chapter_id": 112,
+    "verse_number": 4,
+    "text": "وَلَمْ يَكُن لَّهُۥ كُفُوًا أَحَدٌۢ",
+    "score": 0.4478,
+    "overlap": 0.3959,
+    "phrase": 0.1667,
+    "morphology": 0.8785,
+    "shared": [
+      "احد"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "احد"
+    ]
+  },
+  {
+    "verse_key": "72:20",
+    "chapter_id": 72,
+    "verse_number": 20,
+    "text": "قُلْ إِنَّمَآ أَدْعُوا۟ رَبِّى وَلَآ أُشْرِكُ بِهِۦٓ أَحَدًا",
+    "score": 0.4398,
+    "overlap": 0.5922,
+    "phrase": 0.1667,
+    "morphology": 0.4933,
+    "shared": [
+      "قول",
+      "احد"
+    ],
+    "pattern": [
+      "Verbs",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول"
+    ]
+  },
+  {
+    "verse_key": "20:88",
+    "chapter_id": 20,
+    "verse_number": 88,
+    "text": "فَأَخْرَجَ لَهُمْ عِجْلًا جَسَدًا لَّهُۥ خُوَارٌ فَقَالُوا۟ هَـٰذَآ إِلَـٰهُكُمْ وَإِلَـٰهُ مُوسَىٰ فَنَسِىَ",
+    "score": 0.4205,
+    "overlap": 0.1536,
+    "phrase": 0.5833,
+    "morphology": 0.7054,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nominals",
+      "Pronouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "18:38",
+    "chapter_id": 18,
+    "verse_number": 38,
+    "text": "لَّـٰكِنَّا۠ هُوَ ٱللَّهُ رَبِّى وَلَآ أُشْرِكُ بِرَبِّىٓ أَحَدًا",
+    "score": 0.4188,
+    "overlap": 0.5537,
+    "phrase": 0.1667,
+    "morphology": 0.4786,
+    "shared": [
+      "اله",
+      "احد"
+    ],
+    "pattern": [
+      "Particles",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "2:247",
+    "chapter_id": 2,
+    "verse_number": 247,
+    "text": "وَقَالَ لَهُمْ نَبِيُّهُمْ إِنَّ ٱللَّهَ قَدْ بَعَثَ لَكُمْ طَالُوتَ مَلِكًا ۚ قَالُوٓا۟ أَنَّىٰ يَكُونُ لَهُ ٱلْمُلْكُ عَلَيْنَا وَنَحْنُ أَحَقُّ بِٱلْمُلْكِ مِنْهُ وَلَمْ يُؤْتَ سَعَةً مِّنَ ٱلْمَالِ ۚ قَالَ إِنَّ ٱللَّهَ ٱصْطَفَىٰهُ عَلَيْكُمْ وَزَادَهُۥ بَسْطَةً فِى ٱلْعِلْمِ وَٱلْجِسْمِ ۖ وَٱللَّهُ يُؤْتِى مُلْكَهُۥ مَن يَشَآءُ ۚ وَٱللَّهُ وَٰسِعٌ عَلِيمٌ",
+    "score": 0.4177,
+    "overlap": 0.1853,
+    "phrase": 0.5833,
+    "morphology": 0.6374,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Prepositions",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Prepositions",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Verbs",
+      "Particles",
+      "Nouns",
+      "Verbs",
+      "Prepositions",
+      "Verbs",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "20:49",
+    "chapter_id": 20,
+    "verse_number": 49,
+    "text": "قَالَ فَمَن رَّبُّكُمَا يَـٰمُوسَىٰ",
+    "score": 0.4156,
+    "overlap": 0.2569,
+    "phrase": 0.1667,
+    "morphology": 1.0,
+    "shared": [
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول"
+    ]
+  },
+  {
+    "verse_key": "72:22",
+    "chapter_id": 72,
+    "verse_number": 22,
+    "text": "قُلْ إِنِّى لَن يُجِيرَنِى مِنَ ٱللَّهِ أَحَدٌ وَلَنْ أَجِدَ مِن دُونِهِۦ مُلْتَحَدًا",
+    "score": 0.4106,
+    "overlap": 0.4366,
+    "phrase": 0.5833,
+    "morphology": 0.1565,
+    "shared": [
+      "اله",
+      "قول",
+      "احد"
+    ],
+    "pattern": [
+      "Verbs",
+      "Particles",
+      "Particles",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "اله",
+      "احد"
+    ]
+  },
+  {
+    "verse_key": "5:116",
+    "chapter_id": 5,
+    "verse_number": 116,
+    "text": "وَإِذْ قَالَ ٱللَّهُ يَـٰعِيسَى ٱبْنَ مَرْيَمَ ءَأَنتَ قُلْتَ لِلنَّاسِ ٱتَّخِذُونِى وَأُمِّىَ إِلَـٰهَيْنِ مِن دُونِ ٱللَّهِ ۖ قَالَ سُبْحَـٰنَكَ مَا يَكُونُ لِىٓ أَنْ أَقُولَ مَا لَيْسَ لِى بِحَقٍّ ۚ إِن كُنتُ قُلْتُهُۥ فَقَدْ عَلِمْتَهُۥ ۚ تَعْلَمُ مَا فِى نَفْسِى وَلَآ أَعْلَمُ مَا فِى نَفْسِكَ ۚ إِنَّكَ أَنتَ عَلَّـٰمُ ٱلْغُيُوبِ",
+    "score": 0.4087,
+    "overlap": 0.2821,
+    "phrase": 0.5833,
+    "morphology": 0.427,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Adverbs",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Conjunctions",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Verbs",
+      "Particles",
+      "Verbs",
+      "Verbs",
+      "Pronouns",
+      "Prepositions",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Prepositions",
+      "Nouns",
+      "Particles",
+      "Pronouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "21:62",
+    "chapter_id": 21,
+    "verse_number": 62,
+    "text": "قَالُوٓا۟ ءَأَنتَ فَعَلْتَ هَـٰذَا بِـَٔالِهَتِنَا يَـٰٓإِبْرَٰهِيمُ",
+    "score": 0.3862,
+    "overlap": 0.2893,
+    "phrase": 0.1667,
+    "morphology": 0.824,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول"
+    ]
+  },
+  {
+    "verse_key": "13:16",
+    "chapter_id": 13,
+    "verse_number": 16,
+    "text": "قُلْ مَن رَّبُّ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضِ قُلِ ٱللَّهُ ۚ قُلْ أَفَٱتَّخَذْتُم مِّن دُونِهِۦٓ أَوْلِيَآءَ لَا يَمْلِكُونَ لِأَنفُسِهِمْ نَفْعًا وَلَا ضَرًّا ۚ قُلْ هَلْ يَسْتَوِى ٱلْأَعْمَىٰ وَٱلْبَصِيرُ أَمْ هَلْ تَسْتَوِى ٱلظُّلُمَـٰتُ وَٱلنُّورُ ۗ أَمْ جَعَلُوا۟ لِلَّهِ شُرَكَآءَ خَلَقُوا۟ كَخَلْقِهِۦ فَتَشَـٰبَهَ ٱلْخَلْقُ عَلَيْهِمْ ۚ قُلِ ٱللَّهُ خَـٰلِقُ كُلِّ شَىْءٍ وَهُوَ ٱلْوَٰحِدُ ٱلْقَهَّـٰرُ",
+    "score": 0.3862,
+    "overlap": 0.2171,
+    "phrase": 0.5833,
+    "morphology": 0.4539,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Verbs",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Conjunctions",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Conjunctions",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Prepositions",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "72:7",
+    "chapter_id": 72,
+    "verse_number": 7,
+    "text": "وَأَنَّهُمْ ظَنُّوا۟ كَمَا ظَنَنتُمْ أَن لَّن يَبْعَثَ ٱللَّهُ أَحَدًا",
+    "score": 0.384,
+    "overlap": 0.3796,
+    "phrase": 0.5833,
+    "morphology": 0.1527,
+    "shared": [
+      "اله",
+      "احد"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Conjunctions",
+      "Verbs",
+      "Conjunctions",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "اله",
+      "احد"
+    ]
+  },
+  {
+    "verse_key": "3:47",
+    "chapter_id": 3,
+    "verse_number": 47,
+    "text": "قَالَتْ رَبِّ أَنَّىٰ يَكُونُ لِى وَلَدٌ وَلَمْ يَمْسَسْنِى بَشَرٌ ۖ قَالَ كَذَٰلِكِ ٱللَّهُ يَخْلُقُ مَا يَشَآءُ ۚ إِذَا قَضَىٰٓ أَمْرًا فَإِنَّمَا يَقُولُ لَهُۥ كُن فَيَكُونُ",
+    "score": 0.3827,
+    "overlap": 0.2038,
+    "phrase": 0.5833,
+    "morphology": 0.4641,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Adverbs",
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "3:40",
+    "chapter_id": 3,
+    "verse_number": 40,
+    "text": "قَالَ رَبِّ أَنَّىٰ يَكُونُ لِى غُلَـٰمٌ وَقَدْ بَلَغَنِىَ ٱلْكِبَرُ وَٱمْرَأَتِى عَاقِرٌ ۖ قَالَ كَذَٰلِكَ ٱللَّهُ يَفْعَلُ مَا يَشَآءُ",
+    "score": 0.3799,
+    "overlap": 0.1538,
+    "phrase": 0.5833,
+    "morphology": 0.5427,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "39:38",
+    "chapter_id": 39,
+    "verse_number": 38,
+    "text": "وَلَئِن سَأَلْتَهُم مَّنْ خَلَقَ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضَ لَيَقُولُنَّ ٱللَّهُ ۚ قُلْ أَفَرَءَيْتُم مَّا تَدْعُونَ مِن دُونِ ٱللَّهِ إِنْ أَرَادَنِىَ ٱللَّهُ بِضُرٍّ هَلْ هُنَّ كَـٰشِفَـٰتُ ضُرِّهِۦٓ أَوْ أَرَادَنِى بِرَحْمَةٍ هَلْ هُنَّ مُمْسِكَـٰتُ رَحْمَتِهِۦ ۚ قُلْ حَسْبِىَ ٱللَّهُ ۖ عَلَيْهِ يَتَوَكَّلُ ٱلْمُتَوَكِّلُونَ",
+    "score": 0.3778,
+    "overlap": 0.2159,
+    "phrase": 0.5833,
+    "morphology": 0.4225,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Conjunctions",
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Prepositions",
+      "Verbs",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "5:115",
+    "chapter_id": 5,
+    "verse_number": 115,
+    "text": "قَالَ ٱللَّهُ إِنِّى مُنَزِّلُهَا عَلَيْكُمْ ۖ فَمَن يَكْفُرْ بَعْدُ مِنكُمْ فَإِنِّىٓ أُعَذِّبُهُۥ عَذَابًا لَّآ أُعَذِّبُهُۥٓ أَحَدًا مِّنَ ٱلْعَـٰلَمِينَ",
+    "score": 0.3775,
+    "overlap": 0.4084,
+    "phrase": 0.5833,
+    "morphology": 0.075,
+    "shared": [
+      "اله",
+      "قول",
+      "احد"
+    ],
+    "pattern": [
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Prepositions",
+      "Particles",
+      "Verbs",
+      "Adverbs",
+      "Prepositions",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Prepositions",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "74:35",
+    "chapter_id": 74,
+    "verse_number": 35,
+    "text": "إِنَّهَا لَإِحْدَى ٱلْكُبَرِ",
+    "score": 0.3763,
+    "overlap": 0.6357,
+    "phrase": 0.1667,
+    "morphology": 0.1608,
+    "shared": [
+      "احد"
+    ],
+    "pattern": [
+      "Particles",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "احد"
+    ]
+  },
+  {
+    "verse_key": "23:85",
+    "chapter_id": 23,
+    "verse_number": 85,
+    "text": "سَيَقُولُونَ لِلَّهِ ۚ قُلْ أَفَلَا تَذَكَّرُونَ",
+    "score": 0.3747,
+    "overlap": 0.4021,
+    "phrase": 0.5833,
+    "morphology": 0.075,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Particles",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "37:35",
+    "chapter_id": 37,
+    "verse_number": 35,
+    "text": "إِنَّهُمْ كَانُوٓا۟ إِذَا قِيلَ لَهُمْ لَآ إِلَـٰهَ إِلَّا ٱللَّهُ يَسْتَكْبِرُونَ",
+    "score": 0.3744,
+    "overlap": 0.3421,
+    "phrase": 0.5833,
+    "morphology": 0.182,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Adverbs",
+      "Verbs",
+      "Pronouns",
+      "Particles",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "6:91",
+    "chapter_id": 6,
+    "verse_number": 91,
+    "text": "وَمَا قَدَرُوا۟ ٱللَّهَ حَقَّ قَدْرِهِۦٓ إِذْ قَالُوا۟ مَآ أَنزَلَ ٱللَّهُ عَلَىٰ بَشَرٍ مِّن شَىْءٍ ۗ قُلْ مَنْ أَنزَلَ ٱلْكِتَـٰبَ ٱلَّذِى جَآءَ بِهِۦ مُوسَىٰ نُورًا وَهُدًى لِّلنَّاسِ ۖ تَجْعَلُونَهُۥ قَرَاطِيسَ تُبْدُونَهَا وَتُخْفُونَ كَثِيرًا ۖ وَعُلِّمْتُم مَّا لَمْ تَعْلَمُوٓا۟ أَنتُمْ وَلَآ ءَابَآؤُكُمْ ۖ قُلِ ٱللَّهُ ۖ ثُمَّ ذَرْهُمْ فِى خَوْضِهِمْ يَلْعَبُونَ",
+    "score": 0.3737,
+    "overlap": 0.1853,
+    "phrase": 0.5833,
+    "morphology": 0.4614,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Adverbs",
+      "Verbs",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Verbs",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Pronouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Particles",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Conjunctions",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "23:87",
+    "chapter_id": 23,
+    "verse_number": 87,
+    "text": "سَيَقُولُونَ لِلَّهِ ۚ قُلْ أَفَلَا تَتَّقُونَ",
+    "score": 0.373,
+    "overlap": 0.3982,
+    "phrase": 0.5833,
+    "morphology": 0.075,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Particles",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "5:72",
+    "chapter_id": 5,
+    "verse_number": 72,
+    "text": "لَقَدْ كَفَرَ ٱلَّذِينَ قَالُوٓا۟ إِنَّ ٱللَّهَ هُوَ ٱلْمَسِيحُ ٱبْنُ مَرْيَمَ ۖ وَقَالَ ٱلْمَسِيحُ يَـٰبَنِىٓ إِسْرَٰٓءِيلَ ٱعْبُدُوا۟ ٱللَّهَ رَبِّى وَرَبَّكُمْ ۖ إِنَّهُۥ مَن يُشْرِكْ بِٱللَّهِ فَقَدْ حَرَّمَ ٱللَّهُ عَلَيْهِ ٱلْجَنَّةَ وَمَأْوَىٰهُ ٱلنَّارُ ۖ وَمَا لِلظَّـٰلِمِينَ مِنْ أَنصَارٍ",
+    "score": 0.3724,
+    "overlap": 0.2447,
+    "phrase": 0.5833,
+    "morphology": 0.3492,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Particles",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Prepositions",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "29:63",
+    "chapter_id": 29,
+    "verse_number": 63,
+    "text": "وَلَئِن سَأَلْتَهُم مَّن نَّزَّلَ مِنَ ٱلسَّمَآءِ مَآءً فَأَحْيَا بِهِ ٱلْأَرْضَ مِنۢ بَعْدِ مَوْتِهَا لَيَقُولُنَّ ٱللَّهُ ۚ قُلِ ٱلْحَمْدُ لِلَّهِ ۚ بَلْ أَكْثَرُهُمْ لَا يَعْقِلُونَ",
+    "score": 0.368,
+    "overlap": 0.2047,
+    "phrase": 0.5833,
+    "morphology": 0.4035,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Particles",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "6:136",
+    "chapter_id": 6,
+    "verse_number": 136,
+    "text": "وَجَعَلُوا۟ لِلَّهِ مِمَّا ذَرَأَ مِنَ ٱلْحَرْثِ وَٱلْأَنْعَـٰمِ نَصِيبًا فَقَالُوا۟ هَـٰذَا لِلَّهِ بِزَعْمِهِمْ وَهَـٰذَا لِشُرَكَآئِنَا ۖ فَمَا كَانَ لِشُرَكَآئِهِمْ فَلَا يَصِلُ إِلَى ٱللَّهِ ۖ وَمَا كَانَ لِلَّهِ فَهُوَ يَصِلُ إِلَىٰ شُرَكَآئِهِمْ ۗ سَآءَ مَا يَحْكُمُونَ",
+    "score": 0.3651,
+    "overlap": 0.1415,
+    "phrase": 0.5833,
+    "morphology": 0.5055,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Nouns",
+      "Prepositions",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Pronouns",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "4:171",
+    "chapter_id": 4,
+    "verse_number": 171,
+    "text": "يَـٰٓأَهْلَ ٱلْكِتَـٰبِ لَا تَغْلُوا۟ فِى دِينِكُمْ وَلَا تَقُولُوا۟ عَلَى ٱللَّهِ إِلَّا ٱلْحَقَّ ۚ إِنَّمَا ٱلْمَسِيحُ عِيسَى ٱبْنُ مَرْيَمَ رَسُولُ ٱللَّهِ وَكَلِمَتُهُۥٓ أَلْقَىٰهَآ إِلَىٰ مَرْيَمَ وَرُوحٌ مِّنْهُ ۖ فَـَٔامِنُوا۟ بِٱللَّهِ وَرُسُلِهِۦ ۖ وَلَا تَقُولُوا۟ ثَلَـٰثَةٌ ۚ ٱنتَهُوا۟ خَيْرًا لَّكُمْ ۚ إِنَّمَا ٱللَّهُ إِلَـٰهٌ وَٰحِدٌ ۖ سُبْحَـٰنَهُۥٓ أَن يَكُونَ لَهُۥ وَلَدٌ ۘ لَّهُۥ مَا فِى ٱلسَّمَـٰوَٰتِ وَمَا فِى ٱلْأَرْضِ ۗ وَكَفَىٰ بِٱللَّهِ وَكِيلًا",
+    "score": 0.355,
+    "overlap": 0.2294,
+    "phrase": 0.5833,
+    "morphology": 0.3071,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Prepositions",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Pronouns",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Conjunctions",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Pronouns",
+      "Pronouns",
+      "Prepositions",
+      "Nouns",
+      "Pronouns",
+      "Prepositions",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "3:181",
+    "chapter_id": 3,
+    "verse_number": 181,
+    "text": "لَّقَدْ سَمِعَ ٱللَّهُ قَوْلَ ٱلَّذِينَ قَالُوٓا۟ إِنَّ ٱللَّهَ فَقِيرٌ وَنَحْنُ أَغْنِيَآءُ ۘ سَنَكْتُبُ مَا قَالُوا۟ وَقَتْلَهُمُ ٱلْأَنۢبِيَآءَ بِغَيْرِ حَقٍّ وَنَقُولُ ذُوقُوا۟ عَذَابَ ٱلْحَرِيقِ",
+    "score": 0.3512,
+    "overlap": 0.2669,
+    "phrase": 0.5833,
+    "morphology": 0.2242,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Pronouns",
+      "Verbs",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Verbs",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "5:17",
+    "chapter_id": 5,
+    "verse_number": 17,
+    "text": "لَّقَدْ كَفَرَ ٱلَّذِينَ قَالُوٓا۟ إِنَّ ٱللَّهَ هُوَ ٱلْمَسِيحُ ٱبْنُ مَرْيَمَ ۚ قُلْ فَمَن يَمْلِكُ مِنَ ٱللَّهِ شَيْـًٔا إِنْ أَرَادَ أَن يُهْلِكَ ٱلْمَسِيحَ ٱبْنَ مَرْيَمَ وَأُمَّهُۥ وَمَن فِى ٱلْأَرْضِ جَمِيعًا ۗ وَلِلَّهِ مُلْكُ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضِ وَمَا بَيْنَهُمَا ۚ يَخْلُقُ مَا يَشَآءُ ۚ وَٱللَّهُ عَلَىٰ كُلِّ شَىْءٍ قَدِيرٌ",
+    "score": 0.3501,
+    "overlap": 0.1989,
+    "phrase": 0.5833,
+    "morphology": 0.3423,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Particles",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Particles",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Conjunctions",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Pronouns",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Pronouns",
+      "Adverbs",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "8:7",
+    "chapter_id": 8,
+    "verse_number": 7,
+    "text": "وَإِذْ يَعِدُكُمُ ٱللَّهُ إِحْدَى ٱلطَّآئِفَتَيْنِ أَنَّهَا لَكُمْ وَتَوَدُّونَ أَنَّ غَيْرَ ذَاتِ ٱلشَّوْكَةِ تَكُونُ لَكُمْ وَيُرِيدُ ٱللَّهُ أَن يُحِقَّ ٱلْحَقَّ بِكَلِمَـٰتِهِۦ وَيَقْطَعَ دَابِرَ ٱلْكَـٰفِرِينَ",
+    "score": 0.3465,
+    "overlap": 0.2749,
+    "phrase": 0.5833,
+    "morphology": 0.1912,
+    "shared": [
+      "اله",
+      "احد"
+    ],
+    "pattern": [
+      "Adverbs",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Pronouns",
+      "Verbs",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Conjunctions",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "اله",
+      "احد"
+    ]
+  },
+  {
+    "verse_key": "91:13",
+    "chapter_id": 91,
+    "verse_number": 13,
+    "text": "فَقَالَ لَهُمْ رَسُولُ ٱللَّهِ نَاقَةَ ٱللَّهِ وَسُقْيَـٰهَا",
+    "score": 0.345,
+    "overlap": 0.212,
+    "phrase": 0.1667,
+    "morphology": 0.7983,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول"
+    ]
+  },
+  {
+    "verse_key": "51:31",
+    "chapter_id": 51,
+    "verse_number": 31,
+    "text": "۞ قَالَ فَمَا خَطْبُكُمْ أَيُّهَا ٱلْمُرْسَلُونَ",
+    "score": 0.3436,
+    "overlap": 0.1172,
+    "phrase": 0.1667,
+    "morphology": 0.9635,
+    "shared": [
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول"
+    ]
+  },
+  {
+    "verse_key": "15:57",
+    "chapter_id": 15,
+    "verse_number": 57,
+    "text": "قَالَ فَمَا خَطْبُكُمْ أَيُّهَا ٱلْمُرْسَلُونَ",
+    "score": 0.3436,
+    "overlap": 0.1172,
+    "phrase": 0.1667,
+    "morphology": 0.9635,
+    "shared": [
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول"
+    ]
+  },
+  {
+    "verse_key": "31:25",
+    "chapter_id": 31,
+    "verse_number": 25,
+    "text": "وَلَئِن سَأَلْتَهُم مَّنْ خَلَقَ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضَ لَيَقُولُنَّ ٱللَّهُ ۚ قُلِ ٱلْحَمْدُ لِلَّهِ ۚ بَلْ أَكْثَرُهُمْ لَا يَعْلَمُونَ",
+    "score": 0.3426,
+    "overlap": 0.2635,
+    "phrase": 0.5833,
+    "morphology": 0.196,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Particles",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "10:59",
+    "chapter_id": 10,
+    "verse_number": 59,
+    "text": "قُلْ أَرَءَيْتُم مَّآ أَنزَلَ ٱللَّهُ لَكُم مِّن رِّزْقٍ فَجَعَلْتُم مِّنْهُ حَرَامًا وَحَلَـٰلًا قُلْ ءَآللَّهُ أَذِنَ لَكُمْ ۖ أَمْ عَلَى ٱللَّهِ تَفْتَرُونَ",
+    "score": 0.342,
+    "overlap": 0.2616,
+    "phrase": 0.5833,
+    "morphology": 0.1971,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Pronouns",
+      "Prepositions",
+      "Nouns",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Conjunctions",
+      "Prepositions",
+      "Nouns",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "20:95",
+    "chapter_id": 20,
+    "verse_number": 95,
+    "text": "قَالَ فَمَا خَطْبُكَ يَـٰسَـٰمِرِىُّ",
+    "score": 0.3396,
+    "overlap": 0.0879,
+    "phrase": 0.1667,
+    "morphology": 1.0,
+    "shared": [
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "قول"
+    ]
+  },
+  {
+    "verse_key": "2:243",
+    "chapter_id": 2,
+    "verse_number": 243,
+    "text": "۞ أَلَمْ تَرَ إِلَى ٱلَّذِينَ خَرَجُوا۟ مِن دِيَـٰرِهِمْ وَهُمْ أُلُوفٌ حَذَرَ ٱلْمَوْتِ فَقَالَ لَهُمُ ٱللَّهُ مُوتُوا۟ ثُمَّ أَحْيَـٰهُمْ ۚ إِنَّ ٱللَّهَ لَذُو فَضْلٍ عَلَى ٱلنَّاسِ وَلَـٰكِنَّ أَكْثَرَ ٱلنَّاسِ لَا يَشْكُرُونَ",
+    "score": 0.3365,
+    "overlap": 0.1186,
+    "phrase": 0.5833,
+    "morphology": 0.4323,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Prepositions",
+      "Pronouns",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Verbs",
+      "Conjunctions",
+      "Verbs",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "7:33",
+    "chapter_id": 7,
+    "verse_number": 33,
+    "text": "قُلْ إِنَّمَا حَرَّمَ رَبِّىَ ٱلْفَوَٰحِشَ مَا ظَهَرَ مِنْهَا وَمَا بَطَنَ وَٱلْإِثْمَ وَٱلْبَغْىَ بِغَيْرِ ٱلْحَقِّ وَأَن تُشْرِكُوا۟ بِٱللَّهِ مَا لَمْ يُنَزِّلْ بِهِۦ سُلْطَـٰنًا وَأَن تَقُولُوا۟ عَلَى ٱللَّهِ مَا لَا تَعْلَمُونَ",
+    "score": 0.335,
+    "overlap": 0.1783,
+    "phrase": 0.5833,
+    "morphology": 0.3192,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Pronouns",
+      "Verbs",
+      "Prepositions",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Conjunctions",
+      "Verbs",
+      "Nouns",
+      "Pronouns",
+      "Particles",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Conjunctions",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Pronouns",
+      "Particles",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "7:28",
+    "chapter_id": 7,
+    "verse_number": 28,
+    "text": "وَإِذَا فَعَلُوا۟ فَـٰحِشَةً قَالُوا۟ وَجَدْنَا عَلَيْهَآ ءَابَآءَنَا وَٱللَّهُ أَمَرَنَا بِهَا ۗ قُلْ إِنَّ ٱللَّهَ لَا يَأْمُرُ بِٱلْفَحْشَآءِ ۖ أَتَقُولُونَ عَلَى ٱللَّهِ مَا لَا تَعْلَمُونَ",
+    "score": 0.3339,
+    "overlap": 0.2533,
+    "phrase": 0.5833,
+    "morphology": 0.1795,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Adverbs",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Particles",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Pronouns",
+      "Particles",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "6:19",
+    "chapter_id": 6,
+    "verse_number": 19,
+    "text": "قُلْ أَىُّ شَىْءٍ أَكْبَرُ شَهَـٰدَةً ۖ قُلِ ٱللَّهُ ۖ شَهِيدٌۢ بَيْنِى وَبَيْنَكُمْ ۚ وَأُوحِىَ إِلَىَّ هَـٰذَا ٱلْقُرْءَانُ لِأُنذِرَكُم بِهِۦ وَمَنۢ بَلَغَ ۚ أَئِنَّكُمْ لَتَشْهَدُونَ أَنَّ مَعَ ٱللَّهِ ءَالِهَةً أُخْرَىٰ ۚ قُل لَّآ أَشْهَدُ ۚ قُلْ إِنَّمَا هُوَ إِلَـٰهٌ وَٰحِدٌ وَإِنَّنِى بَرِىٓءٌ مِّمَّا تُشْرِكُونَ",
+    "score": 0.3323,
+    "overlap": 0.2381,
+    "phrase": 0.5833,
+    "morphology": 0.2007,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Adverbs",
+      "Adverbs",
+      "Verbs",
+      "Prepositions",
+      "Pronouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Pronouns",
+      "Verbs",
+      "Particles",
+      "Verbs",
+      "Particles",
+      "Adverbs",
+      "Nouns",
+      "Nouns",
+      "Nominals",
+      "Verbs",
+      "Particles",
+      "Verbs",
+      "Verbs",
+      "Particles",
+      "Pronouns",
+      "Nouns",
+      "Nominals",
+      "Particles",
+      "Nouns",
+      "Prepositions",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "39:44",
+    "chapter_id": 39,
+    "verse_number": 44,
+    "text": "قُل لِّلَّهِ ٱلشَّفَـٰعَةُ جَمِيعًا ۖ لَّهُۥ مُلْكُ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضِ ۖ ثُمَّ إِلَيْهِ تُرْجَعُونَ",
+    "score": 0.3303,
+    "overlap": 0.1433,
+    "phrase": 0.5833,
+    "morphology": 0.3632,
+    "shared": [
+      "اله",
+      "قول"
+    ],
+    "pattern": [
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Conjunctions",
+      "Prepositions",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "قول",
+      "اله"
+    ]
+  }
+]

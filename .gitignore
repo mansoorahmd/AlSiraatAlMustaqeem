@@ -1,0 +1,26 @@
+# --- secrets ---
+.env
+
+# --- node ---
+node_modules/
+app/dist/
+*.log
+
+# --- content database: too large for GitHub (143 MB > 100 MB limit) ---
+# kept local only; rebuildable from the archived Python pipeline / your backup.
+quran.db
+
+# --- sqlite runtime sidecars (transient) ---
+# research.db IS tracked (small); quran.db is ignored above.
+*.db-wal
+*.db-shm
+
+# --- python (legacy pipeline, kept in a separate backup) ---
+.venv/
+__pycache__/
+*.pyc
+
+# --- os / mount artifacts ---
+.DS_Store
+.fuse_hidden*
+Thumbs.db
