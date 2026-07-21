@@ -8,6 +8,7 @@ import { OpenQuestions } from "./OpenQuestions";
 const TABS: { id: Tab; label: string }[] = [
   { id: "home", label: "Home" },
   { id: "read", label: "Read" },
+  { id: "search", label: "Search" },
   { id: "investigate", label: "Investigate" },
   { id: "vault", label: "Vault" },
   { id: "roots", label: "Roots" },

@@ -574,6 +574,68 @@ a { color: var(--lapis); }
 .root-occ-chip { cursor: pointer; font-variant-numeric: tabular-nums; }
 .root-occ-chip:hover { background: rgba(37, 99, 235, 0.12); }
 
+/* --- search + arabic keyboard --- */
+.search-bar { display: flex; gap: 0.5rem; align-items: stretch; margin-bottom: 0.6rem; }
+.search-input {
+  flex: 1;
+  font-size: 1.4rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.search-input:focus { outline: none; border-color: var(--lapis); }
+.search-modes { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.8rem; }
+.search-mode-hint { font-size: var(--fs-label); color: var(--ink-soft); margin-inline-start: 0.4rem; }
+.search-count, .search-resolved { font-size: var(--fs-small); color: var(--ink-soft); margin: 0.2rem 0 0.6rem; }
+.search-root { color: var(--gold); margin-inline-start: 0.4rem; }
+.search-unresolved { color: var(--ink-faint); }
+.search-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.search-row {
+  width: 100%;
+  text-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: 10px;
+  background: var(--paper);
+  cursor: pointer;
+}
+.search-row:hover { background: var(--wash, rgba(37, 99, 235, 0.05)); border-color: var(--lapis-soft); }
+.search-ref { font-size: var(--fs-label); color: var(--lapis); font-variant-numeric: tabular-nums; }
+.search-verse { font-size: 1.35rem; line-height: 2; color: var(--ink); }
+
+/* on-screen Arabic keyboard */
+.akb {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: center;
+  padding: 0.6rem;
+  margin-bottom: 0.9rem;
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: 12px;
+}
+.akb-row { display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: center; }
+.akb-key {
+  min-width: 2.2rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 1.2rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: 8px;
+  background: var(--wash, rgba(37, 99, 235, 0.04));
+  color: var(--ink);
+  cursor: pointer;
+}
+.akb-key:hover { background: rgba(37, 99, 235, 0.12); }
+.akb-key:active { transform: translateY(1px); }
+.akb-wide { min-width: 8rem; font-size: var(--fs-small); }
+.akb-controls { margin-top: 0.15rem; }
+
 .reader-sheet { max-width: none; }
 
 /* per-script fonts */

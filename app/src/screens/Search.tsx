@@ -1,0 +1,141 @@
+// Search — two ways into the Book, over the existing engine:
+//   • Phrase — verbatim Arabic phrase (diacritic/alef-insensitive).
+//   • Related — free-text Arabic → ayahs related by shared roots + structure.
+// An on-screen Arabic keyboard lets you type without a system Arabic layout.
+
+import { useEffect, useState } from "react";
+import { api } from "../api/client";
+import { useAsync } from "../hooks/useAsync";
+import { useAppState, useAppDispatch } from "../state/store";
+import { ArabicKeyboard } from "../components/ArabicKeyboard";
+
+type Mode = "phrase" | "related";
+const spaced = (r: string) => r.split("").join(" ");
+
+export function Search() {
+  const { reading } = useAppState();
+  const dispatch = useAppDispatch();
+  const script = reading.script;
+
+  const [q, setQ] = useState("");
+  const [mode, setMode] = useState<Mode>("phrase");
+  const [kbOpen, setKbOpen] = useState(true);
+  const [debounced, setDebounced] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(q.trim()), 350);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const chapters = useAsync(() => api.chapters(), []);
+  const surahName = (key: string) => {
+    const id = parseInt(key.split(":")[0] ?? "", 10);
+    return chapters.data?.find((c) => c.id === id)?.name_simple ?? "";
+  };
+
+  const results = useAsync(async () => {
+    if (!debounced) return null;
+    if (mode === "phrase") {
+      return { kind: "phrase" as const, verses: await api.phraseSearch(debounced, script, 60) };
+    }
+    return { kind: "related" as const, result: await api.search(debounced, { top_k: 40 }) };
+  }, [debounced, mode, script]);
+
+  const jump = (key: string) => dispatch({ type: "jumpToVerse", verseKey: key });
+
+  const Row = ({ verseKey, text }: { verseKey: string; text: string; }) => (
+    <li>
+      <button className="search-row" onClick={() => jump(verseKey)} title={`Read ${verseKey}`}>
+        <span className="search-ref">
+          {verseKey}
+          {surahName(verseKey) ? ` · ${surahName(verseKey)}` : ""}
+        </span>
+        <span className="search-verse quran" dir="rtl">{text}</span>
+      </button>
+    </li>
+  );
+
+  return (
+    <div className="sheet search-screen">
+      <header className="home-head">
+        <h1>Search the Book</h1>
+        <p className="subtitle">
+          Find a verbatim phrase, or discover ayahs related by their roots and structure.
+        </p>
+      </header>
+
+      <div className="search-bar">
+        <input
+          className="search-input quran"
+          dir="rtl"
+          placeholder="اكتب أو استعمل لوحة المفاتيح…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          autoFocus
+        />
+        <button className="ctl" onClick={() => setKbOpen((o) => !o)} title="Arabic keyboard">⌨</button>
+      </div>
+
+      <div className="search-modes">
+        <button className={`ctl${mode === "phrase" ? " active" : ""}`} onClick={() => setMode("phrase")}>
+          Phrase
+        </button>
+        <button className={`ctl${mode === "related" ? " active" : ""}`} onClick={() => setMode("related")}>
+          Related
+        </button>
+        <span className="search-mode-hint">
+          {mode === "phrase" ? "exact wording, anywhere in the Book" : "ayahs sharing this query's roots"}
+        </span>
+      </div>
+
+      {kbOpen && (
+        <ArabicKeyboard
+          onInsert={(ch) => setQ((s) => s + ch)}
+          onBackspace={() => setQ((s) => s.slice(0, -1))}
+          onClear={() => setQ("")}
+        />
+      )}
+
+      {results.loading && debounced && <p className="loading">Searching…</p>}
+
+      {results.data?.kind === "phrase" && (
+        <>
+          <p className="search-count">
+            {results.data.verses.length} ayah{results.data.verses.length === 1 ? "" : "s"} contain this phrase
+          </p>
+          <ul className="search-list">
+            {results.data.verses.map((v) => (
+              <Row key={v.verse_key} verseKey={v.verse_key} text={typeof v.text === "string" ? v.text : ""} />
+            ))}
+          </ul>
+        </>
+      )}
+
+      {results.data?.kind === "related" && (
+        <>
+          {results.data.result.resolved.length > 0 && (
+            <p className="search-resolved">
+              matched roots:{" "}
+              {results.data.result.resolved.map((r, i) => (
+                <span key={i} className="search-root quran">{r.root ? spaced(r.root) : r.token}</span>
+              ))}
+              {results.data.result.unresolved.length > 0 && (
+                <span className="search-unresolved"> · unrecognised: {results.data.result.unresolved.join(", ")}</span>
+              )}
+            </p>
+          )}
+          <ul className="search-list">
+            {results.data.result.matches.map((m) => (
+              <Row key={m.verse_key} verseKey={m.verse_key} text={m.text ?? ""} />
+            ))}
+          </ul>
+        </>
+      )}
+
+      {results.data && ((results.data.kind === "phrase" && results.data.verses.length === 0) ||
+        (results.data.kind === "related" && results.data.result.matches.length === 0)) && (
+        <p className="home-empty">No results. Try the other mode, or a shorter query.</p>
+      )}
+    </div>
+  );
+}

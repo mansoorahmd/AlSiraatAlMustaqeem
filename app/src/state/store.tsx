@@ -8,7 +8,7 @@ import {
 import type { Script } from "../api/types";
 import { archive } from "../persistence/db";
 
-export type Tab = "home" | "read" | "investigate" | "vault" | "roots";
+export type Tab = "home" | "read" | "search" | "investigate" | "vault" | "roots";
 
 export interface ReadingState {
   surahId: number;
@@ -172,7 +172,9 @@ function reducer(state: AppState, action: Action): AppState {
 
 export function tabFromHash(): Tab {
   const h = typeof window !== "undefined" ? window.location.hash.replace(/^#\/?/, "") : "";
-  return h === "read" || h === "investigate" || h === "vault" || h === "roots" ? h : "home";
+  return h === "read" || h === "search" || h === "investigate" || h === "vault" || h === "roots"
+    ? h
+    : "home";
 }
 
 const StateCtx = createContext<AppState>(initialState);
