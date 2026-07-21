@@ -28,8 +28,10 @@ jump-to-ayah).
 > FastAPI service was ported 1:1 to `/server` (Hono + node:sqlite), parity-
 > tested, and is now the sole backend. One npm workspace, `npm run dev`.
 
-Now building: **V11 research home** (dashboard). Later: curated case files
-(onboarding), vault-wide lexicon export, reader polish/accessibility.
+Also shipped: **V11 research home** (dashboard + resume-reading) and **V12
+Roots explorer & lexicon pages** (see below). Next candidate: **search + an
+on-screen Arabic keyboard**. Later: curated case files, reader
+polish/accessibility.
 
 > **Pivot 1 (after V3 review):** cases are sparked by a *word*; the unit of
 > work is the word **form**, not the root. The root's dictionary meaning is
@@ -479,18 +481,40 @@ Design:
   highlighted, so you read them without leaving your spot; each labelled with a
   full **verse key · surah name** reference.
 
-### V11 — Research home (dashboard) ← building
-The workbench you return to. A **Home** tab that ties the scattered research
-artifacts into one landing view, each with a one-click jump:
-- **Continue** — the surah you were reading.
-- **Open cases** — open/partial investigations (title, subject, desk size).
+### V11 — Research home (dashboard) ✅
+The workbench you return to. A **Home** tab (the default landing) that ties the
+scattered research artifacts into one view, each with a one-click jump:
+- **Continue reading** — resumes at the exact last ayah you viewed. The reader
+  tracks the top-most ayah in view (IntersectionObserver) into device-local
+  `reading.lastVerseKey`; the tile jumps there and shows verse key · surah.
+- **Open cases** — open/partial investigations (subject, desk size).
 - **Open questions** — unanswered questions across the Book.
 - **Recent trails** — expeditions to resume.
-- **Established meanings** — count of forms you've settled, into the vault.
+- **Established meanings** — count of forms you've settled → the Vault.
+- **Explore the roots** — link into V12.
 Read-only over existing stores (`archive.cases/trails/notes`, `form-status`);
-new `Home` screen + `home` tab (the default landing).
+`Home` screen + `home` tab.
+
+### V12 — Roots explorer & lexicon pages ✅
+A **Roots** tab (also linked from Home) listing every root in the Book:
+- **Order rarest → most common** (default) or the reverse — the rarest roots
+  carry the most distinctive language. Client-side sort/filter over all ~1,600
+  roots (filter by English meaning or Buckwalter/Arabic).
+- Click a root → a full **lexicon page** (`RootDetail`): every dictionary
+  meaning grouped by source (Lane's, Hans Wehr, Lisān al-ʿArab, Mufradāt, …),
+  the derived **forms** with counts, and **every occurrence** as clickable ayah
+  chips that jump into the reader with the word lit.
+- **My meaning** — the reader's own definition for a root, saved to a new
+  `user_root_meanings` table in research.db (`/research/root-meanings`), sitting
+  beside the dictionaries as a personal source. Read-only display with an
+  ✎ Edit/Add button; editor with Save/Cancel + status.
+- New: `RootsExplorer`, `RootDetail`; server route group; `archive.rootMeanings`.
 
 ### Remaining / future (not committed)
+- **Search + on-screen Arabic keyboard** — a search box over the existing
+  backend: verbatim **phrase search** (`/phrase-search`) and **free-text**
+  Arabic → related ayahs (`/search`), plus a tappable Arabic keyboard so the
+  query (and the Roots filter) works without a system Arabic layout.
 - **Curated case files** — authored mysteries with ordered clues; the first
   is onboarding ("case zero"). *(Adapted for research-first: author notes
   appear as peer comparison after you establish your own meaning — no
@@ -517,7 +541,10 @@ new `Home` screen + `home` tab (the default landing).
   modal)
 - Notes: `NotesPanel` (notes/questions + answers), `RelatedNotes` (root/form
   cross-references), `OpenQuestions` (global unanswered-question badge)
-- Echoes: `EchoPanel` (repeated-phrase occurrences); server `echoes.ts`
+- Echoes: `EchoPanel` (repeated-phrase occurrences + inline compare); server `echoes.ts`
+- Home: `Home` (dashboard); resume-reading via `reading.lastVerseKey`
+- Roots: `RootsExplorer` (all roots, rarest↔common), `RootDetail` (lexicon page +
+  user meanings); server `user_root_meanings`
 - Curated: `CaseFileLoader`, `CluePrompt`, `CommentarySeal`
 - Shared: `Popover`, `Stamp`, `PaperCard`, export renderer
 
