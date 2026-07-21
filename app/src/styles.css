@@ -875,6 +875,33 @@ a { color: var(--lapis); }
   color: var(--gold);
 }
 .echo-chip:hover { background: rgba(180, 83, 9, 0.16); }
+.echo-compare-toggle {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--lapis);
+  font-size: var(--fs-label);
+  margin-inline-start: 0.5rem;
+  text-decoration: underline;
+}
+.echo-compare { margin-top: 0.4rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.echo-compare.loading { color: var(--ink-faint); }
+.echo-compare-row {
+  border-inline-start: 2px solid var(--paper-edge);
+  padding-inline-start: 0.6rem;
+}
+.echo-compare-key {
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  color: var(--lapis);
+  font-variant-numeric: tabular-nums;
+}
+.echo-compare-text {
+  margin: 0.1rem 0 0;
+  font-size: calc(1.35rem * var(--reader-scale, 1));
+  line-height: 2;
+  color: var(--ink);
+}
 .note-mark.has-notes { color: var(--lapis); opacity: 1; font-variant-numeric: tabular-nums; }
 .ayah-notes {
   margin: 0.3rem 0 0.8rem;
