@@ -70,6 +70,16 @@ export interface TranslationResource {
   resource_type: string | null;
 }
 
+/** A verbatim phrase in a verse that recurs elsewhere in the Book. */
+export interface Echo {
+  phrase: string;
+  words: string[];
+  start: number; // 1-based word index in the verse
+  length: number;
+  verses: string[]; // other verse keys where the phrase occurs
+  count: number; // total occurrences (incl. this verse)
+}
+
 export interface RootForm {
   lemma_buckwalter: string;
   lemma_arabic: string | null;

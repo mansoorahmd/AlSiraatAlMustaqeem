@@ -4,7 +4,7 @@
 
 import type {
   Chapter, Verse, Word, Translation, TranslationResource, RootDetail, RootSummary, RootOccurrence,
-  Linkage, CompositeMatch, FreeTextResult, Script, SimilarityWeights,
+  Linkage, CompositeMatch, FreeTextResult, Echo, Script, SimilarityWeights,
 } from "./types";
 
 const BASE = "/api/v1";
@@ -57,6 +57,8 @@ export const api = {
   verseWords: (key: string) => get<Word[]>(`/verses/${encodeURIComponent(key)}/words`),
   verseTranslations: (key: string) => get<Translation[]>(`/verses/${encodeURIComponent(key)}/translations`),
   translationResources: () => get<TranslationResource[]>(`/translation-resources`),
+  chapterEchoes: (id: number) => get<string[]>(`/chapters/${id}/echoes`),
+  verseEchoes: (key: string) => get<Echo[]>(`/verses/${encodeURIComponent(key)}/echoes`),
   neighbours: (key: string, radius = 2, script: Script = "uthmani") =>
     get<Verse[]>(`/verses/${encodeURIComponent(key)}/neighbours`, { radius, script }),
   listVerses: (opts: { script?: Script; limit?: number; offset?: number; chapter?: number; juz?: number; page?: number } = {}) =>

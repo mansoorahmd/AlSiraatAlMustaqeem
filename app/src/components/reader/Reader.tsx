@@ -99,6 +99,10 @@ export function Reader({ chapters, onBackToIndex }: Props) {
   }, [notesAll.data]);
   const bumpNotes = useCallback(() => setNotesVersion((v) => v + 1), []);
 
+  // verbatim-echo marks: which ayahs in this surah carry a repeated phrase
+  const echoKeys = useAsync(() => api.chapterEchoes(surahId), [surahId]);
+  const echoSet = useMemo(() => new Set(echoKeys.data ?? []), [echoKeys.data]);
+
   // scroll to a jumped-to verse once it is on the page
   useEffect(() => {
     if (!jumpToVerseKey || !verses.data) return;
@@ -403,6 +407,7 @@ export function Reader({ chapters, onBackToIndex }: Props) {
             focusThisSurah={surahName(v.verse_key)}
             verseNotes={notesMap.get(v.verse_key) ?? null}
             onNotesChanged={bumpNotes}
+            hasEcho={echoSet.has(v.verse_key)}
             onWordTap={onWordTap}
           />
         ))}

@@ -10,6 +10,7 @@ import type { Verse, Word } from "../../api/types";
 import type { FormStatusRow } from "../../persistence/db";
 import { VerseText } from "../VerseText";
 import { NotesPanel } from "./NotesPanel";
+import { EchoPanel } from "./EchoPanel";
 import { arabicIndic } from "./format";
 import type { FocusReason, FocusBase } from "./focus";
 import type { NoteRecord } from "../../persistence/types";
@@ -52,6 +53,8 @@ interface Props {
   verseNotes?: NoteRecord[] | null;
   /** called when notes for this verse change, so the page refreshes marks */
   onNotesChanged?: () => void;
+  /** this ayah contains a phrase repeated verbatim elsewhere (V10 echoes) */
+  hasEcho?: boolean;
   onWordTap: (
     verseKey: string,
     position: number,
@@ -80,7 +83,7 @@ const spacedRoot = (r: string) => r.split("").join(" ");
 export const AyahBlock = memo(function AyahBlock({
   verse, translationOn, translationId, myGlossOn, formStatus, caseRefs, rareRoots, highlightWord,
   focusRoots, focusLinked, focusPattern, focusTarget, focusReason, focusBase, focusBaseSurah,
-  focusThisSurah, verseNotes, onNotesChanged, onWordTap,
+  focusThisSurah, verseNotes, onNotesChanged, hasEcho, onWordTap,
 }: Props) {
   const text = typeof verse.text === "string" ? verse.text : "";
   const words = verse.words ?? null;
@@ -88,6 +91,7 @@ export const AyahBlock = memo(function AyahBlock({
   const [casesOpen, setCasesOpen] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [echoOpen, setEchoOpen] = useState(false);
 
   const noteCount = verseNotes?.length ?? 0;
   const notedWords = new Set(
@@ -170,7 +174,16 @@ export const AyahBlock = memo(function AyahBlock({
         >
           ✎{noteCount > 0 ? noteCount : ""}
         </button>
+        {hasEcho && (
+          <button
+            className={`echo-mark${echoOpen ? " active" : ""}`}
+            title="This ayah contains a phrase repeated elsewhere in the Book"
+            onClick={() => setEchoOpen((o) => !o)}
+          >≡</button>
+        )}
       </p>
+
+      {echoOpen && <EchoPanel verseKey={verse.verse_key} />}
 
       {notesOpen && (
         <div className="ayah-notes">

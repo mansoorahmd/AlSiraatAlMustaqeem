@@ -9,6 +9,7 @@ import { RootLinkages } from "./linkages.js";
 import { SimilarityEngine } from "./similarity/compose.js";
 import { FreeTextSearch } from "./freetext.js";
 import { ResearchStore } from "./research.js";
+import { EchoIndex } from "./echoes.js";
 
 // project root = two levels up from server/src
 const ROOT = resolve(import.meta.dirname, "..", "..");
@@ -24,6 +25,7 @@ export interface AppState {
   engine: SimilarityEngine;
   freetext: FreeTextSearch;
   research: ResearchStore;
+  echoes: EchoIndex;
 }
 
 export function createState(): AppState {
@@ -38,6 +40,7 @@ export function createState(): AppState {
     engine: new SimilarityEngine(quran),
     freetext: new FreeTextSearch(quran),
     research: new ResearchStore(researchDb),
+    echoes: new EchoIndex(quran),
   };
 }
 

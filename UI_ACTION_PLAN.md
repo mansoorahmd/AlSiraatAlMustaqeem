@@ -20,8 +20,16 @@ highlights, threads, notes and cited references + **V8 focus lens** (pin a
 case or any ayah as a reading lens; closest-first trail ranked by shared
 phrase; ⊙ "why in focus" with base + surah; connections map) + **V9 notes &
 questions** (notes/questions on ayahs and words, answerable questions, root/
-form cross-references — shared between reader and board). Next: a global open-
-questions view, curated case files (onboarding), or vault-wide lexicon export.
+form cross-references — shared between reader and board) + **global open-
+questions view** (toolbar ❓ badge + dropdown of every unanswered question,
+jump-to-ayah).
+
+> **Backend migrated to TypeScript** (see `BACKEND_TS_MIGRATION.md`): the
+> FastAPI service was ported 1:1 to `/server` (Hono + node:sqlite), parity-
+> tested, and is now the sole backend. One npm workspace, `npm run dev`.
+
+Now building: **V10 verbatim echoes (≡)**. Later: curated case files
+(onboarding), vault-wide lexicon export, reader polish/accessibility.
 
 > **Pivot 1 (after V3 review):** cases are sparked by a *word*; the unit of
 > work is the word **form**, not the root. The root's dictionary meaning is
@@ -439,9 +447,35 @@ Per-case **⇩ Report** (standalone print-ready HTML → PDF: gold subject words
 preserved highlights, quran.com links, threads, notes, numbered references,
 A4 print CSS) and **⇩ MD** (Markdown with `==highlights==` and links).
 
+### Global open-questions view ✅
+Toolbar **❓ badge** (gold count) opening a dropdown of every unresolved
+question across the Book — each with its location (verse key · surah, word in
+gold) and a jump-to-the-ayah action; answered questions drop off. Backend
+already served it via `/research/notes`; frontend `OpenQuestions` + badge.
+
+### V10 — Verbatim echoes (≡)  ← building
+The Book's own repetition, surfaced. Contiguous phrases that recur **word-for-
+word** across the Quran (refrains like *fabiʾayyi ālāʾi rabbikumā tukadhdhibān*,
+recurring formulas, the basmala) are detected and marked in the reader.
+
+Design:
+- **Backend** — an `EchoIndex` over folded surface words (`text_imlaei_simple`),
+  built once and cached. Indexes contiguous word n-grams (min 3, capped length)
+  and keeps those occurring in ≥2 distinct verses.
+  - `GET /chapters/{id}/echoes` → verse keys in the chapter that contain a
+    repeated phrase (cheap bulk signal for reader marks).
+  - `GET /verses/{key}/echoes` → the maximal repeated phrases in that verse,
+    each with its text and the other verse keys where it occurs.
+- **Reader** — a ≡ mark by the ayah number when the ayah carries an echo; a
+  tap opens a panel listing each repeated phrase and everywhere else it appears,
+  with jump links (like a ready-made trail). Reuses the existing mark/panel
+  pattern; no fragile sub-word highlight in v1.
+- New: `EchoPanel` component; `VerseText`/`AyahBlock` echo mark; server
+  `echoes.ts` + routes; unit tests over known repeats.
+- v2 (later): inline highlight of the exact repeated span; "echo lens" that
+  walks all occurrences like the focus trail.
+
 ### Remaining / future (not committed)
-- **Global open-questions view** — a toolbar badge / panel listing every
-  unanswered question across the Book, not just when the word is tapped.
 - **Curated case files** — authored mysteries with ordered clues; the first
   is onboarding ("case zero"). *(Adapted for research-first: author notes
   appear as peer comparison after you establish your own meaning — no
@@ -449,8 +483,8 @@ A4 print CSS) and **⇩ MD** (Markdown with `==highlights==` and links).
 - **Vault-wide export** — the whole vault as one publishable annotated lexicon.
 - **Polish** — keyboard nav, ARIA/RTL screen-reader pass, reduced-motion,
   virtualized reader for long surahs, a one-click `research.db` backup.
-- **Phrase marks** (≡ verbatim-repeat) in the reader; multi-subject cases;
-  dark theme; revelation-order reading mode.
+- **Reach** — shared `/shared` types + a mobile client on the versioned API;
+  multi-subject cases; dark theme; revelation-order reading mode.
 
 ---
 
@@ -467,7 +501,8 @@ A4 print CSS) and **⇩ MD** (Markdown with `==highlights==` and links).
 - Focus lens: `focus.ts` (spec builder), focus banner, `FocusMap` (connections
   modal)
 - Notes: `NotesPanel` (notes/questions + answers), `RelatedNotes` (root/form
-  cross-references)
+  cross-references), `OpenQuestions` (global unanswered-question badge)
+- Echoes: `EchoPanel` (repeated-phrase occurrences); server `echoes.ts`
 - Curated: `CaseFileLoader`, `CluePrompt`, `CommentarySeal`
 - Shared: `Popover`, `Stamp`, `PaperCard`, export renderer
 
