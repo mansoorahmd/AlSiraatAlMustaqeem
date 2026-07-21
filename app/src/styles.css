@@ -667,7 +667,7 @@ a { color: var(--lapis); }
   color: var(--ink);
 }
 
-.ayah { margin: 0 0 calc(0.6rem * var(--reader-scale)); }
+.ayah { margin: 0 0 calc(0.6rem * var(--reader-scale)); scroll-margin-top: 6rem; }
 .ayah-text { margin: 0; text-align: justify; }
 
 .word {

@@ -5,6 +5,7 @@ import { Investigate } from "./screens/Investigate";
 import { Vault } from "./screens/Vault";
 import { RootsExplorer } from "./screens/RootsExplorer";
 import { Search } from "./screens/Search";
+import { Shortcuts } from "./components/Shortcuts";
 import { AppProvider, useAppState } from "./state/store";
 
 function Screen() {
@@ -20,6 +21,7 @@ function Screen() {
 export default function App() {
   return (
     <AppProvider>
+      <Shortcuts />
       <div className="shell">
         <TopBar />
         <main className="main">

@@ -8,6 +8,7 @@ import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
 import type { RootSummary } from "../api/types";
 import { RootDetail } from "./RootDetail";
+import { ArabicKeyboard } from "../components/ArabicKeyboard";
 
 const spaced = (r: string) => r.split("").join(" ");
 const MAX_SHOWN = 200;
@@ -16,6 +17,7 @@ export function RootsExplorer() {
   const roots = useAsync(() => api.listRoots({ limit: 2000 }), []);
   const [rarestFirst, setRarestFirst] = useState(true);
   const [query, setQuery] = useState("");
+  const [kbOpen, setKbOpen] = useState(false);
   const [selected, setSelected] = useState<RootSummary | null>(null);
 
   const filtered = useMemo(() => {
@@ -68,6 +70,7 @@ export function RootsExplorer() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        <button className="ctl" onClick={() => setKbOpen((o) => !o)} title="Arabic keyboard">⌨</button>
         <div className="roots-order">
           <button
             className={`ctl${rarestFirst ? " active" : ""}`}
@@ -83,6 +86,14 @@ export function RootsExplorer() {
           </button>
         </div>
       </div>
+
+      {kbOpen && (
+        <ArabicKeyboard
+          onInsert={(ch) => setQuery((s) => s + ch)}
+          onBackspace={() => setQuery((s) => s.slice(0, -1))}
+          onClear={() => setQuery("")}
+        />
+      )}
 
       {roots.loading && <p className="loading">Gathering the roots…</p>}
       {roots.error && <p className="error-note">Could not load roots ({roots.error.message}).</p>}

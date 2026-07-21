@@ -8,6 +8,8 @@ import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
 import { useAppState, useAppDispatch } from "../state/store";
 import { ArabicKeyboard } from "../components/ArabicKeyboard";
+import { VerseText } from "../components/VerseText";
+import { phraseSpans } from "../lib/arabic";
 
 type Mode = "phrase" | "related";
 const spaced = (r: string) => r.split("").join(" ");
@@ -43,14 +45,16 @@ export function Search() {
 
   const jump = (key: string) => dispatch({ type: "jumpToVerse", verseKey: key });
 
-  const Row = ({ verseKey, text }: { verseKey: string; text: string; }) => (
+  const Row = ({ verseKey, text, highlight }: { verseKey: string; text: string; highlight?: boolean }) => (
     <li>
       <button className="search-row" onClick={() => jump(verseKey)} title={`Read ${verseKey}`}>
         <span className="search-ref">
           {verseKey}
           {surahName(verseKey) ? ` · ${surahName(verseKey)}` : ""}
         </span>
-        <span className="search-verse quran" dir="rtl">{text}</span>
+        <span className="search-verse quran" dir="rtl">
+          <VerseText text={text} highlightRanges={highlight ? phraseSpans(text, debounced) : undefined} />
+        </span>
       </button>
     </li>
   );
@@ -105,7 +109,7 @@ export function Search() {
           </p>
           <ul className="search-list">
             {results.data.verses.map((v) => (
-              <Row key={v.verse_key} verseKey={v.verse_key} text={typeof v.text === "string" ? v.text : ""} />
+              <Row key={v.verse_key} verseKey={v.verse_key} text={typeof v.text === "string" ? v.text : ""} highlight />
             ))}
           </ul>
         </>
