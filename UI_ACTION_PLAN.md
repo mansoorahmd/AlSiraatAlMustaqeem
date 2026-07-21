@@ -28,10 +28,10 @@ jump-to-ayah).
 > FastAPI service was ported 1:1 to `/server` (Hono + node:sqlite), parity-
 > tested, and is now the sole backend. One npm workspace, `npm run dev`.
 
-Also shipped: **V11 research home** (dashboard + resume-reading) and **V12
-Roots explorer & lexicon pages** (see below). Next candidate: **search + an
-on-screen Arabic keyboard**. Later: curated case files, reader
-polish/accessibility.
+Also shipped: **V11** research home (dashboard + resume-reading), **V12** Roots
+explorer & lexicon pages, **V13** search + on-screen Arabic keyboard + keyboard
+shortcuts, **V14** root collocations + Motifs (بيوت). See below. Later: curated
+case files, reader polish/accessibility.
 
 > **Pivot 1 (after V3 review):** cases are sparked by a *word*; the unit of
 > work is the word **form**, not the root. The root's dictionary meaning is
@@ -510,11 +510,36 @@ A **Roots** tab (also linked from Home) listing every root in the Book:
   ✎ Edit/Add button; editor with Save/Cancel + status.
 - New: `RootsExplorer`, `RootDetail`; server route group; `archive.rootMeanings`.
 
+### V13 — Search + Arabic keyboard + shortcuts ✅
+A front door onto the search engine that already existed (no backend work):
+- **Search** tab with two modes — **Phrase** (verbatim, alef-insensitive,
+  `/phrase-search`) with the matched span washed amber in each result, and
+  **Related** (free-text Arabic → ayahs by shared roots/structure, `/search`),
+  showing the roots it resolved. Debounced; click a result to read it.
+- **On-screen Arabic keyboard** (`ArabicKeyboard`) — tappable letters + hamza
+  forms; used by Search and the Roots filter, so no system Arabic layout needed.
+- **Keyboard shortcuts** (`Shortcuts`): `/` → Search; `g` then h/r/s/i/v/o →
+  the tabs; `j`/`k` → next/prev ayah in the reader.
+
+### V14 — Collocations + Motifs (بيوت) ✅
+Turning the root page into an investigation surface, and letting the reader
+group roots by their own themes:
+- **Collocations** — "the company it keeps": on a root's page, the roots it most
+  co-occurs with in the same ayah, ranked by association strength (surfacing the
+  already-built linkage engine, `/roots/{root}/linkages`). Each is clickable to
+  open that root's page (a shared `openRoot` store action drives cross-nav).
+- **Motifs (بيوت)** — reader-defined collections of roots sharing a linguistic
+  motif. Tag a root into an existing or new motif from its page; a **Motifs**
+  tab browses them all (member roots as chips → open the lexicon page; inline
+  rename; delete). Stored in `motifs` + `motif_roots` in research.db
+  (`/research/motifs`); `archive.motifs`, `Motifs` screen.
+
 ### Remaining / future (not committed)
-- **Search + on-screen Arabic keyboard** — a search box over the existing
-  backend: verbatim **phrase search** (`/phrase-search`) and **free-text**
-  Arabic → related ayahs (`/search`), plus a tappable Arabic keyboard so the
-  query (and the Roots filter) works without a system Arabic layout.
+- **`?` shortcuts overlay** — a discoverable cheat-sheet for the keyboard
+  shortcuts (they work but are currently invisible).
+- **Occurrences grouped by form** on the root page — cluster a root's ayahs
+  under each derived form to compare how the sense shifts.
+- **Compare workspace** — pin any two ayahs / two roots side by side.
 - **Curated case files** — authored mysteries with ordered clues; the first
   is onboarding ("case zero"). *(Adapted for research-first: author notes
   appear as peer comparison after you establish your own meaning — no
@@ -544,7 +569,9 @@ A **Roots** tab (also linked from Home) listing every root in the Book:
 - Echoes: `EchoPanel` (repeated-phrase occurrences + inline compare); server `echoes.ts`
 - Home: `Home` (dashboard); resume-reading via `reading.lastVerseKey`
 - Roots: `RootsExplorer` (all roots, rarest↔common), `RootDetail` (lexicon page +
-  user meanings); server `user_root_meanings`
+  user meanings + collocations + motif tagging); server `user_root_meanings`
+- Search: `Search` screen, `ArabicKeyboard`, `Shortcuts`; `lib/arabic.ts`
+- Motifs: `Motifs` screen (بيوت); server `motifs` + `motif_roots`
 - Curated: `CaseFileLoader`, `CluePrompt`, `CommentarySeal`
 - Shared: `Popover`, `Stamp`, `PaperCard`, export renderer
 
