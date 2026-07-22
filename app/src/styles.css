@@ -570,6 +570,15 @@ a { color: var(--lapis); }
 }
 .root-form-chip .quran { font-size: 1.1rem; color: var(--ink); }
 .root-form-meta { font-size: var(--fs-label); color: var(--ink-soft); }
+.occ-form-group { margin-bottom: 0.7rem; }
+.occ-form-head { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.3rem; }
+.occ-form { font-size: 1.2rem; color: var(--ink); }
+.occ-form-pos { font-size: var(--fs-label); color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; }
+.occ-form-count {
+  font-size: var(--fs-label); color: var(--ink-soft);
+  background: var(--wash, rgba(37,99,235,0.06)); border-radius: 999px; padding: 0 0.4rem;
+  font-variant-numeric: tabular-nums;
+}
 .root-occ { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .root-occ-chip { cursor: pointer; font-variant-numeric: tabular-nums; }
 .root-occ-chip:hover { background: rgba(37, 99, 235, 0.12); }

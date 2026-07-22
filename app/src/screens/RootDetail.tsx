@@ -2,7 +2,7 @@
 // the reader's OWN meaning (saved alongside), the derived forms, and every ayah
 // it occurs in (click to read). Reached from the Roots Explorer.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
 import { archive, newId } from "../persistence/db";
@@ -95,10 +95,25 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: P
     }
   };
 
-  const verseKeys = [...new Set((occ.data ?? []).map((o) => o.verse_key))].sort(
-    (a, b) => vsort(a) - vsort(b),
-  );
-  const posFor = (key: string) => (occ.data ?? []).find((o) => o.verse_key === key)?.word_position ?? null;
+  // group occurrences by the derived FORM (lemma), so the reader can compare
+  // how the sense shifts across forms — the heart of organic root study
+  const byForm = useMemo(() => {
+    const groups = new Map<string, { key: string; pos: number }[]>();
+    for (const o of occ.data ?? []) {
+      const form = o.lemma_arabic ?? "—";
+      let arr = groups.get(form);
+      if (!arr) { arr = []; groups.set(form, arr); }
+      if (!arr.some((x) => x.key === o.verse_key)) arr.push({ key: o.verse_key, pos: o.word_position });
+    }
+    const out = [...groups.entries()].map(([form, verses]) => ({
+      form,
+      verses: verses.sort((a, b) => vsort(a.key) - vsort(b.key)),
+    }));
+    out.sort((a, b) => b.verses.length - a.verses.length);
+    return out;
+  }, [occ.data]);
+  const shownCount = byForm.reduce((s, g) => s + g.verses.length, 0);
+  const posOfForm = new Map((detail.data?.forms ?? []).map((f) => [f.lemma_arabic, f.pos_english]));
 
   return (
     <div className="sheet root-detail">
@@ -248,26 +263,35 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: P
         </section>
       )}
 
-      {/* occurrences — click a verse to read it */}
+      {/* occurrences — grouped by form; click a verse to read it */}
       <section>
         <h2 className="root-section-title">
-          Occurrences{verseKeys.length ? ` · ${verseKeys.length} ayah${verseKeys.length === 1 ? "" : "s"}` : ""}
+          Occurrences by form{shownCount ? ` · ${shownCount} ayah${shownCount === 1 ? "" : "s"}` : ""}
         </h2>
         {occ.loading && <p className="loading">Finding every occurrence…</p>}
-        <div className="root-occ">
-          {verseKeys.map((k) => (
-            <button
-              key={k}
-              className="chip root-occ-chip"
-              title={`Read ${k}`}
-              onClick={() => dispatch({ type: "jumpToVerse", verseKey: k, wordPosition: posFor(k) })}
-            >
-              {k}
-            </button>
-          ))}
-        </div>
-        {detail.data && detail.data.total_occurrences > verseKeys.length && (
-          <p className="home-empty">Showing the first {verseKeys.length} ayahs of {detail.data.total_occurrences} occurrences.</p>
+        {byForm.map((g) => (
+          <div key={g.form} className="occ-form-group">
+            <div className="occ-form-head">
+              <span className="occ-form quran">{g.form}</span>
+              {posOfForm.get(g.form) && <span className="occ-form-pos">{posOfForm.get(g.form)}</span>}
+              <span className="occ-form-count">{g.verses.length}</span>
+            </div>
+            <div className="root-occ">
+              {g.verses.map((v) => (
+                <button
+                  key={v.key}
+                  className="chip root-occ-chip"
+                  title={`Read ${v.key}`}
+                  onClick={() => dispatch({ type: "jumpToVerse", verseKey: v.key, wordPosition: v.pos })}
+                >
+                  {v.key}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        {detail.data && detail.data.total_occurrences > shownCount && (
+          <p className="home-empty">Showing the first {shownCount} ayahs of {detail.data.total_occurrences} occurrences.</p>
         )}
       </section>
     </div>
