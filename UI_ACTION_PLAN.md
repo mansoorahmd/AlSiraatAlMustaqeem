@@ -30,8 +30,9 @@ jump-to-ayah).
 
 Also shipped: **V11** research home (dashboard + resume-reading), **V12** Roots
 explorer & lexicon pages, **V13** search + on-screen Arabic keyboard + keyboard
-shortcuts, **V14** root collocations + Motifs (بيوت). See below. Later: curated
-case files, reader polish/accessibility.
+shortcuts, **V14** root collocations + Motifs (بيوت), **V15** occurrences-by-form
++ the compare workspace. See below. Later: curated case files, reader
+polish/accessibility.
 
 > **Pivot 1 (after V3 review):** cases are sparked by a *word*; the unit of
 > work is the word **form**, not the root. The root's dictionary meaning is
@@ -534,12 +535,21 @@ group roots by their own themes:
   rename; delete). Stored in `motifs` + `motif_roots` in research.db
   (`/research/motifs`); `archive.motifs`, `Motifs` screen.
 
+### V15 — Occurrences-by-form + compare workspace ✅
+- **Occurrences grouped by form** on the root page: a root's ayahs are clustered
+  under each derived form (lemma) with its POS + count, so the reader can see
+  how the sense shifts form-to-form (noun هُدًى vs verb يَهْدِي …). Frontend-only.
+- **Compare workspace** — a session tray you pin ayahs and roots into (⇋ button
+  on each ayah and on a root's page), shown as **side-by-side columns** in a new
+  **Compare** tab (with a count badge). Ayah columns show verse + translation +
+  a jump link; root columns show core meaning, top lexicon entries, and
+  collocations; mix freely, remove a column, or clear. Store `compare` tray +
+  `pinCompare/unpinCompare/clearCompare`; `Compare` screen. Enables the classic
+  near-synonym (عَلِمَ / عَرَفَ) and parallel-passage exercises.
+
 ### Remaining / future (not committed)
 - **`?` shortcuts overlay** — a discoverable cheat-sheet for the keyboard
   shortcuts (they work but are currently invisible).
-- **Occurrences grouped by form** on the root page — cluster a root's ayahs
-  under each derived form to compare how the sense shifts.
-- **Compare workspace** — pin any two ayahs / two roots side by side.
 - **Curated case files** — authored mysteries with ordered clues; the first
   is onboarding ("case zero"). *(Adapted for research-first: author notes
   appear as peer comparison after you establish your own meaning — no
@@ -572,6 +582,7 @@ group roots by their own themes:
   user meanings + collocations + motif tagging); server `user_root_meanings`
 - Search: `Search` screen, `ArabicKeyboard`, `Shortcuts`; `lib/arabic.ts`
 - Motifs: `Motifs` screen (بيوت); server `motifs` + `motif_roots`
+- Compare: `Compare` screen; store `compare` tray + `⇋` pins
 - Curated: `CaseFileLoader`, `CluePrompt`, `CommentarySeal`
 - Shared: `Popover`, `Stamp`, `PaperCard`, export renderer
 
