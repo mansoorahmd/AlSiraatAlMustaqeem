@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+*.orig.*
+
+# native
+android/
+ios/
+
+# the bundled corpus is large & regenerable via `npm run build:db`
+assets/db/*.db
+
+# misc
+.DS_Store
+npm-debug.*
+*.log

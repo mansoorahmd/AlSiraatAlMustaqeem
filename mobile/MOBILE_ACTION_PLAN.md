@@ -1,0 +1,186 @@
+# AlSiraat Mobile — Reader Action Plan
+
+Bring the **full reading experience** of the web app to the Android app, offline.
+The investigation side (Case Board, evidence cards, threads/clusters, form
+dossier, establish/verdict flow, curated case files, case export) is **out of
+scope for now** — deferred to a later phase. Everything that lives in or feeds
+the **Reader** is in scope.
+
+> Personal, non-board features that already exist stand: per-root **"my
+> meaning"** stays (it's a reader/lexicon feature, not the case board).
+
+---
+
+## 1. Scope
+
+**In (this phase):** everything a reader touches — reading mechanics, resume,
+notes & questions, verbatim echoes, related āyāt + an āyah focus lens, trails,
+margin marks, a reader dashboard, and the supporting Roots/Search finishing
+work.
+
+**Out (deferred):** the Investigate tab — Case Board (pan/zoom canvas, cards,
+ink threads, clusters), the form dossier, establishing meanings / root verdict,
+curated case files, and case/report export.
+
+---
+
+## 2. Current status
+
+| Area | Web | Mobile today |
+|---|---|---|
+| Mushaf reader, scripts, word-by-word | ✅ | ✅ |
+| Translations | ✅ | ✅ (all 168 editions bundled + picker) |
+| Word → root lookup | ✅ | ✅ (word sheet → RootDetail) |
+| Roots explorer + lexicon + collocations + my-meaning | ✅ | ✅ |
+| Phrase search + Arabic keyboard | ✅ | ✅ |
+| Related (free-text) search | ✅ composite | ✅ full composite (M4) |
+| Font scaling, resume reading | ✅ | ✅ (M1) |
+| Āyah copy/share, preferences sheet | — | ✅ (M1) |
+| Notes & questions | ✅ V9 | ✅ (M2) |
+| Verbatim echoes (≡) | ✅ V10 | ✅ (M3) |
+| Related āyāt + focus lens | ✅ V8 | ✅ (M4) |
+| Trails + rare-root marks | ✅ V5 | ✅ (M5) |
+| Home dashboard | ✅ V11 | ❌ |
+| Motifs, occurrences-by-form, compare | ✅ V14/15 | ❌ (roots subset) |
+
+---
+
+## 3. Architecture (unchanged)
+
+Offline-first. Pure query modules depend on a small `Db` interface; on-device
+it's `expo-sqlite`, in the parity harness it's `node:sqlite`. **Every new
+data-layer module gets a golden-fixture parity check** (`npm run parity`) before
+its UI is built, so the phone keeps returning byte-identical results to the
+server.
+
+Three data-layer ports remain, and they gate the reader features that need them:
+
+- **`echoes.ts`** — the `EchoIndex` over folded surface words (repeated
+  contiguous n-grams). Powers ≡ marks + the echo panel. → M3
+- **`similarity/morphology.ts` + `similarity/compose.ts`** — blend the existing
+  lexical score with POS n-gram scoring for `/verses/{key}/similar`. Powers
+  Related āyāt + the focus lens, and upgrades Related **search** to full
+  composite parity. → M4
+- **root-frequency map** — one cheap `GROUP BY` for ⚲ rare-root marks. → M5
+
+Client-side additions: a tiny key/value store (reuse `research.db`) for reading
+prefs + last position, and new `research.db` tables for `trails` (and later
+`motifs`).
+
+---
+
+## 4. Milestones
+
+Each milestone is independently shippable and verified (typecheck + on-device
+smoke test; data ports also add parity fixtures).
+
+### M1 — Reading polish & resume ✅ DONE
+- **Preferences sheet** (⚙ in the nav bar) holding all reading settings, each
+  **persisted** in `research.db`: script (Uthmani/Imlaei/IndoPak/Tajweed),
+  text-size, word-by-word, per-word "Meanings", and the translations picker.
+- **Resume reading** — the top āyah in view is saved (`lastVerseKey`); the
+  chapter list shows a **Continue reading** banner that jumps back.
+- **Āyah actions** — a ⋯ button per āyah: Copy Arabic, Copy with translation,
+  Share (always clean Uthmani text).
+- **Tap any word in either view** — continuous view renders the selected script
+  with each word tappable (script tokens aligned 1:1 to word positions, āyah-end
+  marker dropped); word-by-word shows canonical forms.
+- **Rendering fix** — strips only unrenderable Private-Use-Area glyphs
+  (IndoPak's font-specific waqf codepoints that showed as tofu) + zero-width
+  controls; all standard Unicode pause/sajda marks are preserved.
+- **Follow-up (→ M8 font pass):** bundle a proper Quran font (Uthmanic + an
+  IndoPak face) so the PUA waqf symbols render instead of being omitted.
+- Maps: web V1 + V11 resume.
+
+### M2 — Notes & questions  (web V9) ✅ DONE
+> Shipped: reusable `NotesPanel`; notes/questions on āyah or word; answer/
+> reopen/edit/delete; lapis word markers (colour only — no underline, to keep
+> harakat clear); ✎ āyah button with count; word-sheet root cross-references
+> with jump; global **Open Questions** screen + ❓ header badge. All in the
+> `notes` table of `research.db`.
+- Attach a **note** or **question** to a whole āyah or a specific **word**
+  (from the word sheet and an āyah ✎ affordance).
+- **Answerable questions** (resolve/reopen), edit/delete.
+- **Markers** — a dotted underline on worded notes; ✎ + count by the āyah number.
+- **Cross-references** — word notes store lemma + root; the word sheet surfaces
+  "N notes on this root · M open ?" across forms.
+- **Open Questions** view (header badge / Home tile) listing every unresolved
+  question with jump-to.
+- Data: `research.db` notes ops already ported — build the UI + wire markers.
+
+### M3 — Verbatim echoes (≡)  (web V10) ✅ DONE
+> Shipped: `EchoIndex` ported on-device (built off the first frame, cached);
+> parity harness extended with the known-repeat checks (Ar-Raḥmān refrain,
+> basmala→27:30, chapter-55 set) — all green. ≡ mark on āyāt that carry a
+> repeated phrase; **EchoPanel** lists each maximal repeated phrase, the other
+> āyāt it occurs in (verse key · sūrah, tap to jump), and **Compare here** to
+> pull those āyāt inline (with the reader's selected translations shown under
+> each). (Inline sub-word span highlight deferred to a later
+> polish pass — v1 shows the folded phrase + full comparison āyāt.)
+
+### M4 — Related āyāt + Focus lens  (web V8) ✅ DONE
+> Shipped: `similarity/{lexical,morphology,compose,freetext}.ts` ported
+> on-device (one shared engine for `/similar` + free-text search, built once).
+> Parity harness extended with `similar_2:143/55:13/1:1/112:1` and the `search`
+> fixtures — all green (scores/shared/pattern/phrase_run within 1e-4). **Related
+> search** upgraded from lexical-only to **full composite**. **Related āyāt**
+> sheet from a āyah's ⋯ menu (closest-first, score, shared roots, phrase run,
+> jump). **Āyah focus lens**: pin from ⋯ → sticky banner (base · Connections
+> map · close), ⊙ on every matching āyah, shared-root words lit gold, and ⊙ →
+> "why in focus" (that match's shared roots + phrase run). Case-based lens stays
+> out with the investigation tab. Note: first similar/search/focus call builds
+> the engine (~2–3s one-time), cached after.
+
+### M5 — Trails + margin marks  (web V5) ✅ DONE
+> Shipped: **Follow the thread** from a word's sheet → a **Trail** screen that
+> walks every occurrence of that root, the current word lit gold, the selected
+> translations shown beneath it, prev/next, **Open in reader**, and a
+> **114-sūrah TrailStrip** (bar height = hits per
+> sūrah, current sūrah in lapis, tap a sūrah to jump). **Save trail** →
+> `research.db` `trails`; a saved-trails shelf (empty state + ⚲ header entry)
+> resumes at the saved position. **⚲ rare-root**: cached root-frequency map;
+> a ⚲ mark on āyāt containing a root that occurs ≤ 25× in the Book, and a
+> "rare root · appears N times" line in the word sheet. (Promote-to-case
+> deferred with the investigation tab.)
+
+### M6 — Reader dashboard  (web V11, reader subset)
+- A **Home** tab: Continue reading · Open questions · Recent trails · My
+  meanings (→ Roots/Vault) · Explore roots. (Open cases excluded.)
+
+### M7 — Roots & Search finishing  (web V12–V15, reader-relevant)
+- **Roots**: occurrences **grouped by form**; **Motifs** (tag roots into
+  reader-defined groups, browse) via `research.db`.
+- **Search**: jump-to verse key; result polish; recent queries.
+- **Compare** (optional): pin āyāt/roots side-by-side.
+
+### M8 — Polish & release
+- RTL/accessibility pass, reduced-motion, **virtualized** long sūrahs, Tajweed
+  colouring, optional dark ("candlelight") theme, one-tap `research.db` backup,
+  and the **EAS release build** (AAB) so it installs without Metro.
+
+---
+
+## 5. Component inventory to add
+
+- Reader: `FontControl`, `AyahActions`, `MarginRail`, `NotesPanel`,
+  `EchoPanel`, `RelatedAyahSheet`, `FocusBanner` + `FocusMap`, `TrailStrip`.
+- Data: `data/echoes.ts`, `similarity/morphology.ts`, `similarity/compose.ts`,
+  `data/frequencies.ts`; `research.db` gains `trails` (+ `motifs` in M7) and a
+  `kv` prefs table.
+- State: reading prefs + `lastVerseKey`, active trail, active focus lens.
+
+## 6. Out of scope (deferred phase)
+
+Investigate tab and everything board-related: Case Board canvas, evidence
+cards, ink threads, clusters, form dossier, establish/verdict/close, reopen
+with revisions, curated case files, case report/MD export.
+
+## 7. Open questions
+
+1. Reading prefs & resume — device-local `kv` in `research.db`, or
+   `AsyncStorage`? (Leaning `research.db` so everything user-generated is in one
+   backupable file.)
+2. Trail strip on a phone — full 114-sūrah horizontal strip, or a compact
+   "hops list + mini-map"?
+3. Related-āyāt on first use builds an in-memory index (~78k rows) — acceptable
+   one-time pause, or precompute/persist into `research.db`?

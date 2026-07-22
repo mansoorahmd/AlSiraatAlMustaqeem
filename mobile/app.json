@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "AlSiraatAlMustaqeem",
+    "slug": "alsiraat-almustaqeem",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "alsiraat",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["assets/db/*", "**/*"],
+    "android": {
+      "package": "com.alsiraat.almustaqeem",
+      "versionCode": 1
+    },
+    "extra": {
+      "dbAssetName": "quran-mobile.db"
+    }
+  }
+}
