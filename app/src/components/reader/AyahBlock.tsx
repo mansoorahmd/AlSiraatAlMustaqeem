@@ -204,6 +204,11 @@ export const AyahBlock = memo(function AyahBlock({
             onClick={() => setEchoOpen((o) => !o)}
           >≡</button>
         )}
+        <button
+          className="cmp-pin"
+          title="Add this ayah to the compare workspace"
+          onClick={() => dispatch({ type: "pinCompare", item: { kind: "ayah", verseKey: verse.verse_key } })}
+        >⇋</button>
       </p>
 
       {echoOpen && <EchoPanel echoes={echoData.data ?? []} loading={echoData.loading} />}

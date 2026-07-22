@@ -13,6 +13,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "vault", label: "Vault" },
   { id: "roots", label: "Roots" },
   { id: "motifs", label: "Motifs" },
+  { id: "compare", label: "Compare" },
 ];
 
 const SCRIPTS: { id: Script; label: string }[] = [
@@ -22,7 +23,7 @@ const SCRIPTS: { id: Script; label: string }[] = [
 ];
 
 export function TopBar() {
-  const { tab, reading } = useAppState();
+  const { tab, reading, compare } = useAppState();
   const dispatch = useAppDispatch();
   const health = useAsync(() => api.health(), []);
   const translations = useAsync(() => api.translationResources(), []);
@@ -67,6 +68,9 @@ export function TopBar() {
             onClick={() => dispatch({ type: "setTab", tab: t.id })}
           >
             {t.label}
+            {t.id === "compare" && compare.length > 0 && (
+              <span className="tab-badge">{compare.length}</span>
+            )}
           </button>
         ))}
       </nav>

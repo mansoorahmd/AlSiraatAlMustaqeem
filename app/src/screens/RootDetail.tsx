@@ -117,7 +117,14 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: P
 
   return (
     <div className="sheet root-detail">
-      <button className="ctl root-back" onClick={onBack}>‹ All roots</button>
+      <div className="root-detail-bar">
+        <button className="ctl root-back" onClick={onBack}>‹ All roots</button>
+        <button
+          className="ctl"
+          title="Add this root to the compare workspace"
+          onClick={() => dispatch({ type: "pinCompare", item: { kind: "root", buckwalter: rootBuckwalter, arabic: rootArabic } })}
+        >⇋ compare</button>
+      </div>
 
       <header className="root-detail-head">
         <h1 className="root-detail-ar quran">{spaced(rootArabic)}</h1>

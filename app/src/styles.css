@@ -645,6 +645,53 @@ a { color: var(--lapis); }
 .motif-root-chip { cursor: pointer; font-size: 1.1rem; color: var(--gold); }
 .motif-root-chip:hover { background: rgba(180, 83, 9, 0.14); }
 
+/* compare workspace */
+.tab-badge {
+  margin-inline-start: 0.35rem;
+  font-size: var(--fs-label);
+  background: var(--gold);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0 0.35rem;
+  font-variant-numeric: tabular-nums;
+}
+.cmp-pin {
+  border: none; background: none; cursor: pointer;
+  color: var(--ink-faint); font-size: 0.95rem; padding: 0 0.15rem; opacity: 0.6;
+}
+.cmp-pin:hover { opacity: 1; color: var(--lapis); }
+.root-detail-bar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.6rem; }
+.cmp-toolbar { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.8rem; }
+.cmp-count { font-size: var(--fs-small); color: var(--ink-soft); }
+.cmp-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+.cmp-col { border: 1px solid var(--paper-edge); border-radius: 12px; background: var(--paper); overflow: hidden; }
+.cmp-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--paper-edge);
+  background: var(--wash, rgba(37,99,235,0.04));
+}
+.cmp-title { font-size: 1.2rem; color: var(--gold); font-variant-numeric: tabular-nums; }
+.cmp-x { border: none; background: none; cursor: pointer; color: var(--ink-faint); font-size: 0.85rem; }
+.cmp-x:hover { color: #b91c1c; }
+.cmp-body { padding: 0.7rem 0.8rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.cmp-open {
+  align-self: flex-start; border: none; background: none; cursor: pointer;
+  color: var(--lapis); font-size: var(--fs-label);
+}
+.cmp-verse { font-size: 1.3rem; line-height: 2; color: var(--ink); margin: 0; }
+.cmp-translation { font-size: var(--fs-small); color: var(--ink-soft); margin: 0; }
+.cmp-sub { font-size: var(--fs-label); color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; }
+.cmp-root-meaning { font-size: 1rem; color: var(--ink); margin: 0; }
+.cmp-lex { font-size: var(--fs-small); color: var(--ink); margin: 0; line-height: 1.5; }
+.cmp-lex.quran { font-size: 1.05rem; line-height: 1.9; }
+.cmp-lex-src { font-size: var(--fs-label); color: var(--ink-faint); }
+.cmp-colloc { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.2rem; }
+
 /* --- search + arabic keyboard --- */
 .search-bar { display: flex; gap: 0.5rem; align-items: stretch; margin-bottom: 0.6rem; }
 .search-input {

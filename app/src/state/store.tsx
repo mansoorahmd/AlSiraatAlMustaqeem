@@ -8,7 +8,16 @@ import {
 import type { Script } from "../api/types";
 import { archive } from "../persistence/db";
 
-export type Tab = "home" | "read" | "search" | "investigate" | "vault" | "roots" | "motifs";
+export type Tab = "home" | "read" | "search" | "investigate" | "vault" | "roots" | "motifs" | "compare";
+
+/** an item pinned to the compare workspace */
+export type CompareItem =
+  | { kind: "ayah"; verseKey: string }
+  | { kind: "root"; buckwalter: string; arabic: string };
+
+export function compareId(i: CompareItem): string {
+  return i.kind === "ayah" ? `a:${i.verseKey}` : `r:${i.buckwalter}`;
+}
 
 export interface ReadingState {
   surahId: number;
@@ -41,6 +50,8 @@ export interface AppState {
   echoHighlight: { verseKey: string; start: number; end: number } | null;
   /** a root to open on the Roots tab's lexicon page (from Motifs, etc.) */
   openRoot: { buckwalter: string; arabic: string } | null;
+  /** the compare workspace tray (session-only) */
+  compare: CompareItem[];
 }
 
 export type Action =
@@ -61,6 +72,9 @@ export type Action =
   | { type: "jumpToVerse"; verseKey: string; wordPosition?: number | null }
   | { type: "jumpToEcho"; verseKey: string; start: number; length: number }
   | { type: "openRoot"; root: { buckwalter: string; arabic: string } | null }
+  | { type: "pinCompare"; item: CompareItem }
+  | { type: "unpinCompare"; id: string }
+  | { type: "clearCompare" }
   | { type: "clearJump" }
   | { type: "hydratePrefs"; reading: Partial<ReadingState> };
 
@@ -76,6 +90,7 @@ const initialState: AppState = {
   trailHighlight: null,
   echoHighlight: null,
   openRoot: null,
+  compare: [],
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -169,6 +184,15 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case "openRoot":
       return { ...state, openRoot: action.root, tab: action.root ? "roots" : state.tab };
+    case "pinCompare": {
+      const id = compareId(action.item);
+      if (state.compare.some((i) => compareId(i) === id)) return state;
+      return { ...state, compare: [...state.compare, action.item].slice(-8) };
+    }
+    case "unpinCompare":
+      return { ...state, compare: state.compare.filter((i) => compareId(i) !== action.id) };
+    case "clearCompare":
+      return { ...state, compare: [] };
     case "clearJump":
       return { ...state, jumpToVerseKey: null };
     case "hydratePrefs":
@@ -178,7 +202,8 @@ function reducer(state: AppState, action: Action): AppState {
 
 export function tabFromHash(): Tab {
   const h = typeof window !== "undefined" ? window.location.hash.replace(/^#\/?/, "") : "";
-  return h === "read" || h === "search" || h === "investigate" || h === "vault" || h === "roots" || h === "motifs"
+  return h === "read" || h === "search" || h === "investigate" || h === "vault" ||
+    h === "roots" || h === "motifs" || h === "compare"
     ? h
     : "home";
 }
