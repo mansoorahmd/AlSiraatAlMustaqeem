@@ -35,13 +35,21 @@ export function Search() {
     return chapters.data?.find((c) => c.id === id)?.name_simple ?? "";
   };
 
+  // a bare verse key like "2:255" → fetch that ayah directly
+  const keyMatch = /^(\d{1,3}):(\d{1,3})$/.exec(debounced);
+  const verseKey = keyMatch ? `${keyMatch[1]}:${keyMatch[2]}` : null;
+  const direct = useAsync(
+    async () => (verseKey ? api.verse(verseKey, { script }) : null),
+    [verseKey, script],
+  );
+
   const results = useAsync(async () => {
-    if (!debounced) return null;
+    if (!debounced || verseKey) return null; // a verse key is handled by `direct`
     if (mode === "phrase") {
       return { kind: "phrase" as const, verses: await api.phraseSearch(debounced, script, 60) };
     }
     return { kind: "related" as const, result: await api.search(debounced, { top_k: 40 }) };
-  }, [debounced, mode, script]);
+  }, [debounced, mode, script, verseKey]);
 
   const jump = (key: string) => dispatch({ type: "jumpToVerse", verseKey: key });
 
@@ -89,6 +97,7 @@ export function Search() {
         </button>
         <span className="search-mode-hint">
           {mode === "phrase" ? "exact wording, anywhere in the Book" : "ayahs sharing this query's roots"}
+          {" · or type a verse key like 2:255 to jump to it"}
         </span>
       </div>
 
@@ -100,7 +109,19 @@ export function Search() {
         />
       )}
 
-      {results.loading && debounced && <p className="loading">Searching…</p>}
+      {verseKey && (
+        <>
+          {direct.loading && <p className="loading">Fetching {verseKey}…</p>}
+          {direct.error && <p className="home-empty">No ayah {verseKey} — check the surah:ayah numbers.</p>}
+          {direct.data && (
+            <ul className="search-list">
+              <Row verseKey={verseKey} text={typeof direct.data.text === "string" ? direct.data.text : ""} />
+            </ul>
+          )}
+        </>
+      )}
+
+      {!verseKey && results.loading && debounced && <p className="loading">Searching…</p>}
 
       {results.data?.kind === "phrase" && (
         <>

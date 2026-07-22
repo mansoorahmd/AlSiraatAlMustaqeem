@@ -31,6 +31,7 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
   const [missing, setMissing] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingDesc, setEditingDesc] = useState(false);
+  const [editingVerdict, setEditingVerdict] = useState(false);
   const [wordMenu, setWordMenu] = useState<WordMenuTarget | null>(null);
   const wordsCache = useRef(new Map<string, Word[]>());
 
@@ -85,6 +86,22 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
   const mutate = (next: CaseRecord) => {
     setCaseRec(next);
     void archive.cases.save(next);
+  };
+
+  const setStatus = (status: CaseRecord["status"]) => {
+    if (!caseRec) return;
+    mutate({ ...caseRec, status });
+    if (status === "closed" && !caseRec.verdict) setEditingVerdict(true);
+  };
+
+  const discard = async () => {
+    if (!caseRec) return;
+    const ok = window.confirm(
+      `Discard the case “${caseRec.title || "Untitled"}” permanently? This cannot be undone.`,
+    );
+    if (!ok) return;
+    await archive.cases.remove(caseId);
+    onBackToArchive();
   };
 
   // verse texts for evidence added from outside the root's occurrences
@@ -188,8 +205,18 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
             {caseRec.title || "Untitled case"} <span className="edit-hint">✎</span>
           </h1>
         )}
+        <span className={`desk-status status-${caseRec.status}`}>{caseRec.status}</span>
 
         <span className="desk-spacer" />
+        {caseRec.status === "closed" ? (
+          <button className="ctl" title="Reopen this case" onClick={() => setStatus("open")}>
+            ↺ Reopen
+          </button>
+        ) : (
+          <button className="ctl" title="Mark this case closed with a verdict" onClick={() => setStatus("closed")}>
+            ✓ Close case
+          </button>
+        )}
         <button
           className="ctl"
           title="Open a print-ready report (print → save as PDF)"
@@ -203,6 +230,9 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
           onClick={async () => { if (caseRec) downloadCaseMarkdown(caseRec, await exportData()); }}
         >
           ⇩ MD
+        </button>
+        <button className="ctl danger" title="Delete this case permanently" onClick={discard}>
+          🗑 Discard
         </button>
       </div>
 
@@ -228,6 +258,32 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
           {caseRec.description || "add a description — the question this case is asking…"}{" "}
           <span className="edit-hint">✎</span>
         </p>
+      )}
+
+      {caseRec.status === "closed" && (
+        editingVerdict ? (
+          <textarea
+            className="board-input desk-verdict-input"
+            autoFocus
+            rows={2}
+            placeholder="your verdict — what did you conclude?"
+            value={caseRec.verdict ?? ""}
+            onChange={(e) => setCaseRec({ ...caseRec, verdict: e.target.value })}
+            onBlur={() => { setEditingVerdict(false); mutate(caseRec); }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") { setEditingVerdict(false); mutate(caseRec); }
+            }}
+          />
+        ) : (
+          <p
+            className="desk-verdict editable"
+            title="Click to edit the verdict"
+            onClick={() => setEditingVerdict(true)}
+          >
+            <span className="desk-verdict-label">✓ verdict</span>{" "}
+            {caseRec.verdict || "write your conclusion…"} <span className="edit-hint">✎</span>
+          </p>
+        )
       )}
 
       <section className="desk-main">

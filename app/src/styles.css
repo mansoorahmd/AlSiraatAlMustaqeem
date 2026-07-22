@@ -1529,6 +1529,35 @@ a { color: var(--lapis); }
   font-style: italic;
 }
 
+/* case status + close/discard */
+.desk-status {
+  font-size: var(--fs-label);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--wash, rgba(37, 99, 235, 0.08));
+  color: var(--ink-soft);
+}
+.desk-status.status-open { color: var(--lapis); background: rgba(37, 99, 235, 0.1); }
+.desk-status.status-partial { color: var(--gold); background: rgba(180, 83, 9, 0.1); }
+.desk-status.status-closed { color: #15803d; background: rgba(22, 163, 74, 0.12); }
+.ctl.danger { color: #b91c1c; border-color: rgba(185, 28, 28, 0.4); }
+.ctl.danger:hover { background: rgba(185, 28, 28, 0.08); }
+.desk-verdict {
+  margin: -0.25rem 0 0.75rem;
+  max-width: 60rem;
+  color: var(--ink);
+  padding: 0.4rem 0.6rem;
+  border-inline-start: 3px solid rgba(22, 163, 74, 0.6);
+  background: rgba(22, 163, 74, 0.06);
+  border-radius: 6px;
+}
+.desk-verdict-label { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: 0.05em; color: #15803d; }
+.desk-verdict-input {
+  display: block; width: 100%; max-width: 60rem; margin: 0 0 0.75rem; resize: vertical;
+}
+
 .desk-main { margin-bottom: 1rem; }
 
 .desk-main {
