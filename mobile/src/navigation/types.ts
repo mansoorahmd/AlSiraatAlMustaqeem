@@ -1,4 +1,6 @@
 export type RootStackParamList = {
+  Home: undefined;
+  MyMeanings: undefined;
   ReaderHome: undefined;
   Reader: { chapterId: number; focusVerseKey?: string; focusWordPos?: number };
   Search: undefined;

@@ -40,7 +40,7 @@ curated case files, and case/report export.
 | Verbatim echoes (≡) | ✅ V10 | ✅ (M3) |
 | Related āyāt + focus lens | ✅ V8 | ✅ (M4) |
 | Trails + rare-root marks | ✅ V5 | ✅ (M5) |
-| Home dashboard | ✅ V11 | ❌ |
+| Home dashboard | ✅ V11 | ✅ (M6) |
 | Motifs, occurrences-by-form, compare | ✅ V14/15 | ❌ (roots subset) |
 
 ---
@@ -143,9 +143,15 @@ smoke test; data ports also add parity fixtures).
 > "rare root · appears N times" line in the word sheet. (Promote-to-case
 > deferred with the investigation tab.)
 
-### M6 — Reader dashboard  (web V11, reader subset)
-- A **Home** tab: Continue reading · Open questions · Recent trails · My
-  meanings (→ Roots/Vault) · Explore roots. (Open cases excluded.)
+### M6 — Reader dashboard  (web V11, reader subset) ✅ DONE
+> Shipped: a **Home** tab (now the default landing) tying the reader together —
+> a **Continue reading** card (resumes at `lastVerseKey`), stat tiles for
+> **open questions** and **my meanings**, a **Recent trails** list (resume at
+> saved position), and **Explore** links to Roots and Search. Cross-tab
+> navigation into the Read/Roots/Search stacks. New **My meanings** screen
+> (lists the reader's personal root definitions → RootDetail), plus
+> `listUserRootMeanings` / `userRootMeaningCount` helpers. Open cases excluded
+> with the investigation tab.
 
 ### M7 — Roots & Search finishing  (web V12–V15, reader-relevant)
 - **Roots**: occurrences **grouped by form**; **Motifs** (tag roots into

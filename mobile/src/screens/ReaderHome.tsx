@@ -5,6 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { RootStackParamList } from "../navigation/types";
 import { useQuran } from "../state/DbContext";
 import { getPref, openQuestionCount } from "../data/research";
+import { VerseJump } from "../components/VerseJump";
 import { colors } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ReaderHome">;
@@ -55,13 +56,20 @@ export default function ReaderHome({ navigation }: Props) {
     </Pressable>
   ) : null;
 
+  const Header = (
+    <View>
+      <VerseJump q={q} onGo={(c, vk) => navigation.navigate("Reader", { chapterId: c, focusVerseKey: vk })} />
+      {ContinueBanner}
+    </View>
+  );
+
   return (
     <FlatList
       style={{ backgroundColor: colors.bg }}
       contentContainerStyle={{ padding: 12 }}
       data={chapters}
       keyExtractor={(c) => String(c.id)}
-      ListHeaderComponent={ContinueBanner}
+      ListHeaderComponent={Header}
       renderItem={({ item }) => (
         <Pressable
           style={styles.row}

@@ -71,6 +71,20 @@ export function allOpenQuestions(db: Db): Note[] {
 }
 
 // -- personal root meanings --
+export interface UserRootMeaning {
+  root_buckwalter: string;
+  meaning: string;
+  updated_at: string;
+}
+
+export function listUserRootMeanings(db: Db): UserRootMeaning[] {
+  return db.query<UserRootMeaning>("SELECT * FROM user_root_meanings ORDER BY updated_at DESC");
+}
+
+export function userRootMeaningCount(db: Db): number {
+  return db.scalar<number>("SELECT COUNT(*) FROM user_root_meanings") ?? 0;
+}
+
 export function userRootMeaning(db: Db, rootBuckwalter: string): string | null {
   return db.scalar<string>("SELECT meaning FROM user_root_meanings WHERE root_buckwalter = ?", [rootBuckwalter]) ?? null;
 }

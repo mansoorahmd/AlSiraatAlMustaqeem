@@ -8,6 +8,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import type { RootStackParamList } from "./src/navigation/types";
 import { DbProvider } from "./src/state/DbContext";
+import Home from "./src/screens/Home";
+import MyMeanings from "./src/screens/MyMeanings";
 import ReaderHome from "./src/screens/ReaderHome";
 import Reader from "./src/screens/Reader";
 import SearchScreen from "./src/screens/Search";
@@ -35,6 +37,15 @@ const screenOpts = {
   headerTitleStyle: { color: colors.ink },
   contentStyle: { backgroundColor: colors.bg },
 } as const;
+
+const HomeNav = createNativeStackNavigator<RootStackParamList>();
+function HomeStack() {
+  return (
+    <HomeNav.Navigator screenOptions={screenOpts}>
+      <HomeNav.Screen name="Home" component={Home} options={{ title: "AlSiraat AlMustaqeem" }} />
+    </HomeNav.Navigator>
+  );
+}
 
 const ReadNav = createNativeStackNavigator<RootStackParamList>();
 function ReadStack() {
@@ -67,6 +78,7 @@ function RootsStack() {
     <RootsNav.Navigator screenOptions={screenOpts}>
       <RootsNav.Screen name="RootsExplorer" component={RootsExplorer} options={{ title: "Roots" }} />
       <RootsNav.Screen name="RootDetail" component={RootDetail} />
+      <RootsNav.Screen name="MyMeanings" component={MyMeanings} options={{ title: "My meanings" }} />
       <RootsNav.Screen name="Reader" component={Reader} />
       <RootsNav.Screen name="Trail" component={Trail} options={{ title: "Trail" }} />
     </RootsNav.Navigator>
@@ -91,6 +103,7 @@ export default function App() {
               tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
             }}
           >
+            <Tabs.Screen name="HomeTab" component={HomeStack} options={{ title: "Home", tabBarIcon: tabIcon("⌂") }} />
             <Tabs.Screen name="ReadTab" component={ReadStack} options={{ title: "Read", tabBarIcon: tabIcon("﷽") }} />
             <Tabs.Screen name="SearchTab" component={SearchStack} options={{ title: "Search", tabBarIcon: tabIcon("🔍") }} />
             <Tabs.Screen name="RootsTab" component={RootsStack} options={{ title: "Roots", tabBarIcon: tabIcon("ⵣ") }} />

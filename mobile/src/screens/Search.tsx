@@ -7,6 +7,7 @@ import type { RootStackParamList } from "../navigation/types";
 import type { CompositeMatch, Verse } from "../types";
 import { useQuran } from "../state/DbContext";
 import { ArabicKeyboard } from "../components/ArabicKeyboard";
+import { VerseJump } from "../components/VerseJump";
 import { Chip } from "../components/ui";
 import { colors } from "../theme/tokens";
 
@@ -54,6 +55,7 @@ export default function Search({ navigation }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={styles.top}>
+        <VerseJump q={q} onGo={(c, vk) => navigation.navigate("Reader", { chapterId: c, focusVerseKey: vk })} />
         <View style={styles.modes}>
           <Chip label="Phrase (verbatim)" active={mode === "phrase"} onPress={() => setMode("phrase")} />
           <Chip label="Related (by roots)" active={mode === "related"} onPress={() => setMode("related")} />
