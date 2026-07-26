@@ -28,6 +28,7 @@ export function VerseText({
   size = 28,
   notedPositions,
   highlightRoots,
+  highlightPositions,
 }: {
   text?: string;
   words?: Word[];
@@ -35,6 +36,7 @@ export function VerseText({
   size?: number;
   notedPositions?: Set<number>;
   highlightRoots?: Set<string>;
+  highlightPositions?: Set<number>;
 }) {
   const style = [styles.arabic, { fontSize: size, lineHeight: size * 2.05, paddingBottom: Math.round(size * 0.35) }];
 
@@ -51,7 +53,7 @@ export function VerseText({
             const sep = i < tokens.length - 1 ? " " : "";
             if (hasArabicLetter(tok)) {
               const w = words[k++];
-              const lit = !!(w.root && highlightRoots?.has(w.root));
+              const lit = !!(w.root && highlightRoots?.has(w.root)) || !!highlightPositions?.has(w.position);
               const noted = notedPositions?.has(w.position);
               return (
                 <Text

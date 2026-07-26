@@ -361,7 +361,11 @@ export default function Reader({ route, navigation }: Props) {
           setSelected(null);
           navigation.navigate("RootDetail", { root: bw });
         }}
-        onFollowThread={(bw) => {
+        onFollowWord={(lemmaBw, label) => {
+          setSelected(null);
+          navigation.push("Trail", { lemma: lemmaBw, label });
+        }}
+        onFollowRoot={(bw) => {
           setSelected(null);
           navigation.push("Trail", { root: bw });
         }}
@@ -569,7 +573,8 @@ function WordSheet({
   onJumpVerse,
   onClose,
   onOpenRoot,
-  onFollowThread,
+  onFollowWord,
+  onFollowRoot,
   onOpenNotes,
 }: {
   word: Word | null;
@@ -578,7 +583,8 @@ function WordSheet({
   onJumpVerse: (verseKey: string) => void;
   onClose: () => void;
   onOpenRoot: (rootBuckwalter: string) => void;
-  onFollowThread: (rootBuckwalter: string) => void;
+  onFollowWord: (lemmaBuckwalter: string, label: string) => void;
+  onFollowRoot: (rootBuckwalter: string) => void;
   onOpenNotes: (w: Word) => void;
 }) {
   return (
@@ -614,16 +620,21 @@ function WordSheet({
                 <Text style={styles.rareLine}>⚲ rare root · appears {rootFreq} time{rootFreq === 1 ? "" : "s"} in the Book</Text>
               )}
               {word.root_buckwalter ? (
-                <>
-                  <Pressable style={styles.rootBtn} onPress={() => onOpenRoot(word.root_buckwalter!)}>
-                    <Text style={styles.rootBtnText}>Investigate root {word.root ?? word.root_buckwalter}  →</Text>
-                  </Pressable>
-                  <Pressable style={styles.notesBtn} onPress={() => onFollowThread(word.root_buckwalter!)}>
-                    <Text style={styles.notesBtnText}>⚲ Follow the thread</Text>
-                  </Pressable>
-                </>
+                <Pressable style={styles.rootBtn} onPress={() => onOpenRoot(word.root_buckwalter!)}>
+                  <Text style={styles.rootBtnText}>Investigate root {word.root ?? word.root_buckwalter}  →</Text>
+                </Pressable>
               ) : (
                 <Text style={styles.noRoot}>No root for this word (particle / proper noun).</Text>
+              )}
+              {!!word.lemma_buckwalter && (
+                <Pressable style={styles.notesBtn} onPress={() => onFollowWord(word.lemma_buckwalter!, word.arabic ?? word.lemma ?? "")}>
+                  <Text style={styles.notesBtnText}>⚲ Follow this word{word.lemma ? ` · ${word.lemma}` : ""}</Text>
+                </Pressable>
+              )}
+              {!!word.root_buckwalter && (
+                <Pressable style={styles.notesBtn} onPress={() => onFollowRoot(word.root_buckwalter!)}>
+                  <Text style={styles.notesBtnText}>⚲ Follow the root {word.root ?? ""}</Text>
+                </Pressable>
               )}
               <Pressable style={styles.notesBtn} onPress={() => onOpenNotes(word)}>
                 <Text style={styles.notesBtnText}>✎ Notes &amp; questions</Text>

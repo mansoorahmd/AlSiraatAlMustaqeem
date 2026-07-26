@@ -159,7 +159,7 @@ export function verseWords(db: Db, verseKey: string): Word[] {
   const arabic = wordArabic(db, verseKey);
   const rows = db.query<Row>(
     `SELECT position, translation_text, transliteration_text,
-            lemma_arabic, root_arabic, root_buckwalter,
+            lemma_arabic, lemma_buckwalter, root_arabic, root_buckwalter,
             pos_english, pos_class
      FROM words WHERE verse_key = ? ORDER BY position`,
     [verseKey],
@@ -170,6 +170,7 @@ export function verseWords(db: Db, verseKey: string): Word[] {
     gloss: (r.translation_text as string) ?? null,
     transliteration: (r.transliteration_text as string) ?? null,
     lemma: (r.lemma_arabic as string) ?? null,
+    lemma_buckwalter: (r.lemma_buckwalter as string) ?? null,
     root: (r.root_arabic as string) ?? null,
     root_buckwalter: (r.root_buckwalter as string) ?? null,
     pos: (r.pos_english as string) ?? null,

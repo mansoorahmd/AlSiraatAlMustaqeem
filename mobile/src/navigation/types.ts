@@ -7,7 +7,7 @@ export type RootStackParamList = {
   RootsExplorer: undefined;
   RootDetail: { root: string }; // buckwalter key
   OpenQuestions: undefined;
-  Trail: { root?: string; trailId?: number };
+  Trail: { root?: string; lemma?: string; label?: string; trailId?: number };
   Motifs: undefined;
   Compare: undefined;
 };

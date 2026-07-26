@@ -133,6 +133,11 @@ smoke test; data ports also add parity fixtures).
 > the engine (~2–3s one-time), cached after.
 
 ### M5 — Trails + margin marks  (web V5) ✅ DONE
+> Two threads per word: **Follow this word** (its lemma — works for rootless
+> particles/proper nouns too) and **Follow the root** (all derived forms). Each
+> Trail highlights the exact occurrence word at every stop and shows the
+> selected translations.
+>
 > Shipped: **Follow the thread** from a word's sheet → a **Trail** screen that
 > walks every occurrence of that root, the current word lit gold, the selected
 > translations shown beneath it, prev/next, **Open in reader**, and a

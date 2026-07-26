@@ -15,8 +15,6 @@ import { colors } from "../theme/tokens";
 type Props = NativeStackScreenProps<RootStackParamList, "Trail">;
 
 const cnum = (k: string) => Number(k.split(":")[0]);
-
-// mirror the reader's persisted translation-edition preference
 function parseEditions(pref: string | null): Set<number> {
   if (pref == null) return new Set([20, 54]);
   return new Set(pref ? pref.split(",").map(Number).filter((n) => !Number.isNaN(n)) : []);
@@ -27,22 +25,11 @@ export default function Trail({ route, navigation }: Props) {
 
   const [hops, setHops] = useState<TrailHop[]>([]);
   const [pos, setPos] = useState(0);
-  const [rootArabic, setRootArabic] = useState<string | null>(null);
-  const [rootBw, setRootBw] = useState<string | null>(null);
+  const [label, setLabel] = useState<string | null>(null); // subject label (word or root, Arabic)
+  const [subjectKey, setSubjectKey] = useState<string | null>(null); // root_bw or "lemma:xxx"
   const [trailId, setTrailId] = useState<number | null>(null);
   const [saved, setSaved] = useState<TrailRow[]>([]);
   const [editionIds, setEditionIds] = useState<Set<number>>(() => parseEditions(getPref(research, "editions")));
-
-  // load from a root (new expedition) or a saved trail (resume)
-  const loadRoot = useCallback((bw: string, startPos = 0, id: number | null = null) => {
-    const detail = q.root(bw);
-    const occ = q.rootOccurrences(bw, "uthmani", 3000);
-    setRootBw(bw);
-    setRootArabic(detail?.root_arabic ?? null);
-    setHops(occ.map((o) => ({ verseKey: o.verse_key, wordPosition: o.word_position })));
-    setPos(startPos);
-    setTrailId(id);
-  }, [q]);
 
   useFocusEffect(
     useCallback(() => {
@@ -51,8 +38,10 @@ export default function Trail({ route, navigation }: Props) {
     }, [research]),
   );
 
-  // initial load from params
+  // load from params
   const paramRoot = route.params?.root;
+  const paramLemma = route.params?.lemma;
+  const paramLabel = route.params?.label;
   const paramTrailId = route.params?.trailId;
   useEffect(() => {
     if (paramTrailId != null) {
@@ -60,19 +49,32 @@ export default function Trail({ route, navigation }: Props) {
       if (t) {
         setHops(JSON.parse(t.hops) as TrailHop[]);
         setPos(t.pos);
-        setRootArabic(t.root_arabic);
-        setRootBw(t.root_buckwalter);
+        setLabel(t.root_arabic);
+        setSubjectKey(t.root_buckwalter);
         setTrailId(t.id);
       }
     } else if (paramRoot) {
-      loadRoot(paramRoot);
+      const detail = q.root(paramRoot);
+      const occ = q.rootOccurrences(paramRoot, "uthmani", 3000);
+      setHops(occ.map((o) => ({ verseKey: o.verse_key, wordPosition: o.word_position })));
+      setLabel(detail?.root_arabic ?? paramRoot);
+      setSubjectKey(paramRoot);
+      setPos(0);
+      setTrailId(null);
+    } else if (paramLemma) {
+      const occ = q.formOccurrences(paramLemma, "uthmani", 3000);
+      setHops(occ.map((o) => ({ verseKey: o.verse_key, wordPosition: o.word_position })));
+      setLabel(paramLabel ?? paramLemma);
+      setSubjectKey(`lemma:${paramLemma}`);
+      setPos(0);
+      setTrailId(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paramRoot, paramTrailId]);
+  }, [paramRoot, paramLemma, paramTrailId]);
 
   useLayoutEffect(() => {
-    navigation.setOptions({ title: rootArabic ? `Thread · ${rootArabic}` : "Trails" });
-  }, [navigation, rootArabic]);
+    navigation.setOptions({ title: label ? `Thread · ${label}` : "Trails" });
+  }, [navigation, label]);
 
   const step = (next: number) => {
     const p = Math.max(0, Math.min(hops.length - 1, next));
@@ -81,11 +83,11 @@ export default function Trail({ route, navigation }: Props) {
   };
 
   const save = () => {
-    if (trailId != null || !rootBw) return;
+    if (trailId != null || !subjectKey) return;
     const id = createTrail(research, {
-      name: `${rootArabic ?? rootBw} · thread`,
-      rootBuckwalter: rootBw,
-      rootArabic,
+      name: `${label ?? subjectKey} · thread`,
+      rootBuckwalter: subjectKey,
+      rootArabic: label,
       hops,
       pos,
     });
@@ -99,23 +101,22 @@ export default function Trail({ route, navigation }: Props) {
     [hop, q],
   );
   const words = (verse?.words ?? []).filter((w) => w.pos != null);
-  const litRoots = useMemo(() => (rootArabic ? new Set([rootArabic]) : undefined), [rootArabic]);
+  const litPos = useMemo(() => (hop?.wordPosition != null ? new Set([hop.wordPosition]) : undefined), [hop]);
   const translations = useMemo(
     () => (hop && editionIds.size ? q.verseTranslations(hop.verseKey).filter((t) => editionIds.has(t.resource_id)) : []),
     [hop, editionIds, q],
   );
 
-  // empty state: offer saved trails to resume
   if (!hop) {
     return (
       <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16 }}>
         <Text style={styles.emptyTitle}>Trails</Text>
         <Text style={styles.emptyText}>
-          Open a word and choose “⚲ Follow the thread” to walk through every place its root occurs.
+          Open a word and choose “Follow the thread” to walk every place that word — or its root — occurs.
         </Text>
         {saved.length > 0 && <Text style={styles.shelfTitle}>Saved trails</Text>}
         {saved.map((t) => (
-          <Pressable key={t.id} style={styles.savedRow} onPress={() => loadRoot(t.root_buckwalter!, t.pos, t.id)}>
+          <Pressable key={t.id} style={styles.savedRow} onPress={() => navigation.push("Trail", { trailId: t.id })}>
             <Text style={styles.savedName}>{t.name ?? t.root_arabic}</Text>
             <Text style={styles.savedMeta}>{JSON.parse(t.hops).length} stops</Text>
           </Pressable>
@@ -139,7 +140,7 @@ export default function Trail({ route, navigation }: Props) {
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Text style={styles.vk}>{hop.verseKey} · {q.chapter(cnum(hop.verseKey))?.name_simple}</Text>
-        <VerseText text={(verse?.text as string) ?? ""} words={words} highlightRoots={litRoots} onWordPress={() => {}} size={26} />
+        <VerseText text={(verse?.text as string) ?? ""} words={words} highlightPositions={litPos} onWordPress={() => {}} size={26} />
         {translations.map((t) => (
           <View key={t.resource_id} style={styles.tr}>
             <Text style={styles.trText}>{t.text}</Text>

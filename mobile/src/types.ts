@@ -56,6 +56,7 @@ export interface Word {
   gloss: string | null;
   transliteration: string | null;
   lemma: string | null;
+  lemma_buckwalter: string | null;
   root: string | null;
   root_buckwalter: string | null;
   pos: string | null;
