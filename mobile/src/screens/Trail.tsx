@@ -40,7 +40,7 @@ export default function Trail({ route, navigation }: Props) {
 
   // load from params
   const paramRoot = route.params?.root;
-  const paramLemma = route.params?.lemma;
+  const paramWord = route.params?.word;
   const paramLabel = route.params?.label;
   const paramTrailId = route.params?.trailId;
   useEffect(() => {
@@ -61,16 +61,16 @@ export default function Trail({ route, navigation }: Props) {
       setSubjectKey(paramRoot);
       setPos(0);
       setTrailId(null);
-    } else if (paramLemma) {
-      const occ = q.formOccurrences(paramLemma, "uthmani", 3000);
+    } else if (paramWord) {
+      const occ = q.exactWordOccurrences(paramWord, 3000);
       setHops(occ.map((o) => ({ verseKey: o.verse_key, wordPosition: o.word_position })));
-      setLabel(paramLabel ?? paramLemma);
-      setSubjectKey(`lemma:${paramLemma}`);
+      setLabel(paramLabel ?? paramWord);
+      setSubjectKey(`word:${paramWord}`);
       setPos(0);
       setTrailId(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paramRoot, paramLemma, paramTrailId]);
+  }, [paramRoot, paramWord, paramTrailId]);
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: label ? `Thread · ${label}` : "Trails" });
@@ -112,7 +112,7 @@ export default function Trail({ route, navigation }: Props) {
       <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16 }}>
         <Text style={styles.emptyTitle}>Trails</Text>
         <Text style={styles.emptyText}>
-          Open a word and choose “Follow the thread” to walk every place that word — or its root — occurs.
+          Open a word and choose to follow it — every place that exact spelling appears, or every place its root appears.
         </Text>
         {saved.length > 0 && <Text style={styles.shelfTitle}>Saved trails</Text>}
         {saved.map((t) => (

@@ -361,9 +361,9 @@ export default function Reader({ route, navigation }: Props) {
           setSelected(null);
           navigation.navigate("RootDetail", { root: bw });
         }}
-        onFollowWord={(lemmaBw, label) => {
+        onFollowWord={(surface, label) => {
           setSelected(null);
-          navigation.push("Trail", { lemma: lemmaBw, label });
+          navigation.push("Trail", { word: surface, label });
         }}
         onFollowRoot={(bw) => {
           setSelected(null);
@@ -583,7 +583,7 @@ function WordSheet({
   onJumpVerse: (verseKey: string) => void;
   onClose: () => void;
   onOpenRoot: (rootBuckwalter: string) => void;
-  onFollowWord: (lemmaBuckwalter: string, label: string) => void;
+  onFollowWord: (surface: string, label: string) => void;
   onFollowRoot: (rootBuckwalter: string) => void;
   onOpenNotes: (w: Word) => void;
 }) {
@@ -626,9 +626,9 @@ function WordSheet({
               ) : (
                 <Text style={styles.noRoot}>No root for this word (particle / proper noun).</Text>
               )}
-              {!!word.lemma_buckwalter && (
-                <Pressable style={styles.notesBtn} onPress={() => onFollowWord(word.lemma_buckwalter!, word.arabic ?? word.lemma ?? "")}>
-                  <Text style={styles.notesBtnText}>⚲ Follow this word{word.lemma ? ` · ${word.lemma}` : ""}</Text>
+              {!!word.arabic && (
+                <Pressable style={styles.notesBtn} onPress={() => onFollowWord(word.arabic!, word.arabic!)}>
+                  <Text style={styles.notesBtnText}>⚲ Follow this exact word · {word.arabic}</Text>
                 </Pressable>
               )}
               {!!word.root_buckwalter && (

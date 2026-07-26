@@ -133,8 +133,10 @@ smoke test; data ports also add parity fixtures).
 > the engine (~2–3s one-time), cached after.
 
 ### M5 — Trails + margin marks  (web V5) ✅ DONE
-> Two threads per word: **Follow this word** (its lemma — works for rootless
-> particles/proper nouns too) and **Follow the root** (all derived forms). Each
+> Two threads per word: **Follow this exact word** (the written surface — rasm,
+> so vowel/case marks are ignored but a differently-spelled form like Ibrāhīm's
+> small-yāʾ vs full-yāʾ stays its own thread; works for rootless particles like
+> مِمَّا and for proper nouns) and **Follow the root** (all derived forms). Each
 > Trail highlights the exact occurrence word at every stop and shows the
 > selected translations.
 >

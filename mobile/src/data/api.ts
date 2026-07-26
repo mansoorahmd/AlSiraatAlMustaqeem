@@ -10,7 +10,7 @@ import { RootLinkages } from "./linkages";
 import { EchoIndex } from "./echoes";
 import { SimilarityEngine } from "../similarity/compose";
 import { FreeTextSearch } from "../similarity/freetext";
-import { spellingVariantsForWord, rootSpellingsByForm } from "./spellings";
+import { spellingVariantsForWord, rootSpellingsByForm, exactWordOccurrences } from "./spellings";
 import { VariantIndex } from "./variants";
 
 export function makeApi(db: Db) {
@@ -52,6 +52,8 @@ export function makeApi(db: Db) {
     rootFrequencies: () => (freqMap ??= roots.rootFrequencies(db)),
     formOccurrences: (lemmaBuckwalter: string, script: Script = "uthmani", limit = 1000) =>
       roots.formOccurrences(db, lemmaBuckwalter, script, limit),
+    exactWordOccurrences: (surface: string, limit = 3000) =>
+      exactWordOccurrences(db, surface, limit),
     rootLinkages: (root: string, opts: { scope?: "ayah" | "adjacent"; limit?: number; sortBy?: "score" | "count" } = {}) =>
       links().coOccurringRoots(root, opts),
 

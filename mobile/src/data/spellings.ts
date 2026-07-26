@@ -88,6 +88,40 @@ export function spellingVariantsForWord(db: Db, verseKey: string, wordPosition: 
   return [...groups.values()].sort((a, b) => b.count - a.count);
 }
 
+/** Āyāt containing the exact written word (surface rasm — letters as written,
+ *  vowel marks ignored so the same word in different cases still matches).
+ *  Works for any word, including particles and proper nouns with no root. */
+export function exactWordOccurrences(
+  db: Db,
+  surface: string,
+  limit = 3000,
+): { verse_key: string; word_position: number }[] {
+  const target = rasmKey(surface);
+  if (!target) return [];
+  const rows = db.query<{ verse_key: string; word_position: number; form_arabic: string | null }>(
+    `SELECT ws.verse_key, ws.word_position, ws.form_arabic
+     FROM word_segments ws JOIN verses v ON v.verse_key = ws.verse_key
+     ORDER BY v.chapter_id, v.verse_number, ws.word_position, ws.segment_number`,
+  );
+  // assemble each word's full surface (all segments) in mushaf order
+  const per = new Map<string, string>();
+  for (const r of rows) {
+    const k = `${r.verse_key}#${r.word_position}`;
+    per.set(k, (per.get(k) ?? "") + (r.form_arabic ?? ""));
+  }
+  const out: { verse_key: string; word_position: number }[] = [];
+  const seenVerse = new Set<string>();
+  for (const [k, surf] of per) {
+    if (rasmKey(surf) !== target) continue;
+    const [vk, pos] = k.split("#");
+    if (seenVerse.has(vk!)) continue; // one hop per verse
+    seenVerse.add(vk!);
+    out.push({ verse_key: vk!, word_position: Number(pos) });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
 /** For every form (lemma) of a root, the spelling-variant groups it has (each
  *  group = one word+inflection written ≥2 ways). Only forms WITH variation are
  *  returned. One query for the whole root. Keyed by lemma_buckwalter. */
