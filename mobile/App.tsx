@@ -125,7 +125,16 @@ export default function App() {
             }}
           >
             <Tabs.Screen name="HomeTab" component={HomeStack} options={{ title: "Home", tabBarIcon: tabIcon("⌂") }} />
-            <Tabs.Screen name="ReadTab" component={ReadStack} options={{ title: "Read", tabBarIcon: tabIcon("﷽") }} />
+            <Tabs.Screen
+              name="ReadTab"
+              component={ReadStack}
+              options={{ title: "Read", tabBarIcon: tabIcon("﷽") }}
+              listeners={({ navigation }) => ({
+                // tapping the Read tab always returns to the sūra list, not
+                // wherever you last left the reader
+                tabPress: () => { navigation.navigate("ReadTab", { screen: "ReaderHome" }); },
+              })}
+            />
             <Tabs.Screen name="SearchTab" component={SearchStack} options={{ title: "Search", tabBarIcon: tabIcon("🔍") }} />
             <Tabs.Screen name="RootsTab" component={RootsStack} options={{ title: "Roots", tabBarIcon: tabIcon("ⵣ") }} />
             <Tabs.Screen name="CompareTab" component={CompareStack} options={{ title: "Compare", tabBarIcon: tabIcon("⇋") }} />
