@@ -1,0 +1,13 @@
+# What EAS should NOT upload to the cloud build.
+# Note: when this file exists, EAS uses it INSTEAD of .gitignore — so the
+# bundled corpus (assets/db/*.db), which .gitignore excludes, IS uploaded here
+# (the app needs it at build time).
+
+node_modules/
+.expo/
+dist/
+web-build/
+android/
+ios/
+*.log
+.DS_Store

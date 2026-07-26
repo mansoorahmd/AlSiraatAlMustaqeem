@@ -6,13 +6,30 @@
     "orientation": "portrait",
     "scheme": "alsiraat",
     "userInterfaceStyle": "light",
-    "assetBundlePatterns": ["assets/db/*", "**/*"],
+    "icon": "./assets/icon.png",
+    "backgroundColor": "#0E3B34",
+    "assetBundlePatterns": [
+      "assets/db/*",
+      "**/*"
+    ],
+    "splash": {
+      "image": "./assets/adaptive-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0E3B34"
+    },
     "android": {
       "package": "com.alsiraat.almustaqeem",
-      "versionCode": 1
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0E3B34"
+      }
     },
     "extra": {
-      "dbAssetName": "quran-mobile.db"
+      "dbAssetName": "quran-mobile.db",
+      "eas": {
+        "projectId": "7de4b115-5adb-4314-b7ee-47239d8c592c"
+      }
     }
   }
 }

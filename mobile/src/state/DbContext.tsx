@@ -1,5 +1,5 @@
 import React, { createContext, Suspense, useContext, useMemo } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 import { SQLiteProvider, useSQLiteContext, type SQLiteDatabase } from "expo-sqlite";
 import { ExpoDb, openResearchDb, QURAN_DB_NAME, type Db } from "../data/db";
 import { makeApi, type QuranApi } from "../data/api";
@@ -54,7 +54,13 @@ function Bridge({ children }: { children: React.ReactNode }) {
 function Splash({ message }: { message: string }) {
   return (
     <View style={styles.center}>
-      <ActivityIndicator color={colors.gold} size="large" />
+      <Image
+        source={require("../../assets/adaptive-icon.png")}
+        style={styles.logo}
+        resizeMode="contain"
+      />
+      <Text style={styles.brand}>AlSiraat AlMustaqeem</Text>
+      <ActivityIndicator color={colors.gold} size="large" style={{ marginTop: 24 }} />
       <Text style={styles.msg}>{message}</Text>
     </View>
   );
@@ -79,8 +85,10 @@ class DbErrorBoundary extends React.Component<{ children: React.ReactNode }, { e
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg, padding: 24 },
-  msg: { marginTop: 16, color: colors.inkSoft, textAlign: "center" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#0E3B34", padding: 24 },
+  logo: { width: 180, height: 180 },
+  brand: { color: colors.gold, fontSize: 20, fontWeight: "600", marginTop: 8, letterSpacing: 0.5 },
+  msg: { marginTop: 16, color: "#cdd8cf", textAlign: "center" },
   err: { color: colors.danger, fontWeight: "600", fontSize: 16 },
   errDetail: { color: colors.inkSoft, marginTop: 8, textAlign: "center" },
 });

@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, Text } from "react-native";
 import type { Word } from "../types";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 const hasArabicLetter = (t: string) => /[ء-يٱ-ۓـ]/.test(t);
 
@@ -36,7 +36,7 @@ export function VerseText({
   notedPositions?: Set<number>;
   highlightRoots?: Set<string>;
 }) {
-  const style = [styles.arabic, { fontSize: size, lineHeight: size * 1.9 }];
+  const style = [styles.arabic, { fontSize: size, lineHeight: size * 2.05, paddingBottom: Math.round(size * 0.35) }];
 
   if (text && words && words.length && onWordPress) {
     const tokens = text.trim().split(/\s+/);
@@ -84,6 +84,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
     writingDirection: "rtl",
     textAlign: "right",
+    fontFamily: font.arabic, // undefined → system Arabic; set in tokens to use a bundled Quran font
   },
   noted: { color: colors.lapis },
   lit: { color: colors.gold, fontWeight: "600" },

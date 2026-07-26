@@ -9,42 +9,68 @@ import { foldArabic } from "../text/normalize";
 const MIN_WORDS = 3; // shortest phrase considered an "echo"
 const cnum = (k: string) => parseInt(k.split(":")[0] ?? "", 10) || 0;
 
+type Row = { verse_key: string; chapter_id: number; verse_number: number; t: string | null };
+const SQL = `SELECT verse_key, chapter_id, verse_number, text_imlaei_simple AS t FROM verses ORDER BY chapter_id, verse_number`;
+const tick = () => new Promise<void>((r) => setTimeout(r, 0));
+
 export class EchoIndex {
   private words = new Map<string, string[]>();
   private meta = new Map<string, [number, number]>();
   private gram3 = new Map<string, string[]>();
   private withEcho = new Set<string>();
+  private tmp: Map<string, Set<string>> | null = null;
   private built = false;
+  private warming: Promise<void> | null = null;
 
   constructor(private db: Db) {}
 
-  build(): this {
-    if (this.built) return this;
-    const rows = this.db.query<{ verse_key: string; chapter_id: number; verse_number: number; t: string | null }>(
-      `SELECT verse_key, chapter_id, verse_number, text_imlaei_simple AS t
-       FROM verses ORDER BY chapter_id, verse_number`,
-    );
-    const tmp = new Map<string, Set<string>>();
-    for (const r of rows) {
-      const w = foldArabic(r.t ?? "").split(/\s+/).filter(Boolean);
-      this.words.set(r.verse_key, w);
-      this.meta.set(r.verse_key, [r.chapter_id, r.verse_number]);
-      for (let i = 0; i + MIN_WORDS <= w.length; i++) {
-        const g = w.slice(i, i + MIN_WORDS).join(" ");
-        let s = tmp.get(g);
-        if (!s) { s = new Set(); tmp.set(g, s); }
-        s.add(r.verse_key);
-      }
+  private ingest(r: Row): void {
+    const w = foldArabic(r.t ?? "").split(/\s+/).filter(Boolean);
+    this.words.set(r.verse_key, w);
+    this.meta.set(r.verse_key, [r.chapter_id, r.verse_number]);
+    const tmp = this.tmp!;
+    for (let i = 0; i + MIN_WORDS <= w.length; i++) {
+      const g = w.slice(i, i + MIN_WORDS).join(" ");
+      let s = tmp.get(g);
+      if (!s) { s = new Set(); tmp.set(g, s); }
+      s.add(r.verse_key);
     }
-    for (const [g, set] of tmp) {
+  }
+
+  private finalize(): void {
+    for (const [g, set] of this.tmp!) {
       if (set.size >= 2) {
         const keys = [...set];
         this.gram3.set(g, keys);
         for (const k of keys) this.withEcho.add(k);
       }
     }
+    this.tmp = null;
     this.built = true;
+  }
+
+  build(): this {
+    if (this.built) return this;
+    this.tmp = new Map();
+    for (const r of this.db.query<Row>(SQL)) this.ingest(r);
+    this.finalize();
     return this;
+  }
+
+  /** Non-blocking build: async read + chunked processing that yields to the UI. */
+  warmup(): Promise<void> {
+    if (this.built) return Promise.resolve();
+    if (this.warming) return this.warming;
+    this.warming = (async () => {
+      const rows = await this.db.queryAsync<Row>(SQL);
+      this.tmp = new Map();
+      for (let i = 0; i < rows.length; i++) {
+        this.ingest(rows[i]!);
+        if ((i & 511) === 0) await tick();
+      }
+      this.finalize();
+    })();
+    return this.warming;
   }
 
   chapterEchoes(chapterId: number): string[] {

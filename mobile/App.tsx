@@ -1,6 +1,7 @@
 import React from "react";
-import { Text } from "react-native";
+import { Text, View, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useFonts } from "expo-font";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -90,6 +91,14 @@ const tabIcon = (glyph: string) => ({ color }: { color: string }) =>
   <Text style={{ fontSize: 18, color }}>{glyph}</Text>;
 
 export default function App() {
+  const [fontsLoaded] = useFonts({ quran: require("./assets/fonts/AmiriQuran-Regular.ttf") });
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg }}>
+        <ActivityIndicator color={colors.gold} size="large" />
+      </View>
+    );
+  }
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />

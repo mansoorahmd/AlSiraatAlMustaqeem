@@ -5,10 +5,12 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { RootStackParamList } from "../navigation/types";
 import { useQuran } from "../state/DbContext";
 import {
-  getPref, openQuestionCount, listTrails, userRootMeaningCount, type Trail,
+  getPref, setPref, openQuestionCount, listTrails, userRootMeaningCount, type Trail,
 } from "../data/research";
 import { Card, SectionTitle } from "../components/ui";
 import { VerseJump } from "../components/VerseJump";
+import { LegendSheet } from "../components/LegendSheet";
+import { backupResearch } from "../lib/backup";
 import { colors } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Home">;
@@ -22,6 +24,8 @@ export default function Home({ navigation }: Props) {
   const [openQ, setOpenQ] = useState(0);
   const [trails, setTrails] = useState<Trail[]>([]);
   const [meanings, setMeanings] = useState(0);
+  const [backupMsg, setBackupMsg] = useState("");
+  const [legend, setLegend] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -29,12 +33,18 @@ export default function Home({ navigation }: Props) {
       setOpenQ(openQuestionCount(research));
       setTrails(listTrails(research).slice(0, 3));
       setMeanings(userRootMeaningCount(research));
+      // first launch: show the marks guide once
+      if (getPref(research, "seenGuide") !== "1") {
+        setLegend(true);
+        setPref(research, "seenGuide", "1");
+      }
     }, [research]),
   );
 
   const lastChapter = last ? q.chapter(cnum(last)) : undefined;
 
   return (
+    <>
     <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={{ padding: 14 }}>
       <Text style={styles.greeting}>رَّبِّ زِدْنِي عِلْمًا</Text>
       <Text style={styles.tagline}>“My Lord, increase me in knowledge.” (20:114)</Text>
@@ -89,7 +99,27 @@ export default function Home({ navigation }: Props) {
       <Pressable style={styles.link} onPress={() => nav.navigate("SearchTab")}>
         <Text style={styles.linkText}>Search the Book  →</Text>
       </Pressable>
+      <Pressable style={styles.link} onPress={() => setLegend(true)}>
+        <Text style={styles.linkText}>Reading guide — what the marks mean  →</Text>
+      </Pressable>
+
+      <SectionTitle>Your work</SectionTitle>
+      <Pressable
+        style={styles.link}
+        onPress={async () => {
+          try { await backupResearch(); }
+          catch (e) { setBackupMsg(e instanceof Error ? e.message : String(e)); }
+        }}
+      >
+        <Text style={styles.linkText}>Back up my research  ⇪</Text>
+      </Pressable>
+      {!!backupMsg && <Text style={styles.backupMsg}>{backupMsg}</Text>}
+      <Text style={styles.hint}>
+        Exports notes, questions, meanings and trails as a single file you can save or send.
+      </Text>
     </ScrollView>
+    <LegendSheet visible={legend} onClose={() => setLegend(false)} />
+    </>
   );
 }
 
@@ -115,4 +145,6 @@ const styles = StyleSheet.create({
     padding: 14, marginBottom: 8,
   },
   linkText: { color: colors.lapis, fontSize: 15, fontWeight: "600" },
+  backupMsg: { color: colors.danger, fontSize: 12, marginBottom: 6 },
+  hint: { color: colors.inkSoft, fontSize: 12, lineHeight: 17, marginTop: 2 },
 });

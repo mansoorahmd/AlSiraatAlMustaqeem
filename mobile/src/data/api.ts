@@ -10,6 +10,8 @@ import { RootLinkages } from "./linkages";
 import { EchoIndex } from "./echoes";
 import { SimilarityEngine } from "../similarity/compose";
 import { FreeTextSearch } from "../similarity/freetext";
+import { spellingVariantsForWord, rootSpellingsByForm } from "./spellings";
+import { VariantIndex } from "./variants";
 
 export function makeApi(db: Db) {
   let linkages: RootLinkages | null = null;
@@ -17,6 +19,8 @@ export function makeApi(db: Db) {
   let echoIndex: EchoIndex | null = null;
   const echoes = () => (echoIndex ??= new EchoIndex(db));
   let freqMap: Map<string, number> | null = null;
+  let variantIndex: VariantIndex | null = null;
+  const variants = () => (variantIndex ??= new VariantIndex(db));
   // one similarity engine shared by /similar and free-text search (built once)
   let engine: SimilarityEngine | null = null;
   const eng = () => (engine ??= new SimilarityEngine(db));
@@ -52,6 +56,15 @@ export function makeApi(db: Db) {
     // verbatim echoes
     chapterEchoes: (id: number) => echoes().chapterEchoes(id),
     verseEchoes: (key: string) => echoes().echoesForVerse(key),
+    echoesReady: () => echoes().warmup(),
+    variantsReady: () => variants().warmup(),
+
+    // rasm (spelling) variants of a word
+    spellingVariants: (verseKey: string, wordPosition: number) =>
+      spellingVariantsForWord(db, verseKey, wordPosition),
+    variantVerses: (chapterId: number) => variants().versesInChapter(chapterId),
+    variantWords: (verseKey: string) => variants().wordsInVerse(verseKey),
+    rootSpellingsByForm: (root: string) => rootSpellingsByForm(db, root),
 
     // composite similarity + free-text related search (shared engine)
     similar: (key: string, opts: { topK?: number; minShared?: number } = {}) =>

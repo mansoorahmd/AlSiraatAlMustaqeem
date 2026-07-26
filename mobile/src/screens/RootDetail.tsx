@@ -3,9 +3,13 @@ import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-na
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import type { Linkage, RootDetail as RootDetailT, RootOccurrence } from "../types";
+import * as Clipboard from "expo-clipboard";
 import { useQuran } from "../state/DbContext";
-import { setUserRootMeaning, userRootMeaning } from "../data/research";
+import { getPref, setUserRootMeaning, userRootMeaning } from "../data/research";
 import { Card, Chip, SectionTitle } from "../components/ui";
+import { CooccurPanel } from "../components/CooccurPanel";
+import { FormSpellingPanel } from "../components/FormSpellingPanel";
+import type { SpellingVariant } from "../data/spellings";
 import { colors } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "RootDetail">;
@@ -21,10 +25,20 @@ export default function RootDetail({ route, navigation }: Props) {
     () => q.rootOccurrences(root, "uthmani", 500),
     [q, root],
   );
-  const linkages = useMemo<Linkage[]>(() => q.rootLinkages(root, { limit: 18, sortBy: "score" }), [q, root]);
+  const linkages = useMemo<Linkage[]>(() => q.rootLinkages(root, { limit: 300, sortBy: "count" }), [q, root]);
+  const [showAllColl, setShowAllColl] = useState(false);
+  const COLL_PREVIEW = 20;
 
   const [mine, setMine] = useState<string>("");
   const [editing, setEditing] = useState(false);
+  const [coll, setColl] = useState<Linkage | null>(null);
+  const formSpellings = useMemo(() => q.rootSpellingsByForm(root), [q, root]);
+  const [formPick, setFormPick] = useState<{ arabic: string; groups: SpellingVariant[][] } | null>(null);
+  const editionIds = useMemo<Set<number>>(() => {
+    const e = getPref(research, "editions");
+    if (e == null) return new Set([20, 54]);
+    return new Set(e ? e.split(",").map(Number).filter((n) => !Number.isNaN(n)) : []);
+  }, [research]);
 
   useEffect(() => {
     setMine(userRootMeaning(research, root) ?? "");
@@ -93,26 +107,41 @@ export default function RootDetail({ route, navigation }: Props) {
         <Card>
           <SectionTitle>The company it keeps</SectionTitle>
           <View style={styles.chipsWrap}>
-            {linkages.map((l, i) => (
+            {(showAllColl ? linkages : linkages.slice(0, COLL_PREVIEW)).map((l, i) => (
               <Chip
                 key={`${l.root_buckwalter}-${i}`}
                 label={`${l.root_arabic} · ${l.cooccur}`}
-                onPress={() => navigation.push("RootDetail", { root: l.root_buckwalter })}
+                onPress={() => setColl(l)}
               />
             ))}
           </View>
+          {linkages.length > COLL_PREVIEW && (
+            <Pressable onPress={() => setShowAllColl((v) => !v)}>
+              <Text style={styles.showAll}>
+                {showAllColl ? "Show fewer" : `Show all ${linkages.length} →`}
+              </Text>
+            </Pressable>
+          )}
         </Card>
       )}
 
       <Card>
         <SectionTitle>Forms</SectionTitle>
-        {detail.forms.map((f, i) => (
-          <View key={`${f.lemma_buckwalter}-${f.pos ?? ""}-${i}`} style={styles.formRow}>
-            <Text style={styles.formArabic}>{f.lemma_arabic ?? f.lemma_buckwalter}</Text>
-            <Text style={styles.formPos}>{f.pos_english ?? f.pos ?? ""}</Text>
-            <Text style={styles.formCount}>{f.occurrence_count}</Text>
-          </View>
-        ))}
+        {detail.forms.map((f, i) => {
+          const groups = formSpellings.get(f.lemma_buckwalter);
+          return (
+            <Pressable
+              key={`${f.lemma_buckwalter}-${f.pos ?? ""}-${i}`}
+              style={styles.formRow}
+              onPress={() => setFormPick({ arabic: f.lemma_arabic ?? f.lemma_buckwalter, groups: groups ?? [] })}
+            >
+              <Text style={styles.formArabic}>{f.lemma_arabic ?? f.lemma_buckwalter}</Text>
+              {!!groups && <Text style={styles.formVariant}>✍</Text>}
+              <Text style={styles.formPos}>{f.pos_english ?? f.pos ?? ""}</Text>
+              <Text style={styles.formCount}>{f.occurrence_count}</Text>
+            </Pressable>
+          );
+        })}
       </Card>
 
       <Card>
@@ -122,7 +151,15 @@ export default function RootDetail({ route, navigation }: Props) {
             <Text style={styles.lang}>{lang}</Text>
             {entries.map((m, i) => (
               <View key={`${m.source}-${i}`} style={styles.dictRow}>
-                <Text style={styles.dictSource}>{m.source}</Text>
+                <View style={styles.dictHead}>
+                  <Text style={styles.dictSource}>{m.source}</Text>
+                  <Pressable
+                    hitSlop={8}
+                    onPress={() => Clipboard.setStringAsync(`${detail.root_arabic} — ${m.source}\n${m.meaning}`)}
+                  >
+                    <Text style={styles.copy}>⧉ copy</Text>
+                  </Pressable>
+                </View>
                 <Text style={[styles.dictMeaning, lang !== "en" && styles.rtl]}>{m.meaning}</Text>
               </View>
             ))}
@@ -135,28 +172,49 @@ export default function RootDetail({ route, navigation }: Props) {
   );
 
   return (
-    <FlatList
-      style={{ backgroundColor: colors.bg }}
-      contentContainerStyle={{ padding: 14, paddingBottom: 40 }}
-      data={occurrences}
-      keyExtractor={(o, i) => `${o.verse_key}-${o.word_position}-${i}`}
-      ListHeaderComponent={Header}
-      renderItem={({ item }) => (
-        <Pressable
-          style={styles.occ}
-          onPress={() =>
-            navigation.navigate("Reader", {
-              chapterId: chapterOf(item.verse_key),
-              focusVerseKey: item.verse_key,
-              focusWordPos: item.word_position,
-            })
-          }
-        >
-          <Text style={styles.occKey}>{item.verse_key}</Text>
-          <Text style={styles.occText} numberOfLines={2}>{item.verse_text ?? ""}</Text>
-        </Pressable>
-      )}
-    />
+    <>
+      <FlatList
+        style={{ backgroundColor: colors.bg }}
+        contentContainerStyle={{ padding: 14, paddingBottom: 40 }}
+        data={occurrences}
+        keyExtractor={(o, i) => `${o.verse_key}-${o.word_position}-${i}`}
+        ListHeaderComponent={Header}
+        renderItem={({ item }) => (
+          <Pressable
+            style={styles.occ}
+            onPress={() =>
+              navigation.navigate("Reader", {
+                chapterId: chapterOf(item.verse_key),
+                focusVerseKey: item.verse_key,
+                focusWordPos: item.word_position,
+              })
+            }
+          >
+            <Text style={styles.occKey}>{item.verse_key}</Text>
+            <Text style={styles.occText} numberOfLines={2}>{item.verse_text ?? ""}</Text>
+          </Pressable>
+        )}
+      />
+
+      <CooccurPanel
+        visible={!!coll}
+        a={detail ? { arabic: detail.root_arabic, bw: detail.root_buckwalter } : null}
+        b={coll ? { arabic: coll.root_arabic, bw: coll.root_buckwalter } : null}
+        q={q}
+        editionIds={editionIds}
+        onClose={() => setColl(null)}
+        onJump={(vk) => { setColl(null); navigation.navigate("Reader", { chapterId: chapterOf(vk), focusVerseKey: vk }); }}
+        onOpenRoot={(bw) => { setColl(null); navigation.push("RootDetail", { root: bw }); }}
+      />
+
+      <FormSpellingPanel
+        visible={!!formPick}
+        title={formPick?.arabic ?? ""}
+        groups={formPick?.groups ?? []}
+        onClose={() => setFormPick(null)}
+        onJump={(vk) => { setFormPick(null); navigation.navigate("Reader", { chapterId: chapterOf(vk), focusVerseKey: vk }); }}
+      />
+    </>
   );
 }
 
@@ -186,11 +244,15 @@ const styles = StyleSheet.create({
   chipsWrap: { flexDirection: "row", flexWrap: "wrap" },
   formRow: { flexDirection: "row", alignItems: "center", paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: colors.surfaceAlt },
   formArabic: { fontSize: 20, color: colors.ink, writingDirection: "rtl", minWidth: 90 },
+  formVariant: { color: colors.amberStrong, fontSize: 15, marginLeft: 8 },
   formPos: { flex: 1, color: colors.inkSoft, fontSize: 12, marginLeft: 10 },
   formCount: { color: colors.gold, fontWeight: "700" },
   lang: { color: colors.lapis, fontSize: 12, fontWeight: "700", textTransform: "uppercase", marginBottom: 4 },
   dictRow: { marginBottom: 8 },
+  dictHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   dictSource: { color: colors.inkSoft, fontSize: 11, fontWeight: "600" },
+  copy: { color: colors.lapis, fontSize: 12, fontWeight: "600" },
+  showAll: { color: colors.lapis, fontSize: 13, fontWeight: "600", marginTop: 4 },
   dictMeaning: { color: colors.ink, fontSize: 14, lineHeight: 20 },
   rtl: { writingDirection: "rtl", textAlign: "right" },
   occ: { backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 8 },

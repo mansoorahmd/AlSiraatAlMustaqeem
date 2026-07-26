@@ -17,7 +17,7 @@ export const colors = {
 };
 
 export const font = {
-  arabic: undefined as string | undefined, // system Arabic; set to a bundled Uthmanic font later
+  arabic: "quran" as string | undefined, // Amiri Quran, loaded in App.tsx via expo-font
   ui: undefined as string | undefined,
 };
 

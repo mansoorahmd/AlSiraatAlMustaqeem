@@ -159,10 +159,36 @@ smoke test; data ports also add parity fixtures).
 - **Search**: jump-to verse key; result polish; recent queries.
 - **Compare** (optional): pin āyāt/roots side-by-side.
 
-### M8 — Polish & release
-- RTL/accessibility pass, reduced-motion, **virtualized** long sūrahs, Tajweed
-  colouring, optional dark ("candlelight") theme, one-tap `research.db` backup,
-  and the **EAS release build** (AAB) so it installs without Metro.
+### M8 — Polish & release 🟡 MOSTLY DONE
+Shipped (in-app):
+- **Backup** — Home → "Back up my research" exports `research.db` via the OS
+  share sheet (`expo-sharing`).
+- **First-use loading** — Related/Focus show a "Preparing…" overlay instead of
+  a silent freeze while the similarity index builds; Search already had this.
+- **Off-main-thread index builds** — the echo (≡) and spelling-variant (✍)
+  indexes now build via an async read + chunked yielding `warmup()` (`Db.queryAsync`),
+  so the reader no longer freezes when marks appear.
+- **Reading guide / onboarding** — a `LegendSheet` explains every mark
+  (≡ ✍ ⚲ ⊙ ✎ ⋯) and the word colours; shown once on first launch and
+  reopenable from Home and the reader's ⓘ button.
+- **App icon** — a gold "straight path toward the light" on deep green, wired as
+  the icon + Android adaptive icon + splash.
+- **Reader perf** — FlatList `removeClippedSubviews` / windowing tuned for long
+  sūrahs (already virtualized).
+- **Font scaffolding** — Arabic text reads `font.arabic`; drop a `.ttf` in
+  `assets/fonts/` and enable per `assets/fonts/README.md`.
+- **Release config** — `eas.json` with `preview` (APK) and `production` (AAB)
+  profiles; README documents `eas build`.
+
+Needs your machine / assets (can't be done from here):
+- Run the actual **`eas build`** (needs your Expo account) to get the APK/AAB.
+- Add the **Quran font binaries** (`UthmanicHafs.ttf`, an IndoPak face) — this
+  is what makes IndoPak's PUA waqf marks render instead of being stripped.
+
+Deferred (optional): Tajweed colour rendering, dark ("candlelight") theme,
+deeper screen-reader/a11y pass, and precomputing the similarity index off-thread
+(echo/variant are already non-blocking; the composite engine still builds
+on-demand behind its "Preparing…" overlay).
 
 ---
 
@@ -174,6 +200,16 @@ smoke test; data ports also add parity fixtures).
   `data/frequencies.ts`; `research.db` gains `trails` (+ `motifs` in M7) and a
   `kv` prefs table.
 - State: reading prefs + `lastVerseKey`, active trail, active focus lens.
+- Reader extras: **rasm (spelling) variants** — tapping a word written
+  differently across the mushaf (إبراهيم full-yāʾ vs small-yāʾ; قال vs قٰل;
+  رَأَىٰ vs رَءَا hamza-on-alif vs hamza-on-the-line) shows "✍ written N ways"
+  in the word sheet with each spelling, count, and a jump. Same words are
+  matched by morphology (`raw_features`) + a normalized skeleton (hamza seats
+  and alif/maqṣūra/dagger collapsed), so verb inflections and causatives don't
+  false-flag. (`data/spellings.ts`.) A precomputed `VariantIndex`
+  (`data/variants.ts`) drives a subtle **✍ mark** on āyāt in the reader that
+  contain such a word — built once over the corpus, cached, deferred off the
+  first frame.
 
 ## 6. Out of scope (deferred phase)
 

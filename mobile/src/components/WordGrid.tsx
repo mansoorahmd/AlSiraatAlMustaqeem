@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { Word } from "../types";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 /**
  * Word-by-word layout: each word shows its Arabic form over its gloss, laid out
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   pressed: { backgroundColor: colors.amber },
-  arabic: { color: colors.ink, writingDirection: "rtl" },
+  arabic: { color: colors.ink, writingDirection: "rtl", fontFamily: font.arabic },
   noted: { color: colors.lapis },
   lit: { color: colors.gold, fontWeight: "600" },
   gloss: { color: colors.inkSoft, fontSize: 11, marginTop: 2, maxWidth: 90, textAlign: "center" },

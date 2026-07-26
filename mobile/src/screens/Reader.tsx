@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  FlatList, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View,
+  ActivityIndicator, FlatList, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View,
   type ViewToken,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
@@ -10,9 +10,12 @@ import type { CompositeMatch, Script, Translation, TranslationResource, Verse, W
 import { SCRIPT_LABELS } from "../types";
 import { useQuran } from "../state/DbContext";
 import { getPref, setPref, notesForChapter } from "../data/research";
+import type { SpellingVariant } from "../data/spellings";
 import { NotesPanel, type NoteScope } from "../components/NotesPanel";
 import { EchoPanel } from "../components/EchoPanel";
 import { RelatedPanel } from "../components/RelatedPanel";
+import { VariantPanel } from "../components/VariantPanel";
+import { LegendSheet } from "../components/LegendSheet";
 import { VerseText } from "../components/VerseText";
 import { WordGrid } from "../components/WordGrid";
 import { Chip } from "../components/ui";
@@ -50,18 +53,29 @@ export default function Reader({ route, navigation }: Props) {
   const [notesVersion, setNotesVersion] = useState(0);
   const [echoVerse, setEchoVerse] = useState<string | null>(null);
   const [echoSet, setEchoSet] = useState<Set<string>>(new Set());
-  const [related, setRelated] = useState<{ title: string; matches: CompositeMatch[] } | null>(null);
+  const [variantSet, setVariantSet] = useState<Set<string>>(new Set());
+  const [variantVerse, setVariantVerse] = useState<string | null>(null);
+  const [legend, setLegend] = useState(false);
+  const [related, setRelated] = useState<{ title: string; matches: CompositeMatch[]; baseKey?: string } | null>(null);
   const [lens, setLens] = useState<{ baseKey: string; matches: Map<string, CompositeMatch> } | null>(null);
+  const [working, setWorking] = useState(false);
 
-  const openRelated = (key: string) => {
+  // similarity indexes build on first use (~2–3s once); run after a paint so the
+  // "Preparing…" overlay shows instead of a silent freeze
+  const runHeavy = (fn: () => void) => {
     setActionVerse(null);
-    setRelated({ title: `Related to ${key}`, matches: q.similar(key, { topK: 40 }) });
+    setWorking(true);
+    setTimeout(() => {
+      try { fn(); } finally { setWorking(false); }
+    }, 30);
   };
-  const focusOn = (key: string) => {
-    setActionVerse(null);
-    const ms = q.similar(key, { topK: 300 });
-    setLens({ baseKey: key, matches: new Map(ms.map((m) => [m.verse_key, m])) });
-  };
+  const openRelated = (key: string) =>
+    runHeavy(() => setRelated({ title: `Related to ${key}`, matches: q.similar(key, { topK: 40 }), baseKey: key }));
+  const focusOn = (key: string) =>
+    runHeavy(() => {
+      const ms = q.similar(key, { topK: 300 });
+      setLens({ baseKey: key, matches: new Map(ms.map((m) => [m.verse_key, m])) });
+    });
   const jumpTo = (vk: string) =>
     navigation.push("Reader", { chapterId: Number(vk.split(":")[0]), focusVerseKey: vk });
   const [fontScale, setFontScale] = useState<number>(() => {
@@ -126,22 +140,32 @@ export default function Reader({ route, navigation }: Props) {
 
   // build the echo index off the first frame so opening a sūrah isn't blocked;
   // it's cached after the first build, so later chapters resolve instantly
+  // echo (≡) marks — index warms off the main thread, then marks appear
   useEffect(() => {
     let alive = true;
-    const t = setTimeout(() => {
-      const set = new Set(q.chapterEchoes(chapterId));
-      if (alive) setEchoSet(set);
-    }, 50);
-    return () => { alive = false; clearTimeout(t); };
+    q.echoesReady().then(() => { if (alive) setEchoSet(new Set(q.chapterEchoes(chapterId))); });
+    return () => { alive = false; };
+  }, [q, chapterId]);
+
+  // spelling-variant (✍) marks — same non-blocking warm-up
+  useEffect(() => {
+    let alive = true;
+    q.variantsReady().then(() => { if (alive) setVariantSet(q.variantVerses(chapterId)); });
+    return () => { alive = false; };
   }, [q, chapterId]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
       title: chapter?.name_simple ?? `Sūrah ${chapterId}`,
       headerRight: () => (
-        <Pressable onPress={() => setPrefsOpen(true)} hitSlop={12} style={{ paddingHorizontal: 6 }}>
-          <Text style={{ fontSize: 20, color: colors.ink }}>⚙</Text>
-        </Pressable>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 4 }}>
+          <Pressable onPress={() => setLegend(true)} hitSlop={12}>
+            <Text style={{ fontSize: 18, color: colors.inkSoft }}>ⓘ</Text>
+          </Pressable>
+          <Pressable onPress={() => setPrefsOpen(true)} hitSlop={12}>
+            <Text style={{ fontSize: 20, color: colors.ink }}>⚙</Text>
+          </Pressable>
+        </View>
       ),
     });
   }, [navigation, chapter, chapterId]);
@@ -220,7 +244,7 @@ export default function Reader({ route, navigation }: Props) {
             </Text>
           </Pressable>
           <Pressable
-            onPress={() => setRelated({ title: `Focus · ${lens.baseKey}`, matches: [...lens.matches.values()] })}
+            onPress={() => setRelated({ title: `Focus · ${lens.baseKey}`, matches: [...lens.matches.values()].slice(0, 60), baseKey: lens.baseKey })}
             style={styles.lensConnBtn}
           >
             <Text style={styles.lensConnText}>Connections {lens.matches.size}</Text>
@@ -235,6 +259,10 @@ export default function Reader({ route, navigation }: Props) {
         data={verses}
         keyExtractor={(v) => v.verse_key}
         contentContainerStyle={{ padding: 14, paddingBottom: 48 }}
+        removeClippedSubviews
+        windowSize={9}
+        maxToRenderPerBatch={8}
+        initialNumToRender={8}
         onScrollToIndexFailed={(info) => {
           // target row isn't measured yet: jump near it, then retry once rendered
           const offset = Math.max(0, info.averageItemLength * info.index - 80);
@@ -257,10 +285,15 @@ export default function Reader({ route, navigation }: Props) {
               <View style={styles.verseHead}>
                 <Text style={styles.verseKey}>{item.verse_key}</Text>
                 <View style={styles.verseTools}>
+                  {variantSet.has(item.verse_key) && (
+                    <Pressable onPress={() => setVariantVerse(item.verse_key)} hitSlop={10} style={styles.verseMore}>
+                      <Text style={styles.variantMark}>✍</Text>
+                    </Pressable>
+                  )}
                   {hasRare && <Text style={styles.rareMark}>⚲</Text>}
                   {match && (
                     <Pressable
-                      onPress={() => setRelated({ title: `Why in focus · ${item.verse_key}`, matches: [match] })}
+                      onPress={() => setRelated({ title: `Why in focus · ${item.verse_key}`, matches: [match], baseKey: lens?.baseKey })}
                       hitSlop={10}
                       style={styles.verseMore}
                     >
@@ -321,6 +354,8 @@ export default function Reader({ route, navigation }: Props) {
       <WordSheet
         word={selected?.word ?? null}
         rootFreq={selected?.word.root ? freq.get(selected.word.root) ?? null : null}
+        variants={selected ? q.spellingVariants(selected.verseKey, selected.word.position) : []}
+        onJumpVerse={(vk) => { setSelected(null); jumpTo(vk); }}
         onClose={() => setSelected(null)}
         onOpenRoot={(bw) => {
           setSelected(null);
@@ -349,6 +384,16 @@ export default function Reader({ route, navigation }: Props) {
         }}
       />
 
+      <VariantPanel
+        visible={!!variantVerse}
+        verseKey={variantVerse}
+        q={q}
+        onClose={() => setVariantVerse(null)}
+        onJump={(vk) => { setVariantVerse(null); jumpTo(vk); }}
+      />
+
+      <LegendSheet visible={legend} onClose={() => setLegend(false)} />
+
       <EchoPanel
         visible={!!echoVerse}
         verseKey={echoVerse}
@@ -366,9 +411,18 @@ export default function Reader({ route, navigation }: Props) {
         title={related?.title ?? ""}
         matches={related?.matches ?? []}
         q={q}
+        editionIds={editionIds}
+        baseKey={related?.baseKey}
         onClose={() => setRelated(null)}
         onJump={(vk) => { setRelated(null); jumpTo(vk); }}
       />
+
+      {working && (
+        <View style={styles.overlay}>
+          <ActivityIndicator color={colors.gold} size="large" />
+          <Text style={styles.overlayText}>Preparing related āyāt…</Text>
+        </View>
+      )}
 
       <EditionPicker
         visible={pickerOpen}
@@ -505,6 +559,8 @@ function EditionPicker({
 function WordSheet({
   word,
   rootFreq,
+  variants,
+  onJumpVerse,
   onClose,
   onOpenRoot,
   onFollowThread,
@@ -512,6 +568,8 @@ function WordSheet({
 }: {
   word: Word | null;
   rootFreq: number | null;
+  variants: SpellingVariant[];
+  onJumpVerse: (verseKey: string) => void;
   onClose: () => void;
   onOpenRoot: (rootBuckwalter: string) => void;
   onFollowThread: (rootBuckwalter: string) => void;
@@ -530,6 +588,22 @@ function WordSheet({
                 {!!word.pos && <Text style={styles.sheetMetaText}>{word.pos}</Text>}
                 {!!word.lemma && <Text style={styles.sheetMetaText}>lemma {word.lemma}</Text>}
               </View>
+
+              {variants.length > 1 && (
+                <View style={styles.variantsBox}>
+                  <Text style={styles.variantsTitle}>✍ Written {variants.length} ways in the mushaf</Text>
+                  {variants.map((v, i) => (
+                    <View key={i} style={styles.variantRow}>
+                      <Text style={styles.variantArabic}>{v.surface}</Text>
+                      <Text style={styles.variantCount}>×{v.count}</Text>
+                      <Pressable onPress={() => onJumpVerse(v.verses[0]!)} hitSlop={8}>
+                        <Text style={styles.variantJump}>{v.verses[0]} →</Text>
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              )}
+
               {rootFreq != null && rootFreq <= RARE_THRESHOLD && (
                 <Text style={styles.rareLine}>⚲ rare root · appears {rootFreq} time{rootFreq === 1 ? "" : "s"} in the Book</Text>
               )}
@@ -593,7 +667,13 @@ const styles = StyleSheet.create({
   verseHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
   verseKey: { color: colors.gold, fontWeight: "700", fontSize: 12 },
   verseTools: { flexDirection: "row", alignItems: "center", gap: 4 },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(250,248,243,0.85)", alignItems: "center", justifyContent: "center",
+  },
+  overlayText: { color: colors.inkSoft, marginTop: 12, fontSize: 14 },
   rareMark: { color: colors.inkSoft, fontSize: 15, paddingHorizontal: 4 },
+  variantMark: { color: colors.amberStrong, fontSize: 15, paddingHorizontal: 4 },
   rareLine: { color: colors.gold, fontSize: 13, textAlign: "center", marginTop: 12 },
   verseMore: { paddingHorizontal: 8, paddingVertical: 2 },
   verseMoreText: { color: colors.inkSoft, fontSize: 16, lineHeight: 20 },
@@ -613,6 +693,15 @@ const styles = StyleSheet.create({
   sheetArabic: { fontSize: 40, color: colors.ink, textAlign: "center", writingDirection: "rtl" },
   sheetTranslit: { fontSize: 15, color: colors.lapis, textAlign: "center", marginTop: 6 },
   sheetGloss: { fontSize: 17, color: colors.ink, textAlign: "center", marginTop: 6, fontWeight: "600" },
+  variantsBox: {
+    marginTop: 14, borderWidth: 1, borderColor: colors.amberStrong, borderRadius: 10,
+    backgroundColor: colors.amber, padding: 12,
+  },
+  variantsTitle: { color: colors.ink, fontSize: 13, fontWeight: "700", marginBottom: 8 },
+  variantRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
+  variantArabic: { color: colors.ink, fontSize: 26, writingDirection: "rtl", flex: 1 },
+  variantCount: { color: colors.inkSoft, fontSize: 13, marginHorizontal: 10 },
+  variantJump: { color: colors.lapis, fontSize: 13, fontWeight: "600" },
   sheetMeta: { flexDirection: "row", justifyContent: "center", gap: 14, marginTop: 10 },
   sheetMetaText: { color: colors.inkSoft, fontSize: 13 },
   rootBtn: {

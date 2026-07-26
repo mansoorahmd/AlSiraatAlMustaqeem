@@ -16,6 +16,8 @@ export function RelatedPanel({
   title,
   matches,
   q,
+  editionIds,
+  baseKey,
   onJump,
 }: {
   visible: boolean;
@@ -23,9 +25,15 @@ export function RelatedPanel({
   title: string;
   matches: CompositeMatch[];
   q: QuranApi;
+  editionIds: Set<number>;
+  baseKey?: string;
   onJump: (verseKey: string) => void;
 }) {
   const surah = (vk: string) => q.chapter(cnum(vk))?.name_simple ?? "";
+  const trFor = (vk: string) =>
+    editionIds.size ? q.verseTranslations(vk).filter((t) => editionIds.has(t.resource_id)) : [];
+  const base = visible && baseKey ? q.verse(baseKey, { script: "uthmani" }) : undefined;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.root}>
@@ -37,13 +45,21 @@ export function RelatedPanel({
           </View>
           <Text style={styles.sub}>{matches.length} related āyāt · closest first</Text>
           <ScrollView contentContainerStyle={{ paddingBottom: 12 }}>
+            {!!base && baseKey && (
+              <View style={styles.baseCard}>
+                <Text style={styles.baseKey}>base · {baseKey} · {surah(baseKey)}</Text>
+                <Text style={styles.baseText}>{(base.text as string) ?? ""}</Text>
+                {trFor(baseKey).map((t) => <Text key={t.resource_id} style={styles.tr}>{t.text}</Text>)}
+              </View>
+            )}
             {matches.map((m) => (
               <Pressable key={m.verse_key} style={styles.row} onPress={() => onJump(m.verse_key)}>
                 <View style={styles.rowHead}>
                   <Text style={styles.key}>{m.verse_key} · {surah(m.verse_key)}</Text>
                   <Text style={styles.score}>{m.score.toFixed(3)}</Text>
                 </View>
-                <Text style={styles.text} numberOfLines={3}>{m.text ?? ""}</Text>
+                <Text style={styles.text}>{m.text ?? ""}</Text>
+                {trFor(m.verse_key).map((t) => <Text key={t.resource_id} style={styles.tr}>{t.text}</Text>)}
                 {m.phrase_run && m.phrase_run.length > 0 && (
                   <Text style={styles.phrase}>phrase: {m.phrase_run.join(" ")}</Text>
                 )}
@@ -74,6 +90,10 @@ const styles = StyleSheet.create({
   key: { color: colors.gold, fontWeight: "700", fontSize: 12 },
   score: { color: colors.inkSoft, fontSize: 11 },
   text: { color: colors.ink, fontSize: 20, lineHeight: 36, writingDirection: "rtl", textAlign: "right", marginTop: 3 },
+  tr: { color: colors.inkSoft, fontSize: 13, lineHeight: 19, marginTop: 5 },
+  baseCard: { backgroundColor: colors.amber, borderRadius: 10, padding: 12, marginVertical: 8 },
+  baseKey: { color: colors.ink, fontSize: 11, fontWeight: "700", marginBottom: 4 },
+  baseText: { color: colors.ink, fontSize: 22, lineHeight: 42, writingDirection: "rtl", textAlign: "right" },
   phrase: { color: colors.gold, fontSize: 15, writingDirection: "rtl", textAlign: "right", marginTop: 4 },
   shared: { color: colors.lapis, fontSize: 14, writingDirection: "rtl", textAlign: "right", marginTop: 3 },
 });

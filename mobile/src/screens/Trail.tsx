@@ -139,7 +139,7 @@ export default function Trail({ route, navigation }: Props) {
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Text style={styles.vk}>{hop.verseKey} · {q.chapter(cnum(hop.verseKey))?.name_simple}</Text>
-        <VerseText text={(verse?.text as string) ?? ""} words={words} highlightRoots={litRoots} onWordPress={() => {}} size={30} />
+        <VerseText text={(verse?.text as string) ?? ""} words={words} highlightRoots={litRoots} onWordPress={() => {}} size={26} />
         {translations.map((t) => (
           <View key={t.resource_id} style={styles.tr}>
             <Text style={styles.trText}>{t.text}</Text>

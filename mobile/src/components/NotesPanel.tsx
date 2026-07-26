@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View,
+  FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import type { Db } from "../data/db";
 import {
@@ -82,8 +82,12 @@ export function NotesPanel({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={styles.sheet}>
           <View style={styles.head}>
             <Text style={styles.title}>{title}</Text>
             <Pressable onPress={onClose}>
@@ -148,8 +152,8 @@ export function NotesPanel({
               />
             </>
           )}
-        </Pressable>
-      </Pressable>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

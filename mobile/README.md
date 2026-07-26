@@ -75,12 +75,33 @@ npm run android           # expo run:android — builds a dev client & installs 
 #   (first native build takes a while; afterwards `npm start` + `a` is enough)
 ```
 
-For a shareable APK/AAB use EAS:
+For a shareable build use **EAS** (profiles are in `eas.json`):
 
 ```bash
 npm i -g eas-cli
-eas build -p android --profile preview      # cloud build → installable APK
+eas login
+eas build -p android --profile preview       # cloud build → installable APK (sideload / share)
+eas build -p android --profile production     # → AAB for Google Play
 ```
+
+The `preview` profile emits a standalone **APK** you can send to a phone and
+install directly; `production` emits an **AAB** for the Play Store (which
+handles the ~143 MB corpus cleanly). Both run without Metro — the database is
+bundled and copied on first launch.
+
+### Backup
+
+Home → **Back up my research** exports `research.db` (all notes, questions,
+meanings, trails and prefs) through the OS share sheet as a single `.db` file —
+save it to Drive or email it to yourself. (Uses `expo-sharing`.)
+
+### Fonts (optional)
+
+The reader uses the system Arabic font by default. To ship a proper mushaf face
+(and render IndoPak's PUA waqf glyphs instead of omitting them), drop a `.ttf`
+into `assets/fonts/` and follow `assets/fonts/README.md` — the Arabic text
+already reads `font.arabic` from `src/theme/tokens.ts`, so enabling it is a
+one-line change plus a native rebuild.
 
 ### About the ~143 MB database
 

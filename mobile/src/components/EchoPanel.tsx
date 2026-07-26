@@ -27,6 +27,15 @@ export function EchoPanel({
     [visible, verseKey, q],
   );
   const surahName = (vk: string) => q.chapter(cnum(vk))?.name_simple ?? "";
+  const base = useMemo(
+    () => (visible && verseKey ? q.verse(verseKey, { script: "uthmani" }) : undefined),
+    [visible, verseKey, q],
+  );
+  const baseTr = useMemo(
+    () => (visible && verseKey && editionIds.size
+      ? q.verseTranslations(verseKey).filter((t) => editionIds.has(t.resource_id)) : []),
+    [visible, verseKey, editionIds, q],
+  );
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -38,6 +47,15 @@ export function EchoPanel({
             <Pressable onPress={onClose} hitSlop={10}><Text style={styles.done}>Done</Text></Pressable>
           </View>
           <ScrollView contentContainerStyle={{ paddingBottom: 12 }} showsVerticalScrollIndicator>
+            {!!base && (
+              <View style={styles.baseCard}>
+                <Text style={styles.baseKey}>this āyah · {verseKey} · {verseKey ? surahName(verseKey) : ""}</Text>
+                <Text style={styles.baseText}>{(base.text as string) ?? ""}</Text>
+                {baseTr.map((t) => (
+                  <Text key={t.resource_id} style={styles.baseTr}>{t.text}</Text>
+                ))}
+              </View>
+            )}
             {echoes.length === 0 && <Text style={styles.empty}>No verbatim repeats in this āyah.</Text>}
             {echoes.map((e, i) => (
               <EchoRow key={i} echo={e} q={q} surahName={surahName} editionIds={editionIds} onJump={onJump} />
@@ -120,6 +138,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 15, fontWeight: "700", color: colors.ink },
   done: { color: colors.lapis, fontWeight: "600", fontSize: 15 },
   empty: { color: colors.inkSoft, textAlign: "center", paddingVertical: 18 },
+  baseCard: { backgroundColor: colors.amber, borderRadius: 10, padding: 12, marginBottom: 6 },
+  baseKey: { color: colors.ink, fontSize: 11, fontWeight: "700", marginBottom: 4 },
+  baseText: { color: colors.ink, fontSize: 22, lineHeight: 42, writingDirection: "rtl", textAlign: "right" },
+  baseTr: { color: colors.inkSoft, fontSize: 13, lineHeight: 19, marginTop: 6 },
   echo: { borderTopWidth: 1, borderTopColor: colors.surfaceAlt, paddingVertical: 12 },
   phrase: { color: colors.ink, fontSize: 24, lineHeight: 42, writingDirection: "rtl", textAlign: "right" },
   meta: { color: colors.inkSoft, fontSize: 12, marginTop: 2 },

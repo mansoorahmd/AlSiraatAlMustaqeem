@@ -15,6 +15,8 @@ import { openDatabaseSync, type SQLiteDatabase } from "expo-sqlite";
 
 export interface Db {
   query<T = Record<string, unknown>>(sql: string, params?: unknown[]): T[];
+  /** Async read that runs off the JS thread (native) — used by index warm-ups. */
+  queryAsync<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
   one<T = Record<string, unknown>>(sql: string, params?: unknown[]): T | undefined;
   scalar<T = unknown>(sql: string, params?: unknown[]): T | undefined;
   run(sql: string, params?: unknown[]): { changes: number | bigint };
@@ -31,6 +33,9 @@ export class ExpoDb implements Db {
   constructor(private raw: SQLiteDatabase) {}
   query<T = Record<string, unknown>>(sql: string, params: unknown[] = []): T[] {
     return this.raw.getAllSync(sql, params as never[]) as T[];
+  }
+  queryAsync<T = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T[]> {
+    return this.raw.getAllAsync(sql, params as never[]) as Promise<T[]>;
   }
   one<T = Record<string, unknown>>(sql: string, params: unknown[] = []): T | undefined {
     return (this.raw.getFirstSync(sql, params as never[]) as T | null) ?? undefined;
@@ -51,13 +56,20 @@ export class ExpoDb implements Db {
 
 /** Writable research DB (the reader's own notes & meanings). Created on first use. */
 let researchDb: Db | null = null;
+let researchPath: string | null = null;
 export function openResearchDb(): Db {
   if (researchDb) return researchDb;
   const raw = openDatabaseSync("research.db");
+  researchPath = raw.databasePath; // absolute on-device path, for backup/export
   const db = new ExpoDb(raw);
   db.exec(RESEARCH_SCHEMA);
   researchDb = db;
   return db;
+}
+
+/** Absolute path of the on-device research.db (once opened) — used for backup. */
+export function researchDbPath(): string | null {
+  return researchPath;
 }
 
 const RESEARCH_SCHEMA = `
