@@ -12,6 +12,7 @@ import { useQuran } from "../state/DbContext";
 import { getPref, setPref, notesForChapter, addToActiveCompare, addFocus, removeFocus, isFocused, FOCUS_CAP } from "../data/research";
 import { toast } from "../ui/toast";
 import type { SpellingVariant } from "../data/spellings";
+import type { Wazn } from "../data/wazn";
 import { NotesPanel, type NoteScope } from "../components/NotesPanel";
 import { EchoPanel } from "../components/EchoPanel";
 import { RelatedPanel } from "../components/RelatedPanel";
@@ -20,7 +21,7 @@ import { LegendSheet } from "../components/LegendSheet";
 import { VerseText } from "../components/VerseText";
 import { WordGrid } from "../components/WordGrid";
 import { Chip } from "../components/ui";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Reader">;
 
@@ -406,6 +407,7 @@ export default function Reader({ route, navigation }: Props) {
         word={selected?.word ?? null}
         rootFreq={selected?.word.root ? freq.get(selected.word.root) ?? null : null}
         variants={selected ? q.spellingVariants(selected.verseKey, selected.word.position) : []}
+        wazn={selected ? q.wazn(selected.verseKey, selected.word.position) : null}
         onJumpVerse={(vk) => { setSelected(null); jumpTo(vk); }}
         onClose={() => setSelected(null)}
         onOpenRoot={(bw) => {
@@ -631,6 +633,7 @@ function WordSheet({
   word,
   rootFreq,
   variants,
+  wazn,
   onJumpVerse,
   onClose,
   onOpenRoot,
@@ -641,6 +644,7 @@ function WordSheet({
   word: Word | null;
   rootFreq: number | null;
   variants: SpellingVariant[];
+  wazn: Wazn | null;
   onJumpVerse: (verseKey: string) => void;
   onClose: () => void;
   onOpenRoot: (rootBuckwalter: string) => void;
@@ -661,6 +665,25 @@ function WordSheet({
                 {!!word.pos && <Text style={styles.sheetMetaText}>{word.pos}</Text>}
                 {!!word.lemma && <Text style={styles.sheetMetaText}>lemma {word.lemma}</Text>}
               </View>
+
+              {wazn && (
+                <View style={styles.waznBox}>
+                  <Text style={styles.waznLabel}>وزن · FORM</Text>
+                  <View style={styles.waznHead}>
+                    {!!wazn.wazn && <Text style={styles.waznPattern}>{wazn.wazn}</Text>}
+                    {!!wazn.radicals && (
+                      <Text style={styles.waznRadicals}>on {wazn.radicals.join(" · ")}</Text>
+                    )}
+                  </View>
+                  <Text style={styles.waznName}>{wazn.label}</Text>
+                  {(!!wazn.aspect || !!wazn.voice) && (
+                    <Text style={styles.waznGram}>
+                      {[wazn.aspect, wazn.voice].filter(Boolean).join(" · ")}
+                    </Text>
+                  )}
+                  {!!wazn.sense && <Text style={styles.waznSense}>{wazn.sense}</Text>}
+                </View>
+              )}
 
               {variants.length > 1 && (
                 <View style={styles.variantsBox}>
@@ -785,6 +808,17 @@ const styles = StyleSheet.create({
   variantJump: { color: colors.lapis, fontSize: 13, fontWeight: "600" },
   sheetMeta: { flexDirection: "row", justifyContent: "center", gap: 14, marginTop: 10 },
   sheetMetaText: { color: colors.inkSoft, fontSize: 13 },
+  waznBox: {
+    marginTop: 14, borderWidth: 1, borderColor: colors.border, borderRadius: 10,
+    backgroundColor: colors.surfaceAlt, padding: 12, alignItems: "center",
+  },
+  waznLabel: { color: colors.inkSoft, fontSize: 10, fontWeight: "700", letterSpacing: 1 },
+  waznHead: { flexDirection: "row", alignItems: "baseline", gap: 12, marginTop: 6 },
+  waznPattern: { color: colors.gold, fontSize: 30, fontFamily: font.arabic, writingDirection: "rtl" },
+  waznRadicals: { color: colors.inkSoft, fontSize: 15, writingDirection: "rtl" },
+  waznName: { color: colors.ink, fontSize: 14, fontWeight: "600", marginTop: 6 },
+  waznGram: { color: colors.lapis, fontSize: 13, marginTop: 2 },
+  waznSense: { color: colors.inkSoft, fontSize: 13, lineHeight: 19, textAlign: "center", marginTop: 4 },
   rootBtn: {
     marginTop: 18, backgroundColor: colors.ink, borderRadius: 10, paddingVertical: 12, alignItems: "center",
   },

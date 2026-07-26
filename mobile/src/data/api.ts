@@ -11,6 +11,7 @@ import { EchoIndex } from "./echoes";
 import { SimilarityEngine } from "../similarity/compose";
 import { FreeTextSearch } from "../similarity/freetext";
 import { spellingVariantsForWord, rootSpellingsByForm, exactWordOccurrences } from "./spellings";
+import { waznForWord } from "./wazn";
 import { VariantIndex } from "./variants";
 
 export function makeApi(db: Db) {
@@ -66,6 +67,7 @@ export function makeApi(db: Db) {
     // rasm (spelling) variants of a word
     spellingVariants: (verseKey: string, wordPosition: number) =>
       spellingVariantsForWord(db, verseKey, wordPosition),
+    wazn: (verseKey: string, wordPosition: number) => waznForWord(db, verseKey, wordPosition),
     variantVerses: (chapterId: number) => variants().versesInChapter(chapterId),
     variantWords: (verseKey: string) => variants().wordsInVerse(verseKey),
     rootSpellingsByForm: (root: string) => rootSpellingsByForm(db, root),

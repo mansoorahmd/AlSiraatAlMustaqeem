@@ -177,6 +177,18 @@ smoke test; data ports also add parity fixtures).
 > "shares with above" row of coloured dots. Pin āyāt / roots from the reader
 > ⋯ menu and root pages; collapse, remove, clear.
 
+### Wazn (صرف pattern) on the word sheet
+> Tapping a word now shows its **wazn** — the morphological measure its shape
+> carries. Derived from corpus tags (`verb_form` I–XII, `derivation` =
+> ACT PCPL / PASS PCPL / VN, aspect, voice) mapped to the canonical template:
+> verbs → فَعَلَ … اِسْتَفْعَلَ (+ a plain-language sense per form, and
+> past/present/command · passive); active participle → فَاعِل / مُفْعِل / مُسْتَفْعِل …;
+> passive participle → مَفْعُول / مُفْعَل …; masdar → تَفْعِيل / إِفْعَال / اِسْتِفْعَال …
+> (Form I masdar is سماعي, shown without a fixed measure). The pattern is the
+> abstract ف‑ع‑ل measure shown beside the root's three radicals (no fabricated
+> surface, so weak/assimilated roots aren't misrepresented). `data/wazn.ts` +
+> `api.wazn(vk,pos)`. Validated: ٱسْتِبْدَال→اِسْتِفْعَال, مُرْسَل→مُفْعَل, ٱهْدِ→فَعَلَ.
+
 ### Focus shortlist (persisted, Home-surfaced)
 > A persisted **Focus** shortlist (table `focus`, survives restart): up to **5
 > āyāt + 5 roots** (`FOCUS_CAP`). Toggle from the reader ⋯ (★ Add/Remove Focus)
