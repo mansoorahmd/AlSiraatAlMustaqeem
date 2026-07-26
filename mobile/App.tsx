@@ -18,6 +18,8 @@ import RootsExplorer from "./src/screens/RootsExplorer";
 import RootDetail from "./src/screens/RootDetail";
 import OpenQuestions from "./src/screens/OpenQuestions";
 import Trail from "./src/screens/Trail";
+import Motifs from "./src/screens/Motifs";
+import Compare from "./src/screens/Compare";
 import { colors } from "./src/theme/tokens";
 
 const navTheme = {
@@ -80,9 +82,19 @@ function RootsStack() {
       <RootsNav.Screen name="RootsExplorer" component={RootsExplorer} options={{ title: "Roots" }} />
       <RootsNav.Screen name="RootDetail" component={RootDetail} />
       <RootsNav.Screen name="MyMeanings" component={MyMeanings} options={{ title: "My meanings" }} />
+      <RootsNav.Screen name="Motifs" component={Motifs} options={{ title: "Motifs" }} />
       <RootsNav.Screen name="Reader" component={Reader} />
       <RootsNav.Screen name="Trail" component={Trail} options={{ title: "Trail" }} />
     </RootsNav.Navigator>
+  );
+}
+
+const CompareNav = createNativeStackNavigator<RootStackParamList>();
+function CompareStack() {
+  return (
+    <CompareNav.Navigator screenOptions={screenOpts}>
+      <CompareNav.Screen name="Compare" component={Compare} options={{ title: "Compare" }} />
+    </CompareNav.Navigator>
   );
 }
 
@@ -116,6 +128,7 @@ export default function App() {
             <Tabs.Screen name="ReadTab" component={ReadStack} options={{ title: "Read", tabBarIcon: tabIcon("﷽") }} />
             <Tabs.Screen name="SearchTab" component={SearchStack} options={{ title: "Search", tabBarIcon: tabIcon("🔍") }} />
             <Tabs.Screen name="RootsTab" component={RootsStack} options={{ title: "Roots", tabBarIcon: tabIcon("ⵣ") }} />
+            <Tabs.Screen name="CompareTab" component={CompareStack} options={{ title: "Compare", tabBarIcon: tabIcon("⇋") }} />
           </Tabs.Navigator>
         </NavigationContainer>
       </DbProvider>

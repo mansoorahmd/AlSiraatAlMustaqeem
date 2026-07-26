@@ -50,6 +50,8 @@ export function makeApi(db: Db) {
     rootOccurrences: (root: string, script: Script = "uthmani", limit: number | null = 3000) =>
       roots.rootOccurrences(db, root, { script, limit }),
     rootFrequencies: () => (freqMap ??= roots.rootFrequencies(db)),
+    formOccurrences: (lemmaBuckwalter: string, script: Script = "uthmani", limit = 1000) =>
+      roots.formOccurrences(db, lemmaBuckwalter, script, limit),
     rootLinkages: (root: string, opts: { scope?: "ayah" | "adjacent"; limit?: number; sortBy?: "score" | "count" } = {}) =>
       links().coOccurringRoots(root, opts),
 

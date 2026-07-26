@@ -107,6 +107,25 @@ export function getRoot(db: Db, root: string): RootDetail | null {
   };
 }
 
+/** Āyāt in which a specific form (lemma) occurs — one row per verse. */
+export function formOccurrences(
+  db: Db,
+  lemmaBuckwalter: string,
+  script: Script = "uthmani",
+  limit = 1000,
+): { verse_key: string; word_position: number; verse_text: string | null }[] {
+  const col = SCRIPTS[script] ?? "text_uthmani";
+  return db.query(
+    `SELECT ws.verse_key AS verse_key, MIN(ws.word_position) AS word_position, v.${col} AS verse_text
+     FROM word_segments ws JOIN verses v ON v.verse_key = ws.verse_key
+     WHERE ws.lemma_buckwalter = ? AND ws.segment_type = 'STEM'
+     GROUP BY ws.verse_key
+     ORDER BY v.chapter_id, v.verse_number
+     LIMIT ?`,
+    [lemmaBuckwalter, limit],
+  );
+}
+
 /** root_arabic → total occurrences in the Book (for rare-root marks). */
 export function rootFrequencies(db: Db): Map<string, number> {
   const m = new Map<string, number>();

@@ -5,10 +5,11 @@ import type { RootStackParamList } from "../navigation/types";
 import type { Linkage, RootDetail as RootDetailT, RootOccurrence } from "../types";
 import * as Clipboard from "expo-clipboard";
 import { useQuran } from "../state/DbContext";
-import { getPref, setUserRootMeaning, userRootMeaning } from "../data/research";
+import { addCompare, getPref, setUserRootMeaning, userRootMeaning } from "../data/research";
 import { Card, Chip, SectionTitle } from "../components/ui";
 import { CooccurPanel } from "../components/CooccurPanel";
 import { FormSpellingPanel } from "../components/FormSpellingPanel";
+import { MotifPicker } from "../components/MotifPicker";
 import type { SpellingVariant } from "../data/spellings";
 import { colors } from "../theme/tokens";
 
@@ -33,7 +34,30 @@ export default function RootDetail({ route, navigation }: Props) {
   const [editing, setEditing] = useState(false);
   const [coll, setColl] = useState<Linkage | null>(null);
   const formSpellings = useMemo(() => q.rootSpellingsByForm(root), [q, root]);
-  const [formPick, setFormPick] = useState<{ arabic: string; groups: SpellingVariant[][] } | null>(null);
+  const [formPick, setFormPick] = useState<{ arabic: string; lemmaBw: string; groups: SpellingVariant[][] } | null>(null);
+  const [groupByForm, setGroupByForm] = useState(true);
+  const [motifOpen, setMotifOpen] = useState(false);
+  const [compareMsg, setCompareMsg] = useState(false);
+
+  type OccItem =
+    | { kind: "header"; label: string; pos: string; count: number }
+    | { kind: "occ"; occ: RootOccurrence };
+  const items = useMemo<OccItem[]>(() => {
+    if (!groupByForm) return occurrences.map((o) => ({ kind: "occ", occ: o }));
+    const by = new Map<string, RootOccurrence[]>();
+    for (const o of occurrences) {
+      const k = o.lemma_arabic ?? "—";
+      let a = by.get(k);
+      if (!a) { a = []; by.set(k, a); }
+      a.push(o);
+    }
+    const out: OccItem[] = [];
+    for (const [label, occs] of by) {
+      out.push({ kind: "header", label, pos: occs[0]?.pos_english ?? "", count: occs.length });
+      for (const o of occs) out.push({ kind: "occ", occ: o });
+    }
+    return out;
+  }, [occurrences, groupByForm]);
   const editionIds = useMemo<Set<number>>(() => {
     const e = getPref(research, "editions");
     if (e == null) return new Set([20, 54]);
@@ -71,6 +95,14 @@ export default function RootDetail({ route, navigation }: Props) {
           {detail.letters_arabic ?? ""} · {detail.total_occurrences} occurrences · {detail.forms.length} forms
         </Text>
         {!!detail.meaning_en && <Text style={styles.heroGloss}>{detail.meaning_en}</Text>}
+        <View style={styles.heroBtns}>
+          <Pressable style={styles.motifBtn} onPress={() => setMotifOpen(true)}>
+            <Text style={styles.motifBtnText}>❦ Add to motif</Text>
+          </Pressable>
+          <Pressable style={styles.motifBtn} onPress={() => { addCompare(research, "root", detail.root_buckwalter, detail.root_arabic); setCompareMsg(true); }}>
+            <Text style={styles.motifBtnText}>{compareMsg ? "✓ in Compare" : "⇋ Compare"}</Text>
+          </Pressable>
+        </View>
       </View>
 
       <Card>
@@ -133,7 +165,7 @@ export default function RootDetail({ route, navigation }: Props) {
             <Pressable
               key={`${f.lemma_buckwalter}-${f.pos ?? ""}-${i}`}
               style={styles.formRow}
-              onPress={() => setFormPick({ arabic: f.lemma_arabic ?? f.lemma_buckwalter, groups: groups ?? [] })}
+              onPress={() => setFormPick({ arabic: f.lemma_arabic ?? f.lemma_buckwalter, lemmaBw: f.lemma_buckwalter, groups: groups ?? [] })}
             >
               <Text style={styles.formArabic}>{f.lemma_arabic ?? f.lemma_buckwalter}</Text>
               {!!groups && <Text style={styles.formVariant}>✍</Text>}
@@ -167,7 +199,12 @@ export default function RootDetail({ route, navigation }: Props) {
         ))}
       </Card>
 
-      <SectionTitle>Occurrences ({occurrences.length}{occurrences.length >= 500 ? "+" : ""})</SectionTitle>
+      <View style={styles.occHead}>
+        <SectionTitle>Occurrences ({occurrences.length}{occurrences.length >= 500 ? "+" : ""})</SectionTitle>
+        <Pressable onPress={() => setGroupByForm((v) => !v)} hitSlop={8}>
+          <Text style={styles.toggle}>{groupByForm ? "in mushaf order" : "group by form"}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 
@@ -176,24 +213,31 @@ export default function RootDetail({ route, navigation }: Props) {
       <FlatList
         style={{ backgroundColor: colors.bg }}
         contentContainerStyle={{ padding: 14, paddingBottom: 40 }}
-        data={occurrences}
-        keyExtractor={(o, i) => `${o.verse_key}-${o.word_position}-${i}`}
+        data={items}
+        keyExtractor={(it, i) => (it.kind === "header" ? `h${i}` : `o${i}`)}
         ListHeaderComponent={Header}
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.occ}
-            onPress={() =>
-              navigation.navigate("Reader", {
-                chapterId: chapterOf(item.verse_key),
-                focusVerseKey: item.verse_key,
-                focusWordPos: item.word_position,
-              })
-            }
-          >
-            <Text style={styles.occKey}>{item.verse_key}</Text>
-            <Text style={styles.occText} numberOfLines={2}>{item.verse_text ?? ""}</Text>
-          </Pressable>
-        )}
+        renderItem={({ item }) =>
+          item.kind === "header" ? (
+            <View style={styles.formHeader}>
+              <Text style={styles.formHeaderAr}>{item.label}</Text>
+              <Text style={styles.formHeaderMeta}>{item.pos}{item.pos ? " · " : ""}{item.count}</Text>
+            </View>
+          ) : (
+            <Pressable
+              style={styles.occ}
+              onPress={() =>
+                navigation.navigate("Reader", {
+                  chapterId: chapterOf(item.occ.verse_key),
+                  focusVerseKey: item.occ.verse_key,
+                  focusWordPos: item.occ.word_position,
+                })
+              }
+            >
+              <Text style={styles.occKey}>{item.occ.verse_key}</Text>
+              <Text style={styles.occText} numberOfLines={2}>{item.occ.verse_text ?? ""}</Text>
+            </Pressable>
+          )
+        }
       />
 
       <CooccurPanel
@@ -210,10 +254,22 @@ export default function RootDetail({ route, navigation }: Props) {
       <FormSpellingPanel
         visible={!!formPick}
         title={formPick?.arabic ?? ""}
+        lemmaBuckwalter={formPick?.lemmaBw ?? null}
         groups={formPick?.groups ?? []}
+        q={q}
         onClose={() => setFormPick(null)}
         onJump={(vk) => { setFormPick(null); navigation.navigate("Reader", { chapterId: chapterOf(vk), focusVerseKey: vk }); }}
       />
+
+      {detail && (
+        <MotifPicker
+          visible={motifOpen}
+          onClose={() => setMotifOpen(false)}
+          research={research}
+          rootBw={detail.root_buckwalter}
+          rootAr={detail.root_arabic}
+        />
+      )}
     </>
   );
 }
@@ -231,6 +287,9 @@ const styles = StyleSheet.create({
   heroArabic: { fontSize: 52, color: colors.gold, writingDirection: "rtl" },
   heroMeta: { color: colors.inkSoft, fontSize: 13, marginTop: 6 },
   heroGloss: { color: colors.ink, fontSize: 16, marginTop: 6, fontStyle: "italic" },
+  heroBtns: { flexDirection: "row", gap: 10, marginTop: 12 },
+  motifBtn: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 7 },
+  motifBtnText: { color: colors.lapis, fontSize: 13, fontWeight: "600" },
   mineInput: {
     borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 10,
     minHeight: 70, textAlignVertical: "top", color: colors.ink, backgroundColor: colors.bg,
@@ -253,6 +312,14 @@ const styles = StyleSheet.create({
   dictSource: { color: colors.inkSoft, fontSize: 11, fontWeight: "600" },
   copy: { color: colors.lapis, fontSize: 12, fontWeight: "600" },
   showAll: { color: colors.lapis, fontSize: 13, fontWeight: "600", marginTop: 4 },
+  occHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  toggle: { color: colors.lapis, fontSize: 13, fontWeight: "600" },
+  formHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    backgroundColor: colors.surfaceAlt, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 6, marginTop: 4,
+  },
+  formHeaderAr: { color: colors.ink, fontSize: 20, writingDirection: "rtl" },
+  formHeaderMeta: { color: colors.inkSoft, fontSize: 12 },
   dictMeaning: { color: colors.ink, fontSize: 14, lineHeight: 20 },
   rtl: { writingDirection: "rtl", textAlign: "right" },
   occ: { backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 8 },

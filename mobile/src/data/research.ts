@@ -146,6 +146,98 @@ export function setUserRootMeaning(db: Db, rootBuckwalter: string, meaning: stri
   );
 }
 
+// -- compare tray (pin āyāt & roots to view side by side) --
+export interface CompareItem {
+  id: number;
+  kind: "ayah" | "root";
+  ref: string;
+  label: string | null;
+  created_at: string;
+}
+
+export function listCompare(db: Db): CompareItem[] {
+  return db.query<CompareItem>("SELECT * FROM compare ORDER BY created_at");
+}
+export function addCompare(db: Db, kind: "ayah" | "root", ref: string, label: string | null): void {
+  db.run("INSERT OR IGNORE INTO compare (kind, ref, label) VALUES (?, ?, ?)", [kind, ref, label]);
+}
+export function removeCompare(db: Db, id: number): void {
+  db.run("DELETE FROM compare WHERE id = ?", [id]);
+}
+export function clearCompare(db: Db): void {
+  db.run("DELETE FROM compare", []);
+}
+export function compareCount(db: Db): number {
+  return db.scalar<number>("SELECT COUNT(*) FROM compare") ?? 0;
+}
+export function isCompared(db: Db, kind: "ayah" | "root", ref: string): boolean {
+  return (db.scalar<number>("SELECT 1 FROM compare WHERE kind = ? AND ref = ?", [kind, ref]) ?? 0) === 1;
+}
+
+// -- motifs (reader-defined groupings of roots sharing a linguistic theme) --
+export interface Motif {
+  id: number;
+  name: string;
+  created_at: string;
+  count?: number;
+}
+
+export function listMotifs(db: Db): Motif[] {
+  return db.query<Motif>(
+    `SELECT m.id, m.name, m.created_at, COUNT(mr.root_buckwalter) AS count
+     FROM motifs m LEFT JOIN motif_roots mr ON mr.motif_id = m.id
+     GROUP BY m.id ORDER BY m.name`,
+  );
+}
+
+export function createMotif(db: Db, name: string): number {
+  db.run("INSERT INTO motifs (name) VALUES (?)", [name]);
+  return db.scalar<number>("SELECT last_insert_rowid()") ?? 0;
+}
+
+export function renameMotif(db: Db, id: number, name: string): void {
+  db.run("UPDATE motifs SET name = ? WHERE id = ?", [name, id]);
+}
+
+export function deleteMotif(db: Db, id: number): void {
+  db.run("DELETE FROM motif_roots WHERE motif_id = ?", [id]);
+  db.run("DELETE FROM motifs WHERE id = ?", [id]);
+}
+
+export function motifMembers(db: Db, id: number): { root_buckwalter: string; root_arabic: string | null }[] {
+  return db.query("SELECT root_buckwalter, root_arabic FROM motif_roots WHERE motif_id = ? ORDER BY root_arabic", [id]);
+}
+
+/** Motifs that already contain this root (for showing ticks in the picker). */
+export function motifsForRoot(db: Db, rootBuckwalter: string): number[] {
+  return db.query<{ motif_id: number }>(
+    "SELECT motif_id FROM motif_roots WHERE root_buckwalter = ?", [rootBuckwalter],
+  ).map((r) => r.motif_id);
+}
+
+export function addRootToMotif(db: Db, motifId: number, bw: string, ar: string | null): void {
+  db.run(
+    "INSERT OR IGNORE INTO motif_roots (motif_id, root_buckwalter, root_arabic) VALUES (?, ?, ?)",
+    [motifId, bw, ar],
+  );
+}
+
+export function removeRootFromMotif(db: Db, motifId: number, bw: string): void {
+  db.run("DELETE FROM motif_roots WHERE motif_id = ? AND root_buckwalter = ?", [motifId, bw]);
+}
+
+// -- recent searches (device-local, capped) --
+export function getRecentSearches(db: Db): string[] {
+  try { return JSON.parse(getPref(db, "recentSearches") ?? "[]"); } catch { return []; }
+}
+
+export function pushRecentSearch(db: Db, q: string): void {
+  const query = q.trim();
+  if (!query) return;
+  const next = [query, ...getRecentSearches(db).filter((x) => x !== query)].slice(0, 8);
+  setPref(db, "recentSearches", JSON.stringify(next));
+}
+
 // -- device-local preferences (reading settings, last position, …) --
 export function getPref(db: Db, key: string): string | null {
   return db.scalar<string>("SELECT value FROM prefs WHERE key = ?", [key]) ?? null;

@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import type { CompositeMatch, Verse } from "../types";
 import { useQuran } from "../state/DbContext";
+import { getRecentSearches, pushRecentSearch } from "../data/research";
 import { ArabicKeyboard } from "../components/ArabicKeyboard";
 import { VerseJump } from "../components/VerseJump";
 import { Chip } from "../components/ui";
@@ -17,17 +18,21 @@ type Mode = "phrase" | "related";
 const chapterOf = (verseKey: string) => Number(verseKey.split(":")[0]);
 
 export default function Search({ navigation }: Props) {
-  const { q } = useQuran();
+  const { q, research } = useQuran();
   const [mode, setMode] = useState<Mode>("phrase");
   const [text, setText] = useState("");
   const [kb, setKb] = useState(true);
   const [busy, setBusy] = useState(false);
   const [phraseHits, setPhraseHits] = useState<Verse[] | null>(null);
   const [related, setRelated] = useState<{ resolved: string[]; matches: CompositeMatch[] } | null>(null);
+  const [recent, setRecent] = useState<string[]>(() => getRecentSearches(research));
 
-  const run = () => {
-    const query = text.trim();
+  const run = (queryArg?: string) => {
+    const query = (queryArg ?? text).trim();
     if (!query) return;
+    if (queryArg) setText(queryArg);
+    pushRecentSearch(research, query);
+    setRecent(getRecentSearches(research));
     setBusy(true);
     // let the spinner paint before the (sync) query on the JS thread
     setTimeout(() => {
@@ -68,15 +73,24 @@ export default function Search({ navigation }: Props) {
             placeholder={mode === "phrase" ? "type an exact phrase…" : "type a few words…"}
             placeholderTextColor={colors.tabInactive}
             textAlign="right"
-            onSubmitEditing={run}
+            onSubmitEditing={() => run()}
           />
-          <Pressable style={styles.go} onPress={run}>
+          <Pressable style={styles.go} onPress={() => run()}>
             <Text style={styles.goText}>Search</Text>
           </Pressable>
         </View>
         <Pressable onPress={() => setKb((v) => !v)}>
           <Text style={styles.kbToggle}>{kb ? "Hide" : "Show"} Arabic keyboard</Text>
         </Pressable>
+        {recent.length > 0 && (
+          <View style={styles.recentRow}>
+            {recent.map((r) => (
+              <Pressable key={r} style={styles.recentChip} onPress={() => run(r)}>
+                <Text style={styles.recentText} numberOfLines={1}>{r}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
       </View>
 
       {busy && <ActivityIndicator color={colors.gold} style={{ marginTop: 20 }} />}
@@ -147,6 +161,9 @@ const styles = StyleSheet.create({
   go: { marginLeft: 8, backgroundColor: colors.ink, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12 },
   goText: { color: "#fff", fontWeight: "600" },
   kbToggle: { color: colors.lapis, marginTop: 8, fontSize: 13 },
+  recentRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 8 },
+  recentChip: { borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: colors.bg, paddingHorizontal: 10, paddingVertical: 5, marginRight: 8, marginBottom: 6, maxWidth: 200 },
+  recentText: { color: colors.inkSoft, fontSize: 13, writingDirection: "rtl" },
   resolvedRow: { flexDirection: "row", paddingHorizontal: 14, paddingTop: 10, alignItems: "baseline" },
   resolvedLabel: { color: colors.inkSoft, fontSize: 12 },
   resolvedRoots: { color: colors.gold, fontSize: 16, writingDirection: "rtl", flex: 1 },

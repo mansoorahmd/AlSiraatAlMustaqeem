@@ -99,6 +99,27 @@ CREATE TABLE IF NOT EXISTS prefs (
   value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS compare (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL,        -- 'ayah' | 'root'
+  ref TEXT NOT NULL,         -- verse_key or root_buckwalter
+  label TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(kind, ref)
+);
+
+CREATE TABLE IF NOT EXISTS motifs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS motif_roots (
+  motif_id INTEGER NOT NULL,
+  root_buckwalter TEXT NOT NULL,
+  root_arabic TEXT,
+  PRIMARY KEY (motif_id, root_buckwalter)
+);
+
 CREATE TABLE IF NOT EXISTS trails (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT,

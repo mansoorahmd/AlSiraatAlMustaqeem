@@ -8,4 +8,6 @@ export type RootStackParamList = {
   RootDetail: { root: string }; // buckwalter key
   OpenQuestions: undefined;
   Trail: { root?: string; trailId?: number };
+  Motifs: undefined;
+  Compare: undefined;
 };

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useLayoutEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
@@ -14,6 +14,16 @@ export default function RootsExplorer({ navigation }: Props) {
   const all = useMemo<RootSummary[]>(() => q.listRoots({ orderBy: "count", descending: false }), [q]);
   const [rarestFirst, setRarestFirst] = useState(true);
   const [filter, setFilter] = useState("");
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable onPress={() => navigation.navigate("Motifs")} hitSlop={10} style={{ paddingHorizontal: 6 }}>
+          <Text style={{ color: colors.gold, fontSize: 15, fontWeight: "600" }}>❦ Motifs</Text>
+        </Pressable>
+      ),
+    });
+  }, [navigation]);
 
   const rows = useMemo(() => {
     const f = filter.trim().toLowerCase();

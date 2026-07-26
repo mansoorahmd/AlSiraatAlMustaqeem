@@ -96,6 +96,9 @@ export default function Home({ navigation }: Props) {
       <Pressable style={styles.link} onPress={() => nav.navigate("RootsTab")}>
         <Text style={styles.linkText}>Explore the roots  →</Text>
       </Pressable>
+      <Pressable style={styles.link} onPress={() => nav.navigate("RootsTab", { screen: "Motifs" })}>
+        <Text style={styles.linkText}>Motifs — your themed root groups  →</Text>
+      </Pressable>
       <Pressable style={styles.link} onPress={() => nav.navigate("SearchTab")}>
         <Text style={styles.linkText}>Search the Book  →</Text>
       </Pressable>

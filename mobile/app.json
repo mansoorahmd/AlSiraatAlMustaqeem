@@ -12,11 +12,16 @@
       "assets/db/*",
       "**/*"
     ],
-    "splash": {
-      "image": "./assets/adaptive-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0E3B34"
-    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0E3B34",
+          "image": "./assets/adaptive-icon.png",
+          "imageWidth": 220
+        }
+      ]
+    ],
     "android": {
       "package": "com.alsiraat.almustaqeem",
       "versionCode": 1,

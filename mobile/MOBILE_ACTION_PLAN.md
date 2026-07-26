@@ -41,7 +41,8 @@ curated case files, and case/report export.
 | Related āyāt + focus lens | ✅ V8 | ✅ (M4) |
 | Trails + rare-root marks | ✅ V5 | ✅ (M5) |
 | Home dashboard | ✅ V11 | ✅ (M6) |
-| Motifs, occurrences-by-form, compare | ✅ V14/15 | ❌ (roots subset) |
+| Motifs, occurrences-by-form, recents | ✅ V14/15 | ✅ (M7) |
+| Compare tray (āyāt/roots side by side) | ✅ V15 | ✅ |
 
 ---
 
@@ -153,11 +154,17 @@ smoke test; data ports also add parity fixtures).
 > `listUserRootMeanings` / `userRootMeaningCount` helpers. Open cases excluded
 > with the investigation tab.
 
-### M7 — Roots & Search finishing  (web V12–V15, reader-relevant)
-- **Roots**: occurrences **grouped by form**; **Motifs** (tag roots into
-  reader-defined groups, browse) via `research.db`.
-- **Search**: jump-to verse key; result polish; recent queries.
-- **Compare** (optional): pin āyāt/roots side-by-side.
+### M7 — Roots & Search finishing  (web V12–V15, reader-relevant) ✅ DONE
+> Shipped: root page **occurrences grouped by form** (lemma sub-headers with POS
+> + count; toggle to mushaf order). **Motifs** — `research.db` `motifs` /
+> `motif_roots`; a `MotifPicker` sheet on the root page ("❦ Add to motif",
+> create + tick membership); a **Motifs** screen (create/rename/delete, member
+> root chips → open root, long-press to remove) reached from the Roots header
+> and Home. **Recent searches** (capped, in prefs) shown as tap-to-rerun chips.
+> Jump-to verse key was done in M6. **Compare tray** ✅ — a `compare` table +
+> a Compare tab showing pinned āyāt (text + translations + read) and roots
+> (meaning, top lexicon, collocations, open) as side-by-side columns; pin from
+> the reader ⋯ menu and root pages; remove/clear.
 
 ### M8 — Polish & release 🟡 MOSTLY DONE
 Shipped (in-app):

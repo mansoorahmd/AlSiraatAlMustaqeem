@@ -9,7 +9,7 @@ import type { RootStackParamList } from "../navigation/types";
 import type { CompositeMatch, Script, Translation, TranslationResource, Verse, Word } from "../types";
 import { SCRIPT_LABELS } from "../types";
 import { useQuran } from "../state/DbContext";
-import { getPref, setPref, notesForChapter } from "../data/research";
+import { getPref, setPref, notesForChapter, addCompare } from "../data/research";
 import type { SpellingVariant } from "../data/spellings";
 import { NotesPanel, type NoteScope } from "../components/NotesPanel";
 import { EchoPanel } from "../components/EchoPanel";
@@ -498,6 +498,12 @@ export default function Reader({ route, navigation }: Props) {
                 </Pressable>
                 <Pressable style={styles.actionRow} onPress={() => focusOn(actionVerse.verse_key)}>
                   <Text style={styles.actionText}>Focus on this āyah (lens)</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.actionRow}
+                  onPress={() => { addCompare(research, "ayah", actionVerse.verse_key, null); setActionVerse(null); }}
+                >
+                  <Text style={styles.actionText}>⇋ Add to Compare</Text>
                 </Pressable>
               </>
             )}
