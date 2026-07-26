@@ -25,6 +25,29 @@ type Props = NativeStackScreenProps<RootStackParamList, "Reader">;
 
 const SCRIPTS: Script[] = ["uthmani", "imlaei", "indopak", "uthmani_simple", "tajweed"];
 const RARE_THRESHOLD = 25; // a root occurring ≤ this many times is "rare" (⚲)
+
+// Root echo (↻): a root occurring 2+ times in one āyah. `adjacent` flags a tight
+// repeat at neighbouring word positions (cognate accusative مفعول مطلق, emphatic
+// doubling) — ranked strongest.
+function rootEcho(words: Word[]) {
+  const pos = new Map<string, number[]>();
+  for (const w of words) {
+    if (!w.root) continue;
+    const a = pos.get(w.root);
+    if (a) a.push(w.position);
+    else pos.set(w.root, [w.position]);
+  }
+  const roots = new Set<string>();
+  let adjacent = false;
+  for (const [r, ps] of pos) {
+    if (ps.length < 2) continue;
+    roots.add(r);
+    ps.sort((a, b) => a - b);
+    for (let i = 1; i < ps.length; i++) if (ps[i]! - ps[i - 1]! === 1) adjacent = true;
+  }
+  return { has: roots.size > 0, roots, adjacent };
+}
+
 const FONT_MIN = 0.8;
 const FONT_MAX = 1.7;
 const FONT_STEP = 0.15;
@@ -55,6 +78,7 @@ export default function Reader({ route, navigation }: Props) {
   const [echoSet, setEchoSet] = useState<Set<string>>(new Set());
   const [variantSet, setVariantSet] = useState<Set<string>>(new Set());
   const [variantVerse, setVariantVerse] = useState<string | null>(null);
+  const [echoRootVerse, setEchoRootVerse] = useState<string | null>(null); // which āyah's root-echo is lit
   const [legend, setLegend] = useState(false);
   const [related, setRelated] = useState<{ title: string; matches: CompositeMatch[]; baseKey?: string } | null>(null);
   const [lens, setLens] = useState<{ baseKey: string; matches: Map<string, CompositeMatch> } | null>(null);
@@ -280,6 +304,9 @@ export default function Reader({ route, navigation }: Props) {
           const match = lens?.matches.get(item.verse_key);
           const focusRoots = match ? new Set(match.shared) : undefined;
           const hasRare = words.some((w) => w.root != null && (freq.get(w.root) ?? 1e9) <= RARE_THRESHOLD);
+          const echo = rootEcho(words);
+          const echoLit = echoRootVerse === item.verse_key;
+          const litRoots = echoLit ? new Set([...(focusRoots ?? []), ...echo.roots]) : focusRoots;
           return (
             <View style={[styles.verse, focused && styles.verseFocused, !!match && styles.verseInFocus]}>
               <View style={styles.verseHead}>
@@ -291,6 +318,11 @@ export default function Reader({ route, navigation }: Props) {
                     </Pressable>
                   )}
                   {hasRare && <Text style={styles.rareMark}>⚲</Text>}
+                  {echo.has && (
+                    <Pressable onPress={() => setEchoRootVerse(echoLit ? null : item.verse_key)} hitSlop={10} style={styles.verseMore}>
+                      <Text style={[echo.adjacent ? styles.echoRootStrong : styles.echoRootMark, echoLit && styles.echoRootActive]}>↻</Text>
+                    </Pressable>
+                  )}
                   {match && (
                     <Pressable
                       onPress={() => setRelated({ title: `Why in focus · ${item.verse_key}`, matches: [match], baseKey: lens?.baseKey })}
@@ -327,7 +359,7 @@ export default function Reader({ route, navigation }: Props) {
                   onWordPress={(w) => setSelected({ word: w, verseKey: item.verse_key })}
                   arabicSize={arabicSize}
                   notedPositions={noted}
-                  highlightRoots={focusRoots}
+                  highlightRoots={litRoots}
                 />
               ) : (
                 <VerseText
@@ -336,7 +368,7 @@ export default function Reader({ route, navigation }: Props) {
                   onWordPress={(w) => setSelected({ word: w, verseKey: item.verse_key })}
                   size={verseSize}
                   notedPositions={noted}
-                  highlightRoots={focusRoots}
+                  highlightRoots={litRoots}
                 />
               )}
 
@@ -691,6 +723,9 @@ const styles = StyleSheet.create({
   overlayText: { color: colors.inkSoft, marginTop: 12, fontSize: 14 },
   rareMark: { color: colors.inkSoft, fontSize: 15, paddingHorizontal: 4 },
   variantMark: { color: colors.amberStrong, fontSize: 15, paddingHorizontal: 4 },
+  echoRootMark: { color: colors.inkSoft, fontSize: 16, paddingHorizontal: 4 },
+  echoRootStrong: { color: colors.gold, fontSize: 16, fontWeight: "700", paddingHorizontal: 4 },
+  echoRootActive: { color: colors.lapis },
   rareLine: { color: colors.gold, fontSize: 13, textAlign: "center", marginTop: 12 },
   verseMore: { paddingHorizontal: 8, paddingVertical: 2 },
   verseMoreText: { color: colors.inkSoft, fontSize: 16, lineHeight: 20 },

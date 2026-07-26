@@ -169,9 +169,20 @@ smoke test; data ports also add parity fixtures).
 > root chips → open root, long-press to remove) reached from the Roots header
 > and Home. **Recent searches** (capped, in prefs) shown as tap-to-rerun chips.
 > Jump-to verse key was done in M6. **Compare tray** ✅ — a `compare` table +
-> a Compare tab showing pinned āyāt (text + translations + read) and roots
-> (meaning, top lexicon, collocations, open) as side-by-side columns; pin from
-> the reader ⋯ menu and root pages; remove/clear.
+> a Compare tab. **Redesigned for phones** (was horizontal columns): now a
+> vertical **timeline** — a spine with nodes and collapsible cards, and shared
+> roots **colour-threaded** down the page (each recurring root gets a lane
+> colour; the same colour reappearing across cards is the git-tree linkage).
+> A top "threads" legend lists shared roots ×count; each card shows a
+> "shares with above" row of coloured dots. Pin āyāt / roots from the reader
+> ⋯ menu and root pages; collapse, remove, clear.
+
+### Root echo (↻) — same root twice in one āyah
+> A ↻ mark flags any āyah where a root repeats (e.g. cognate accusative
+> مفعول مطلق نَصْرًا نَصَرَ, or الرَّحْمَٰنِ الرَّحِيمِ). **Bright gold ↻** = a tight
+> adjacent repeat (highest signal); **faint ↻** = the root echoed elsewhere in
+> the āyah. Tap the mark to light up every repeated-root word in place. Computed
+> live from the āyah's own words (no index). Added to the LegendSheet.
 
 ### M8 — Polish & release 🟡 MOSTLY DONE
 Shipped (in-app):

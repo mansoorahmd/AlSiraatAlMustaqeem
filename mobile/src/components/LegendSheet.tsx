@@ -8,6 +8,7 @@ const MARKS: Mark[] = [
   { glyph: "≡", color: colors.gold, title: "Verbatim echo", desc: "This exact phrase recurs word-for-word elsewhere in the Book. Tap to see every place and compare them inline." },
   { glyph: "✍", color: colors.amberStrong, title: "Spelling variant", desc: "A word here is written more than one way across the mushaf (e.g. إبراهيم with a full vs small yāʾ). Tap to see the spellings." },
   { glyph: "⚲", color: colors.inkSoft, title: "Rare root", desc: "Contains a root that occurs 25 times or fewer in the whole Qur'an — the most distinctive vocabulary." },
+  { glyph: "↻", color: colors.gold, title: "Root echo", desc: "The same root repeats within this one āyah — often for emphasis or as a cognate accusative (مفعول مطلق) like نَصْرًا نَصَرَ. A bright gold ↻ marks a tight, adjacent repeat; a faint one marks a root echoed elsewhere in the āyah. Tap to light up every repeated root in place." },
   { glyph: "⊙", color: colors.gold, title: "In focus", desc: "Matches the āyah you've pinned as a focus lens; its shared roots light up gold. Tap for why it matches." },
   { glyph: "✎", color: colors.lapis, title: "Notes & questions", desc: "You've attached a note or question here (the number is the count). Tap to read, answer, or add." },
   { glyph: "⋯", color: colors.inkSoft, title: "Āyah actions", desc: "Copy or share the āyah, open related āyāt, or pin it as a focus lens." },
