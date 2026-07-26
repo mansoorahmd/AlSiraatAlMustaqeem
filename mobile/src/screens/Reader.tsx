@@ -9,7 +9,7 @@ import type { RootStackParamList } from "../navigation/types";
 import type { CompositeMatch, Script, Translation, TranslationResource, Verse, Word } from "../types";
 import { SCRIPT_LABELS } from "../types";
 import { useQuran } from "../state/DbContext";
-import { getPref, setPref, notesForChapter, addToActiveCompare } from "../data/research";
+import { getPref, setPref, notesForChapter, addToActiveCompare, addFocus, removeFocus, isFocused, FOCUS_CAP } from "../data/research";
 import { toast } from "../ui/toast";
 import type { SpellingVariant } from "../data/spellings";
 import { NotesPanel, type NoteScope } from "../components/NotesPanel";
@@ -106,6 +106,11 @@ export default function Reader({ route, navigation }: Props) {
   const addAyahToCompare = (vk: string) => {
     const r = addToActiveCompare(research, "ayah", vk, null);
     toast(r.added ? `Added ${vk} to “${r.title}”` : `${vk} is already in “${r.title}”`);
+  };
+  const toggleFocusAyah = (vk: string) => {
+    if (isFocused(research, "ayah", vk)) { removeFocus(research, "ayah", vk); toast(`Removed ${vk} from Focus`); return; }
+    const r = addFocus(research, "ayah", vk, null);
+    toast(r.ok ? `${vk} added to Focus` : r.reason === "full" ? `Focus is full (max ${FOCUS_CAP} āyāt)` : `${vk} is already in Focus`);
   };
   const [fontScale, setFontScale] = useState<number>(() => {
     const v = Number(getPref(research, "fontScale"));
@@ -540,7 +545,15 @@ export default function Reader({ route, navigation }: Props) {
                   <Text style={styles.actionText}>Related āyāt</Text>
                 </Pressable>
                 <Pressable style={styles.actionRow} onPress={() => focusOn(actionVerse.verse_key)}>
-                  <Text style={styles.actionText}>Focus on this āyah (lens)</Text>
+                  <Text style={styles.actionText}>⊙ Focus lens (highlight connections)</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.actionRow}
+                  onPress={() => { toggleFocusAyah(actionVerse.verse_key); setActionVerse(null); }}
+                >
+                  <Text style={styles.actionText}>
+                    {isFocused(research, "ayah", actionVerse.verse_key) ? "★ Remove from Focus" : "★ Add to Focus"}
+                  </Text>
                 </Pressable>
                 <Pressable
                   style={styles.actionRow}

@@ -256,6 +256,52 @@ export function addToActiveCompare(
   return { title: s?.title?.trim() || "Untitled comparison", added: !already, setId };
 }
 
+// -- focus shortlist (a small, persisted set of āyāt & roots kept front-of-mind,
+//    surfaced on Home; capped so it stays a shortlist, not a dumping ground) --
+export const FOCUS_CAP = 5;
+
+export interface FocusItem {
+  id: number;
+  kind: "ayah" | "root";
+  ref: string;
+  label: string | null;
+  created_at: string;
+}
+
+export function listFocus(db: Db, kind?: "ayah" | "root"): FocusItem[] {
+  return kind
+    ? db.query<FocusItem>("SELECT * FROM focus WHERE kind = ? ORDER BY created_at DESC", [kind])
+    : db.query<FocusItem>("SELECT * FROM focus ORDER BY created_at DESC");
+}
+
+export function focusCount(db: Db, kind: "ayah" | "root"): number {
+  return db.scalar<number>("SELECT COUNT(*) FROM focus WHERE kind = ?", [kind]) ?? 0;
+}
+
+export function isFocused(db: Db, kind: "ayah" | "root", ref: string): boolean {
+  return (db.scalar<number>("SELECT 1 FROM focus WHERE kind = ? AND ref = ?", [kind, ref]) ?? 0) === 1;
+}
+
+/** Add to the focus shortlist. Rejects (without error) once the per-kind cap is
+ *  reached. Returns the outcome for a caller toast. */
+export function addFocus(
+  db: Db, kind: "ayah" | "root", ref: string, label: string | null,
+): { ok: boolean; reason?: "full" | "exists"; count: number } {
+  if (isFocused(db, kind, ref)) return { ok: false, reason: "exists", count: focusCount(db, kind) };
+  const count = focusCount(db, kind);
+  if (count >= FOCUS_CAP) return { ok: false, reason: "full", count };
+  db.run("INSERT OR IGNORE INTO focus (kind, ref, label) VALUES (?, ?, ?)", [kind, ref, label]);
+  return { ok: true, count: count + 1 };
+}
+
+export function removeFocus(db: Db, kind: "ayah" | "root", ref: string): void {
+  db.run("DELETE FROM focus WHERE kind = ? AND ref = ?", [kind, ref]);
+}
+
+export function removeFocusById(db: Db, id: number): void {
+  db.run("DELETE FROM focus WHERE id = ?", [id]);
+}
+
 // -- motifs (reader-defined groupings of roots sharing a linguistic theme) --
 export interface Motif {
   id: number;

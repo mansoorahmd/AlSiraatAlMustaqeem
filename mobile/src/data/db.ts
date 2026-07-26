@@ -150,6 +150,15 @@ CREATE TABLE IF NOT EXISTS compare (
   UNIQUE(set_id, kind, ref)
 );
 
+CREATE TABLE IF NOT EXISTS focus (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL,        -- 'ayah' | 'root'
+  ref TEXT NOT NULL,         -- verse_key or root_buckwalter
+  label TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(kind, ref)
+);
+
 CREATE TABLE IF NOT EXISTS motifs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,

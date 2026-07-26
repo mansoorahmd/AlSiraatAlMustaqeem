@@ -5,7 +5,7 @@ import type { RootStackParamList } from "../navigation/types";
 import type { Linkage, RootDetail as RootDetailT, RootOccurrence } from "../types";
 import * as Clipboard from "expo-clipboard";
 import { useQuran } from "../state/DbContext";
-import { addToActiveCompare, getPref, setUserRootMeaning, userRootMeaning } from "../data/research";
+import { addToActiveCompare, addFocus, removeFocus, isFocused, FOCUS_CAP, getPref, setUserRootMeaning, userRootMeaning } from "../data/research";
 import { toast } from "../ui/toast";
 import { Card, Chip, SectionTitle } from "../components/ui";
 import { CooccurPanel } from "../components/CooccurPanel";
@@ -39,6 +39,7 @@ export default function RootDetail({ route, navigation }: Props) {
   const [groupByForm, setGroupByForm] = useState(true);
   const [motifOpen, setMotifOpen] = useState(false);
   const [compareMsg, setCompareMsg] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   type OccItem =
     | { kind: "header"; label: string; pos: string; count: number }
@@ -67,7 +68,16 @@ export default function RootDetail({ route, navigation }: Props) {
 
   useEffect(() => {
     setMine(userRootMeaning(research, root) ?? "");
+    setFocused(isFocused(research, "root", root));
   }, [research, root]);
+
+  const toggleFocus = () => {
+    if (!detail) return;
+    if (focused) { removeFocus(research, "root", detail.root_buckwalter); setFocused(false); toast("Removed from Focus"); return; }
+    const r = addFocus(research, "root", detail.root_buckwalter, detail.root_arabic);
+    if (r.ok) { setFocused(true); toast("Added to Focus"); }
+    else toast(r.reason === "full" ? `Focus is full (max ${FOCUS_CAP} roots)` : "Already in Focus");
+  };
 
   useEffect(() => {
     navigation.setOptions({ title: detail ? detail.root_arabic : "Root" });
@@ -111,6 +121,9 @@ export default function RootDetail({ route, navigation }: Props) {
             toast(r.added ? `Added to “${r.title}”` : `Already in “${r.title}”`);
           }}>
             <Text style={styles.motifBtnText}>{compareMsg ? "✓ in Compare" : "⇋ Compare"}</Text>
+          </Pressable>
+          <Pressable style={styles.motifBtn} onPress={toggleFocus}>
+            <Text style={styles.motifBtnText}>{focused ? "★ In Focus" : "☆ Focus"}</Text>
           </Pressable>
         </View>
       </View>

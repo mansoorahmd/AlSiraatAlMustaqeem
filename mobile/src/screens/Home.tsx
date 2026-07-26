@@ -5,7 +5,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { RootStackParamList } from "../navigation/types";
 import { useQuran } from "../state/DbContext";
 import {
-  getPref, setPref, openQuestionCount, listTrails, userRootMeaningCount, type Trail,
+  getPref, setPref, openQuestionCount, listTrails, userRootMeaningCount,
+  listFocus, removeFocusById, type Trail, type FocusItem,
 } from "../data/research";
 import { Card, SectionTitle } from "../components/ui";
 import { VerseJump } from "../components/VerseJump";
@@ -24,6 +25,8 @@ export default function Home({ navigation }: Props) {
   const [openQ, setOpenQ] = useState(0);
   const [trails, setTrails] = useState<Trail[]>([]);
   const [meanings, setMeanings] = useState(0);
+  const [focusAyat, setFocusAyat] = useState<FocusItem[]>([]);
+  const [focusRoots, setFocusRoots] = useState<FocusItem[]>([]);
   const [backupMsg, setBackupMsg] = useState("");
   const [legend, setLegend] = useState(false);
 
@@ -33,6 +36,8 @@ export default function Home({ navigation }: Props) {
       setOpenQ(openQuestionCount(research));
       setTrails(listTrails(research).slice(0, 3));
       setMeanings(userRootMeaningCount(research));
+      setFocusAyat(listFocus(research, "ayah"));
+      setFocusRoots(listFocus(research, "root"));
       // first launch: show the marks guide once
       if (getPref(research, "seenGuide") !== "1") {
         setLegend(true);
@@ -42,6 +47,11 @@ export default function Home({ navigation }: Props) {
   );
 
   const lastChapter = last ? q.chapter(cnum(last)) : undefined;
+  const dropFocus = (id: number) => {
+    removeFocusById(research, id);
+    setFocusAyat(listFocus(research, "ayah"));
+    setFocusRoots(listFocus(research, "root"));
+  };
 
   return (
     <>
@@ -62,6 +72,40 @@ export default function Home({ navigation }: Props) {
           <Text style={styles.resumeLabel}>CONTINUE READING</Text>
           <Text style={styles.resumeWhere}>{lastChapter.name_simple} · {last}</Text>
         </Pressable>
+      )}
+
+      {(focusAyat.length > 0 || focusRoots.length > 0) && (
+        <>
+          <SectionTitle>In focus</SectionTitle>
+          {focusAyat.map((f) => {
+            const ch = q.chapter(cnum(f.ref));
+            const txt = (q.verse(f.ref, { script: "uthmani" })?.text as string) ?? "";
+            return (
+              <View key={f.id} style={styles.focusRow}>
+                <Pressable
+                  style={{ flex: 1 }}
+                  onPress={() => nav.navigate("ReadTab", { screen: "Reader", params: { chapterId: cnum(f.ref), focusVerseKey: f.ref } })}
+                >
+                  <Text style={styles.focusKey}>{f.ref} · {ch?.name_simple}</Text>
+                  <Text style={styles.focusArabic} numberOfLines={1}>{txt}</Text>
+                </Pressable>
+                <Pressable onPress={() => dropFocus(f.id)} hitSlop={10}><Text style={styles.focusX}>✕</Text></Pressable>
+              </View>
+            );
+          })}
+          {focusRoots.length > 0 && (
+            <View style={styles.focusChips}>
+              {focusRoots.map((f) => (
+                <View key={f.id} style={styles.focusChip}>
+                  <Pressable onPress={() => nav.navigate("RootsTab", { screen: "RootDetail", params: { root: f.ref } })}>
+                    <Text style={styles.focusChipText}>{f.label ?? f.ref}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => dropFocus(f.id)} hitSlop={8}><Text style={styles.focusChipX}>  ✕</Text></Pressable>
+                </View>
+              ))}
+            </View>
+          )}
+        </>
       )}
 
       <View style={styles.grid}>
@@ -140,6 +184,20 @@ const styles = StyleSheet.create({
   statNum: { color: colors.gold, fontSize: 30, fontWeight: "800" },
   statLabel: { color: colors.inkSoft, fontSize: 12, marginTop: 4 },
   empty: { color: colors.inkSoft, fontSize: 14, marginBottom: 8 },
+  focusRow: {
+    flexDirection: "row", alignItems: "center", backgroundColor: colors.surface,
+    borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 12, marginBottom: 8,
+  },
+  focusKey: { color: colors.gold, fontSize: 12, fontWeight: "700" },
+  focusArabic: { color: colors.ink, fontSize: 18, writingDirection: "rtl", textAlign: "right", marginTop: 3 },
+  focusX: { color: colors.inkSoft, fontSize: 15, paddingLeft: 12 },
+  focusChips: { flexDirection: "row", flexWrap: "wrap", marginBottom: 8 },
+  focusChip: {
+    flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: colors.gold,
+    borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, marginBottom: 8,
+  },
+  focusChipText: { color: colors.gold, fontSize: 18, writingDirection: "rtl", fontWeight: "600" },
+  focusChipX: { color: colors.inkSoft, fontSize: 13 },
   trailCard: { paddingVertical: 12 },
   trailName: { color: colors.ink, fontSize: 16, writingDirection: "rtl" },
   trailMeta: { color: colors.inkSoft, fontSize: 12, marginTop: 3 },

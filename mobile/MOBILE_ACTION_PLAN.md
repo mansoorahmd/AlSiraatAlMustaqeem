@@ -177,6 +177,15 @@ smoke test; data ports also add parity fixtures).
 > "shares with above" row of coloured dots. Pin āyāt / roots from the reader
 > ⋯ menu and root pages; collapse, remove, clear.
 
+### Focus shortlist (persisted, Home-surfaced)
+> A persisted **Focus** shortlist (table `focus`, survives restart): up to **5
+> āyāt + 5 roots** (`FOCUS_CAP`). Toggle from the reader ⋯ (★ Add/Remove Focus)
+> and a root page (☆/★ Focus); over-cap adds are refused with a toast. **Home
+> shows an "In focus" section** — focused āyāt as tap-to-open rows and focused
+> roots as gold chips, each with a ✕ to remove. Distinct from the ephemeral
+> reading **Focus lens** (⊙, highlights a base āyah's connections while reading),
+> which stays a separate tool.
+
 ### Compare → saveable, named comparisons
 > Compare is now a workspace of **named comparisons** (data: `compare_sets` +
 > `compare.set_id`; migration moves any legacy pins into "My comparison").
