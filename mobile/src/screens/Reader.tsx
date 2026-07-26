@@ -201,6 +201,14 @@ export default function Reader({ route, navigation }: Props) {
   useLayoutEffect(() => {
     navigation.setOptions({
       title: chapter?.name_simple ?? `Sūrah ${chapterId}`,
+      // the sūra name is a button back to the sūra list
+      headerTitle: () => (
+        <Pressable onPress={() => (navigation as any).navigate("ReadTab", { screen: "ReaderHome" })} hitSlop={10}>
+          <Text style={styles.headerTitle}>
+            {chapter?.name_simple ?? `Sūrah ${chapterId}`}  <Text style={styles.headerTitleCaret}>▾</Text>
+          </Text>
+        </Pressable>
+      ),
       headerRight: () => (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 4 }}>
           <Pressable onPress={() => setLegend(true)} hitSlop={12}>
@@ -812,6 +820,8 @@ const styles = StyleSheet.create({
     marginTop: 14, borderWidth: 1, borderColor: colors.border, borderRadius: 10,
     backgroundColor: colors.surfaceAlt, padding: 12, alignItems: "center",
   },
+  headerTitle: { color: colors.ink, fontSize: 17, fontWeight: "600" },
+  headerTitleCaret: { color: colors.inkSoft, fontSize: 13 },
   waznLabel: { color: colors.inkSoft, fontSize: 10, fontWeight: "700", letterSpacing: 1 },
   waznHead: { flexDirection: "row", alignItems: "baseline", gap: 12, marginTop: 6 },
   waznPattern: { color: colors.gold, fontSize: 30, fontFamily: font.arabic, writingDirection: "rtl" },
