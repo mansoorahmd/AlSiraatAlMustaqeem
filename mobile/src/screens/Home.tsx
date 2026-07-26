@@ -84,10 +84,11 @@ export default function Home({ navigation }: Props) {
               <View key={f.id} style={styles.focusRow}>
                 <Pressable
                   style={{ flex: 1 }}
-                  onPress={() => nav.navigate("ReadTab", { screen: "Reader", params: { chapterId: cnum(f.ref), focusVerseKey: f.ref } })}
+                  onPress={() => nav.navigate("ReadTab", { screen: "Reader", params: { chapterId: cnum(f.ref), focusVerseKey: f.ref, openLens: true } })}
                 >
                   <Text style={styles.focusKey}>{f.ref} · {ch?.name_simple}</Text>
                   <Text style={styles.focusArabic} numberOfLines={1}>{txt}</Text>
+                  <Text style={styles.focusHint}>tap → open with connections lens ⊙</Text>
                 </Pressable>
                 <Pressable onPress={() => dropFocus(f.id)} hitSlop={10}><Text style={styles.focusX}>✕</Text></Pressable>
               </View>
@@ -190,6 +191,7 @@ const styles = StyleSheet.create({
   },
   focusKey: { color: colors.gold, fontSize: 12, fontWeight: "700" },
   focusArabic: { color: colors.ink, fontSize: 18, writingDirection: "rtl", textAlign: "right", marginTop: 3 },
+  focusHint: { color: colors.inkSoft, fontSize: 11, marginTop: 4 },
   focusX: { color: colors.inkSoft, fontSize: 15, paddingLeft: 12 },
   focusChips: { flexDirection: "row", flexWrap: "wrap", marginBottom: 8 },
   focusChip: {

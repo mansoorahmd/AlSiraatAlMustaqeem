@@ -54,7 +54,7 @@ const FONT_MAX = 1.7;
 const FONT_STEP = 0.15;
 
 export default function Reader({ route, navigation }: Props) {
-  const { chapterId, focusVerseKey, focusWordPos } = route.params;
+  const { chapterId, focusVerseKey, focusWordPos, openLens } = route.params;
   const { q, research } = useQuran();
 
   // reading preferences — all persisted in research.db so they survive reopening
@@ -149,6 +149,15 @@ export default function Reader({ route, navigation }: Props) {
     [q, chapterId, script],
   );
   const listRef = useRef<FlatList<Verse>>(null);
+
+  // opened from Home's "In focus" āyah → drop straight into its Focus lens
+  const lensAutoOpened = useRef(false);
+  useEffect(() => {
+    if (lensAutoOpened.current || !openLens || !focusVerseKey || verses.length === 0) return;
+    lensAutoOpened.current = true;
+    focusOn(focusVerseKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openLens, focusVerseKey, verses.length]);
 
   // notes attached anywhere in this chapter → reader markers (refresh on change)
   const chapterNotes = useMemo(

@@ -2,7 +2,7 @@ export type RootStackParamList = {
   Home: undefined;
   MyMeanings: undefined;
   ReaderHome: undefined;
-  Reader: { chapterId: number; focusVerseKey?: string; focusWordPos?: number };
+  Reader: { chapterId: number; focusVerseKey?: string; focusWordPos?: number; openLens?: boolean };
   Search: undefined;
   RootsExplorer: undefined;
   RootDetail: { root: string }; // buckwalter key
