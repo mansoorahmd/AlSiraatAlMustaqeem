@@ -44,6 +44,19 @@ curated case files, and case/report export.
 | Motifs, occurrences-by-form, recents | ✅ V14/15 | ✅ (M7) |
 | Compare tray (āyāt/roots side by side) | ✅ V15 | ✅ |
 
+### Beyond the web app (mobile-only, built after parity)
+
+| Feature | Status | Notes |
+|---|---|---|
+| Spelling / rasm variants (✍) + word sheet | ✅ | morphology tag + skeleton; Ibrāhīm full vs small yāʾ, رأى vs رءا |
+| Follow the thread — exact word **or** root | ✅ | exact written spelling (rasm) works for particles & names; both walk stop-by-stop |
+| Root echo (↻) — same root twice in one āyah | ✅ | bright gold = adjacent/cognate-accusative; faint = same-āyah; tap to light |
+| Wazn (صرف pattern) on the word sheet | ✅ | Form I–XII, active/passive participle, masdar + sense, aspect/voice, radicals |
+| Compare → **named, saveable comparisons** | ✅ | vertical timeline + git-tree of shared roots; "✚ Add to Compare" everywhere; per-card global notes; rename/set-active/delete |
+| Focus shortlist (persisted, on Home) | ✅ | ≤5 āyāt + ≤5 roots; ★ toggle; tap a Home āyah → reopen with its lens |
+| Reader header sūra name → sūra list | ✅ | tap the ▾ title from any tab's reader |
+| App icon, splash, marks legend / onboarding | ✅ | self-correcting-path logo; LegendSheet covers marks, word sheet, tools |
+
 ---
 
 ## 3. Architecture (unchanged)
