@@ -5,7 +5,8 @@ import type { RootStackParamList } from "../navigation/types";
 import type { Linkage, RootDetail as RootDetailT, RootOccurrence } from "../types";
 import * as Clipboard from "expo-clipboard";
 import { useQuran } from "../state/DbContext";
-import { addCompare, getPref, setUserRootMeaning, userRootMeaning } from "../data/research";
+import { addToActiveCompare, getPref, setUserRootMeaning, userRootMeaning } from "../data/research";
+import { toast } from "../ui/toast";
 import { Card, Chip, SectionTitle } from "../components/ui";
 import { CooccurPanel } from "../components/CooccurPanel";
 import { FormSpellingPanel } from "../components/FormSpellingPanel";
@@ -87,6 +88,11 @@ export default function RootDetail({ route, navigation }: Props) {
     setEditing(false);
   };
 
+  const addAyah = (vk: string) => {
+    const r = addToActiveCompare(research, "ayah", vk, null);
+    toast(r.added ? `Added ${vk} to “${r.title}”` : `${vk} is already in “${r.title}”`);
+  };
+
   const Header = (
     <View>
       <View style={styles.hero}>
@@ -99,7 +105,11 @@ export default function RootDetail({ route, navigation }: Props) {
           <Pressable style={styles.motifBtn} onPress={() => setMotifOpen(true)}>
             <Text style={styles.motifBtnText}>❦ Add to motif</Text>
           </Pressable>
-          <Pressable style={styles.motifBtn} onPress={() => { addCompare(research, "root", detail.root_buckwalter, detail.root_arabic); setCompareMsg(true); }}>
+          <Pressable style={styles.motifBtn} onPress={() => {
+            const r = addToActiveCompare(research, "root", detail.root_buckwalter, detail.root_arabic);
+            setCompareMsg(true);
+            toast(r.added ? `Added to “${r.title}”` : `Already in “${r.title}”`);
+          }}>
             <Text style={styles.motifBtnText}>{compareMsg ? "✓ in Compare" : "⇋ Compare"}</Text>
           </Pressable>
         </View>
@@ -223,19 +233,23 @@ export default function RootDetail({ route, navigation }: Props) {
               <Text style={styles.formHeaderMeta}>{item.pos}{item.pos ? " · " : ""}{item.count}</Text>
             </View>
           ) : (
-            <Pressable
-              style={styles.occ}
-              onPress={() =>
-                navigation.navigate("Reader", {
-                  chapterId: chapterOf(item.occ.verse_key),
-                  focusVerseKey: item.occ.verse_key,
-                  focusWordPos: item.occ.word_position,
-                })
-              }
-            >
-              <Text style={styles.occKey}>{item.occ.verse_key}</Text>
-              <Text style={styles.occText} numberOfLines={2}>{item.occ.verse_text ?? ""}</Text>
-            </Pressable>
+            <View style={styles.occ}>
+              <Pressable
+                onPress={() =>
+                  navigation.navigate("Reader", {
+                    chapterId: chapterOf(item.occ.verse_key),
+                    focusVerseKey: item.occ.verse_key,
+                    focusWordPos: item.occ.word_position,
+                  })
+                }
+              >
+                <Text style={styles.occKey}>{item.occ.verse_key}</Text>
+                <Text style={styles.occText} numberOfLines={2}>{item.occ.verse_text ?? ""}</Text>
+              </Pressable>
+              <Pressable onPress={() => addAyah(item.occ.verse_key)} hitSlop={6} style={styles.occAdd}>
+                <Text style={styles.occAddText}>✚ Compare</Text>
+              </Pressable>
+            </View>
           )
         }
       />
@@ -325,4 +339,6 @@ const styles = StyleSheet.create({
   occ: { backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 8 },
   occKey: { color: colors.gold, fontWeight: "700", fontSize: 11, textAlign: "right" },
   occText: { color: colors.ink, fontSize: 18, lineHeight: 32, writingDirection: "rtl", textAlign: "right", marginTop: 2 },
+  occAdd: { alignSelf: "flex-start", marginTop: 6 },
+  occAddText: { color: colors.lapis, fontSize: 12, fontWeight: "600" },
 });

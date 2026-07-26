@@ -5,9 +5,10 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { RootStackParamList } from "../navigation/types";
 import { useQuran } from "../state/DbContext";
 import {
-  createTrail, getPref, getTrail, listTrails, updateTrailPos,
+  addToActiveCompare, createTrail, getPref, getTrail, listTrails, updateTrailPos,
   type Trail as TrailRow, type TrailHop,
 } from "../data/research";
+import { toast } from "../ui/toast";
 import { VerseText } from "../components/VerseText";
 import { TrailStrip } from "../components/TrailStrip";
 import { colors } from "../theme/tokens";
@@ -147,12 +148,21 @@ export default function Trail({ route, navigation }: Props) {
             <Text style={styles.trBy}>— {t.resource_name ?? t.language_name}</Text>
           </View>
         ))}
-        <Pressable
-          style={styles.openBtn}
-          onPress={() => navigation.push("Reader", { chapterId: cnum(hop.verseKey), focusVerseKey: hop.verseKey })}
-        >
-          <Text style={styles.openBtnText}>Open in reader →</Text>
-        </Pressable>
+        <View style={styles.hopActions}>
+          <Pressable
+            onPress={() => navigation.push("Reader", { chapterId: cnum(hop.verseKey), focusVerseKey: hop.verseKey })}
+          >
+            <Text style={styles.openBtnText}>Open in reader →</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              const r = addToActiveCompare(research, "ayah", hop.verseKey, null);
+              toast(r.added ? `Added ${hop.verseKey} to “${r.title}”` : `${hop.verseKey} is already in “${r.title}”`);
+            }}
+          >
+            <Text style={styles.openBtnText}>✚ Add to Compare</Text>
+          </Pressable>
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -190,6 +200,7 @@ const styles = StyleSheet.create({
   trText: { color: colors.ink, fontSize: 15, lineHeight: 22 },
   trBy: { color: colors.inkSoft, fontSize: 11, marginTop: 3 },
   openBtn: { marginTop: 20, alignSelf: "flex-start" },
+  hopActions: { marginTop: 20, flexDirection: "row", justifyContent: "space-between" },
   openBtnText: { color: colors.lapis, fontWeight: "600", fontSize: 15 },
   footer: { borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
   nav: { flexDirection: "row", justifyContent: "space-between", padding: 12 },

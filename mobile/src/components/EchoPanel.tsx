@@ -14,6 +14,7 @@ export function EchoPanel({
   q,
   editionIds,
   onJump,
+  onAddCompare,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -21,6 +22,7 @@ export function EchoPanel({
   q: QuranApi;
   editionIds: Set<number>;
   onJump: (verseKey: string) => void;
+  onAddCompare?: (verseKey: string) => void;
 }) {
   const echoes = useMemo<Echo[]>(
     () => (visible && verseKey ? q.verseEchoes(verseKey) : []),
@@ -54,11 +56,16 @@ export function EchoPanel({
                 {baseTr.map((t) => (
                   <Text key={t.resource_id} style={styles.baseTr}>{t.text}</Text>
                 ))}
+                {!!onAddCompare && !!verseKey && (
+                  <Pressable onPress={() => onAddCompare(verseKey)} hitSlop={8}>
+                    <Text style={styles.addCompare}>✚ Add to Compare</Text>
+                  </Pressable>
+                )}
               </View>
             )}
             {echoes.length === 0 && <Text style={styles.empty}>No verbatim repeats in this āyah.</Text>}
             {echoes.map((e, i) => (
-              <EchoRow key={i} echo={e} q={q} surahName={surahName} editionIds={editionIds} onJump={onJump} />
+              <EchoRow key={i} echo={e} q={q} surahName={surahName} editionIds={editionIds} onJump={onJump} onAddCompare={onAddCompare} />
             ))}
           </ScrollView>
         </View>
@@ -73,12 +80,14 @@ function EchoRow({
   surahName,
   editionIds,
   onJump,
+  onAddCompare,
 }: {
   echo: Echo;
   q: QuranApi;
   surahName: (vk: string) => string;
   editionIds: Set<number>;
   onJump: (verseKey: string) => void;
+  onAddCompare?: (verseKey: string) => void;
 }) {
   const [compare, setCompare] = useState(false);
 
@@ -121,6 +130,11 @@ function EchoRow({
           {r.translations.map((t) => (
             <Text key={t.resource_id} style={styles.compareTr}>{t.text}</Text>
           ))}
+          {!!onAddCompare && (
+            <Pressable onPress={() => onAddCompare(r.verseKey)} hitSlop={8}>
+              <Text style={styles.addCompare}>✚ Add to Compare</Text>
+            </Pressable>
+          )}
         </View>
       ))}
       {compare && extra > 0 && <Text style={styles.more}>…and {extra} more</Text>}
@@ -157,4 +171,5 @@ const styles = StyleSheet.create({
   compareText: { color: colors.ink, fontSize: 20, lineHeight: 36, writingDirection: "rtl", textAlign: "right", marginTop: 2 },
   compareTr: { color: colors.inkSoft, fontSize: 14, lineHeight: 20, marginTop: 6 },
   more: { color: colors.inkSoft, fontSize: 12, marginTop: 8, fontStyle: "italic" },
+  addCompare: { color: colors.lapis, fontSize: 13, fontWeight: "600", marginTop: 8 },
 });

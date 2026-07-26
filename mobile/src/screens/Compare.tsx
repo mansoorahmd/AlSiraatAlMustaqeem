@@ -1,56 +1,156 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
 import type { RootStackParamList } from "../navigation/types";
 import type { Word } from "../types";
+import type { Db } from "../data/db";
 import { useQuran } from "../state/DbContext";
 import {
-  clearCompare, getPref, listCompare, removeCompare, type CompareItem,
+  clearCompare, createCompareSet, deleteCompareSet, getPref, listCompare, listCompareSets,
+  notesForVerse, removeCompare, renameCompareSet, setActiveCompareSet,
+  type CompareItem, type CompareSet,
 } from "../data/research";
+import { NotesPanel, type NoteScope } from "../components/NotesPanel";
 import { colors, font } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Compare">;
 const cnum = (k: string) => Number(k.split(":")[0]);
 const parseEditions = (p: string | null) =>
   p == null ? new Set([20, 54]) : new Set(p ? p.split(",").map(Number).filter((n) => !Number.isNaN(n)) : []);
-
-// distinct, readable-on-light "lanes" — each shared root gets one, and the colour
-// recurs wherever that root reappears down the page (the git-tree linkage).
 const PALETTE = ["#B7791F", "#2563A6", "#9B2C6E", "#2C8A57", "#A6432E", "#6D4AA6", "#1F7A8C", "#8A6D1F"];
-
 const hasArabicLetter = (t: string) => /[ء-يٱ-ۓـ]/.test(t);
 const clean = (t: string) => t.replace(/[\uE000-\uF8FF\u200B-\u200F\uFEFF]/g, "");
+const titleOf = (s: CompareSet | undefined | null) => (s?.title?.trim() || "Untitled comparison");
 
 export default function Compare({ navigation }: Props) {
   const { q, research } = useQuran();
+  const [sets, setSets] = useState<CompareSet[]>([]);
+  const [activeId, setActiveIdState] = useState<number | null>(null);
+  const [openId, setOpenId] = useState<number | null>(null);
+
+  const refreshSets = useCallback(() => {
+    setSets(listCompareSets(research));
+    const a = Number(getPref(research, "activeCompareSet"));
+    setActiveIdState(a || null);
+  }, [research]);
+
+  useFocusEffect(useCallback(() => { refreshSets(); }, [refreshSets]));
+
+  if (openId != null) {
+    return (
+      <CompareBoard
+        setId={openId}
+        q={q}
+        research={research}
+        isActive={activeId === openId}
+        onBack={() => { setOpenId(null); refreshSets(); }}
+        onChanged={refreshSets}
+        onSetActive={() => { setActiveCompareSet(research, openId); setActiveIdState(openId); }}
+        navigation={navigation}
+      />
+    );
+  }
+
+  const newComparison = () => {
+    const id = createCompareSet(research, null);
+    setActiveCompareSet(research, id);
+    setActiveIdState(id);
+    refreshSets();
+    setOpenId(id);
+  };
+
+  const confirmDelete = (s: CompareSet) =>
+    Alert.alert("Delete comparison?", `“${titleOf(s)}” and its ${s.count} pinned item${s.count === 1 ? "" : "s"} will be removed.`, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => { deleteCompareSet(research, s.id); refreshSets(); } },
+    ]);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View style={styles.bar}>
+        <Text style={styles.barTitle}>Comparisons</Text>
+        <Pressable onPress={newComparison}><Text style={styles.newBtn}>＋ New</Text></Pressable>
+      </View>
+
+      {sets.length === 0 ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyTitle}>No comparisons yet</Text>
+          <Text style={styles.emptyText}>
+            Tap “✚ Add to Compare” on any āyah — in the reader, echo panel, related āyāt, a root’s
+            occurrences, or while following a thread — and it lands in your active comparison.
+            Shared roots are colour-linked so parallels leap out.
+          </Text>
+          <Pressable style={styles.emptyBtn} onPress={newComparison}>
+            <Text style={styles.emptyBtnText}>＋ New comparison</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={{ padding: 12 }}>
+          {sets.map((s) => (
+            <Pressable key={s.id} style={styles.setRow} onPress={() => setOpenId(s.id)}>
+              <View style={{ flex: 1 }}>
+                <View style={styles.setTitleRow}>
+                  <Text style={styles.setTitle} numberOfLines={1}>{titleOf(s)}</Text>
+                  {activeId === s.id && <Text style={styles.activeTag}>active</Text>}
+                </View>
+                <Text style={styles.setMeta}>{s.count} item{s.count === 1 ? "" : "s"} · updated {s.updated_at.slice(0, 10)}</Text>
+              </View>
+              <Pressable onPress={() => confirmDelete(s)} hitSlop={10} style={{ paddingLeft: 12 }}>
+                <Text style={styles.del}>✕</Text>
+              </Pressable>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+function CompareBoard({
+  setId, q, research, isActive, onBack, onChanged, onSetActive, navigation,
+}: {
+  setId: number; q: any; research: Db; isActive: boolean;
+  onBack: () => void; onChanged: () => void; onSetActive: () => void; navigation: any;
+}) {
   const nav = navigation as any;
   const [items, setItems] = useState<CompareItem[]>([]);
+  const [set, setSet] = useState<CompareSet | undefined>();
   const [editionIds, setEditionIds] = useState<Set<number>>(new Set());
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [noteScope, setNoteScope] = useState<NoteScope | null>(null);
+  const [notesTick, setNotesTick] = useState(0);
 
-  useFocusEffect(useCallback(() => {
-    setItems(listCompare(research));
+  const reload = useCallback(() => {
+    setItems(listCompare(research, setId));
     setEditionIds(parseEditions(getPref(research, "editions")));
-  }, [research]));
+    setSet(listCompareSets(research).find((r) => r.id === setId));
+  }, [research, setId]);
+  useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
-  const drop = (id: number) => { removeCompare(research, id); setItems(listCompare(research)); };
-  const clearAll = () => { clearCompare(research); setItems([]); };
+  const drop = (id: number) => { removeCompare(research, id); reload(); onChanged(); };
+  const clearAll = () =>
+    Alert.alert("Clear all items?", "This empties the comparison but keeps it saved.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Clear", style: "destructive", onPress: () => { clearCompare(research, setId); reload(); onChanged(); } },
+    ]);
   const toggle = (id: number) =>
     setCollapsed((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const saveTitle = () => { renameCompareSet(research, setId, titleDraft.trim()); setEditingTitle(false); reload(); onChanged(); };
 
-  // roots present in each pinned item → which recur across items (the shared "threads")
   const analysis = useMemo(() => {
     const rootsPerItem = items.map((it) => {
-      const set = new Set<string>();
+      const s = new Set<string>();
       if (it.kind === "ayah") {
         const v = q.verse(it.ref, { script: "uthmani", withWords: true });
-        for (const w of (v?.words ?? []) as Word[]) if (w.root) set.add(w.root);
+        for (const w of (v?.words ?? []) as Word[]) if (w.root) s.add(w.root);
       } else {
         const d = q.root(it.ref);
-        if (d?.root_arabic) set.add(d.root_arabic);
+        if (d?.root_arabic) s.add(d.root_arabic);
       }
-      return set;
+      return s;
     });
     const count = new Map<string, number>();
     for (const s of rootsPerItem) for (const r of s) count.set(r, (count.get(r) ?? 0) + 1);
@@ -60,23 +160,32 @@ export default function Compare({ navigation }: Props) {
     return { rootsPerItem, shared, colorOf };
   }, [items, q]);
 
-  if (items.length === 0) {
-    return (
-      <View style={styles.empty}>
-        <Text style={styles.emptyTitle}>Compare</Text>
-        <Text style={styles.emptyText}>
-          Pin āyāt (⋯ → Add to Compare) and roots (⇋ Compare on a root page) to line them up as a
-          thread — shared roots are colour-linked down the page so parallels leap out.
-        </Text>
-      </View>
-    );
-  }
+  const noteCount = (vk: string) => notesForVerse(research, vk).filter((n) => n.word_position == null).length;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={styles.bar}>
-        <Text style={styles.barText}>{items.length} pinned · {analysis.shared.length} shared root{analysis.shared.length === 1 ? "" : "s"}</Text>
-        <Pressable onPress={clearAll}><Text style={styles.clear}>Clear all</Text></Pressable>
+      <View style={styles.boardBar}>
+        <Pressable onPress={onBack} hitSlop={10}><Text style={styles.back}>‹ All</Text></Pressable>
+        {editingTitle ? (
+          <TextInput
+            style={styles.titleInput}
+            value={titleDraft}
+            onChangeText={setTitleDraft}
+            placeholder="name this comparison"
+            placeholderTextColor={colors.tabInactive}
+            autoFocus
+            onSubmitEditing={saveTitle}
+            onBlur={saveTitle}
+            returnKeyType="done"
+          />
+        ) : (
+          <Pressable style={{ flex: 1 }} onPress={() => { setTitleDraft(set?.title ?? ""); setEditingTitle(true); }}>
+            <Text style={styles.boardTitle} numberOfLines={1}>{titleOf(set)} ✎</Text>
+          </Pressable>
+        )}
+        {isActive
+          ? <Text style={styles.activeTagSm}>active</Text>
+          : <Pressable onPress={onSetActive} hitSlop={8}><Text style={styles.setActive}>Set active</Text></Pressable>}
       </View>
 
       {analysis.shared.length > 0 && (
@@ -94,67 +203,81 @@ export default function Compare({ navigation }: Props) {
         </View>
       )}
 
-      <ScrollView contentContainerStyle={{ paddingVertical: 8, paddingRight: 12 }}>
-        {items.map((it, i) => {
-          const isCollapsed = collapsed.has(it.id);
-          const mine = analysis.rootsPerItem[i]!;
-          const prev = i > 0 ? analysis.rootsPerItem[i - 1]! : null;
-          const sharedWithPrev = prev
-            ? [...mine].filter((r) => prev.has(r) && analysis.colorOf.has(r))
-            : [];
-          const nodeShared = [...mine].some((r) => analysis.colorOf.has(r));
-          const first = i === 0;
-          const last = i === items.length - 1;
-          return (
-            <View key={it.id} style={styles.row}>
-              {/* spine */}
-              <View style={styles.gutter}>
-                <View style={[styles.line, first && styles.lineHalfTop, last && styles.lineHalfBottom]} />
-                <View style={[styles.node, { borderColor: nodeShared ? colors.gold : colors.border }]} />
-              </View>
-              {/* card */}
-              <View style={styles.card}>
-                {sharedWithPrev.length > 0 && (
-                  <View style={styles.mergeRow}>
-                    <Text style={styles.mergeText}>shares with above</Text>
-                    {sharedWithPrev.slice(0, 8).map((r) => (
-                      <View key={r} style={[styles.dot, { backgroundColor: analysis.colorOf.get(r) }]} />
-                    ))}
-                  </View>
-                )}
-                <Pressable style={styles.cardHead} onPress={() => toggle(it.id)}>
-                  <Text style={styles.caret}>{isCollapsed ? "▸" : "▾"}</Text>
-                  <Text style={styles.kind}>{it.kind === "ayah" ? "ĀYAH" : "ROOT"}</Text>
-                  <Text style={styles.cardKey} numberOfLines={1}>
-                    {it.kind === "ayah" ? `${it.ref} · ${q.chapter(cnum(it.ref))?.name_simple ?? ""}` : (q.root(it.ref)?.root_arabic ?? it.ref)}
-                  </Text>
-                  <Pressable onPress={() => drop(it.id)} hitSlop={8}><Text style={styles.x}>✕</Text></Pressable>
-                </Pressable>
+      {items.length === 0 ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>Empty. Add āyāt or roots with “✚ Add to Compare” from anywhere.</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={{ paddingVertical: 8, paddingRight: 12 }}>
+          {items.map((it, i) => {
+            const isCollapsed = collapsed.has(it.id);
+            const mine = analysis.rootsPerItem[i]!;
+            const prev = i > 0 ? analysis.rootsPerItem[i - 1]! : null;
+            const sharedWithPrev = prev ? [...mine].filter((r) => prev.has(r) && analysis.colorOf.has(r)) : [];
+            const nodeShared = [...mine].some((r) => analysis.colorOf.has(r));
+            const first = i === 0;
+            const last = i === items.length - 1;
+            const notes = it.kind === "ayah" ? noteCount(it.ref) : 0;
+            return (
+              <View key={`${it.id}-${notesTick}`} style={styles.row}>
+                <View style={styles.gutter}>
+                  <View style={[styles.line, first && styles.lineHalfTop, last && styles.lineHalfBottom]} />
+                  <View style={[styles.node, { borderColor: nodeShared ? colors.gold : colors.border }]} />
+                </View>
+                <View style={styles.card}>
+                  {sharedWithPrev.length > 0 && (
+                    <View style={styles.mergeRow}>
+                      <Text style={styles.mergeText}>shares with above</Text>
+                      {sharedWithPrev.slice(0, 8).map((r) => (
+                        <View key={r} style={[styles.dot, { backgroundColor: analysis.colorOf.get(r) }]} />
+                      ))}
+                    </View>
+                  )}
+                  <Pressable style={styles.cardHead} onPress={() => toggle(it.id)}>
+                    <Text style={styles.caret}>{isCollapsed ? "▸" : "▾"}</Text>
+                    <Text style={styles.kind}>{it.kind === "ayah" ? "ĀYAH" : "ROOT"}</Text>
+                    <Text style={styles.cardKey} numberOfLines={1}>
+                      {it.kind === "ayah" ? `${it.ref} · ${q.chapter(cnum(it.ref))?.name_simple ?? ""}` : (q.root(it.ref)?.root_arabic ?? it.ref)}
+                    </Text>
+                    <Pressable onPress={() => drop(it.id)} hitSlop={8}><Text style={styles.x}>✕</Text></Pressable>
+                  </Pressable>
 
-                {isCollapsed ? (
-                  <CollapsedPreview it={it} q={q} editionIds={editionIds} />
-                ) : it.kind === "ayah" ? (
-                  <AyahBody
-                    vk={it.ref} q={q} editionIds={editionIds} colorOf={analysis.colorOf}
-                    onOpen={() => nav.navigate("ReadTab", { screen: "Reader", params: { chapterId: cnum(it.ref), focusVerseKey: it.ref } })}
-                  />
-                ) : (
-                  <RootBody
-                    bw={it.ref} q={q} color={analysis.colorOf.get(q.root(it.ref)?.root_arabic ?? "")}
-                    onOpen={() => nav.navigate("RootsTab", { screen: "RootDetail", params: { root: it.ref } })}
-                  />
-                )}
+                  {isCollapsed ? (
+                    <CollapsedPreview it={it} q={q} editionIds={editionIds} />
+                  ) : it.kind === "ayah" ? (
+                    <AyahBody
+                      vk={it.ref} q={q} editionIds={editionIds} colorOf={analysis.colorOf} notes={notes}
+                      onNote={() => setNoteScope({ verseKey: it.ref })}
+                      onOpen={() => nav.navigate("ReadTab", { screen: "Reader", params: { chapterId: cnum(it.ref), focusVerseKey: it.ref } })}
+                    />
+                  ) : (
+                    <RootBody
+                      bw={it.ref} q={q} color={analysis.colorOf.get(q.root(it.ref)?.root_arabic ?? "")}
+                      onOpen={() => nav.navigate("RootsTab", { screen: "RootDetail", params: { root: it.ref } })}
+                    />
+                  )}
+                </View>
               </View>
-            </View>
-          );
-        })}
-      </ScrollView>
+            );
+          })}
+          <Pressable onPress={clearAll} style={{ alignSelf: "center", marginTop: 12 }}>
+            <Text style={styles.clear}>Clear all items</Text>
+          </Pressable>
+        </ScrollView>
+      )}
+
+      <NotesPanel
+        visible={!!noteScope}
+        scope={noteScope}
+        research={research}
+        onClose={() => setNoteScope(null)}
+        onChanged={() => setNotesTick((t) => t + 1)}
+        onJump={(vk) => { setNoteScope(null); nav.navigate("ReadTab", { screen: "Reader", params: { chapterId: cnum(vk), focusVerseKey: vk } }); }}
+      />
     </View>
   );
 }
 
-/** Arabic verse where each word whose root is a shared thread is coloured with
- *  that thread's colour; other words stay in ink. Aligned 1:1 to word tokens. */
 function ColoredVerse({ text, words, colorOf, size = 25 }: { text: string; words: Word[]; colorOf: Map<string, string>; size?: number }) {
   const style = [styles.arabic, { fontSize: size, lineHeight: size * 2.0 }];
   const tokens = text.trim().split(/\s+/);
@@ -176,7 +299,7 @@ function ColoredVerse({ text, words, colorOf, size = 25 }: { text: string; words
   );
 }
 
-function AyahBody({ vk, q, editionIds, colorOf, onOpen }: { vk: string; q: any; editionIds: Set<number>; colorOf: Map<string, string>; onOpen: () => void }) {
+function AyahBody({ vk, q, editionIds, colorOf, notes, onNote, onOpen }: { vk: string; q: any; editionIds: Set<number>; colorOf: Map<string, string>; notes: number; onNote: () => void; onOpen: () => void }) {
   const v = q.verse(vk, { script: "uthmani", withWords: true });
   const words = ((v?.words ?? []) as Word[]).filter((w) => w.pos != null);
   const tr = editionIds.size ? q.verseTranslations(vk).filter((t: any) => editionIds.has(t.resource_id)) : [];
@@ -189,7 +312,10 @@ function AyahBody({ vk, q, editionIds, colorOf, onOpen }: { vk: string; q: any; 
           <Text style={styles.trBy}>— {t.resource_name ?? t.language_name}</Text>
         </View>
       ))}
-      <Pressable onPress={onOpen}><Text style={styles.open}>Read →</Text></Pressable>
+      <View style={styles.cardActions}>
+        <Pressable onPress={onNote}><Text style={styles.action}>✎ Note{notes > 0 ? ` · ${notes}` : ""}</Text></Pressable>
+        <Pressable onPress={onOpen}><Text style={styles.action}>Read →</Text></Pressable>
+      </View>
     </View>
   );
 }
@@ -216,7 +342,7 @@ function RootBody({ bw, q, color, onOpen }: { bw: string; q: any; color?: string
           <Text style={styles.company}>{links.map((l: any) => `${l.root_arabic} (${l.cooccur})`).join("  ·  ")}</Text>
         </>
       )}
-      <Pressable onPress={onOpen}><Text style={styles.open}>Open root →</Text></Pressable>
+      <Pressable onPress={onOpen}><Text style={styles.action}>Open root →</Text></Pressable>
     </View>
   );
 }
@@ -235,11 +361,29 @@ function CollapsedPreview({ it, q, editionIds }: { it: CompareItem; q: any; edit
 
 const GUTTER = 30;
 const styles = StyleSheet.create({
-  empty: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg, padding: 28 },
-  emptyTitle: { color: colors.ink, fontSize: 20, fontWeight: "700", marginBottom: 8 },
+  bar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
+  barTitle: { color: colors.ink, fontSize: 17, fontWeight: "700" },
+  newBtn: { color: colors.lapis, fontSize: 15, fontWeight: "600" },
+
+  empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28 },
+  emptyTitle: { color: colors.ink, fontSize: 18, fontWeight: "700", marginBottom: 8 },
   emptyText: { color: colors.inkSoft, fontSize: 15, lineHeight: 22, textAlign: "center" },
-  bar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
-  barText: { color: colors.inkSoft, fontSize: 13, fontWeight: "600" },
+  emptyBtn: { marginTop: 18, borderWidth: 1, borderColor: colors.border, borderRadius: 18, paddingHorizontal: 18, paddingVertical: 9 },
+  emptyBtnText: { color: colors.lapis, fontSize: 15, fontWeight: "600" },
+
+  setRow: { flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 10 },
+  setTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  setTitle: { color: colors.ink, fontSize: 16, fontWeight: "600", flexShrink: 1 },
+  activeTag: { color: colors.gold, fontSize: 10, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase" },
+  setMeta: { color: colors.inkSoft, fontSize: 12, marginTop: 3 },
+  del: { color: colors.inkSoft, fontSize: 16 },
+
+  boardBar: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface },
+  back: { color: colors.lapis, fontSize: 15, fontWeight: "600" },
+  boardTitle: { color: colors.ink, fontSize: 16, fontWeight: "700" },
+  titleInput: { flex: 1, color: colors.ink, fontSize: 16, fontWeight: "700", borderBottomWidth: 1, borderBottomColor: colors.gold, paddingVertical: 2 },
+  activeTagSm: { color: colors.gold, fontSize: 10, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase" },
+  setActive: { color: colors.lapis, fontSize: 13, fontWeight: "600" },
   clear: { color: colors.danger, fontSize: 13, fontWeight: "600" },
 
   legend: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.surfaceAlt, backgroundColor: colors.surface },
@@ -277,5 +421,6 @@ const styles = StyleSheet.create({
   rootGloss: { color: colors.ink, fontSize: 15, fontStyle: "italic", textAlign: "center", marginTop: 6 },
   src: { color: colors.inkSoft, fontSize: 11, fontWeight: "700", marginTop: 10 },
   company: { color: colors.gold, fontSize: 15, writingDirection: "rtl", textAlign: "right", marginTop: 4, lineHeight: 26 },
-  open: { color: colors.lapis, fontSize: 14, fontWeight: "600", marginTop: 14 },
+  cardActions: { flexDirection: "row", justifyContent: "space-between", marginTop: 14 },
+  action: { color: colors.lapis, fontSize: 14, fontWeight: "600" },
 });

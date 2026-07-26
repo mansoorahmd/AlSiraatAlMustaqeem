@@ -9,7 +9,8 @@ import type { RootStackParamList } from "../navigation/types";
 import type { CompositeMatch, Script, Translation, TranslationResource, Verse, Word } from "../types";
 import { SCRIPT_LABELS } from "../types";
 import { useQuran } from "../state/DbContext";
-import { getPref, setPref, notesForChapter, addCompare } from "../data/research";
+import { getPref, setPref, notesForChapter, addToActiveCompare } from "../data/research";
+import { toast } from "../ui/toast";
 import type { SpellingVariant } from "../data/spellings";
 import { NotesPanel, type NoteScope } from "../components/NotesPanel";
 import { EchoPanel } from "../components/EchoPanel";
@@ -102,6 +103,10 @@ export default function Reader({ route, navigation }: Props) {
     });
   const jumpTo = (vk: string) =>
     navigation.push("Reader", { chapterId: Number(vk.split(":")[0]), focusVerseKey: vk });
+  const addAyahToCompare = (vk: string) => {
+    const r = addToActiveCompare(research, "ayah", vk, null);
+    toast(r.added ? `Added ${vk} to “${r.title}”` : `${vk} is already in “${r.title}”`);
+  };
   const [fontScale, setFontScale] = useState<number>(() => {
     const v = Number(getPref(research, "fontScale"));
     return v >= FONT_MIN && v <= FONT_MAX ? v : 1;
@@ -436,6 +441,7 @@ export default function Reader({ route, navigation }: Props) {
         q={q}
         editionIds={editionIds}
         onClose={() => setEchoVerse(null)}
+        onAddCompare={addAyahToCompare}
         onJump={(vk) => {
           setEchoVerse(null);
           navigation.push("Reader", { chapterId: Number(vk.split(":")[0]), focusVerseKey: vk });
@@ -450,6 +456,7 @@ export default function Reader({ route, navigation }: Props) {
         editionIds={editionIds}
         baseKey={related?.baseKey}
         onClose={() => setRelated(null)}
+        onAddCompare={addAyahToCompare}
         onJump={(vk) => { setRelated(null); jumpTo(vk); }}
       />
 
@@ -537,7 +544,7 @@ export default function Reader({ route, navigation }: Props) {
                 </Pressable>
                 <Pressable
                   style={styles.actionRow}
-                  onPress={() => { addCompare(research, "ayah", actionVerse.verse_key, null); setActionVerse(null); }}
+                  onPress={() => { addAyahToCompare(actionVerse.verse_key); setActionVerse(null); }}
                 >
                   <Text style={styles.actionText}>⇋ Add to Compare</Text>
                 </Pressable>

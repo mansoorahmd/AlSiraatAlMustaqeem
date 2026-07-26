@@ -19,6 +19,7 @@ export function RelatedPanel({
   editionIds,
   baseKey,
   onJump,
+  onAddCompare,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -28,6 +29,7 @@ export function RelatedPanel({
   editionIds: Set<number>;
   baseKey?: string;
   onJump: (verseKey: string) => void;
+  onAddCompare?: (verseKey: string) => void;
 }) {
   const surah = (vk: string) => q.chapter(cnum(vk))?.name_simple ?? "";
   const trFor = (vk: string) =>
@@ -50,23 +52,35 @@ export function RelatedPanel({
                 <Text style={styles.baseKey}>base · {baseKey} · {surah(baseKey)}</Text>
                 <Text style={styles.baseText}>{(base.text as string) ?? ""}</Text>
                 {trFor(baseKey).map((t) => <Text key={t.resource_id} style={styles.tr}>{t.text}</Text>)}
+                {!!onAddCompare && (
+                  <Pressable onPress={() => onAddCompare(baseKey)} hitSlop={8}>
+                    <Text style={styles.addCompare}>✚ Add to Compare</Text>
+                  </Pressable>
+                )}
               </View>
             )}
             {matches.map((m) => (
-              <Pressable key={m.verse_key} style={styles.row} onPress={() => onJump(m.verse_key)}>
-                <View style={styles.rowHead}>
-                  <Text style={styles.key}>{m.verse_key} · {surah(m.verse_key)}</Text>
-                  <Text style={styles.score}>{m.score.toFixed(3)}</Text>
-                </View>
-                <Text style={styles.text}>{m.text ?? ""}</Text>
-                {trFor(m.verse_key).map((t) => <Text key={t.resource_id} style={styles.tr}>{t.text}</Text>)}
-                {m.phrase_run && m.phrase_run.length > 0 && (
-                  <Text style={styles.phrase}>phrase: {m.phrase_run.join(" ")}</Text>
+              <View key={m.verse_key} style={styles.row}>
+                <Pressable onPress={() => onJump(m.verse_key)}>
+                  <View style={styles.rowHead}>
+                    <Text style={styles.key}>{m.verse_key} · {surah(m.verse_key)}</Text>
+                    <Text style={styles.score}>{m.score.toFixed(3)}</Text>
+                  </View>
+                  <Text style={styles.text}>{m.text ?? ""}</Text>
+                  {trFor(m.verse_key).map((t) => <Text key={t.resource_id} style={styles.tr}>{t.text}</Text>)}
+                  {m.phrase_run && m.phrase_run.length > 0 && (
+                    <Text style={styles.phrase}>phrase: {m.phrase_run.join(" ")}</Text>
+                  )}
+                  {m.shared.length > 0 && (
+                    <Text style={styles.shared}>shared roots: {m.shared.join("  ")}</Text>
+                  )}
+                </Pressable>
+                {!!onAddCompare && (
+                  <Pressable onPress={() => onAddCompare(m.verse_key)} hitSlop={8}>
+                    <Text style={styles.addCompare}>✚ Add to Compare</Text>
+                  </Pressable>
                 )}
-                {m.shared.length > 0 && (
-                  <Text style={styles.shared}>shared roots: {m.shared.join("  ")}</Text>
-                )}
-              </Pressable>
+              </View>
             ))}
           </ScrollView>
         </View>
@@ -96,4 +110,5 @@ const styles = StyleSheet.create({
   baseText: { color: colors.ink, fontSize: 22, lineHeight: 42, writingDirection: "rtl", textAlign: "right" },
   phrase: { color: colors.gold, fontSize: 15, writingDirection: "rtl", textAlign: "right", marginTop: 4 },
   shared: { color: colors.lapis, fontSize: 14, writingDirection: "rtl", textAlign: "right", marginTop: 3 },
+  addCompare: { color: colors.lapis, fontSize: 13, fontWeight: "600", marginTop: 8 },
 });

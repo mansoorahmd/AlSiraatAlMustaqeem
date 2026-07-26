@@ -146,32 +146,114 @@ export function setUserRootMeaning(db: Db, rootBuckwalter: string, meaning: stri
   );
 }
 
-// -- compare tray (pin āyāt & roots to view side by side) --
+// -- comparisons (named, saveable boards of pinned āyāt & roots) --
 export interface CompareItem {
   id: number;
+  set_id: number;
   kind: "ayah" | "root";
   ref: string;
   label: string | null;
   created_at: string;
 }
-
-export function listCompare(db: Db): CompareItem[] {
-  return db.query<CompareItem>("SELECT * FROM compare ORDER BY created_at");
+export interface CompareSet {
+  id: number;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+  count: number;
 }
-export function addCompare(db: Db, kind: "ayah" | "root", ref: string, label: string | null): void {
-  db.run("INSERT OR IGNORE INTO compare (kind, ref, label) VALUES (?, ?, ?)", [kind, ref, label]);
+
+/** All saved comparisons, most-recently-touched first, with member counts. */
+export function listCompareSets(db: Db): CompareSet[] {
+  return db.query<CompareSet>(
+    `SELECT s.id, s.title, s.created_at, s.updated_at, COUNT(c.id) AS count
+     FROM compare_sets s LEFT JOIN compare c ON c.set_id = s.id
+     GROUP BY s.id ORDER BY s.updated_at DESC`,
+  );
+}
+
+export function createCompareSet(db: Db, title: string | null): number {
+  db.run("INSERT INTO compare_sets (title) VALUES (?)", [title ?? null]);
+  return db.scalar<number>("SELECT last_insert_rowid()") ?? 0;
+}
+
+export function renameCompareSet(db: Db, id: number, title: string): void {
+  db.run("UPDATE compare_sets SET title = ?, updated_at = datetime('now') WHERE id = ?", [title, id]);
+}
+
+export function deleteCompareSet(db: Db, id: number): void {
+  db.run("DELETE FROM compare WHERE set_id = ?", [id]);
+  db.run("DELETE FROM compare_sets WHERE id = ?", [id]);
+  if (getPref(db, "activeCompareSet") === String(id)) setPref(db, "activeCompareSet", "");
+}
+
+function touchCompareSet(db: Db, id: number): void {
+  db.run("UPDATE compare_sets SET updated_at = datetime('now') WHERE id = ?", [id]);
+}
+
+/** The active comparison's id — creating a first "Untitled" one if none exists
+ *  or the stored active id is stale. */
+export function ensureActiveCompareSet(db: Db): number {
+  const stored = Number(getPref(db, "activeCompareSet"));
+  if (stored) {
+    const ok = db.scalar<number>("SELECT 1 FROM compare_sets WHERE id = ?", [stored]);
+    if (ok) return stored;
+  }
+  const existing = db.scalar<number>("SELECT id FROM compare_sets ORDER BY updated_at DESC LIMIT 1");
+  const id = existing ?? createCompareSet(db, null);
+  setPref(db, "activeCompareSet", String(id));
+  return id;
+}
+
+export function getActiveCompareSetId(db: Db): number {
+  return ensureActiveCompareSet(db);
+}
+
+export function setActiveCompareSet(db: Db, id: number): void {
+  setPref(db, "activeCompareSet", String(id));
+}
+
+export function getCompareSet(db: Db, id: number): CompareSet | undefined {
+  return db.one<CompareSet>(
+    `SELECT s.id, s.title, s.created_at, s.updated_at, COUNT(c.id) AS count
+     FROM compare_sets s LEFT JOIN compare c ON c.set_id = s.id WHERE s.id = ? GROUP BY s.id`,
+    [id],
+  );
+}
+
+export function listCompare(db: Db, setId: number): CompareItem[] {
+  return db.query<CompareItem>("SELECT * FROM compare WHERE set_id = ? ORDER BY created_at", [setId]);
+}
+export function addCompare(db: Db, setId: number, kind: "ayah" | "root", ref: string, label: string | null): void {
+  db.run("INSERT OR IGNORE INTO compare (set_id, kind, ref, label) VALUES (?, ?, ?, ?)", [setId, kind, ref, label]);
+  touchCompareSet(db, setId);
 }
 export function removeCompare(db: Db, id: number): void {
+  const setId = db.scalar<number>("SELECT set_id FROM compare WHERE id = ?", [id]);
   db.run("DELETE FROM compare WHERE id = ?", [id]);
+  if (setId) touchCompareSet(db, setId);
 }
-export function clearCompare(db: Db): void {
-  db.run("DELETE FROM compare", []);
+export function clearCompare(db: Db, setId: number): void {
+  db.run("DELETE FROM compare WHERE set_id = ?", [setId]);
+  touchCompareSet(db, setId);
 }
-export function compareCount(db: Db): number {
-  return db.scalar<number>("SELECT COUNT(*) FROM compare") ?? 0;
+export function compareCount(db: Db, setId: number): number {
+  return db.scalar<number>("SELECT COUNT(*) FROM compare WHERE set_id = ?", [setId]) ?? 0;
 }
-export function isCompared(db: Db, kind: "ayah" | "root", ref: string): boolean {
-  return (db.scalar<number>("SELECT 1 FROM compare WHERE kind = ? AND ref = ?", [kind, ref]) ?? 0) === 1;
+export function isCompared(db: Db, setId: number, kind: "ayah" | "root", ref: string): boolean {
+  return (db.scalar<number>("SELECT 1 FROM compare WHERE set_id = ? AND kind = ? AND ref = ?", [setId, kind, ref]) ?? 0) === 1;
+}
+
+/** Add to the active comparison from anywhere an āyah/root is shown. Returns the
+ *  target comparison's display title and whether it was newly added. */
+export function addToActiveCompare(
+  db: Db, kind: "ayah" | "root", ref: string, label: string | null,
+): { title: string; added: boolean; setId: number } {
+  const setId = ensureActiveCompareSet(db);
+  const already = isCompared(db, setId, kind, ref);
+  if (!already) addCompare(db, setId, kind, ref, label);
+  const s = getCompareSet(db, setId);
+  return { title: s?.title?.trim() || "Untitled comparison", added: !already, setId };
 }
 
 // -- motifs (reader-defined groupings of roots sharing a linguistic theme) --

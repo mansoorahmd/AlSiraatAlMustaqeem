@@ -63,8 +63,42 @@ export function openResearchDb(): Db {
   researchPath = raw.databasePath; // absolute on-device path, for backup/export
   const db = new ExpoDb(raw);
   db.exec(RESEARCH_SCHEMA);
+  migrateResearch(db);
   researchDb = db;
   return db;
+}
+
+/** One-off migrations for existing on-device research DBs. Idempotent. */
+function migrateResearch(db: Db): void {
+  // compare → comparison "sets": give each compare row a set_id, moving any
+  // legacy (setless) rows into a first named comparison.
+  const cols = db.query<{ name: string }>("PRAGMA table_info(compare)").map((c) => c.name);
+  if (!cols.includes("set_id")) {
+    db.exec("ALTER TABLE compare RENAME TO compare_legacy;");
+    db.exec(`CREATE TABLE compare (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      set_id INTEGER NOT NULL,
+      kind TEXT NOT NULL,
+      ref TEXT NOT NULL,
+      label TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(set_id, kind, ref)
+    );`);
+    const legacy = db.scalar<number>("SELECT COUNT(*) FROM compare_legacy") ?? 0;
+    if (legacy > 0) {
+      db.run("INSERT INTO compare_sets (title) VALUES ('My comparison')");
+      const sid = db.scalar<number>("SELECT last_insert_rowid()") ?? 0;
+      db.run(
+        "INSERT INTO compare (set_id, kind, ref, label, created_at) SELECT ?, kind, ref, label, created_at FROM compare_legacy",
+        [sid],
+      );
+      db.run(
+        "INSERT INTO prefs (key, value) VALUES ('activeCompareSet', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        [String(sid)],
+      );
+    }
+    db.exec("DROP TABLE compare_legacy;");
+  }
 }
 
 /** Absolute path of the on-device research.db (once opened) — used for backup. */
@@ -99,13 +133,21 @@ CREATE TABLE IF NOT EXISTS prefs (
   value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS compare_sets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS compare (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,   -- which comparison this pin belongs to
   kind TEXT NOT NULL,        -- 'ayah' | 'root'
   ref TEXT NOT NULL,         -- verse_key or root_buckwalter
   label TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(kind, ref)
+  UNIQUE(set_id, kind, ref)
 );
 
 CREATE TABLE IF NOT EXISTS motifs (

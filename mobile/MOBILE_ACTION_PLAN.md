@@ -177,6 +177,17 @@ smoke test; data ports also add parity fixtures).
 > "shares with above" row of coloured dots. Pin āyāt / roots from the reader
 > ⋯ menu and root pages; collapse, remove, clear.
 
+### Compare → saveable, named comparisons
+> Compare is now a workspace of **named comparisons** (data: `compare_sets` +
+> `compare.set_id`; migration moves any legacy pins into "My comparison").
+> Always-live: pins land in the **active** comparison; the Compare tab lists all
+> saved comparisons (title · count · updated · active flag), opens into the
+> timeline board, and supports rename (tap title), set-active, delete, clear,
+> and new. **"✚ Add to Compare" is everywhere an āyah shows** — reader ⋯, echo
+> panel, related/focus panel, root occurrences, and trail hops (`addToActiveCompare`
+> + Android toast). Each āyah card has a **✎ Note** that opens the *global* āyah
+> note (same store as the reader — edits reflect everywhere).
+
 ### Root echo (↻) — same root twice in one āyah
 > A ↻ mark flags any āyah where a root repeats (e.g. cognate accusative
 > مفعول مطلق نَصْرًا نَصَرَ, or الرَّحْمَٰنِ الرَّحِيمِ). **Bright gold ↻** = a tight
