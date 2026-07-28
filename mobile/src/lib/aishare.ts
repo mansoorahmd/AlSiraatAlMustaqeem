@@ -3,16 +3,39 @@
 // questions — ready to hand to an AI app (Gemini, etc.) via the OS share sheet.
 // A user-chosen prompt line and a dictionary-source filter tailor the output.
 
+import { Share } from "react-native";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+import * as Clipboard from "expo-clipboard";
 import type { QuranApi } from "../data/api";
 import type { Db } from "../data/db";
 import type { Word } from "../types";
 import { notesForRoot, notesForVerse, userRootMeaning } from "../data/research";
+import { toast } from "../ui/toast";
 
 const clean = (t: string) => (t ?? "").replace(/[\uE000-\uF8FF\u200B-\u200F\uFEFF]/g, "").trim();
 const cnum = (k: string) => Number(k.split(":")[0]);
-// Some dictionaries (e.g. Lis\u0101n al-\u02BFArab) have entries thousands of characters
-// long \u2014 cap each so a many-root \u0101yah doesn't build a huge, slow-to-share string.
-const trunc = (s: string, n: number) => { const t = (s ?? "").trim(); return t.length > n ? t.slice(0, n).trimEnd() + " \u2026" : t; };
+
+// Android caps an Intent's text extra (Binder transaction ~1 MB), so a bundle
+// with long dictionaries (Lis\u0101n al-\u02BFArab entries reach ~86k chars) can't ride
+// the normal text share. Small bundles share as text (AI apps' text target);
+// large ones are written to a .txt file and shared by URI \u2014 no size limit \u2014
+// with a clipboard fallback.
+const TEXT_SHARE_LIMIT = 50_000;
+export async function shareBundle(msg: string, title = "Share"): Promise<void> {
+  if (!msg) return;
+  if (msg.length <= TEXT_SHARE_LIMIT) { await Share.share({ message: msg }); return; }
+  try {
+    const dest = `${FileSystem.cacheDirectory}alsiraat-share.txt`;
+    await FileSystem.writeAsStringAsync(dest, msg);
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(dest, { mimeType: "text/plain", dialogTitle: title });
+      return;
+    }
+  } catch { /* fall through to clipboard */ }
+  await Clipboard.setStringAsync(msg);
+  toast("Bundle is large \u2014 copied to clipboard; paste into your AI app.");
+}
 
 export interface ShareOpts {
   prompt?: string | null;      // framing line; "" = none, undefined = composer default
@@ -56,7 +79,7 @@ function rootBlock(research: Db, d: ShareRootLite, dicts: string[] | null | unde
   if (forms) lines.push(`    forms: ${forms}`);
   const mine = userRootMeaning(research, d.root_buckwalter);
   if (mine) lines.push(`    my meaning: ${mine}`);
-  for (const m of pickSenses(d.meanings, dicts, 2)) lines.push(`    (${m.source}) ${trunc(m.meaning, 240)}`);
+  for (const m of pickSenses(d.meanings, dicts, 2)) lines.push(`    (${m.source}) ${m.meaning.trim()}`);
   return lines;
 }
 
@@ -124,7 +147,7 @@ export function composeRootShare(q: QuranApi, research: Db, rootBw: string, opts
   if (senses.length) {
     L.push("");
     L.push("Dictionary senses:");
-    for (const m of senses) L.push(`  • (${m.source}) ${trunc(m.meaning, 900)}`);
+    for (const m of senses) L.push(`  • (${m.source}) ${m.meaning.trim()}`);
   }
   const mine = userRootMeaning(research, rootBw);
   if (mine) { L.push(""); L.push(`My meaning: ${mine}`); }

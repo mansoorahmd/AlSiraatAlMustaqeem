@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { QuranApi } from "../data/api";
 import type { Db } from "../data/db";
 import {
   addAiPrompt, getAiDicts, getAiIncludeTranslation, getAiPrompts, getAiPromptSel,
   removeAiPrompt, setAiDicts, setAiIncludeTranslation, setAiPromptSel,
 } from "../data/research";
-import { composeAyahShare, composeRootShare } from "../lib/aishare";
+import { composeAyahShare, composeRootShare, shareBundle } from "../lib/aishare";
 import { toast } from "../ui/toast";
 import { colors } from "../theme/tokens";
 
@@ -77,21 +77,19 @@ export function ShareSheet({
     const dictsParam = allSelected ? null : [...dicts];
     const opts = { prompt: promptSel || "", dicts: dictsParam, translation: includeTr };
     setBusy(true);
-    // defer so the "Preparing…" state paints before the (synchronous) compose
-    setTimeout(() => {
-      let msg = "";
+    // defer so the "Preparing…" state paints before compose
+    setTimeout(async () => {
       try {
-        msg = kind === "ayah" && target
+        const msg = kind === "ayah" && target
           ? composeAyahShare(q, research, target, editionIds, opts)
           : target ? composeRootShare(q, research, target, opts) : "";
+        setBusy(false);
+        onClose();
+        await shareBundle(msg, kind === "ayah" ? `Āyah ${target}` : "Root");
       } catch (e) {
         setBusy(false);
         toast(`Share failed: ${e instanceof Error ? e.message : String(e)}`);
-        return;
       }
-      setBusy(false);
-      onClose();
-      if (msg) Share.share({ message: msg }).catch(() => {});
     }, 40);
   };
 
