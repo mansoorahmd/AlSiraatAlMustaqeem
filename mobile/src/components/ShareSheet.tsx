@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import type { QuranApi } from "../data/api";
 import type { Db } from "../data/db";
 import {
@@ -35,6 +35,7 @@ export function ShareSheet({
   const [sources, setSources] = useState<string[]>([]);
   const [dicts, setDicts] = useState<Set<string>>(new Set());
   const [includeTr, setIncludeTr] = useState(true);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -64,7 +65,8 @@ export function ShareSheet({
     if (promptSel === p) setPromptSel("");
   };
 
-  const doShare = async () => {
+  const doShare = () => {
+    if (busy) return;
     setAiPromptSel(research, promptSel);
     setAiDicts(research, [...dicts]);
     setAiIncludeTranslation(research, includeTr);
@@ -73,11 +75,17 @@ export function ShareSheet({
     const allSelected = sources.length > 0 && dicts.size === sources.length;
     const dictsParam = allSelected ? null : [...dicts];
     const opts = { prompt: promptSel || "", dicts: dictsParam, translation: includeTr };
-    const msg = kind === "ayah" && target
-      ? composeAyahShare(q, research, target, editionIds, opts)
-      : target ? composeRootShare(q, research, target, opts) : "";
-    onClose();
-    if (msg) await Share.share({ message: msg });
+    setBusy(true);
+    // defer so the "Preparing…" state paints before the (heavy, synchronous)
+    // compose over every root in the āyah
+    setTimeout(() => {
+      const msg = kind === "ayah" && target
+        ? composeAyahShare(q, research, target, editionIds, opts)
+        : target ? composeRootShare(q, research, target, opts) : "";
+      setBusy(false);
+      onClose();
+      if (msg) Share.share({ message: msg });
+    }, 40);
   };
 
   return (
@@ -155,8 +163,15 @@ export function ShareSheet({
             )}
           </ScrollView>
 
-          <Pressable style={styles.shareBtn} onPress={doShare}>
-            <Text style={styles.shareText}>⇱ Share</Text>
+          <Pressable style={[styles.shareBtn, busy && styles.shareBtnBusy]} onPress={doShare} disabled={busy}>
+            {busy ? (
+              <View style={styles.busyRow}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={styles.shareText}>Preparing…</Text>
+              </View>
+            ) : (
+              <Text style={styles.shareText}>⇱ Share</Text>
+            )}
           </Pressable>
         </View>
       </View>
@@ -196,5 +211,7 @@ const styles = StyleSheet.create({
   chipText: { color: colors.inkSoft, fontSize: 13 },
   chipTextOn: { color: colors.ink, fontWeight: "600" },
   shareBtn: { backgroundColor: colors.gold, borderRadius: 12, paddingVertical: 13, alignItems: "center", marginTop: 14 },
+  shareBtnBusy: { opacity: 0.8 },
+  busyRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   shareText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

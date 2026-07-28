@@ -48,8 +48,9 @@ export function composeAyahShare(
   q: QuranApi, research: Db, verseKey: string, editionIds: Set<number>, opts: ShareOpts = {},
 ): string {
   const surah = q.chapter(cnum(verseKey))?.name_simple ?? "";
-  const arabic = clean((q.verse(verseKey, { script: "uthmani" })?.text as string) ?? "");
-  const words = ((q.verse(verseKey, { script: "uthmani", withWords: true })?.words ?? []) as Word[]).filter((w) => w.pos != null);
+  const verse = q.verse(verseKey, { script: "uthmani", withWords: true });
+  const arabic = clean((verse?.text as string) ?? "");
+  const words = ((verse?.words ?? []) as Word[]).filter((w) => w.pos != null);
   const trans = editionIds.size ? q.verseTranslations(verseKey).filter((t) => editionIds.has(t.resource_id)) : [];
 
   const seen = new Set<string>();
