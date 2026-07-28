@@ -27,6 +27,8 @@ const TOOLS: Mark[] = [
   { glyph: "★", color: colors.gold, title: "Focus", desc: "Star up to 5 āyāt and 5 roots to keep on your Home screen. Tap a focused āyah there to reopen it with its connections lens." },
   { glyph: "⇋", color: colors.lapis, title: "Compare", desc: "Add āyāt or roots to a named comparison from anywhere — the ⋯ menu, echo & related panels, a root's occurrences, or a trail. Shared roots are colour-linked down the page, and each āyah card carries its global note. Rename, save and switch comparisons in the Compare tab." },
   { glyph: "⚲", color: colors.inkSoft, title: "Trails", desc: "Follow a word or root through every occurrence, stop by stop. Save a trail to resume later; recent trails wait on Home." },
+  { glyph: "⌕", color: colors.gold, title: "Expression search", desc: "Long-press a word to start, then tap any words in that āyah to build an expression (e.g. أصحاب النار). Find every āyah where they co-occur — Verbatim (exact wording) or By roots (any inflection)." },
+  { glyph: "⇱", color: colors.lapis, title: "Share with… (AI)", desc: "From the āyah ⋯ menu or a root page, send a bundle — Arabic, translation, each root's meaning & derived forms, and your notes — to Gemini or any app. Choose a saved prompt, whether to include the translation, and exactly which dictionaries to attach." },
   { glyph: "▾", color: colors.inkSoft, title: "Sūra list", desc: "Tap the sūra name in the reader header to jump back to the list of sūras." },
 ];
 
@@ -94,6 +96,7 @@ export function LegendSheet({ visible, onClose }: { visible: boolean; onClose: (
             <Text style={styles.tip}>• Long-press a word to start an expression, tap more words, then Find every āyah where they co-occur (verbatim or by roots).</Text>
             <Text style={styles.tip}>• Star ★ up to 5 āyāt and roots into Focus — they wait on your Home screen.</Text>
             <Text style={styles.tip}>• “✚ Add to Compare” from any āyah lines them up with roots colour-linked.</Text>
+            <Text style={styles.tip}>• “⇱ Share with…” hands an āyah/root (with roots, forms & your notes) to Gemini or any app — pick a saved prompt, translation on/off, and which dictionaries.</Text>
             <Text style={styles.tip}>• Tap the sūra name in the header to open the sūra list.</Text>
             <Text style={styles.tip}>• The ⚙ menu holds script, size, word-by-word, and translations.</Text>
           </ScrollView>

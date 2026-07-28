@@ -55,7 +55,10 @@ curated case files, and case/report export.
 | Compare → **named, saveable comparisons** | ✅ | vertical timeline + git-tree of shared roots; "✚ Add to Compare" everywhere; per-card global notes; rename/set-active/delete |
 | Focus shortlist (persisted, on Home) | ✅ | ≤5 āyāt + ≤5 roots; ★ toggle; tap a Home āyah → reopen with its lens |
 | Reader header sūra name → sūra list | ✅ | tap the ▾ title from any tab's reader |
-| App icon, splash, marks legend / onboarding | ✅ | self-correcting-path logo; LegendSheet covers marks, word sheet, tools |
+| Expression search (multi-select co-occurrence) | ✅ | long-press to pick words; Verbatim / By-roots toggle |
+| Share with… (AI hand-off) | ✅ | āyah/root bundle → Gemini/any app; saved prompts, translation toggle, dictionary picker |
+| Consistency pass (clipping, Amiri, tappable words) | ✅ | see below |
+| App icon, splash, marks legend / onboarding | ✅ | self-correcting-path logo; LegendSheet covers marks, word sheet, tools, expression search, share |
 
 ---
 
@@ -206,9 +209,17 @@ smoke test; data ports also add parity fixtures).
 ### Share with… (AI hand-off)
 > Āyah ⋯ → "⇱ Share with…" and a root page → "⇱ Share with…" build a rich
 > plain-text bundle and open the OS share sheet (pick Gemini or any app).
-> Āyah bundle: Arabic + selected translations + each root with meaning &
-> derived forms + the reader's notes/questions on that āyah. Root bundle: root,
-> forms, dictionary senses, my meaning, my notes. `lib/aishare.ts`.
+> Āyah bundle: Arabic + translation + each root with meaning & derived forms +
+> the reader's notes/questions on that āyah. Root bundle: root, forms,
+> dictionary senses, my meaning, my notes. `lib/aishare.ts`.
+>
+> A **ShareSheet** precedes the share: choose a **saved prompt** (add / delete /
+> "no prompt"; persisted), toggle **Include translation** (āyah), and pick
+> **which dictionaries** to attach (All / None / individual). Dictionary
+> selection is strict — choosing specific sources excludes the built-in English
+> gloss, so "only Lisān al-ʿArab" shares Lisān alone. Prompts + dictionary +
+> translation choices persist (`research` prefs); sources via
+> `api.dictionarySources()`.
 
 ### Expression search (multi-word co-occurrence)
 > Long-press a word in the reader to enter selection, tap any words in that āyah
