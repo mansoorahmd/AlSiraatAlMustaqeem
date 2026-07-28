@@ -203,6 +203,15 @@ smoke test; data ports also add parity fixtures).
 > **Compare linkage** dropped colour-coding + the threads legend for **shared
 > roots pinned atop each card** (chips linking to the āyah above).
 
+### Expression search (multi-word co-occurrence)
+> Long-press a word in the reader to enter selection, tap any words in that āyah
+> to build an "expression" (e.g. أصحاب النار), then **Find** every āyah where they
+> co-occur. A results panel offers a **Verbatim | By-roots** toggle: verbatim =
+> each word's exact wording (vowel/alif-insensitive skeleton), by-roots = each
+> word's root appears (catches other inflections; rootless terms fall back to
+> surface). `data/expressions.ts` + `api.expressionSearch`; `ExpressionPanel`.
+> Validated: أصحاب+النار → 20 āyāt verbatim, roots صحب+نور → 21.
+
 ### Wazn (صرف pattern) on the word sheet
 > Tapping a word now shows its **wazn** — the morphological measure its shape
 > carries. Derived from corpus tags (`verb_form` I–XII, `derivation` =

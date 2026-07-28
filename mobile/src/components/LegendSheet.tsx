@@ -91,6 +91,7 @@ export function LegendSheet({ visible, onClose }: { visible: boolean; onClose: (
             <Text style={styles.section}>Tips</Text>
             <Text style={styles.tip}>• Tap any word for its wazn (وزن), root, spellings, gloss, and notes.</Text>
             <Text style={styles.tip}>• “⚲ Follow” walks every occurrence of an exact word or a root, stop by stop.</Text>
+            <Text style={styles.tip}>• Long-press a word to start an expression, tap more words, then Find every āyah where they co-occur (verbatim or by roots).</Text>
             <Text style={styles.tip}>• Star ★ up to 5 āyāt and roots into Focus — they wait on your Home screen.</Text>
             <Text style={styles.tip}>• “✚ Add to Compare” from any āyah lines them up with roots colour-linked.</Text>
             <Text style={styles.tip}>• Tap the sūra name in the header to open the sūra list.</Text>

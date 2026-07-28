@@ -17,6 +17,8 @@ import { WordSheet } from "../components/WordSheet";
 import { NotesPanel, type NoteScope } from "../components/NotesPanel";
 import { EchoPanel } from "../components/EchoPanel";
 import { RelatedPanel } from "../components/RelatedPanel";
+import { ExpressionPanel } from "../components/ExpressionPanel";
+import type { ExprTerm } from "../data/expressions";
 import { VariantPanel } from "../components/VariantPanel";
 import { LegendSheet } from "../components/LegendSheet";
 import { VerseText } from "../components/VerseText";
@@ -82,6 +84,9 @@ export default function Reader({ route, navigation }: Props) {
   const [variantSet, setVariantSet] = useState<Set<string>>(new Set());
   const [variantVerse, setVariantVerse] = useState<string | null>(null);
   const [echoRootVerse, setEchoRootVerse] = useState<string | null>(null); // which āyah's root-echo is lit
+  // multi-word "expression" selection (within one āyah) → co-occurrence search
+  const [sel, setSel] = useState<{ verseKey: string; words: Map<number, { surface: string; root: string | null }> } | null>(null);
+  const [exprTerms, setExprTerms] = useState<ExprTerm[] | null>(null);
   const [legend, setLegend] = useState(false);
   const [related, setRelated] = useState<{ title: string; matches: CompositeMatch[]; baseKey?: string } | null>(null);
   const [lens, setLens] = useState<{ baseKey: string; matches: Map<string, CompositeMatch> } | null>(null);
@@ -108,6 +113,20 @@ export default function Reader({ route, navigation }: Props) {
   const addAyahToCompare = (vk: string) => {
     const r = addToActiveCompare(research, "ayah", vk, null);
     toast(r.added ? `Added ${vk} to “${r.title}”` : `${vk} is already in “${r.title}”`);
+  };
+  const wordEntry = (w: Word) => ({ surface: w.arabic ?? "", root: w.root_buckwalter });
+  const startSelect = (vk: string, w: Word) => setSel({ verseKey: vk, words: new Map([[w.position, wordEntry(w)]]) });
+  const toggleSelect = (vk: string, w: Word) =>
+    setSel((prev) => {
+      if (!prev || prev.verseKey !== vk) return { verseKey: vk, words: new Map([[w.position, wordEntry(w)]]) };
+      const m = new Map(prev.words);
+      m.has(w.position) ? m.delete(w.position) : m.set(w.position, wordEntry(w));
+      return { verseKey: vk, words: m };
+    });
+  const runExpression = () => {
+    if (!sel) return;
+    const terms = [...sel.words.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => ({ surface: v.surface, rootBuckwalter: v.root }));
+    setExprTerms(terms);
   };
   // word-sheet actions for āyāt shown inside the echo / related panels
   const wordNav = {
@@ -392,7 +411,9 @@ export default function Reader({ route, navigation }: Props) {
                 <WordGrid
                   words={words}
                   showGloss={showLabels}
-                  onWordPress={(w) => setSelected({ word: w, verseKey: item.verse_key })}
+                  onWordPress={(w) => (sel && sel.verseKey === item.verse_key ? toggleSelect(item.verse_key, w) : setSelected({ word: w, verseKey: item.verse_key }))}
+                  onWordLongPress={(w) => startSelect(item.verse_key, w)}
+                  selectedPositions={sel && sel.verseKey === item.verse_key ? new Set(sel.words.keys()) : undefined}
                   arabicSize={arabicSize}
                   notedPositions={noted}
                   highlightRoots={litRoots}
@@ -401,7 +422,9 @@ export default function Reader({ route, navigation }: Props) {
                 <VerseText
                   text={(item.text as string) ?? ""}
                   words={words}
-                  onWordPress={(w) => setSelected({ word: w, verseKey: item.verse_key })}
+                  onWordPress={(w) => (sel && sel.verseKey === item.verse_key ? toggleSelect(item.verse_key, w) : setSelected({ word: w, verseKey: item.verse_key }))}
+                  onWordLongPress={(w) => startSelect(item.verse_key, w)}
+                  selectedPositions={sel && sel.verseKey === item.verse_key ? new Set(sel.words.keys()) : undefined}
                   size={verseSize}
                   notedPositions={noted}
                   highlightRoots={litRoots}
@@ -493,6 +516,36 @@ export default function Reader({ route, navigation }: Props) {
         actions={wordNav}
         onJump={(vk) => { setRelated(null); jumpTo(vk); }}
       />
+
+      <ExpressionPanel
+        visible={!!exprTerms}
+        terms={exprTerms ?? []}
+        q={q}
+        editionIds={editionIds}
+        onClose={() => setExprTerms(null)}
+        onAddCompare={addAyahToCompare}
+        actions={wordNav}
+        onJump={(vk) => { setExprTerms(null); setSel(null); jumpTo(vk); }}
+      />
+
+      {sel && (
+        <View style={styles.selBar}>
+          <Pressable onPress={() => setSel(null)} hitSlop={10}><Text style={styles.selCancel}>✕</Text></Pressable>
+          <View style={styles.selWords}>
+            {[...sel.words.entries()].sort((a, b) => a[0] - b[0]).map(([pos, v]) => (
+              <Text key={pos} style={styles.selWord}>{v.surface}</Text>
+            ))}
+            {sel.words.size === 0 && <Text style={styles.selHint}>tap words to add…</Text>}
+          </View>
+          <Pressable
+            onPress={runExpression}
+            disabled={sel.words.size < 2}
+            style={[styles.selFind, sel.words.size < 2 && styles.selFindOff]}
+          >
+            <Text style={styles.selFindText}>Find ⌕</Text>
+          </Pressable>
+        </View>
+      )}
 
       {working && (
         <View style={styles.overlay}>
@@ -731,6 +784,19 @@ const styles = StyleSheet.create({
   },
   headerTitle: { color: colors.ink, fontSize: 17, fontWeight: "600" },
   headerTitleCaret: { color: colors.inkSoft, fontSize: 13 },
+  selBar: {
+    position: "absolute", left: 10, right: 10, bottom: 12,
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: colors.ink, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10,
+    shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 6,
+  },
+  selCancel: { color: "#fff", fontSize: 16, opacity: 0.8 },
+  selWords: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  selWord: { color: colors.amberStrong, fontSize: 20, fontFamily: font.arabic, writingDirection: "rtl" },
+  selHint: { color: "#cfc8ba", fontSize: 13 },
+  selFind: { backgroundColor: colors.gold, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  selFindOff: { opacity: 0.4 },
+  selFindText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   waznLabel: { color: colors.inkSoft, fontSize: 10, fontWeight: "700", letterSpacing: 1 },
   waznHead: { flexDirection: "row", alignItems: "baseline", gap: 12, marginTop: 6 },
   waznPattern: { color: colors.gold, fontSize: 30, fontFamily: font.arabic, writingDirection: "rtl" },

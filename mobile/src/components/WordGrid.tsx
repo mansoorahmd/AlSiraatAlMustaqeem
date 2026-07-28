@@ -10,30 +10,36 @@ import { colors, font } from "../theme/tokens";
 export function WordGrid({
   words,
   onWordPress,
+  onWordLongPress,
   showGloss = true,
   arabicSize = 26,
   notedPositions,
   highlightRoots,
+  selectedPositions,
 }: {
   words: Word[];
   onWordPress?: (w: Word) => void;
+  onWordLongPress?: (w: Word) => void;
   showGloss?: boolean;
   arabicSize?: number;
   notedPositions?: Set<number>;
   highlightRoots?: Set<string>;
+  selectedPositions?: Set<number>;
 }) {
   return (
     <View style={styles.row}>
       {words.map((w) => {
         const noted = notedPositions?.has(w.position);
         const lit = !!(w.root && highlightRoots?.has(w.root));
+        const picked = selectedPositions?.has(w.position);
         return (
         <Pressable
           key={w.position}
           onPress={() => onWordPress?.(w)}
-          style={({ pressed }) => [styles.word, pressed && styles.pressed]}
+          onLongPress={onWordLongPress ? () => onWordLongPress(w) : undefined}
+          style={({ pressed }) => [styles.word, picked && styles.pickedCell, pressed && styles.pressed]}
         >
-          <Text style={[styles.arabic, { fontSize: arabicSize }, noted && styles.noted, lit && styles.lit]}>{w.arabic ?? "—"}</Text>
+          <Text style={[styles.arabic, { fontSize: arabicSize }, noted && styles.noted, lit && styles.lit, picked && styles.picked]}>{w.arabic ?? "—"}</Text>
           {showGloss && !!w.gloss && <Text style={styles.gloss}>{w.gloss}</Text>}
           {showGloss && !!w.root && <Text style={styles.root}>{w.root}</Text>}
         </Pressable>
@@ -58,9 +64,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   pressed: { backgroundColor: colors.amber },
+  pickedCell: { backgroundColor: colors.amberStrong },
   arabic: { color: colors.ink, writingDirection: "rtl", fontFamily: font.arabic },
   noted: { color: colors.lapis },
   lit: { color: colors.gold, fontWeight: "600" },
+  picked: { color: colors.ink, fontWeight: "600" },
   gloss: { color: colors.inkSoft, fontSize: 11, marginTop: 2, maxWidth: 90, textAlign: "center" },
   root: { color: colors.gold, fontSize: 12, marginTop: 1, writingDirection: "rtl" },
 });

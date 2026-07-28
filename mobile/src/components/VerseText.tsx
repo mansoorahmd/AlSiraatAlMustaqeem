@@ -25,18 +25,22 @@ export function VerseText({
   text,
   words,
   onWordPress,
+  onWordLongPress,
   size = 28,
   notedPositions,
   highlightRoots,
   highlightPositions,
+  selectedPositions,
 }: {
   text?: string;
   words?: Word[];
   onWordPress?: (w: Word) => void;
+  onWordLongPress?: (w: Word) => void;
   size?: number;
   notedPositions?: Set<number>;
   highlightRoots?: Set<string>;
   highlightPositions?: Set<number>;
+  selectedPositions?: Set<number>;
 }) {
   const style = [
     styles.arabic,
@@ -63,12 +67,14 @@ export function VerseText({
               const w = words[k++];
               const lit = !!(w.root && highlightRoots?.has(w.root)) || !!highlightPositions?.has(w.position);
               const noted = notedPositions?.has(w.position);
+              const picked = selectedPositions?.has(w.position);
               return (
                 <Text
                   key={i}
                   onPress={() => onWordPress(w)}
+                  onLongPress={onWordLongPress ? () => onWordLongPress(w) : undefined}
                   suppressHighlighting
-                  style={lit ? styles.lit : noted ? styles.noted : undefined}
+                  style={picked ? styles.picked : lit ? styles.lit : noted ? styles.noted : undefined}
                 >
                   {disp + sep}
                 </Text>
@@ -99,4 +105,5 @@ const styles = StyleSheet.create({
   },
   noted: { color: colors.lapis },
   lit: { color: colors.gold, fontWeight: "600" },
+  picked: { color: colors.ink, backgroundColor: colors.amberStrong, fontWeight: "600" },
 });
