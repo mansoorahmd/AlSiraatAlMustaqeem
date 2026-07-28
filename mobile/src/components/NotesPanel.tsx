@@ -7,7 +7,7 @@ import {
   addNote, answerNote, deleteNote, editNote, notesForRoot, notesForVerse, reopenNote,
   type Note,
 } from "../data/research";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 export interface NoteScope {
   verseKey: string;
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   title: { fontSize: 15, fontWeight: "700", color: colors.ink },
   done: { color: colors.lapis, fontWeight: "600", fontSize: 15 },
-  crossRef: { color: colors.lapis, fontSize: 13, marginBottom: 8, writingDirection: "rtl", textAlign: "left" },
+  crossRef: { color: colors.lapis, fontSize: 13, marginBottom: 8, writingDirection: "rtl", fontFamily: font.arabic, textAlign: "left" },
   addRow: { flexDirection: "row" },
   input: {
     borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 10,

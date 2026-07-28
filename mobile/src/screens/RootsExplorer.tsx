@@ -5,7 +5,7 @@ import type { RootStackParamList } from "../navigation/types";
 import type { RootSummary } from "../types";
 import { useQuran } from "../state/DbContext";
 import { Chip } from "../components/ui";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "RootsExplorer">;
 
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", backgroundColor: colors.surface,
     borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 12, marginBottom: 8,
   },
-  arabic: { fontSize: 26, color: colors.gold, writingDirection: "rtl", marginLeft: 14, minWidth: 70, textAlign: "right" },
+  arabic: { fontSize: 26, color: colors.gold, writingDirection: "rtl", fontFamily: font.arabic, marginLeft: 14, minWidth: 70, textAlign: "right" },
   meaning: { color: colors.ink, fontSize: 15 },
   meta: { color: colors.inkSoft, fontSize: 12, marginTop: 2 },
 });

@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { QuranApi } from "../data/api";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 /** Lists the word(s) in an āyah that are written more than one way in the
  *  mushaf, each with its spellings, counts, and a jump to an example. */
@@ -74,9 +74,9 @@ const styles = StyleSheet.create({
   sub: { color: colors.inkSoft, fontSize: 12, marginTop: 2, marginBottom: 6 },
   empty: { color: colors.inkSoft, textAlign: "center", paddingVertical: 18 },
   word: { borderTopWidth: 1, borderTopColor: colors.surfaceAlt, paddingVertical: 10 },
-  wordArabic: { color: colors.gold, fontSize: 18, writingDirection: "rtl", textAlign: "right", marginBottom: 6 },
+  wordArabic: { color: colors.gold, fontSize: 18, writingDirection: "rtl", fontFamily: font.arabic, textAlign: "right", marginBottom: 6 },
   varRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
-  varArabic: { color: colors.ink, fontSize: 26, writingDirection: "rtl", flex: 1 },
+  varArabic: { color: colors.ink, fontSize: 26, writingDirection: "rtl", fontFamily: font.arabic, flex: 1 },
   varCount: { color: colors.inkSoft, fontSize: 13, marginHorizontal: 10 },
   varJump: { color: colors.lapis, fontSize: 13, fontWeight: "600" },
 });

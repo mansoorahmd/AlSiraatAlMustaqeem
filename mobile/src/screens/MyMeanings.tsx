@@ -6,7 +6,7 @@ import type { RootStackParamList } from "../navigation/types";
 import { useQuran } from "../state/DbContext";
 import { listUserRootMeanings, type UserRootMeaning } from "../data/research";
 import { buckToArabic } from "../text/normalize";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MyMeanings">;
 
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border,
     padding: 12, marginBottom: 8,
   },
-  root: { color: colors.gold, fontSize: 22, writingDirection: "rtl", textAlign: "right" },
+  root: { color: colors.gold, fontSize: 22, writingDirection: "rtl", fontFamily: font.arabic, textAlign: "right" },
   meaning: { color: colors.ink, fontSize: 15, lineHeight: 21, marginTop: 4 },
   empty: { color: colors.inkSoft, textAlign: "center", marginTop: 40, paddingHorizontal: 20, lineHeight: 20 },
 });

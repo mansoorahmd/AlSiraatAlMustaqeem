@@ -1,11 +1,20 @@
 import React, { useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { QuranApi } from "../data/api";
-import type { Echo } from "../types";
-import { colors } from "../theme/tokens";
+import type { Db } from "../data/db";
+import type { Echo, Word } from "../types";
+import { VerseText } from "./VerseText";
+import { useWordSheet } from "./WordSheet";
+import { colors, font } from "../theme/tokens";
 
 const cnum = (k: string) => Number(k.split(":")[0]);
 const COMPARE_CAP = 25; // don't render hundreds of āyāt at once
+type WordActions = {
+  research: Db;
+  onOpenRoot: (bw: string) => void;
+  onFollowWord: (surface: string, label: string) => void;
+  onFollowRoot: (bw: string) => void;
+};
 
 export function EchoPanel({
   visible,
@@ -15,6 +24,7 @@ export function EchoPanel({
   editionIds,
   onJump,
   onAddCompare,
+  actions,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -23,16 +33,19 @@ export function EchoPanel({
   editionIds: Set<number>;
   onJump: (verseKey: string) => void;
   onAddCompare?: (verseKey: string) => void;
+  actions: WordActions;
 }) {
+  const ws = useWordSheet({ q, research: actions.research, onOpenRoot: actions.onOpenRoot, onFollowWord: actions.onFollowWord, onFollowRoot: actions.onFollowRoot, onJumpVerse: onJump });
   const echoes = useMemo<Echo[]>(
     () => (visible && verseKey ? q.verseEchoes(verseKey) : []),
     [visible, verseKey, q],
   );
   const surahName = (vk: string) => q.chapter(cnum(vk))?.name_simple ?? "";
   const base = useMemo(
-    () => (visible && verseKey ? q.verse(verseKey, { script: "uthmani" }) : undefined),
+    () => (visible && verseKey ? q.verse(verseKey, { script: "uthmani", withWords: true }) : undefined),
     [visible, verseKey, q],
   );
+  const baseWords = ((base?.words ?? []) as Word[]).filter((w) => w.pos != null);
   const baseTr = useMemo(
     () => (visible && verseKey && editionIds.size
       ? q.verseTranslations(verseKey).filter((t) => editionIds.has(t.resource_id)) : []),
@@ -52,7 +65,7 @@ export function EchoPanel({
             {!!base && (
               <View style={styles.baseCard}>
                 <Text style={styles.baseKey}>this āyah · {verseKey} · {verseKey ? surahName(verseKey) : ""}</Text>
-                <Text style={styles.baseText}>{(base.text as string) ?? ""}</Text>
+                <VerseText text={(base.text as string) ?? ""} words={baseWords} size={22} onWordPress={(w) => ws.open(verseKey!, w)} />
                 {baseTr.map((t) => (
                   <Text key={t.resource_id} style={styles.baseTr}>{t.text}</Text>
                 ))}
@@ -65,11 +78,12 @@ export function EchoPanel({
             )}
             {echoes.length === 0 && <Text style={styles.empty}>No verbatim repeats in this āyah.</Text>}
             {echoes.map((e, i) => (
-              <EchoRow key={i} echo={e} q={q} surahName={surahName} editionIds={editionIds} onJump={onJump} onAddCompare={onAddCompare} />
+              <EchoRow key={i} echo={e} q={q} surahName={surahName} editionIds={editionIds} onJump={onJump} onAddCompare={onAddCompare} openWord={ws.open} />
             ))}
           </ScrollView>
         </View>
       </View>
+      {ws.sheet}
     </Modal>
   );
 }
@@ -81,6 +95,7 @@ function EchoRow({
   editionIds,
   onJump,
   onAddCompare,
+  openWord,
 }: {
   echo: Echo;
   q: QuranApi;
@@ -88,6 +103,7 @@ function EchoRow({
   editionIds: Set<number>;
   onJump: (verseKey: string) => void;
   onAddCompare?: (verseKey: string) => void;
+  openWord: (verseKey: string, w: Word) => void;
 }) {
   const [compare, setCompare] = useState(false);
 
@@ -95,14 +111,18 @@ function EchoRow({
   // reader's selected translation editions if any are enabled
   const compareRows = useMemo(() => {
     if (!compare) return [];
-    return echo.occurrences.slice(0, COMPARE_CAP).map((o) => ({
-      verseKey: o.verseKey,
-      surah: surahName(o.verseKey),
-      text: (q.verse(o.verseKey, { script: "uthmani" })?.text as string) ?? "",
-      translations: editionIds.size
-        ? q.verseTranslations(o.verseKey).filter((t) => editionIds.has(t.resource_id))
-        : [],
-    }));
+    return echo.occurrences.slice(0, COMPARE_CAP).map((o) => {
+      const v = q.verse(o.verseKey, { script: "uthmani", withWords: true });
+      return {
+        verseKey: o.verseKey,
+        surah: surahName(o.verseKey),
+        text: (v?.text as string) ?? "",
+        words: ((v?.words ?? []) as Word[]).filter((w) => w.pos != null),
+        translations: editionIds.size
+          ? q.verseTranslations(o.verseKey).filter((t) => editionIds.has(t.resource_id))
+          : [],
+      };
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compare, echo, editionIds]);
   const extra = echo.occurrences.length - COMPARE_CAP;
@@ -126,7 +146,7 @@ function EchoRow({
       {compareRows.map((r) => (
         <View key={r.verseKey} style={styles.compareRow}>
           <Text style={styles.compareKey}>{r.verseKey} · {r.surah}</Text>
-          <Text style={styles.compareText}>{r.text}</Text>
+          <VerseText text={r.text} words={r.words} size={20} onWordPress={(w) => openWord(r.verseKey, w)} />
           {r.translations.map((t) => (
             <Text key={t.resource_id} style={styles.compareTr}>{t.text}</Text>
           ))}
@@ -157,7 +177,7 @@ const styles = StyleSheet.create({
   baseText: { color: colors.ink, fontSize: 22, lineHeight: 42, writingDirection: "rtl", textAlign: "right" },
   baseTr: { color: colors.inkSoft, fontSize: 13, lineHeight: 19, marginTop: 6 },
   echo: { borderTopWidth: 1, borderTopColor: colors.surfaceAlt, paddingVertical: 12 },
-  phrase: { color: colors.ink, fontSize: 24, lineHeight: 42, writingDirection: "rtl", textAlign: "right" },
+  phrase: { color: colors.ink, fontSize: 24, lineHeight: 46, writingDirection: "rtl", textAlign: "right", fontFamily: font.arabic },
   meta: { color: colors.inkSoft, fontSize: 12, marginTop: 2 },
   chips: { flexDirection: "row", flexWrap: "wrap", marginTop: 8 },
   chip: {

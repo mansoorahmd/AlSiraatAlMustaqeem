@@ -5,7 +5,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { RootStackParamList } from "../navigation/types";
 import { useQuran } from "../state/DbContext";
 import { allOpenQuestions, type Note } from "../data/research";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "OpenQuestions">;
 
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   },
   rowHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   key: { color: colors.gold, fontWeight: "700", fontSize: 12 },
-  root: { color: colors.lapis, fontSize: 16, writingDirection: "rtl" },
+  root: { color: colors.lapis, fontSize: 16, writingDirection: "rtl", fontFamily: font.arabic },
   text: { color: colors.ink, fontSize: 15, lineHeight: 21 },
   empty: { color: colors.inkSoft, textAlign: "center", marginTop: 40, paddingHorizontal: 20, lineHeight: 20 },
 });

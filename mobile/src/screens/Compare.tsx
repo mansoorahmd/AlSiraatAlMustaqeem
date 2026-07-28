@@ -12,14 +12,13 @@ import {
   type CompareItem, type CompareSet,
 } from "../data/research";
 import { NotesPanel, type NoteScope } from "../components/NotesPanel";
+import { TappableVerse } from "../components/TappableVerse";
 import { colors, font } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Compare">;
 const cnum = (k: string) => Number(k.split(":")[0]);
 const parseEditions = (p: string | null) =>
   p == null ? new Set([20, 54]) : new Set(p ? p.split(",").map(Number).filter((n) => !Number.isNaN(n)) : []);
-const PALETTE = ["#B7791F", "#2563A6", "#9B2C6E", "#2C8A57", "#A6432E", "#6D4AA6", "#1F7A8C", "#8A6D1F"];
-const hasArabicLetter = (t: string) => /[ء-يٱ-ۓـ]/.test(t);
 const clean = (t: string) => t.replace(/[\uE000-\uF8FF\u200B-\u200F\uFEFF]/g, "");
 const titleOf = (s: CompareSet | undefined | null) => (s?.title?.trim() || "Untitled comparison");
 
@@ -79,7 +78,7 @@ export default function Compare({ navigation }: Props) {
           <Text style={styles.emptyText}>
             Tap “✚ Add to Compare” on any āyah — in the reader, echo panel, related āyāt, a root’s
             occurrences, or while following a thread — and it lands in your active comparison.
-            Shared roots are colour-linked so parallels leap out.
+            Shared roots are pinned atop each card, linked to the āyah above.
           </Text>
           <Pressable style={styles.emptyBtn} onPress={newComparison}>
             <Text style={styles.emptyBtnText}>＋ New comparison</Text>
@@ -154,10 +153,8 @@ function CompareBoard({
     });
     const count = new Map<string, number>();
     for (const s of rootsPerItem) for (const r of s) count.set(r, (count.get(r) ?? 0) + 1);
-    const shared = [...count.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]);
-    const colorOf = new Map<string, string>();
-    shared.forEach(([r], i) => colorOf.set(r, PALETTE[i % PALETTE.length]!));
-    return { rootsPerItem, shared, colorOf };
+    const sharedAll = new Set<string>([...count.entries()].filter(([, c]) => c >= 2).map(([r]) => r));
+    return { rootsPerItem, sharedAll };
   }, [items, q]);
 
   const noteCount = (vk: string) => notesForVerse(research, vk).filter((n) => n.word_position == null).length;
@@ -188,21 +185,6 @@ function CompareBoard({
           : <Pressable onPress={onSetActive} hitSlop={8}><Text style={styles.setActive}>Set active</Text></Pressable>}
       </View>
 
-      {analysis.shared.length > 0 && (
-        <View style={styles.legend}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, alignItems: "center" }}>
-            <Text style={styles.legendLabel}>threads</Text>
-            {analysis.shared.map(([r, c]) => (
-              <View key={r} style={styles.chip}>
-                <View style={[styles.swatch, { backgroundColor: analysis.colorOf.get(r) }]} />
-                <Text style={[styles.chipRoot, { color: analysis.colorOf.get(r) }]}>{r}</Text>
-                <Text style={styles.chipCount}>×{c}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
       {items.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>Empty. Add āyāt or roots with “✚ Add to Compare” from anywhere.</Text>
@@ -213,8 +195,8 @@ function CompareBoard({
             const isCollapsed = collapsed.has(it.id);
             const mine = analysis.rootsPerItem[i]!;
             const prev = i > 0 ? analysis.rootsPerItem[i - 1]! : null;
-            const sharedWithPrev = prev ? [...mine].filter((r) => prev.has(r) && analysis.colorOf.has(r)) : [];
-            const nodeShared = [...mine].some((r) => analysis.colorOf.has(r));
+            const sharedWithPrev = prev ? [...mine].filter((r) => prev.has(r)) : [];
+            const nodeShared = [...mine].some((r) => analysis.sharedAll.has(r));
             const first = i === 0;
             const last = i === items.length - 1;
             const notes = it.kind === "ayah" ? noteCount(it.ref) : 0;
@@ -227,10 +209,12 @@ function CompareBoard({
                 <View style={styles.card}>
                   {sharedWithPrev.length > 0 && (
                     <View style={styles.mergeRow}>
-                      <Text style={styles.mergeText}>shares with above</Text>
-                      {sharedWithPrev.slice(0, 8).map((r) => (
-                        <View key={r} style={[styles.dot, { backgroundColor: analysis.colorOf.get(r) }]} />
-                      ))}
+                      <Text style={styles.mergeText}>shares with above ↑</Text>
+                      <View style={styles.mergeChips}>
+                        {sharedWithPrev.map((r) => (
+                          <Text key={r} style={styles.mergeChip}>{r}</Text>
+                        ))}
+                      </View>
                     </View>
                   )}
                   <Pressable style={styles.cardHead} onPress={() => toggle(it.id)}>
@@ -246,13 +230,13 @@ function CompareBoard({
                     <CollapsedPreview it={it} q={q} editionIds={editionIds} />
                   ) : it.kind === "ayah" ? (
                     <AyahBody
-                      vk={it.ref} q={q} editionIds={editionIds} colorOf={analysis.colorOf} notes={notes}
+                      vk={it.ref} q={q} research={research} editionIds={editionIds} notes={notes} nav={nav}
                       onNote={() => setNoteScope({ verseKey: it.ref })}
                       onOpen={() => nav.navigate("ReadTab", { screen: "Reader", params: { chapterId: cnum(it.ref), focusVerseKey: it.ref } })}
                     />
                   ) : (
                     <RootBody
-                      bw={it.ref} q={q} color={analysis.colorOf.get(q.root(it.ref)?.root_arabic ?? "")}
+                      bw={it.ref} q={q}
                       onOpen={() => nav.navigate("RootsTab", { screen: "RootDetail", params: { root: it.ref } })}
                     />
                   )}
@@ -278,34 +262,24 @@ function CompareBoard({
   );
 }
 
-function ColoredVerse({ text, words, colorOf, size = 25 }: { text: string; words: Word[]; colorOf: Map<string, string>; size?: number }) {
-  const style = [styles.arabic, { fontSize: size, lineHeight: size * 2.0 }];
-  const tokens = text.trim().split(/\s+/);
-  const aligned = tokens.filter(hasArabicLetter).length === words.length;
-  if (!aligned) return <Text style={style}>{clean(text)}</Text>;
-  let k = 0;
-  return (
-    <Text style={style}>
-      {tokens.map((tok, i) => {
-        const disp = clean(tok);
-        if (!disp) return null;
-        const sep = i < tokens.length - 1 ? " " : "";
-        if (!hasArabicLetter(tok)) return <Text key={i}>{disp + sep}</Text>;
-        const w = words[k++]!;
-        const c = w.root ? colorOf.get(w.root) : undefined;
-        return <Text key={i} style={c ? { color: c, fontWeight: "600" } : undefined}>{disp + sep}</Text>;
-      })}
-    </Text>
-  );
-}
-
-function AyahBody({ vk, q, editionIds, colorOf, notes, onNote, onOpen }: { vk: string; q: any; editionIds: Set<number>; colorOf: Map<string, string>; notes: number; onNote: () => void; onOpen: () => void }) {
+function AyahBody({ vk, q, research, editionIds, notes, nav, onNote, onOpen }: { vk: string; q: any; research: Db; editionIds: Set<number>; notes: number; nav: any; onNote: () => void; onOpen: () => void }) {
   const v = q.verse(vk, { script: "uthmani", withWords: true });
   const words = ((v?.words ?? []) as Word[]).filter((w) => w.pos != null);
   const tr = editionIds.size ? q.verseTranslations(vk).filter((t: any) => editionIds.has(t.resource_id)) : [];
   return (
     <View style={styles.body}>
-      <ColoredVerse text={(v?.text as string) ?? ""} words={words} colorOf={colorOf} />
+      <TappableVerse
+        q={q}
+        research={research}
+        verseKey={vk}
+        text={(v?.text as string) ?? ""}
+        words={words}
+        size={25}
+        onOpenRoot={(bw) => nav.navigate("RootsTab", { screen: "RootDetail", params: { root: bw } })}
+        onFollowWord={(surface, lbl) => nav.navigate("ReadTab", { screen: "Trail", params: { word: surface, label: lbl } })}
+        onFollowRoot={(bw) => nav.navigate("ReadTab", { screen: "Trail", params: { root: bw } })}
+        onJumpVerse={(k) => nav.navigate("ReadTab", { screen: "Reader", params: { chapterId: cnum(k), focusVerseKey: k } })}
+      />
       {tr.map((t: any) => (
         <View key={t.resource_id} style={styles.trWrap}>
           <Text style={styles.tr}>{t.text}</Text>
@@ -320,14 +294,14 @@ function AyahBody({ vk, q, editionIds, colorOf, notes, onNote, onOpen }: { vk: s
   );
 }
 
-function RootBody({ bw, q, color, onOpen }: { bw: string; q: any; color?: string; onOpen: () => void }) {
+function RootBody({ bw, q, onOpen }: { bw: string; q: any; onOpen: () => void }) {
   const d = q.root(bw);
   if (!d) return <Text style={styles.tr}>—</Text>;
   const links = q.rootLinkages(bw, { limit: 6, sortBy: "count" });
   const meanings = (d.meanings ?? []).filter((m: any) => m.language === "en").slice(0, 2);
   return (
     <View style={styles.body}>
-      <Text style={[styles.rootAr, color ? { color } : undefined]}>{d.root_arabic}</Text>
+      <Text style={styles.rootAr}>{d.root_arabic}</Text>
       <Text style={styles.rootMeta}>{d.total_occurrences} occ · {d.forms.length} forms</Text>
       {!!d.meaning_en && <Text style={styles.rootGloss}>{d.meaning_en}</Text>}
       {meanings.map((m: any, i: number) => (
@@ -386,13 +360,6 @@ const styles = StyleSheet.create({
   setActive: { color: colors.lapis, fontSize: 13, fontWeight: "600" },
   clear: { color: colors.danger, fontSize: 13, fontWeight: "600" },
 
-  legend: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.surfaceAlt, backgroundColor: colors.surface },
-  legendLabel: { color: colors.inkSoft, fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase", marginRight: 10 },
-  chip: { flexDirection: "row", alignItems: "center", marginRight: 12 },
-  swatch: { width: 9, height: 9, borderRadius: 2, marginRight: 5 },
-  chipRoot: { fontSize: 16, writingDirection: "rtl", fontWeight: "600" },
-  chipCount: { color: colors.inkSoft, fontSize: 11, marginLeft: 3 },
-
   row: { flexDirection: "row" },
   gutter: { width: GUTTER, alignItems: "center" },
   line: { position: "absolute", top: 0, bottom: 0, width: 2, backgroundColor: colors.border, left: GUTTER / 2 - 1 },
@@ -401,9 +368,17 @@ const styles = StyleSheet.create({
   node: { width: 12, height: 12, borderRadius: 6, borderWidth: 2.5, backgroundColor: colors.bg, marginTop: 16 },
 
   card: { flex: 1, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, marginVertical: 6, marginLeft: 2, padding: 12 },
-  mergeRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
-  mergeText: { color: colors.inkSoft, fontSize: 10, letterSpacing: 0.4, marginRight: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4, marginRight: 4 },
+  mergeRow: {
+    flexDirection: "row", alignItems: "center", flexWrap: "wrap",
+    marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: colors.surfaceAlt,
+  },
+  mergeText: { color: colors.inkSoft, fontSize: 10, letterSpacing: 0.4, marginRight: 8, textTransform: "uppercase", fontWeight: "700" },
+  mergeChips: { flexDirection: "row", flexWrap: "wrap", flex: 1 },
+  mergeChip: {
+    color: colors.gold, fontSize: 17, writingDirection: "rtl", fontFamily: font.arabic,
+    backgroundColor: colors.surfaceAlt, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 1,
+    marginRight: 6, marginBottom: 4,
+  },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   caret: { color: colors.inkSoft, fontSize: 13, width: 14 },
   kind: { color: colors.inkSoft, fontSize: 9, fontWeight: "700", letterSpacing: 0.8 },
@@ -412,11 +387,10 @@ const styles = StyleSheet.create({
   preview: { color: colors.inkSoft, fontSize: 13, marginTop: 6 },
 
   body: { marginTop: 8 },
-  arabic: { color: colors.ink, writingDirection: "rtl", textAlign: "right", fontFamily: font.arabic },
   trWrap: { marginTop: 10, borderTopWidth: 1, borderTopColor: colors.surfaceAlt, paddingTop: 8 },
   tr: { color: colors.inkSoft, fontSize: 14, lineHeight: 21 },
   trBy: { color: colors.inkSoft, fontSize: 11, marginTop: 2, opacity: 0.7 },
-  rootAr: { color: colors.gold, fontSize: 38, writingDirection: "rtl", textAlign: "center" },
+  rootAr: { color: colors.gold, fontSize: 38, lineHeight: 72, writingDirection: "rtl", textAlign: "center", fontFamily: font.arabic },
   rootMeta: { color: colors.inkSoft, fontSize: 12, textAlign: "center", marginTop: 4 },
   rootGloss: { color: colors.ink, fontSize: 15, fontStyle: "italic", textAlign: "center", marginTop: 6 },
   src: { color: colors.inkSoft, fontSize: 11, fontWeight: "700", marginTop: 10 },

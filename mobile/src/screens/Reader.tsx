@@ -13,6 +13,7 @@ import { getPref, setPref, notesForChapter, addToActiveCompare, addFocus, remove
 import { toast } from "../ui/toast";
 import type { SpellingVariant } from "../data/spellings";
 import type { Wazn } from "../data/wazn";
+import { WordSheet } from "../components/WordSheet";
 import { NotesPanel, type NoteScope } from "../components/NotesPanel";
 import { EchoPanel } from "../components/EchoPanel";
 import { RelatedPanel } from "../components/RelatedPanel";
@@ -107,6 +108,13 @@ export default function Reader({ route, navigation }: Props) {
   const addAyahToCompare = (vk: string) => {
     const r = addToActiveCompare(research, "ayah", vk, null);
     toast(r.added ? `Added ${vk} to “${r.title}”` : `${vk} is already in “${r.title}”`);
+  };
+  // word-sheet actions for āyāt shown inside the echo / related panels
+  const wordNav = {
+    research,
+    onOpenRoot: (bw: string) => { setEchoVerse(null); setRelated(null); navigation.navigate("RootDetail", { root: bw }); },
+    onFollowWord: (surface: string, label: string) => { setEchoVerse(null); setRelated(null); navigation.push("Trail", { word: surface, label }); },
+    onFollowRoot: (bw: string) => { setEchoVerse(null); setRelated(null); navigation.push("Trail", { root: bw }); },
   };
   const toggleFocusAyah = (vk: string) => {
     if (isFocused(research, "ayah", vk)) { removeFocus(research, "ayah", vk); toast(`Removed ${vk} from Focus`); return; }
@@ -466,6 +474,7 @@ export default function Reader({ route, navigation }: Props) {
         editionIds={editionIds}
         onClose={() => setEchoVerse(null)}
         onAddCompare={addAyahToCompare}
+        actions={wordNav}
         onJump={(vk) => {
           setEchoVerse(null);
           navigation.push("Reader", { chapterId: Number(vk.split(":")[0]), focusVerseKey: vk });
@@ -481,6 +490,7 @@ export default function Reader({ route, navigation }: Props) {
         baseKey={related?.baseKey}
         onClose={() => setRelated(null)}
         onAddCompare={addAyahToCompare}
+        actions={wordNav}
         onJump={(vk) => { setRelated(null); jumpTo(vk); }}
       />
 
@@ -637,107 +647,6 @@ function EditionPicker({
   );
 }
 
-function WordSheet({
-  word,
-  rootFreq,
-  variants,
-  wazn,
-  onJumpVerse,
-  onClose,
-  onOpenRoot,
-  onFollowWord,
-  onFollowRoot,
-  onOpenNotes,
-}: {
-  word: Word | null;
-  rootFreq: number | null;
-  variants: SpellingVariant[];
-  wazn: Wazn | null;
-  onJumpVerse: (verseKey: string) => void;
-  onClose: () => void;
-  onOpenRoot: (rootBuckwalter: string) => void;
-  onFollowWord: (surface: string, label: string) => void;
-  onFollowRoot: (rootBuckwalter: string) => void;
-  onOpenNotes: (w: Word) => void;
-}) {
-  return (
-    <Modal visible={!!word} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
-          {word && (
-            <>
-              <Text style={styles.sheetArabic}>{word.arabic}</Text>
-              {!!word.transliteration && <Text style={styles.sheetTranslit}>{word.transliteration}</Text>}
-              {!!word.gloss && <Text style={styles.sheetGloss}>{word.gloss}</Text>}
-              <View style={styles.sheetMeta}>
-                {!!word.pos && <Text style={styles.sheetMetaText}>{word.pos}</Text>}
-                {!!word.lemma && <Text style={styles.sheetMetaText}>lemma {word.lemma}</Text>}
-              </View>
-
-              {wazn && (
-                <View style={styles.waznBox}>
-                  <Text style={styles.waznLabel}>وزن · FORM</Text>
-                  <View style={styles.waznHead}>
-                    {!!wazn.wazn && <Text style={styles.waznPattern}>{wazn.wazn}</Text>}
-                    {!!wazn.radicals && (
-                      <Text style={styles.waznRadicals}>on {wazn.radicals.join(" · ")}</Text>
-                    )}
-                  </View>
-                  <Text style={styles.waznName}>{wazn.label}</Text>
-                  {(!!wazn.aspect || !!wazn.voice) && (
-                    <Text style={styles.waznGram}>
-                      {[wazn.aspect, wazn.voice].filter(Boolean).join(" · ")}
-                    </Text>
-                  )}
-                  {!!wazn.sense && <Text style={styles.waznSense}>{wazn.sense}</Text>}
-                </View>
-              )}
-
-              {variants.length > 1 && (
-                <View style={styles.variantsBox}>
-                  <Text style={styles.variantsTitle}>✍ Written {variants.length} ways in the mushaf</Text>
-                  {variants.map((v, i) => (
-                    <View key={i} style={styles.variantRow}>
-                      <Text style={styles.variantArabic}>{v.surface}</Text>
-                      <Text style={styles.variantCount}>×{v.count}</Text>
-                      <Pressable onPress={() => onJumpVerse(v.verses[0]!)} hitSlop={8}>
-                        <Text style={styles.variantJump}>{v.verses[0]} →</Text>
-                      </Pressable>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {rootFreq != null && rootFreq <= RARE_THRESHOLD && (
-                <Text style={styles.rareLine}>⚲ rare root · appears {rootFreq} time{rootFreq === 1 ? "" : "s"} in the Book</Text>
-              )}
-              {word.root_buckwalter ? (
-                <Pressable style={styles.rootBtn} onPress={() => onOpenRoot(word.root_buckwalter!)}>
-                  <Text style={styles.rootBtnText}>Investigate root {word.root ?? word.root_buckwalter}  →</Text>
-                </Pressable>
-              ) : (
-                <Text style={styles.noRoot}>No root for this word (particle / proper noun).</Text>
-              )}
-              {!!word.arabic && (
-                <Pressable style={styles.notesBtn} onPress={() => onFollowWord(word.arabic!, word.arabic!)}>
-                  <Text style={styles.notesBtnText}>⚲ Follow this exact word · {word.arabic}</Text>
-                </Pressable>
-              )}
-              {!!word.root_buckwalter && (
-                <Pressable style={styles.notesBtn} onPress={() => onFollowRoot(word.root_buckwalter!)}>
-                  <Text style={styles.notesBtnText}>⚲ Follow the root {word.root ?? ""}</Text>
-                </Pressable>
-              )}
-              <Pressable style={styles.notesBtn} onPress={() => onOpenNotes(word)}>
-                <Text style={styles.notesBtnText}>✎ Notes &amp; questions</Text>
-              </Pressable>
-            </>
-          )}
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}
 
 const styles = StyleSheet.create({
   controls: {

@@ -190,6 +190,19 @@ smoke test; data ports also add parity fixtures).
 > "shares with above" row of coloured dots. Pin āyāt / roots from the reader
 > ⋯ menu and root pages; collapse, remove, clear.
 
+### Consistency pass (reading polish)
+> **Amiri everywhere:** `font.arabic` now applies to every Arabic surface —
+> panels (echo, related, cooccur, form-spelling, variant), Compare, RootDetail,
+> Search, Home, ReaderHome, Motifs — not just the reader. **Clipping fixed:**
+> `VerseText` lineHeight 2.25 + generous top/bottom padding + `includeFontPadding`
+> so mīm tails and low kasra no longer cut off. **Trail honours the reading
+> font size** (fontScale pref). **Words are tappable anywhere an āyah shows** —
+> a shared `WordSheet` + `useWordSheet` hook + `TappableVerse` power the word
+> sheet (root · wazn · spellings · follow · notes) in the reader, trail, compare
+> cards, echo panel, and related/focus panel (one sheet per list, not per āyah).
+> **Compare linkage** dropped colour-coding + the threads legend for **shared
+> roots pinned atop each card** (chips linking to the āyah above).
+
 ### Wazn (صرف pattern) on the word sheet
 > Tapping a word now shows its **wazn** — the morphological measure its shape
 > carries. Derived from corpus tags (`verb_form` I–XII, `derivation` =

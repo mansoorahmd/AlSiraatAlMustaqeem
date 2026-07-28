@@ -9,7 +9,7 @@ import {
   type Trail as TrailRow, type TrailHop,
 } from "../data/research";
 import { toast } from "../ui/toast";
-import { VerseText } from "../components/VerseText";
+import { TappableVerse } from "../components/TappableVerse";
 import { TrailStrip } from "../components/TrailStrip";
 import { colors } from "../theme/tokens";
 
@@ -31,6 +31,8 @@ export default function Trail({ route, navigation }: Props) {
   const [trailId, setTrailId] = useState<number | null>(null);
   const [saved, setSaved] = useState<TrailRow[]>([]);
   const [editionIds, setEditionIds] = useState<Set<number>>(() => parseEditions(getPref(research, "editions")));
+  const fontScale = (() => { const v = Number(getPref(research, "fontScale")); return v >= 0.8 && v <= 1.7 ? v : 1; })();
+  const arabicSize = Math.round(26 * fontScale);
 
   useFocusEffect(
     useCallback(() => {
@@ -141,7 +143,19 @@ export default function Trail({ route, navigation }: Props) {
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Text style={styles.vk}>{hop.verseKey} · {q.chapter(cnum(hop.verseKey))?.name_simple}</Text>
-        <VerseText text={(verse?.text as string) ?? ""} words={words} highlightPositions={litPos} onWordPress={() => {}} size={26} />
+        <TappableVerse
+          q={q}
+          research={research}
+          verseKey={hop.verseKey}
+          text={(verse?.text as string) ?? ""}
+          words={words}
+          highlightPositions={litPos}
+          size={arabicSize}
+          onOpenRoot={(bw) => navigation.push("RootDetail", { root: bw })}
+          onFollowWord={(surface, lbl) => navigation.push("Trail", { word: surface, label: lbl })}
+          onFollowRoot={(bw) => navigation.push("Trail", { root: bw })}
+          onJumpVerse={(vk) => navigation.push("Reader", { chapterId: cnum(vk), focusVerseKey: vk })}
+        />
         {translations.map((t) => (
           <View key={t.resource_id} style={styles.tr}>
             <Text style={styles.trText}>{t.text}</Text>

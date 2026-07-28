@@ -10,7 +10,7 @@ import { getRecentSearches, pushRecentSearch } from "../data/research";
 import { ArabicKeyboard } from "../components/ArabicKeyboard";
 import { VerseJump } from "../components/VerseJump";
 import { Chip } from "../components/ui";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Search">;
 type Mode = "phrase" | "related";
@@ -156,22 +156,22 @@ const styles = StyleSheet.create({
   input: {
     flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 10, fontSize: 20, color: colors.ink,
-    writingDirection: "rtl", backgroundColor: colors.bg,
+    writingDirection: "rtl", fontFamily: font.arabic, backgroundColor: colors.bg,
   },
   go: { marginLeft: 8, backgroundColor: colors.ink, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12 },
   goText: { color: "#fff", fontWeight: "600" },
   kbToggle: { color: colors.lapis, marginTop: 8, fontSize: 13 },
   recentRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 8 },
   recentChip: { borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: colors.bg, paddingHorizontal: 10, paddingVertical: 5, marginRight: 8, marginBottom: 6, maxWidth: 200 },
-  recentText: { color: colors.inkSoft, fontSize: 13, writingDirection: "rtl" },
+  recentText: { color: colors.inkSoft, fontSize: 13, writingDirection: "rtl", fontFamily: font.arabic },
   resolvedRow: { flexDirection: "row", paddingHorizontal: 14, paddingTop: 10, alignItems: "baseline" },
   resolvedLabel: { color: colors.inkSoft, fontSize: 12 },
-  resolvedRoots: { color: colors.gold, fontSize: 16, writingDirection: "rtl", flex: 1 },
+  resolvedRoots: { color: colors.gold, fontSize: 16, writingDirection: "rtl", fontFamily: font.arabic, flex: 1 },
   hit: { backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 12, marginBottom: 8 },
   hitHead: { flexDirection: "row", justifyContent: "space-between" },
   hitKey: { color: colors.gold, fontWeight: "700", fontSize: 12, textAlign: "right" },
   score: { color: colors.inkSoft, fontSize: 11 },
-  hitArabic: { color: colors.ink, fontSize: 22, lineHeight: 40, writingDirection: "rtl", textAlign: "right", marginTop: 4 },
-  shared: { color: colors.lapis, fontSize: 14, marginTop: 6, writingDirection: "rtl", textAlign: "right" },
+  hitArabic: { color: colors.ink, fontSize: 22, lineHeight: 40, writingDirection: "rtl", fontFamily: font.arabic, textAlign: "right", marginTop: 4 },
+  shared: { color: colors.lapis, fontSize: 14, marginTop: 6, writingDirection: "rtl", fontFamily: font.arabic, textAlign: "right" },
   empty: { color: colors.inkSoft, textAlign: "center", marginTop: 30 },
 });

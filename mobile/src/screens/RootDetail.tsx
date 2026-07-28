@@ -12,7 +12,7 @@ import { CooccurPanel } from "../components/CooccurPanel";
 import { FormSpellingPanel } from "../components/FormSpellingPanel";
 import { MotifPicker } from "../components/MotifPicker";
 import type { SpellingVariant } from "../data/spellings";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "RootDetail">;
 
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg },
   meta: { color: colors.inkSoft },
   hero: { alignItems: "center", paddingVertical: 12 },
-  heroArabic: { fontSize: 52, color: colors.gold, writingDirection: "rtl" },
+  heroArabic: { fontSize: 52, color: colors.gold, writingDirection: "rtl", fontFamily: font.arabic },
   heroMeta: { color: colors.inkSoft, fontSize: 13, marginTop: 6 },
   heroGloss: { color: colors.ink, fontSize: 16, marginTop: 6, fontStyle: "italic" },
   heroBtns: { flexDirection: "row", gap: 10, marginTop: 12 },
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   minePlaceholder: { color: colors.lapis, fontSize: 15 },
   chipsWrap: { flexDirection: "row", flexWrap: "wrap" },
   formRow: { flexDirection: "row", alignItems: "center", paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: colors.surfaceAlt },
-  formArabic: { fontSize: 20, color: colors.ink, writingDirection: "rtl", minWidth: 90 },
+  formArabic: { fontSize: 20, color: colors.ink, writingDirection: "rtl", fontFamily: font.arabic, minWidth: 90 },
   formVariant: { color: colors.amberStrong, fontSize: 15, marginLeft: 8 },
   formPos: { flex: 1, color: colors.inkSoft, fontSize: 12, marginLeft: 10 },
   formCount: { color: colors.gold, fontWeight: "700" },
@@ -345,13 +345,13 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     backgroundColor: colors.surfaceAlt, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 6, marginTop: 4,
   },
-  formHeaderAr: { color: colors.ink, fontSize: 20, writingDirection: "rtl" },
+  formHeaderAr: { color: colors.ink, fontSize: 20, writingDirection: "rtl", fontFamily: font.arabic },
   formHeaderMeta: { color: colors.inkSoft, fontSize: 12 },
   dictMeaning: { color: colors.ink, fontSize: 14, lineHeight: 20 },
-  rtl: { writingDirection: "rtl", textAlign: "right" },
+  rtl: { writingDirection: "rtl", fontFamily: font.arabic, textAlign: "right" },
   occ: { backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border, padding: 10, marginBottom: 8 },
   occKey: { color: colors.gold, fontWeight: "700", fontSize: 11, textAlign: "right" },
-  occText: { color: colors.ink, fontSize: 18, lineHeight: 32, writingDirection: "rtl", textAlign: "right", marginTop: 2 },
+  occText: { color: colors.ink, fontSize: 18, lineHeight: 32, writingDirection: "rtl", fontFamily: font.arabic, textAlign: "right", marginTop: 2 },
   occAdd: { alignSelf: "flex-start", marginTop: 6 },
   occAddText: { color: colors.lapis, fontSize: 12, fontWeight: "600" },
 });

@@ -12,7 +12,7 @@ import { Card, SectionTitle } from "../components/ui";
 import { VerseJump } from "../components/VerseJump";
 import { LegendSheet } from "../components/LegendSheet";
 import { backupResearch } from "../lib/backup";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 const cnum = (k: string) => Number(k.split(":")[0]);
@@ -172,7 +172,7 @@ export default function Home({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  greeting: { color: colors.gold, fontSize: 26, textAlign: "right", writingDirection: "rtl", marginTop: 4 },
+  greeting: { color: colors.gold, fontSize: 26, textAlign: "right", writingDirection: "rtl", fontFamily: font.arabic, marginTop: 4 },
   tagline: { color: colors.inkSoft, fontSize: 14, marginTop: 4, marginBottom: 16 },
   resume: { backgroundColor: colors.ink, borderRadius: 14, padding: 16, marginBottom: 14 },
   resumeLabel: { color: colors.amberStrong, fontSize: 11, fontWeight: "700", letterSpacing: 0.8 },
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 12, marginBottom: 8,
   },
   focusKey: { color: colors.gold, fontSize: 12, fontWeight: "700" },
-  focusArabic: { color: colors.ink, fontSize: 18, writingDirection: "rtl", textAlign: "right", marginTop: 3 },
+  focusArabic: { color: colors.ink, fontSize: 18, writingDirection: "rtl", fontFamily: font.arabic, textAlign: "right", marginTop: 3 },
   focusHint: { color: colors.inkSoft, fontSize: 11, marginTop: 4 },
   focusX: { color: colors.inkSoft, fontSize: 15, paddingLeft: 12 },
   focusChips: { flexDirection: "row", flexWrap: "wrap", marginBottom: 8 },
@@ -198,10 +198,10 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: colors.gold,
     borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, marginBottom: 8,
   },
-  focusChipText: { color: colors.gold, fontSize: 18, writingDirection: "rtl", fontWeight: "600" },
+  focusChipText: { color: colors.gold, fontSize: 18, writingDirection: "rtl", fontFamily: font.arabic, fontWeight: "600" },
   focusChipX: { color: colors.inkSoft, fontSize: 13 },
   trailCard: { paddingVertical: 12 },
-  trailName: { color: colors.ink, fontSize: 16, writingDirection: "rtl" },
+  trailName: { color: colors.ink, fontSize: 16, writingDirection: "rtl", fontFamily: font.arabic },
   trailMeta: { color: colors.inkSoft, fontSize: 12, marginTop: 3 },
   link: {
     backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border,

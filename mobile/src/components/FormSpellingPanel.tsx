@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { QuranApi } from "../data/api";
 import type { SpellingVariant } from "../data/spellings";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 const cnum = (k: string) => Number(k.split(":")[0]);
 
@@ -81,15 +81,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 14, paddingBottom: 24, maxHeight: "85%",
   },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  title: { fontSize: 18, color: colors.gold, writingDirection: "rtl" },
+  title: { fontSize: 18, color: colors.gold, writingDirection: "rtl", fontFamily: font.arabic },
   done: { color: colors.lapis, fontWeight: "600", fontSize: 15 },
   section: { color: colors.inkSoft, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 14, marginBottom: 6 },
   group: { borderTopWidth: 1, borderTopColor: colors.surfaceAlt, paddingVertical: 8 },
   varRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
-  varArabic: { color: colors.ink, fontSize: 26, writingDirection: "rtl", flex: 1 },
+  varArabic: { color: colors.ink, fontSize: 26, writingDirection: "rtl", fontFamily: font.arabic, flex: 1 },
   count: { color: colors.inkSoft, fontSize: 13, marginHorizontal: 10 },
   jump: { color: colors.lapis, fontSize: 13, fontWeight: "600" },
   occ: { borderTopWidth: 1, borderTopColor: colors.surfaceAlt, paddingVertical: 9 },
   occKey: { color: colors.gold, fontSize: 11, fontWeight: "700", textAlign: "right" },
-  occText: { color: colors.ink, fontSize: 19, lineHeight: 34, writingDirection: "rtl", textAlign: "right", marginTop: 2 },
+  occText: { color: colors.ink, fontSize: 19, lineHeight: 34, writingDirection: "rtl", fontFamily: font.arabic, textAlign: "right", marginTop: 2 },
 });

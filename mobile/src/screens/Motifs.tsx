@@ -7,7 +7,7 @@ import { useQuran } from "../state/DbContext";
 import {
   createMotif, deleteMotif, listMotifs, motifMembers, removeRootFromMotif, renameMotif, type Motif,
 } from "../data/research";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Motifs">;
 
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   action: { color: colors.inkSoft, fontSize: 13 },
   chips: { flexDirection: "row", flexWrap: "wrap", marginTop: 10 },
   chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, backgroundColor: colors.bg, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, marginBottom: 8 },
-  chipText: { color: colors.gold, fontSize: 18, writingDirection: "rtl" },
+  chipText: { color: colors.gold, fontSize: 18, writingDirection: "rtl", fontFamily: font.arabic },
   hint: { color: colors.inkSoft, fontSize: 13, marginTop: 8 },
   tip: { color: colors.tabInactive, fontSize: 11, marginTop: 6 },
 });

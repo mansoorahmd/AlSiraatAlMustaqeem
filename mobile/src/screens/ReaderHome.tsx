@@ -6,7 +6,7 @@ import type { RootStackParamList } from "../navigation/types";
 import { useQuran } from "../state/DbContext";
 import { getPref, openQuestionCount } from "../data/research";
 import { VerseJump } from "../components/VerseJump";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ReaderHome">;
 
@@ -118,5 +118,5 @@ const styles = StyleSheet.create({
   numText: { color: colors.gold, fontWeight: "700" },
   name: { color: colors.ink, fontSize: 16, fontWeight: "600" },
   meta: { color: colors.inkSoft, fontSize: 12, marginTop: 2 },
-  arabic: { color: colors.ink, fontSize: 20, marginLeft: 10, writingDirection: "rtl" },
+  arabic: { color: colors.ink, fontSize: 20, marginLeft: 10, writingDirection: "rtl", fontFamily: font.arabic },
 });

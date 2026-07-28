@@ -1,10 +1,19 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { QuranApi } from "../data/api";
-import type { CompositeMatch } from "../types";
-import { colors } from "../theme/tokens";
+import type { Db } from "../data/db";
+import type { CompositeMatch, Word } from "../types";
+import { VerseText } from "./VerseText";
+import { useWordSheet } from "./WordSheet";
+import { colors, font } from "../theme/tokens";
 
 const cnum = (k: string) => Number(k.split(":")[0]);
+type WordActions = {
+  research: Db;
+  onOpenRoot: (bw: string) => void;
+  onFollowWord: (surface: string, label: string) => void;
+  onFollowRoot: (bw: string) => void;
+};
 
 /**
  * Closest-first list of āyāt related to a base āyah (composite similarity).
@@ -20,6 +29,7 @@ export function RelatedPanel({
   baseKey,
   onJump,
   onAddCompare,
+  actions,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -30,11 +40,21 @@ export function RelatedPanel({
   baseKey?: string;
   onJump: (verseKey: string) => void;
   onAddCompare?: (verseKey: string) => void;
+  actions: WordActions;
 }) {
+  const ws = useWordSheet({ q, research: actions.research, onOpenRoot: actions.onOpenRoot, onFollowWord: actions.onFollowWord, onFollowRoot: actions.onFollowRoot, onJumpVerse: onJump });
   const surah = (vk: string) => q.chapter(cnum(vk))?.name_simple ?? "";
   const trFor = (vk: string) =>
     editionIds.size ? q.verseTranslations(vk).filter((t) => editionIds.has(t.resource_id)) : [];
-  const base = visible && baseKey ? q.verse(baseKey, { script: "uthmani" }) : undefined;
+  const wordCache = useRef(new Map<string, Word[]>());
+  const wordsFor = (vk: string) => {
+    const hit = wordCache.current.get(vk);
+    if (hit) return hit;
+    const ws = ((q.verse(vk, { script: "uthmani", withWords: true })?.words ?? []) as Word[]).filter((w) => w.pos != null);
+    wordCache.current.set(vk, ws);
+    return ws;
+  };
+  const base = visible && baseKey ? q.verse(baseKey, { script: "uthmani", withWords: true }) : undefined;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -50,7 +70,7 @@ export function RelatedPanel({
             {!!base && baseKey && (
               <View style={styles.baseCard}>
                 <Text style={styles.baseKey}>base · {baseKey} · {surah(baseKey)}</Text>
-                <Text style={styles.baseText}>{(base.text as string) ?? ""}</Text>
+                <VerseText text={(base.text as string) ?? ""} words={((base.words ?? []) as Word[]).filter((w) => w.pos != null)} size={22} onWordPress={(w) => ws.open(baseKey, w)} />
                 {trFor(baseKey).map((t) => <Text key={t.resource_id} style={styles.tr}>{t.text}</Text>)}
                 {!!onAddCompare && (
                   <Pressable onPress={() => onAddCompare(baseKey)} hitSlop={8}>
@@ -63,18 +83,18 @@ export function RelatedPanel({
               <View key={m.verse_key} style={styles.row}>
                 <Pressable onPress={() => onJump(m.verse_key)}>
                   <View style={styles.rowHead}>
-                    <Text style={styles.key}>{m.verse_key} · {surah(m.verse_key)}</Text>
+                    <Text style={styles.key}>{m.verse_key} · {surah(m.verse_key)}  →</Text>
                     <Text style={styles.score}>{m.score.toFixed(3)}</Text>
                   </View>
-                  <Text style={styles.text}>{m.text ?? ""}</Text>
-                  {trFor(m.verse_key).map((t) => <Text key={t.resource_id} style={styles.tr}>{t.text}</Text>)}
-                  {m.phrase_run && m.phrase_run.length > 0 && (
-                    <Text style={styles.phrase}>phrase: {m.phrase_run.join(" ")}</Text>
-                  )}
-                  {m.shared.length > 0 && (
-                    <Text style={styles.shared}>shared roots: {m.shared.join("  ")}</Text>
-                  )}
                 </Pressable>
+                <VerseText text={m.text ?? ""} words={wordsFor(m.verse_key)} size={19} onWordPress={(w) => ws.open(m.verse_key, w)} />
+                {trFor(m.verse_key).map((t) => <Text key={t.resource_id} style={styles.tr}>{t.text}</Text>)}
+                {m.phrase_run && m.phrase_run.length > 0 && (
+                  <Text style={styles.phrase}>phrase: {m.phrase_run.join(" ")}</Text>
+                )}
+                {m.shared.length > 0 && (
+                  <Text style={styles.shared}>shared roots: {m.shared.join("  ")}</Text>
+                )}
                 {!!onAddCompare && (
                   <Pressable onPress={() => onAddCompare(m.verse_key)} hitSlop={8}>
                     <Text style={styles.addCompare}>✚ Add to Compare</Text>
@@ -85,6 +105,7 @@ export function RelatedPanel({
           </ScrollView>
         </View>
       </View>
+      {ws.sheet}
     </Modal>
   );
 }
@@ -108,7 +129,7 @@ const styles = StyleSheet.create({
   baseCard: { backgroundColor: colors.amber, borderRadius: 10, padding: 12, marginVertical: 8 },
   baseKey: { color: colors.ink, fontSize: 11, fontWeight: "700", marginBottom: 4 },
   baseText: { color: colors.ink, fontSize: 22, lineHeight: 42, writingDirection: "rtl", textAlign: "right" },
-  phrase: { color: colors.gold, fontSize: 15, writingDirection: "rtl", textAlign: "right", marginTop: 4 },
-  shared: { color: colors.lapis, fontSize: 14, writingDirection: "rtl", textAlign: "right", marginTop: 3 },
+  phrase: { color: colors.gold, fontSize: 16, lineHeight: 30, writingDirection: "rtl", textAlign: "right", marginTop: 4, fontFamily: font.arabic },
+  shared: { color: colors.lapis, fontSize: 15, lineHeight: 28, writingDirection: "rtl", textAlign: "right", marginTop: 3, fontFamily: font.arabic },
   addCompare: { color: colors.lapis, fontSize: 13, fontWeight: "600", marginTop: 8 },
 });

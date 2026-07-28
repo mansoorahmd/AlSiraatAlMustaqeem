@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { QuranApi } from "../data/api";
 import { VerseText } from "./VerseText";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 const cnum = (k: string) => Number(k.split(":")[0]);
 const CAP = 60;
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 14, paddingBottom: 24, maxHeight: "88%",
   },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  title: { fontSize: 22, color: colors.gold, writingDirection: "rtl" },
+  title: { fontSize: 22, color: colors.gold, writingDirection: "rtl", fontFamily: font.arabic },
   plus: { color: colors.inkSoft, fontSize: 16 },
   done: { color: colors.lapis, fontWeight: "600", fontSize: 15 },
   subRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2, marginBottom: 6 },

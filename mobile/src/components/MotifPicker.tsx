@@ -4,7 +4,7 @@ import type { Db } from "../data/db";
 import {
   addRootToMotif, createMotif, listMotifs, motifsForRoot, removeRootFromMotif, type Motif,
 } from "../data/research";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 /** Tag a root into one or more motifs (reader-defined themed groups). */
 export function MotifPicker({
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "flex-end" },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 18, borderTopRightRadius: 18, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 26 },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-  title: { fontSize: 15, fontWeight: "700", color: colors.ink, flex: 1, writingDirection: "rtl", textAlign: "left" },
+  title: { fontSize: 15, fontWeight: "700", color: colors.ink, flex: 1, writingDirection: "rtl", fontFamily: font.arabic, textAlign: "left" },
   done: { color: colors.lapis, fontWeight: "600", fontSize: 15 },
   newRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
   input: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, color: colors.ink, backgroundColor: colors.bg },

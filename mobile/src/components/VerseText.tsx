@@ -38,7 +38,15 @@ export function VerseText({
   highlightRoots?: Set<string>;
   highlightPositions?: Set<number>;
 }) {
-  const style = [styles.arabic, { fontSize: size, lineHeight: size * 2.05, paddingBottom: Math.round(size * 0.35) }];
+  const style = [
+    styles.arabic,
+    {
+      fontSize: size,
+      lineHeight: Math.round(size * 2.25),
+      paddingTop: Math.round(size * 0.3),
+      paddingBottom: Math.round(size * 0.55),
+    },
+  ];
 
   if (text && words && words.length && onWordPress) {
     const tokens = text.trim().split(/\s+/);
@@ -86,6 +94,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
     writingDirection: "rtl",
     textAlign: "right",
+    includeFontPadding: true, // Android: keep room for descenders (mīm tail) & low kasra
     fontFamily: font.arabic, // undefined → system Arabic; set in tokens to use a bundled Quran font
   },
   noted: { color: colors.lapis },
