@@ -10,6 +10,9 @@ import { notesForRoot, notesForVerse, userRootMeaning } from "../data/research";
 
 const clean = (t: string) => (t ?? "").replace(/[\uE000-\uF8FF\u200B-\u200F\uFEFF]/g, "").trim();
 const cnum = (k: string) => Number(k.split(":")[0]);
+// Some dictionaries (e.g. Lis\u0101n al-\u02BFArab) have entries thousands of characters
+// long \u2014 cap each so a many-root \u0101yah doesn't build a huge, slow-to-share string.
+const trunc = (s: string, n: number) => { const t = (s ?? "").trim(); return t.length > n ? t.slice(0, n).trimEnd() + " \u2026" : t; };
 
 export interface ShareOpts {
   prompt?: string | null;      // framing line; "" = none, undefined = composer default
@@ -33,6 +36,17 @@ interface ShareRootLite {
   forms: { lemma_buckwalter: string; lemma_arabic: string | null; occurrence_count: number }[];
   meanings: Meaning[];
 }
+function liteFromRoot(q: QuranApi, bw: string): ShareRootLite | undefined {
+  const d = q.root(bw);
+  if (!d) return undefined;
+  return {
+    root_buckwalter: d.root_buckwalter, root_arabic: d.root_arabic, meaning_en: d.meaning_en ?? null,
+    total_occurrences: d.total_occurrences,
+    forms: (d.forms ?? []).map((f) => ({ lemma_buckwalter: f.lemma_buckwalter, lemma_arabic: f.lemma_arabic ?? null, occurrence_count: f.occurrence_count })),
+    meanings: (d.meanings ?? []) as Meaning[],
+  };
+}
+
 function rootBlock(research: Db, d: ShareRootLite, dicts: string[] | null | undefined): string[] {
   const lines: string[] = [];
   lines.push(`• ${d.root_arabic}${showGloss(dicts) && d.meaning_en ? ` — ${d.meaning_en}` : ""}  (${d.total_occurrences}×)`);
@@ -42,7 +56,7 @@ function rootBlock(research: Db, d: ShareRootLite, dicts: string[] | null | unde
   if (forms) lines.push(`    forms: ${forms}`);
   const mine = userRootMeaning(research, d.root_buckwalter);
   if (mine) lines.push(`    my meaning: ${mine}`);
-  for (const m of pickSenses(d.meanings, dicts, 2)) lines.push(`    (${m.source}) ${m.meaning}`);
+  for (const m of pickSenses(d.meanings, dicts, 2)) lines.push(`    (${m.source}) ${trunc(m.meaning, 240)}`);
   return lines;
 }
 
@@ -72,11 +86,11 @@ export function composeAyahShare(
     for (const t of trans) L.push(`  ${t.text}  — ${t.resource_name ?? t.language_name}`);
   }
   if (roots.length) {
-    const bundle = q.rootsForShare(roots);
+    const bundle = typeof q.rootsForShare === "function" ? q.rootsForShare(roots) : null;
     L.push("");
     L.push("Roots & derived forms:");
     for (const bw of roots) {
-      const d = bundle.get(bw);
+      const d = bundle ? bundle.get(bw) : liteFromRoot(q, bw);
       if (d) L.push(...rootBlock(research, d, opts.dicts));
     }
   }
@@ -110,7 +124,7 @@ export function composeRootShare(q: QuranApi, research: Db, rootBw: string, opts
   if (senses.length) {
     L.push("");
     L.push("Dictionary senses:");
-    for (const m of senses) L.push(`  • (${m.source}) ${m.meaning}`);
+    for (const m of senses) L.push(`  • (${m.source}) ${trunc(m.meaning, 900)}`);
   }
   const mine = userRootMeaning(research, rootBw);
   if (mine) { L.push(""); L.push(`My meaning: ${mine}`); }

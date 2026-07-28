@@ -7,6 +7,7 @@ import {
   removeAiPrompt, setAiDicts, setAiIncludeTranslation, setAiPromptSel,
 } from "../data/research";
 import { composeAyahShare, composeRootShare } from "../lib/aishare";
+import { toast } from "../ui/toast";
 import { colors } from "../theme/tokens";
 
 /** Pre-share options: choose (and save) a prompt line and which dictionaries to
@@ -76,15 +77,21 @@ export function ShareSheet({
     const dictsParam = allSelected ? null : [...dicts];
     const opts = { prompt: promptSel || "", dicts: dictsParam, translation: includeTr };
     setBusy(true);
-    // defer so the "Preparing…" state paints before the (heavy, synchronous)
-    // compose over every root in the āyah
+    // defer so the "Preparing…" state paints before the (synchronous) compose
     setTimeout(() => {
-      const msg = kind === "ayah" && target
-        ? composeAyahShare(q, research, target, editionIds, opts)
-        : target ? composeRootShare(q, research, target, opts) : "";
+      let msg = "";
+      try {
+        msg = kind === "ayah" && target
+          ? composeAyahShare(q, research, target, editionIds, opts)
+          : target ? composeRootShare(q, research, target, opts) : "";
+      } catch (e) {
+        setBusy(false);
+        toast(`Share failed: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      }
       setBusy(false);
       onClose();
-      if (msg) Share.share({ message: msg });
+      if (msg) Share.share({ message: msg }).catch(() => {});
     }, 40);
   };
 
