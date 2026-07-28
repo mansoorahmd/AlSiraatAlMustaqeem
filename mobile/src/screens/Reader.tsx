@@ -19,6 +19,7 @@ import { EchoPanel } from "../components/EchoPanel";
 import { RelatedPanel } from "../components/RelatedPanel";
 import { ExpressionPanel } from "../components/ExpressionPanel";
 import type { ExprTerm } from "../data/expressions";
+import { composeAyahShare } from "../lib/aishare";
 import { VariantPanel } from "../components/VariantPanel";
 import { LegendSheet } from "../components/LegendSheet";
 import { VerseText } from "../components/VerseText";
@@ -307,6 +308,11 @@ export default function Reader({ route, navigation }: Props) {
   const shareVerse = async (v: Verse) => {
     await Share.share({ message: composeShare(v, true) });
     setActionVerse(null);
+  };
+  const shareForAi = async (v: Verse) => {
+    const msg = composeAyahShare(q, research, v.verse_key, editionIds);
+    setActionVerse(null);
+    await Share.share({ message: msg });
   };
 
   const arabicSize = Math.round(26 * fontScale);
@@ -622,6 +628,9 @@ export default function Reader({ route, navigation }: Props) {
                 </Pressable>
                 <Pressable style={styles.actionRow} onPress={() => shareVerse(actionVerse)}>
                   <Text style={styles.actionText}>Share…</Text>
+                </Pressable>
+                <Pressable style={styles.actionRow} onPress={() => shareForAi(actionVerse)}>
+                  <Text style={styles.actionText}>⇱ Share with… (roots + notes → AI)</Text>
                 </Pressable>
                 <Pressable style={styles.actionRow} onPress={() => openRelated(actionVerse.verse_key)}>
                   <Text style={styles.actionText}>Related āyāt</Text>

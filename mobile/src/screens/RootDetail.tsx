@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import type { Linkage, RootDetail as RootDetailT, RootOccurrence } from "../types";
@@ -11,6 +11,7 @@ import { Card, Chip, SectionTitle } from "../components/ui";
 import { CooccurPanel } from "../components/CooccurPanel";
 import { FormSpellingPanel } from "../components/FormSpellingPanel";
 import { MotifPicker } from "../components/MotifPicker";
+import { composeRootShare } from "../lib/aishare";
 import type { SpellingVariant } from "../data/spellings";
 import { colors, font } from "../theme/tokens";
 
@@ -124,6 +125,9 @@ export default function RootDetail({ route, navigation }: Props) {
           </Pressable>
           <Pressable style={styles.motifBtn} onPress={toggleFocus}>
             <Text style={styles.motifBtnText}>{focused ? "★ In Focus" : "☆ Focus"}</Text>
+          </Pressable>
+          <Pressable style={styles.motifBtn} onPress={() => Share.share({ message: composeRootShare(q, research, detail.root_buckwalter) })}>
+            <Text style={styles.motifBtnText}>⇱ Share with…</Text>
           </Pressable>
         </View>
       </View>

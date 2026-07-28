@@ -203,6 +203,13 @@ smoke test; data ports also add parity fixtures).
 > **Compare linkage** dropped colour-coding + the threads legend for **shared
 > roots pinned atop each card** (chips linking to the āyah above).
 
+### Share with… (AI hand-off)
+> Āyah ⋯ → "⇱ Share with…" and a root page → "⇱ Share with…" build a rich
+> plain-text bundle and open the OS share sheet (pick Gemini or any app).
+> Āyah bundle: Arabic + selected translations + each root with meaning &
+> derived forms + the reader's notes/questions on that āyah. Root bundle: root,
+> forms, dictionary senses, my meaning, my notes. `lib/aishare.ts`.
+
 ### Expression search (multi-word co-occurrence)
 > Long-press a word in the reader to enter selection, tap any words in that āyah
 > to build an "expression" (e.g. أصحاب النار), then **Find** every āyah where they
