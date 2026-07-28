@@ -53,6 +53,7 @@ export function makeApi(db: Db) {
       roots.rootOccurrences(db, root, { script, limit }),
     rootFrequencies: () => (freqMap ??= roots.rootFrequencies(db)),
     dictionarySources: () => roots.meaningSources(db),
+    rootsForShare: (bws: string[]) => roots.rootsForShare(db, bws),
     formOccurrences: (lemmaBuckwalter: string, script: Script = "uthmani", limit = 1000) =>
       roots.formOccurrences(db, lemmaBuckwalter, script, limit),
     exactWordOccurrences: (surface: string, limit = 3000) =>

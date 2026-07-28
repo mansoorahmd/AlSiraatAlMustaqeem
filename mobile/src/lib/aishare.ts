@@ -28,18 +28,21 @@ function pickSenses(meanings: Meaning[] | undefined, dicts: string[] | null | un
   return cap > 0 ? list.slice(0, cap) : list;
 }
 
-function rootBlock(q: QuranApi, research: Db, bw: string, dicts: string[] | null | undefined): string[] {
-  const d = q.root(bw);
-  if (!d) return [];
+interface ShareRootLite {
+  root_buckwalter: string; root_arabic: string; meaning_en: string | null; total_occurrences: number;
+  forms: { lemma_buckwalter: string; lemma_arabic: string | null; occurrence_count: number }[];
+  meanings: Meaning[];
+}
+function rootBlock(research: Db, d: ShareRootLite, dicts: string[] | null | undefined): string[] {
   const lines: string[] = [];
   lines.push(`• ${d.root_arabic}${showGloss(dicts) && d.meaning_en ? ` — ${d.meaning_en}` : ""}  (${d.total_occurrences}×)`);
   const forms = (d.forms ?? [])
     .map((f) => `${f.lemma_arabic ?? f.lemma_buckwalter}${f.occurrence_count ? ` (${f.occurrence_count})` : ""}`)
     .join("، ");
   if (forms) lines.push(`    forms: ${forms}`);
-  const mine = userRootMeaning(research, bw);
+  const mine = userRootMeaning(research, d.root_buckwalter);
   if (mine) lines.push(`    my meaning: ${mine}`);
-  for (const m of pickSenses(d.meanings as Meaning[], dicts, 2)) lines.push(`    (${m.source}) ${m.meaning}`);
+  for (const m of pickSenses(d.meanings, dicts, 2)) lines.push(`    (${m.source}) ${m.meaning}`);
   return lines;
 }
 
@@ -69,9 +72,13 @@ export function composeAyahShare(
     for (const t of trans) L.push(`  ${t.text}  — ${t.resource_name ?? t.language_name}`);
   }
   if (roots.length) {
+    const bundle = q.rootsForShare(roots);
     L.push("");
     L.push("Roots & derived forms:");
-    for (const bw of roots) L.push(...rootBlock(q, research, bw, opts.dicts));
+    for (const bw of roots) {
+      const d = bundle.get(bw);
+      if (d) L.push(...rootBlock(research, d, opts.dicts));
+    }
   }
   const notes = notesForVerse(research, verseKey);
   if (notes.length) {

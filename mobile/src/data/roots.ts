@@ -72,6 +72,50 @@ export function listForms(db: Db, root: string): RootForm[] {
   }));
 }
 
+export interface ShareRoot {
+  root_buckwalter: string;
+  root_arabic: string;
+  meaning_en: string | null;
+  total_occurrences: number;
+  forms: { lemma_buckwalter: string; lemma_arabic: string | null; occurrence_count: number }[];
+  meanings: { source: string; language: string; meaning: string }[];
+}
+
+/** Batched fetch of several roots (info + forms + meanings) in 3 queries total —
+ *  used by the AI-share composer so a many-root āyah doesn't fan out to dozens
+ *  of round-trips over the SQLite bridge. */
+export function rootsForShare(db: Db, buckwalters: string[]): Map<string, ShareRoot> {
+  const uniq = [...new Set(buckwalters.map((b) => normalizeRoot(b)).filter(Boolean))];
+  const out = new Map<string, ShareRoot>();
+  if (!uniq.length) return out;
+  const ph = uniq.map(() => "?").join(",");
+  const byId = new Map<number, ShareRoot>();
+  for (const r of db.query<Row>(`SELECT id, root_buckwalter, root_arabic, meaning_en FROM roots WHERE root_buckwalter IN (${ph})`, uniq)) {
+    const sr: ShareRoot = {
+      root_buckwalter: r.root_buckwalter as string,
+      root_arabic: r.root_arabic as string,
+      meaning_en: (r.meaning_en as string) ?? null,
+      total_occurrences: 0, forms: [], meanings: [],
+    };
+    out.set(sr.root_buckwalter, sr);
+    byId.set(r.id as number, sr);
+  }
+  const ids = [...byId.keys()];
+  if (ids.length) {
+    const iph = ids.map(() => "?").join(",");
+    for (const f of db.query<Row>(`SELECT root_id, lemma_buckwalter, lemma_arabic, occurrence_count FROM root_forms WHERE root_id IN (${iph}) ORDER BY occurrence_count DESC`, ids)) {
+      const sr = byId.get(f.root_id as number);
+      if (!sr) continue;
+      sr.forms.push({ lemma_buckwalter: f.lemma_buckwalter as string, lemma_arabic: (f.lemma_arabic as string) ?? null, occurrence_count: f.occurrence_count as number });
+      sr.total_occurrences += (f.occurrence_count as number) ?? 0;
+    }
+    for (const m of db.query<Row>(`SELECT root_id, source, language, meaning FROM root_meanings WHERE root_id IN (${iph}) ORDER BY language, source`, ids)) {
+      byId.get(m.root_id as number)?.meanings.push({ source: m.source as string, language: m.language as string, meaning: m.meaning as string });
+    }
+  }
+  return out;
+}
+
 /** Distinct dictionary sources present in the corpus (for the AI-share picker). */
 export function meaningSources(db: Db): string[] {
   return db
