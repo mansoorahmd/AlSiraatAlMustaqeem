@@ -231,6 +231,7 @@ function CompareBoard({
                   ) : it.kind === "ayah" ? (
                     <AyahBody
                       vk={it.ref} q={q} research={research} editionIds={editionIds} notes={notes} nav={nav}
+                      highlight={sharedWithPrev.length ? new Set(sharedWithPrev) : undefined}
                       onNote={() => setNoteScope({ verseKey: it.ref })}
                       onOpen={() => nav.navigate("ReadTab", { screen: "Reader", params: { chapterId: cnum(it.ref), focusVerseKey: it.ref } })}
                     />
@@ -262,7 +263,7 @@ function CompareBoard({
   );
 }
 
-function AyahBody({ vk, q, research, editionIds, notes, nav, onNote, onOpen }: { vk: string; q: any; research: Db; editionIds: Set<number>; notes: number; nav: any; onNote: () => void; onOpen: () => void }) {
+function AyahBody({ vk, q, research, editionIds, notes, nav, highlight, onNote, onOpen }: { vk: string; q: any; research: Db; editionIds: Set<number>; notes: number; nav: any; highlight?: Set<string>; onNote: () => void; onOpen: () => void }) {
   const v = q.verse(vk, { script: "uthmani", withWords: true });
   const words = ((v?.words ?? []) as Word[]).filter((w) => w.pos != null);
   const tr = editionIds.size ? q.verseTranslations(vk).filter((t: any) => editionIds.has(t.resource_id)) : [];
@@ -274,6 +275,7 @@ function AyahBody({ vk, q, research, editionIds, notes, nav, onNote, onOpen }: {
         verseKey={vk}
         text={(v?.text as string) ?? ""}
         words={words}
+        highlightRoots={highlight}
         size={25}
         onOpenRoot={(bw) => nav.navigate("RootsTab", { screen: "RootDetail", params: { root: bw } })}
         onFollowWord={(surface, lbl) => nav.navigate("ReadTab", { screen: "Trail", params: { word: surface, label: lbl } })}
@@ -375,10 +377,9 @@ const styles = StyleSheet.create({
   mergeText: { color: colors.inkSoft, fontSize: 10, letterSpacing: 0.4, marginRight: 8, textTransform: "uppercase", fontWeight: "700" },
   mergeChips: { flexDirection: "row", flexWrap: "wrap", flex: 1 },
   mergeChip: {
-    color: colors.gold, fontSize: 16, lineHeight: 22, includeFontPadding: false, textAlignVertical: "center",
-    writingDirection: "rtl", fontFamily: font.arabic,
-    backgroundColor: colors.surfaceAlt, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4,
-    marginRight: 6, marginBottom: 4,
+    color: colors.gold, fontSize: 18, includeFontPadding: false,
+    writingDirection: "rtl", fontFamily: font.arabic, fontWeight: "600",
+    marginRight: 12, marginBottom: 2,
   },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   caret: { color: colors.inkSoft, fontSize: 13, width: 14 },
