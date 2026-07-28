@@ -76,7 +76,14 @@ export default function Trail({ route, navigation }: Props) {
   }, [paramRoot, paramWord, paramTrailId]);
 
   useLayoutEffect(() => {
-    navigation.setOptions({ title: label ? `Thread · ${label}` : "Trails" });
+    navigation.setOptions({
+      title: label ? `Thread · ${label}` : "Trails",
+      headerRight: () => (
+        <Pressable onPress={() => (navigation as any).navigate("ReadTab", { screen: "ReaderHome" })} hitSlop={12} style={{ paddingHorizontal: 4 }}>
+          <Text style={{ color: colors.lapis, fontSize: 15, fontWeight: "600" }}>☰ Sūras</Text>
+        </Pressable>
+      ),
+    });
   }, [navigation, label]);
 
   const step = (next: number) => {
