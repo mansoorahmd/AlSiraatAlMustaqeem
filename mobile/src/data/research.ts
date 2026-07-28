@@ -366,6 +366,50 @@ export function pushRecentSearch(db: Db, q: string): void {
   setPref(db, "recentSearches", JSON.stringify(next));
 }
 
+// -- AI-share prompts & dictionary selection (device-local) --
+export const DEFAULT_AI_PROMPTS = [
+  "Please help me study this passage through its root vocabulary.",
+  "Explain the nuance each root adds, and how its derived forms differ in meaning.",
+  "Give a concise tafsir grounded in these roots and their usage across the Qur'an.",
+];
+
+export function getAiPrompts(db: Db): string[] {
+  const raw = getPref(db, "aiPrompts");
+  if (raw == null) return DEFAULT_AI_PROMPTS;
+  try { const a = JSON.parse(raw); return Array.isArray(a) && a.length ? a : DEFAULT_AI_PROMPTS; }
+  catch { return DEFAULT_AI_PROMPTS; }
+}
+export function addAiPrompt(db: Db, text: string): string[] {
+  const t = text.trim();
+  if (!t) return getAiPrompts(db);
+  const next = [t, ...getAiPrompts(db).filter((p) => p !== t)].slice(0, 30);
+  setPref(db, "aiPrompts", JSON.stringify(next));
+  return next;
+}
+export function removeAiPrompt(db: Db, text: string): string[] {
+  const next = getAiPrompts(db).filter((p) => p !== text);
+  setPref(db, "aiPrompts", JSON.stringify(next));
+  return next;
+}
+/** The prompt line to prepend; "" means none. Defaults to the first prompt. */
+export function getAiPromptSel(db: Db): string {
+  const v = getPref(db, "aiPromptSel");
+  return v == null ? DEFAULT_AI_PROMPTS[0]! : v;
+}
+export function setAiPromptSel(db: Db, text: string): void {
+  setPref(db, "aiPromptSel", text);
+}
+/** Selected dictionary sources, or null = include all. */
+export function getAiDicts(db: Db): string[] | null {
+  const raw = getPref(db, "aiDicts");
+  if (raw == null) return null;
+  try { const a = JSON.parse(raw); return Array.isArray(a) ? a : null; }
+  catch { return null; }
+}
+export function setAiDicts(db: Db, sources: string[]): void {
+  setPref(db, "aiDicts", JSON.stringify(sources));
+}
+
 // -- device-local preferences (reading settings, last position, …) --
 export function getPref(db: Db, key: string): string | null {
   return db.scalar<string>("SELECT value FROM prefs WHERE key = ?", [key]) ?? null;

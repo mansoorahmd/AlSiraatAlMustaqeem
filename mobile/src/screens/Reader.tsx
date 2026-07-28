@@ -19,7 +19,7 @@ import { EchoPanel } from "../components/EchoPanel";
 import { RelatedPanel } from "../components/RelatedPanel";
 import { ExpressionPanel } from "../components/ExpressionPanel";
 import type { ExprTerm } from "../data/expressions";
-import { composeAyahShare } from "../lib/aishare";
+import { ShareSheet } from "../components/ShareSheet";
 import { VariantPanel } from "../components/VariantPanel";
 import { LegendSheet } from "../components/LegendSheet";
 import { VerseText } from "../components/VerseText";
@@ -88,6 +88,7 @@ export default function Reader({ route, navigation }: Props) {
   // multi-word "expression" selection (within one āyah) → co-occurrence search
   const [sel, setSel] = useState<{ verseKey: string; words: Map<number, { surface: string; root: string | null }> } | null>(null);
   const [exprTerms, setExprTerms] = useState<ExprTerm[] | null>(null);
+  const [aiShareVk, setAiShareVk] = useState<string | null>(null);
   const [legend, setLegend] = useState(false);
   const [related, setRelated] = useState<{ title: string; matches: CompositeMatch[]; baseKey?: string } | null>(null);
   const [lens, setLens] = useState<{ baseKey: string; matches: Map<string, CompositeMatch> } | null>(null);
@@ -309,10 +310,9 @@ export default function Reader({ route, navigation }: Props) {
     await Share.share({ message: composeShare(v, true) });
     setActionVerse(null);
   };
-  const shareForAi = async (v: Verse) => {
-    const msg = composeAyahShare(q, research, v.verse_key, editionIds);
+  const shareForAi = (v: Verse) => {
     setActionVerse(null);
-    await Share.share({ message: msg });
+    setAiShareVk(v.verse_key);
   };
 
   const arabicSize = Math.round(26 * fontScale);
@@ -532,6 +532,16 @@ export default function Reader({ route, navigation }: Props) {
         onAddCompare={addAyahToCompare}
         actions={wordNav}
         onJump={(vk) => { setExprTerms(null); setSel(null); jumpTo(vk); }}
+      />
+
+      <ShareSheet
+        visible={!!aiShareVk}
+        kind="ayah"
+        target={aiShareVk}
+        q={q}
+        research={research}
+        editionIds={editionIds}
+        onClose={() => setAiShareVk(null)}
       />
 
       {sel && (

@@ -72,6 +72,13 @@ export function listForms(db: Db, root: string): RootForm[] {
   }));
 }
 
+/** Distinct dictionary sources present in the corpus (for the AI-share picker). */
+export function meaningSources(db: Db): string[] {
+  return db
+    .query<{ source: string }>("SELECT DISTINCT source FROM root_meanings WHERE source IS NOT NULL AND source <> '' ORDER BY source")
+    .map((r) => r.source);
+}
+
 export function getRoot(db: Db, root: string): RootDetail | null {
   const rid = rootId(db, root);
   if (rid == null) return null;
