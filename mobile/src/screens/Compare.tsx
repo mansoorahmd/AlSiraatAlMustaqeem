@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   trWrap: { marginTop: 10, borderTopWidth: 1, borderTopColor: colors.surfaceAlt, paddingTop: 8 },
   tr: { color: colors.inkSoft, fontSize: 14, lineHeight: 21 },
   trBy: { color: colors.inkSoft, fontSize: 11, marginTop: 2, opacity: 0.7 },
-  rootAr: { color: colors.gold, fontSize: 38, lineHeight: 56, paddingBottom: 6, includeFontPadding: true, writingDirection: "rtl", textAlign: "center", fontFamily: font.arabic },
+  rootAr: { color: colors.gold, fontSize: 34, paddingBottom: 8, includeFontPadding: true, writingDirection: "rtl", textAlign: "center", fontFamily: font.arabic },
   rootMeta: { color: colors.inkSoft, fontSize: 12, textAlign: "center", marginTop: 4 },
   rootGloss: { color: colors.ink, fontSize: 15, fontStyle: "italic", textAlign: "center", marginTop: 6 },
   src: { color: colors.inkSoft, fontSize: 11, fontWeight: "700", marginTop: 10 },

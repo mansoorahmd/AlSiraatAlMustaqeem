@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg },
   meta: { color: colors.inkSoft },
   hero: { alignItems: "center", paddingVertical: 12 },
-  heroArabic: { fontSize: 52, lineHeight: 74, paddingBottom: 8, includeFontPadding: true, color: colors.gold, writingDirection: "rtl", fontFamily: font.arabic },
+  heroArabic: { fontSize: 46, paddingBottom: 10, includeFontPadding: true, color: colors.gold, writingDirection: "rtl", fontFamily: font.arabic },
   heroMeta: { color: colors.inkSoft, fontSize: 13, marginTop: 6 },
   heroGloss: { color: colors.ink, fontSize: 16, marginTop: 6, fontStyle: "italic" },
   heroBtns: { flexDirection: "row", gap: 10, marginTop: 12 },
