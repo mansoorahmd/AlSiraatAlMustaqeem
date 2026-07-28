@@ -399,6 +399,14 @@ export function getAiPromptSel(db: Db): string {
 export function setAiPromptSel(db: Db, text: string): void {
   setPref(db, "aiPromptSel", text);
 }
+/** Whether to include the reader's translations in an āyah share. Default on. */
+export function getAiIncludeTranslation(db: Db): boolean {
+  return getPref(db, "aiTranslation") !== "0";
+}
+export function setAiIncludeTranslation(db: Db, on: boolean): void {
+  setPref(db, "aiTranslation", on ? "1" : "0");
+}
+
 /** Selected dictionary sources, or null = include all. */
 export function getAiDicts(db: Db): string[] | null {
   const raw = getPref(db, "aiDicts");

@@ -3,7 +3,8 @@ import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View 
 import type { QuranApi } from "../data/api";
 import type { Db } from "../data/db";
 import {
-  addAiPrompt, getAiDicts, getAiPrompts, getAiPromptSel, removeAiPrompt, setAiDicts, setAiPromptSel,
+  addAiPrompt, getAiDicts, getAiIncludeTranslation, getAiPrompts, getAiPromptSel,
+  removeAiPrompt, setAiDicts, setAiIncludeTranslation, setAiPromptSel,
 } from "../data/research";
 import { composeAyahShare, composeRootShare } from "../lib/aishare";
 import { colors } from "../theme/tokens";
@@ -33,6 +34,7 @@ export function ShareSheet({
   const [draft, setDraft] = useState("");
   const [sources, setSources] = useState<string[]>([]);
   const [dicts, setDicts] = useState<Set<string>>(new Set());
+  const [includeTr, setIncludeTr] = useState(true);
 
   useEffect(() => {
     if (!visible) return;
@@ -42,6 +44,7 @@ export function ShareSheet({
     setSources(srcs);
     const saved = getAiDicts(research);
     setDicts(new Set(saved ?? srcs)); // null → all
+    setIncludeTr(getAiIncludeTranslation(research));
     setAdding(false);
     setDraft("");
   }, [visible, research, q]);
@@ -64,7 +67,12 @@ export function ShareSheet({
   const doShare = async () => {
     setAiPromptSel(research, promptSel);
     setAiDicts(research, [...dicts]);
-    const opts = { prompt: promptSel || "", dicts: [...dicts] };
+    setAiIncludeTranslation(research, includeTr);
+    // "all sources selected" → null (include the built-in gloss too); a subset →
+    // exactly those sources, nothing extra
+    const allSelected = sources.length > 0 && dicts.size === sources.length;
+    const dictsParam = allSelected ? null : [...dicts];
+    const opts = { prompt: promptSel || "", dicts: dictsParam, translation: includeTr };
     const msg = kind === "ayah" && target
       ? composeAyahShare(q, research, target, editionIds, opts)
       : target ? composeRootShare(q, research, target, opts) : "";
@@ -83,6 +91,13 @@ export function ShareSheet({
           </View>
 
           <ScrollView contentContainerStyle={{ paddingBottom: 8 }} style={{ maxHeight: 420 }}>
+            {kind === "ayah" && (
+              <Pressable style={styles.trRow} onPress={() => setIncludeTr((v) => !v)}>
+                <Text style={styles.check}>{includeTr ? "☑" : "☐"}</Text>
+                <Text style={styles.promptText}>Include translation</Text>
+              </Pressable>
+            )}
+
             <Text style={styles.section}>Prompt</Text>
             <Pressable style={styles.promptRow} onPress={() => setPromptSel("")}>
               <Text style={styles.radio}>{promptSel === "" ? "◉" : "○"}</Text>
@@ -159,6 +174,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: "700", color: colors.ink },
   done: { color: colors.lapis, fontWeight: "600", fontSize: 15 },
   section: { color: colors.inkSoft, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 14, marginBottom: 6 },
+  trRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8, marginTop: 4 },
+  check: { color: colors.gold, fontSize: 18, width: 22 },
   promptRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 6 },
   promptTap: { flex: 1, flexDirection: "row", alignItems: "flex-start", gap: 8 },
   radio: { color: colors.gold, fontSize: 16, width: 20 },

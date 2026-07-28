@@ -14,7 +14,13 @@ const cnum = (k: string) => Number(k.split(":")[0]);
 export interface ShareOpts {
   prompt?: string | null;      // framing line; "" = none, undefined = composer default
   dicts?: string[] | null;     // dictionary sources to include; null = all, [] = none
+  translation?: boolean;       // include the reader's translations (āyah); default true
 }
+
+// The built-in English gloss (meaning_en) is only shown when the user hasn't
+// restricted dictionaries (dicts == null = "all"). Once specific dictionaries
+// are chosen, only those sources appear — nothing extra.
+const showGloss = (dicts: string[] | null | undefined) => dicts == null;
 
 interface Meaning { source: string; language: string; meaning: string }
 function pickSenses(meanings: Meaning[] | undefined, dicts: string[] | null | undefined, cap: number): Meaning[] {
@@ -26,7 +32,7 @@ function rootBlock(q: QuranApi, research: Db, bw: string, dicts: string[] | null
   const d = q.root(bw);
   if (!d) return [];
   const lines: string[] = [];
-  lines.push(`• ${d.root_arabic}${d.meaning_en ? ` — ${d.meaning_en}` : ""}  (${d.total_occurrences}×)`);
+  lines.push(`• ${d.root_arabic}${showGloss(dicts) && d.meaning_en ? ` — ${d.meaning_en}` : ""}  (${d.total_occurrences}×)`);
   const forms = (d.forms ?? [])
     .map((f) => `${f.lemma_arabic ?? f.lemma_buckwalter}${f.occurrence_count ? ` (${f.occurrence_count})` : ""}`)
     .join("، ");
@@ -56,7 +62,7 @@ export function composeAyahShare(
   L.push(`Qur'an ${verseKey} — Sūrah ${surah}`);
   L.push("");
   L.push(arabic);
-  if (trans.length) {
+  if (opts.translation !== false && trans.length) {
     L.push("");
     L.push("Translation:");
     for (const t of trans) L.push(`  ${t.text}  — ${t.resource_name ?? t.language_name}`);
@@ -87,7 +93,7 @@ export function composeRootShare(q: QuranApi, research: Db, rootBw: string, opts
   const prompt = opts.prompt === undefined ? "Please help me study this Qur'anic root." : opts.prompt;
   const L: string[] = [];
   if (prompt) { L.push(prompt); L.push(""); }
-  L.push(`Root ${d.root_arabic}${d.meaning_en ? ` — ${d.meaning_en}` : ""}  (${d.total_occurrences}× · ${d.forms.length} forms)`);
+  L.push(`Root ${d.root_arabic}${showGloss(opts.dicts) && d.meaning_en ? ` — ${d.meaning_en}` : ""}  (${d.total_occurrences}× · ${d.forms.length} forms)`);
   const forms = (d.forms ?? [])
     .map((f) => `${f.lemma_arabic ?? f.lemma_buckwalter}${f.occurrence_count ? ` (${f.occurrence_count})` : ""}`)
     .join("، ");
