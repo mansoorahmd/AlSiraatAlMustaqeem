@@ -375,8 +375,9 @@ const styles = StyleSheet.create({
   mergeText: { color: colors.inkSoft, fontSize: 10, letterSpacing: 0.4, marginRight: 8, textTransform: "uppercase", fontWeight: "700" },
   mergeChips: { flexDirection: "row", flexWrap: "wrap", flex: 1 },
   mergeChip: {
-    color: colors.gold, fontSize: 17, writingDirection: "rtl", fontFamily: font.arabic,
-    backgroundColor: colors.surfaceAlt, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 1,
+    color: colors.gold, fontSize: 16, lineHeight: 22, includeFontPadding: false, textAlignVertical: "center",
+    writingDirection: "rtl", fontFamily: font.arabic,
+    backgroundColor: colors.surfaceAlt, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4,
     marginRight: 6, marginBottom: 4,
   },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 8 },
