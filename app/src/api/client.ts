@@ -4,7 +4,7 @@
 
 import type {
   Chapter, Verse, Word, Translation, TranslationResource, RootDetail, RootSummary, RootOccurrence,
-  Linkage, CompositeMatch, FreeTextResult, Echo, Wazn, Script, SimilarityWeights,
+  Linkage, CompositeMatch, FreeTextResult, Echo, Wazn, ExprTerm, ExprHit, Script, SimilarityWeights,
 } from "./types";
 
 const BASE = "/api/v1";
@@ -81,4 +81,6 @@ export const api = {
     get<CompositeMatch[]>(`/verses/${encodeURIComponent(key)}/similar`, opts),
   search: (text: string, opts: { top_k?: number } & SimilarityWeights = {}) =>
     post<FreeTextResult>("/search", { text, ...opts }),
+  expressionSearch: (terms: ExprTerm[], mode: "verbatim" | "roots", limit = 300) =>
+    post<ExprHit[]>("/expression-search", { terms, mode, limit }),
 };

@@ -282,6 +282,19 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
         </div>
       )}
 
+      {/* add this word to an expression search (co-occurrence) */}
+      <div className="wm-actions">
+        <button
+          className="ink-action"
+          title="Find āyāt where this word co-occurs with others"
+          onClick={() =>
+            dispatch({ type: "pinExpr", term: { surface: target.token, root: target.word?.root ?? null } })
+          }
+        >
+          ⊕ Add to expression
+        </button>
+      </div>
+
       {/* a note or question on this word — visible in the reader and on the board */}
       <div className="wm-notes">
         <button className="ctl wm-notes-toggle" onClick={() => setNotesOpen((o) => !o)}>

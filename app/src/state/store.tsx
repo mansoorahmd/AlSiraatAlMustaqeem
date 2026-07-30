@@ -5,7 +5,7 @@
 import {
   createContext, useContext, useEffect, useReducer, useRef, type ReactNode, type Dispatch,
 } from "react";
-import type { Script } from "../api/types";
+import type { Script, ExprTerm } from "../api/types";
 import { archive } from "../persistence/db";
 
 export type Tab = "home" | "read" | "search" | "investigate" | "vault" | "roots" | "motifs" | "compare";
@@ -52,6 +52,9 @@ export interface AppState {
   openRoot: { buckwalter: string; arabic: string } | null;
   /** the compare workspace tray (session-only) */
   compare: CompareItem[];
+  /** expression-search tray: picked words to find co-occurring (session-only) */
+  expr: ExprTerm[];
+  exprMode: "verbatim" | "roots";
 }
 
 export type Action =
@@ -75,6 +78,10 @@ export type Action =
   | { type: "pinCompare"; item: CompareItem }
   | { type: "unpinCompare"; id: string }
   | { type: "clearCompare" }
+  | { type: "pinExpr"; term: ExprTerm }
+  | { type: "unpinExpr"; surface: string }
+  | { type: "clearExpr" }
+  | { type: "setExprMode"; mode: "verbatim" | "roots" }
   | { type: "clearJump" }
   | { type: "hydratePrefs"; reading: Partial<ReadingState> };
 
@@ -91,6 +98,8 @@ const initialState: AppState = {
   echoHighlight: null,
   openRoot: null,
   compare: [],
+  expr: [],
+  exprMode: "verbatim",
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -193,6 +202,17 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, compare: state.compare.filter((i) => compareId(i) !== action.id) };
     case "clearCompare":
       return { ...state, compare: [] };
+    case "pinExpr": {
+      const key = `${action.term.surface}|${action.term.root ?? ""}`;
+      if (state.expr.some((t) => `${t.surface}|${t.root ?? ""}` === key)) return state;
+      return { ...state, expr: [...state.expr, action.term].slice(-8) };
+    }
+    case "unpinExpr":
+      return { ...state, expr: state.expr.filter((t) => t.surface !== action.surface) };
+    case "clearExpr":
+      return { ...state, expr: [] };
+    case "setExprMode":
+      return { ...state, exprMode: action.mode };
     case "clearJump":
       return { ...state, jumpToVerseKey: null };
     case "hydratePrefs":

@@ -70,6 +70,11 @@ export interface TranslationResource {
   resource_type: string | null;
 }
 
+/** A term (picked word) in an expression search. */
+export interface ExprTerm { surface: string; root: string | null }
+/** An āyah where an expression's terms co-occur. */
+export interface ExprHit { verse_key: string; text: string }
+
 /** The morphological measure (صرف) of a word. */
 export interface Wazn {
   kind: "verb" | "active-participle" | "passive-participle" | "verbal-noun";

@@ -3,6 +3,7 @@
 import { Hono } from "hono";
 import type { AppState } from "../state.js";
 import { qint } from "../http.js";
+import { expressionSearch, type ExprTerm, type ExprMode } from "../expressions.js";
 
 function weights(c: { req: { query: (k: string) => string | undefined } }) {
   const g = (k: string) => {
@@ -44,6 +45,20 @@ export function similarityRoutes(state: AppState): Hono {
       weights: Object.keys(w).length ? w : undefined,
     });
     return c.json(result);
+  });
+
+  r.post("/expression-search", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as {
+      terms?: { surface?: string; root?: string | null }[];
+      mode?: ExprMode;
+      limit?: number;
+    };
+    const terms: ExprTerm[] = (body.terms ?? []).map((t) => ({
+      surface: t.surface ?? "",
+      rootBuckwalter: t.root ?? null,
+    }));
+    const mode: ExprMode = body.mode === "roots" ? "roots" : "verbatim";
+    return c.json(expressionSearch(state.quran, terms, mode, body.limit ?? 300));
   });
 
   return r;

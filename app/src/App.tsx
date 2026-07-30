@@ -8,6 +8,7 @@ import { Search } from "./screens/Search";
 import { Motifs } from "./screens/Motifs";
 import { Compare } from "./screens/Compare";
 import { Shortcuts } from "./components/Shortcuts";
+import { ExpressionBar } from "./components/ExpressionBar";
 import { AppProvider, useAppState } from "./state/store";
 
 function Screen() {
@@ -31,6 +32,7 @@ export default function App() {
         <main className="main">
           <Screen />
         </main>
+        <ExpressionBar />
       </div>
     </AppProvider>
   );

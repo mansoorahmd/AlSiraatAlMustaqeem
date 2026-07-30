@@ -692,6 +692,44 @@ a { color: var(--lapis); }
 .cmp-lex-src { font-size: var(--fs-label); color: var(--ink-faint); }
 .cmp-colloc { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.2rem; }
 
+/* expression search tray */
+.expr-bar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0.8rem;
+  z-index: 45;
+  width: min(56rem, 94vw);
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.22);
+  padding: 0.5rem 0.7rem;
+}
+.expr-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.expr-label { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
+.expr-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; flex: 1; min-width: 8rem; }
+.expr-chip {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.15rem 0.5rem; border-radius: 999px;
+  background: rgba(180, 83, 9, 0.1); border: 1px solid var(--gold-soft, rgba(180,83,9,0.35));
+  color: var(--gold); font-size: 1.05rem;
+}
+.expr-x { border: none; background: none; cursor: pointer; color: var(--ink-faint); font-size: 0.7rem; }
+.expr-x:hover { color: #b91c1c; }
+.expr-modes { display: inline-flex; gap: 0.25rem; }
+.expr-results { margin-top: 0.5rem; max-height: 40vh; overflow-y: auto; border-top: 1px solid var(--paper-edge); padding-top: 0.5rem; }
+.expr-count { font-size: var(--fs-label); color: var(--ink-soft); margin: 0 0 0.4rem; }
+.expr-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.expr-hit {
+  width: 100%; text-align: start; display: flex; flex-direction: column; gap: 0.15rem;
+  padding: 0.4rem 0.55rem; border: 1px solid var(--paper-edge); border-radius: 8px;
+  background: var(--paper); cursor: pointer;
+}
+.expr-hit:hover { background: var(--wash, rgba(37,99,235,0.05)); border-color: var(--lapis-soft); }
+.expr-ref { font-size: var(--fs-label); color: var(--lapis); font-variant-numeric: tabular-nums; }
+.expr-verse { font-size: 1.2rem; line-height: 1.9; color: var(--ink); }
+
 /* --- search + arabic keyboard --- */
 .search-bar { display: flex; gap: 0.5rem; align-items: stretch; margin-bottom: 0.6rem; }
 .search-input {
