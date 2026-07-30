@@ -86,6 +86,12 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
     [root],
   );
 
+  // wazn (صرف pattern) of the tapped word
+  const wazn = useAsync(
+    async () => (target.word ? api.wazn(target.verseKey, target.position) : null),
+    [target.verseKey, target.position, target.word !== null],
+  );
+
   // close on outside click / Esc
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -143,6 +149,23 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
       {isParticle && (
         <div className="wm-root">
           <span className="wm-occ">a particle — no root to investigate</span>
+        </div>
+      )}
+
+      {/* wazn — the morphological measure of this word's shape */}
+      {wazn.data && (
+        <div className="wm-wazn">
+          <div className="wm-wazn-label">{wazn.data.label}</div>
+          {wazn.data.wazn && (
+            <div className="wm-wazn-pattern quran" dir="rtl">
+              {wazn.data.wazn}
+              {wazn.data.radicals ? <span className="wm-wazn-radicals"> · {wazn.data.radicals.join(" ")}</span> : null}
+            </div>
+          )}
+          {(wazn.data.aspect || wazn.data.voice) && (
+            <div className="wm-wazn-meta">{[wazn.data.aspect, wazn.data.voice].filter(Boolean).join(" · ")}</div>
+          )}
+          {wazn.data.sense && <div className="wm-wazn-sense">{wazn.data.sense}</div>}
         </div>
       )}
 

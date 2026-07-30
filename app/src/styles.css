@@ -2054,6 +2054,19 @@ a { color: var(--lapis); }
   margin: 0.35rem 0;
   font-style: italic;
 }
+.wm-wazn {
+  margin: 0.4rem 0;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.06);
+  border-inline-start: 3px solid var(--lapis-soft);
+  text-align: start;
+}
+.wm-wazn-label { font-size: var(--fs-small); font-weight: 600; color: var(--lapis); }
+.wm-wazn-pattern { font-size: 1.3rem; color: var(--ink); line-height: 1.8; }
+.wm-wazn-radicals { font-size: 1rem; color: var(--gold); }
+.wm-wazn-meta { font-size: var(--fs-label); color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; }
+.wm-wazn-sense { font-size: var(--fs-small); color: var(--ink-soft); font-style: italic; margin-top: 0.15rem; }
 .wm-open-note {
   font-size: var(--fs-small);
   color: var(--gold);

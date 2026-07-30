@@ -1,10 +1,74 @@
 [
   {
+    "resource_id": 19,
+    "language_name": "english",
+    "text": "In the name of Allah, the Beneficent, the Merciful.",
+    "resource_name": "M. Pickthall",
+    "author_name": "Mohammed Marmaduke William Pickthall",
+    "resource_type": "translation"
+  },
+  {
+    "resource_id": 20,
+    "language_name": "english",
+    "text": "In the name of Allāh, the Entirely Merciful, the Especially Merciful.",
+    "resource_name": "Saheeh International",
+    "author_name": "Saheeh International",
+    "resource_type": "translation"
+  },
+  {
+    "resource_id": 22,
+    "language_name": "english",
+    "text": "In the name of Allah, Most Gracious, Most Merciful.",
+    "resource_name": "A. Yusuf Ali",
+    "author_name": "Abdullah Yusuf Ali",
+    "resource_type": "translation"
+  },
+  {
+    "resource_id": 54,
+    "language_name": "urdu",
+    "text": "شروع کرتا ہوں اللہ تعالیٰ کے نام سے جو بڑا مہربان نہایت رحم واﻻ ہے۔",
+    "resource_name": "Maulana Muhammad Junagarhi",
+    "author_name": "Maulana Muhammad Junagarhi",
+    "resource_type": "translation"
+  },
+  {
     "resource_id": 57,
     "language_name": null,
     "text": "Bismi Allahi arrahmani arraheem",
     "resource_name": "Transliteration",
     "author_name": "Transliteration",
+    "resource_type": "translation"
+  },
+  {
+    "resource_id": 85,
+    "language_name": "english",
+    "text": "In the name of God, the Lord of Mercy, the Giver of Mercy!",
+    "resource_name": "M.A.S. Abdel Haleem",
+    "author_name": "Abdul Haleem",
+    "resource_type": "translation"
+  },
+  {
+    "resource_id": 97,
+    "language_name": "urdu",
+    "text": "اللہ کےنام سے جو رحمان و رحیم ہے",
+    "resource_name": "Tafheem e Qur'an - Syed Abul A'la Maududi",
+    "author_name": "Sayyid Abul Ala Maududi",
+    "resource_type": "translation"
+  },
+  {
+    "resource_id": 151,
+    "language_name": "urdu",
+    "text": "شروع اللہ کے نام سے جو بڑا مہربان نہایت رحم والا ہے",
+    "resource_name": "Shaykh al-Hind Mahmud al-Hasan (with Tafsir E Usmani)",
+    "author_name": "Shaykh al-Hind Mahmud al-Hasan",
+    "resource_type": "translation"
+  },
+  {
+    "resource_id": 158,
+    "language_name": "urdu",
+    "text": "اللہ کے نام سے جو رحمان و رحیم ہے",
+    "resource_name": "Bayan-ul-Quran",
+    "author_name": "Dr. Israr Ahmad",
     "resource_type": "translation"
   }
 ]

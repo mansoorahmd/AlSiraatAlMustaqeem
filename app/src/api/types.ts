@@ -70,6 +70,18 @@ export interface TranslationResource {
   resource_type: string | null;
 }
 
+/** The morphological measure (صرف) of a word. */
+export interface Wazn {
+  kind: "verb" | "active-participle" | "passive-participle" | "verbal-noun";
+  form: string;
+  wazn: string | null;
+  label: string;
+  sense?: string;
+  aspect?: string;
+  voice?: string;
+  radicals?: string[];
+}
+
 /** A verbatim phrase in a verse that recurs elsewhere in the Book. */
 export interface Echo {
   phrase: string;

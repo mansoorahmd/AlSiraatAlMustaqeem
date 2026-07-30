@@ -3,6 +3,7 @@
 import { Hono } from "hono";
 import type { AppState } from "../state.js";
 import { SCRIPTS } from "../content.js";
+import { waznForWord } from "../wazn.js";
 import { qbool, qint, qstr } from "../http.js";
 
 export function contentRoutes(state: AppState): Hono {
@@ -74,6 +75,14 @@ export function contentRoutes(state: AppState): Hono {
     const key = c.req.param("key");
     if (!state.content.getVerse(key)) return c.json({ detail: `verse not found: ${key}` }, 404);
     return c.json(state.content.verseWords(key));
+  });
+
+  // wazn (صرف pattern) of one word — ?pos= the 1-based word position
+  r.get("/verses/:key/wazn", (c) => {
+    const key = c.req.param("key");
+    const pos = qint(c, "pos", null, { min: 1 });
+    if (pos == null) return c.json({ detail: "pos is required" }, 422);
+    return c.json(waznForWord(state.quran, key, pos));
   });
 
   r.get("/verses/:key/translations", (c) => {
