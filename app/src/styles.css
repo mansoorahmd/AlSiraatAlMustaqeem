@@ -1243,6 +1243,19 @@ a { color: var(--lapis); }
   opacity: 0.75;
 }
 .echo-mark:hover, .echo-mark.active { opacity: 1; }
+/* ↻ root-echo mark — faint gold for a same-āyah repeat, bright for adjacent */
+.rootecho-mark {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--gold);
+  padding: 0 0.15rem;
+  opacity: 0.4;
+}
+.rootecho-mark.adjacent { opacity: 0.85; }
+.rootecho-mark:hover, .rootecho-mark.active { opacity: 1; }
 .echo-panel {
   margin: 0.3rem 0 0.8rem;
   padding-inline-start: 0.85rem;

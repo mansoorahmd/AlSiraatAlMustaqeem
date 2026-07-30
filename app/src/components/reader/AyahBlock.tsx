@@ -15,7 +15,29 @@ import { arabicIndic } from "./format";
 import type { FocusReason, FocusBase } from "./focus";
 import type { NoteRecord, HighlightRange } from "../../persistence/types";
 
-const ECHO_WASH = "#fde68a"; // amber highlight for repeated spans
+const ECHO_WASH = "#fde68a"; // amber highlight for repeated phrase spans
+const ROOT_ECHO_WASH = "#fcd34d"; // gold highlight for a root repeated in an āyah
+
+// Root echo (↻): a root occurring 2+ times in one āyah. `adjacent` flags a tight
+// repeat at neighbouring word positions (cognate accusative مفعول مطلق, emphatic).
+function rootEcho(words: Word[] | null): { has: boolean; roots: Set<string>; adjacent: boolean } {
+  const pos = new Map<string, number[]>();
+  for (const w of words ?? []) {
+    if (!w.root) continue;
+    const a = pos.get(w.root);
+    if (a) a.push(w.position);
+    else pos.set(w.root, [w.position]);
+  }
+  const roots = new Set<string>();
+  let adjacent = false;
+  for (const [r, ps] of pos) {
+    if (ps.length < 2) continue;
+    roots.add(r);
+    ps.sort((a, b) => a - b);
+    for (let i = 1; i < ps.length; i++) if (ps[i]! - ps[i - 1]! === 1) adjacent = true;
+  }
+  return { has: roots.size > 0, roots, adjacent };
+}
 
 export interface AyahCaseRef {
   caseId: string;
@@ -96,6 +118,8 @@ export const AyahBlock = memo(function AyahBlock({
   const [whyOpen, setWhyOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [echoOpen, setEchoOpen] = useState(false);
+  const [rootEchoOpen, setRootEchoOpen] = useState(false);
+  const echo = rootEcho(words);
 
   // echoes for this verse, fetched only while the panel is open
   const echoData = useAsync(
@@ -113,6 +137,14 @@ export const AyahBlock = memo(function AyahBlock({
   }
   if (echoHighlightRange) {
     echoRanges.push({ start: echoHighlightRange.start, end: echoHighlightRange.end, color: ECHO_WASH });
+  }
+  // root echo: light every word whose root repeats in this āyah
+  if (rootEchoOpen && words) {
+    for (const w of words) {
+      if (w.root && echo.roots.has(w.root)) {
+        echoRanges.push({ start: w.position, end: w.position, color: ROOT_ECHO_WASH });
+      }
+    }
   }
 
   const noteCount = verseNotes?.length ?? 0;
@@ -203,6 +235,17 @@ export const AyahBlock = memo(function AyahBlock({
             title="This ayah contains a phrase repeated elsewhere in the Book"
             onClick={() => setEchoOpen((o) => !o)}
           >≡</button>
+        )}
+        {echo.has && (
+          <button
+            className={`rootecho-mark${echo.adjacent ? " adjacent" : ""}${rootEchoOpen ? " active" : ""}`}
+            title={
+              echo.adjacent
+                ? "A root repeats at adjacent words here — often a cognate accusative (مفعول مطلق) for emphasis. Tap to light every repeated root."
+                : "A root repeats within this ayah. Tap to light every repeated root."
+            }
+            onClick={() => setRootEchoOpen((o) => !o)}
+          >↻</button>
         )}
         <button
           className="cmp-pin"
