@@ -48,7 +48,7 @@ curated case files, and case/report export.
 
 | Feature | Status | Notes |
 |---|---|---|
-| Spelling / rasm variants (✍) + word sheet | ✅ | morphology tag + skeleton; Ibrāhīm full vs small yāʾ, رأى vs رءا |
+| Spelling / rasm variants (✍) + word sheet | ✅ | lemma + morphology + skeleton; Ibrāhīm full vs small yāʾ, رأى vs رءا. **Marks only the minority spelling; excludes compounds/assimilations (مِمَّا = مِن+مَا); mark ↔ word-sheet share one index so they always agree** |
 | Follow the thread — exact word **or** root | ✅ | exact written spelling (rasm) works for particles & names; both walk stop-by-stop |
 | Root echo (↻) — same root twice in one āyah | ✅ | bright gold = adjacent/cognate-accusative; faint = same-āyah; tap to light |
 | Wazn (صرف pattern) on the word sheet | ✅ | Form I–XII, active/passive participle, masdar + sense, aspect/voice, radicals |
@@ -278,6 +278,13 @@ Shipped (in-app):
 - **Off-main-thread index builds** — the echo (≡) and spelling-variant (✍)
   indexes now build via an async read + chunked yielding `warmup()` (`Db.queryAsync`),
   so the reader no longer freezes when marks appear.
+- **Spelling-variant correctness** (parity with web) — `VariantIndex` now keys
+  groups by **lemma + raw_features + skeleton**, **excludes compounds/assimilations**
+  (words whose stems carry >1 lemma, e.g. مِمَّا = مِن+مَا — no longer false-flagged
+  in 2:3), and **marks only the minority spelling**. The word sheet reads its
+  variants from this same index (`variantsForWord`), so a ✍-marked word always
+  shows its spellings and an unmarked one never does. (`data/variants.ts`,
+  `api.spellingVariants` repointed off the old per-word `spellingVariantsForWord`.)
 - **Reading guide / onboarding** — a `LegendSheet` explains every mark
   (≡ ✍ ⚲ ⊙ ✎ ⋯) and the word colours; shown once on first launch and
   reopenable from Home and the reader's ⓘ button.
@@ -314,12 +321,14 @@ on-demand behind its "Preparing…" overlay).
   differently across the mushaf (إبراهيم full-yāʾ vs small-yāʾ; قال vs قٰل;
   رَأَىٰ vs رَءَا hamza-on-alif vs hamza-on-the-line) shows "✍ written N ways"
   in the word sheet with each spelling, count, and a jump. Same words are
-  matched by morphology (`raw_features`) + a normalized skeleton (hamza seats
-  and alif/maqṣūra/dagger collapsed), so verb inflections and causatives don't
-  false-flag. (`data/spellings.ts`.) A precomputed `VariantIndex`
-  (`data/variants.ts`) drives a subtle **✍ mark** on āyāt in the reader that
-  contain such a word — built once over the corpus, cached, deferred off the
-  first frame.
+  matched by lemma + morphology (`raw_features`) + a normalized skeleton (hamza
+  seats and alif/maqṣūra/dagger collapsed), so verb inflections and causatives
+  don't false-flag, and compounds/assimilations (مِمَّا = مِن+مَا, >1 stem-lemma)
+  are excluded. (`data/spellings.ts`.) A precomputed `VariantIndex`
+  (`data/variants.ts`) drives a subtle **✍ mark** on āyāt in the reader — it
+  flags only the **minority** spelling of a word, and the word sheet reads its
+  variants from the *same* index (`variantsForWord`) so mark and sheet always
+  agree. Built once over the corpus, cached, deferred off the first frame.
 
 ## 6. Out of scope (deferred phase)
 

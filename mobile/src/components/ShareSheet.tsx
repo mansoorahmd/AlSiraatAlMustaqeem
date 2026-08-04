@@ -6,6 +6,7 @@ import {
   addAiPrompt, getAiDicts, getAiIncludeTranslation, getAiPrompts, getAiPromptSel,
   removeAiPrompt, setAiDicts, setAiIncludeTranslation, setAiPromptSel,
 } from "../data/research";
+import * as Clipboard from "expo-clipboard";
 import { composeAyahShare, composeRootShare, shareBundle } from "../lib/aishare";
 import { toast } from "../ui/toast";
 import { colors } from "../theme/tokens";
@@ -66,7 +67,7 @@ export function ShareSheet({
     if (promptSel === p) setPromptSel("");
   };
 
-  const doShare = () => {
+  const run = (mode: "share" | "copy") => {
     if (busy) return;
     setAiPromptSel(research, promptSel);
     setAiDicts(research, [...dicts]);
@@ -85,10 +86,11 @@ export function ShareSheet({
           : target ? composeRootShare(q, research, target, opts) : "";
         setBusy(false);
         onClose();
-        await shareBundle(msg, kind === "ayah" ? `Āyah ${target}` : "Root");
+        if (mode === "copy") { await Clipboard.setStringAsync(msg); toast("Copied to clipboard"); }
+        else await shareBundle(msg, kind === "ayah" ? `Āyah ${target}` : "Root");
       } catch (e) {
         setBusy(false);
-        toast(`Share failed: ${e instanceof Error ? e.message : String(e)}`);
+        toast(`${mode === "copy" ? "Copy" : "Share"} failed: ${e instanceof Error ? e.message : String(e)}`);
       }
     }, 40);
   };
@@ -168,16 +170,23 @@ export function ShareSheet({
             )}
           </ScrollView>
 
-          <Pressable style={[styles.shareBtn, busy && styles.shareBtnBusy]} onPress={doShare} disabled={busy}>
-            {busy ? (
+          {busy ? (
+            <View style={[styles.shareBtn, styles.shareBtnBusy]}>
               <View style={styles.busyRow}>
                 <ActivityIndicator color="#fff" size="small" />
                 <Text style={styles.shareText}>Preparing…</Text>
               </View>
-            ) : (
-              <Text style={styles.shareText}>⇱ Share</Text>
-            )}
-          </Pressable>
+            </View>
+          ) : (
+            <View style={styles.footerRow}>
+              <Pressable style={styles.copyBtn} onPress={() => run("copy")}>
+                <Text style={styles.copyText}>⧉ Copy</Text>
+              </Pressable>
+              <Pressable style={styles.shareBtn} onPress={() => run("share")}>
+                <Text style={styles.shareText}>⇱ Share</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -215,8 +224,11 @@ const styles = StyleSheet.create({
   chipOn: { borderColor: colors.gold, backgroundColor: colors.amber },
   chipText: { color: colors.inkSoft, fontSize: 13 },
   chipTextOn: { color: colors.ink, fontWeight: "600" },
-  shareBtn: { backgroundColor: colors.gold, borderRadius: 12, paddingVertical: 13, alignItems: "center", marginTop: 14 },
+  footerRow: { flexDirection: "row", gap: 10 },
+  shareBtn: { flex: 1, backgroundColor: colors.gold, borderRadius: 12, paddingVertical: 13, alignItems: "center", marginTop: 14 },
   shareBtnBusy: { opacity: 0.8 },
   busyRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   shareText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  copyBtn: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingVertical: 13, alignItems: "center", marginTop: 14 },
+  copyText: { color: colors.ink, fontSize: 16, fontWeight: "700" },
 });

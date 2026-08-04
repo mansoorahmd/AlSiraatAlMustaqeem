@@ -10,7 +10,7 @@ import { RootLinkages } from "./linkages";
 import { EchoIndex } from "./echoes";
 import { SimilarityEngine } from "../similarity/compose";
 import { FreeTextSearch } from "../similarity/freetext";
-import { spellingVariantsForWord, rootSpellingsByForm, exactWordOccurrences } from "./spellings";
+import { rootSpellingsByForm, exactWordOccurrences } from "./spellings";
 import { waznForWord } from "./wazn";
 import { expressionSearch, type ExprTerm, type ExprMode } from "./expressions";
 import { VariantIndex } from "./variants";
@@ -67,9 +67,10 @@ export function makeApi(db: Db) {
     echoesReady: () => echoes().warmup(),
     variantsReady: () => variants().warmup(),
 
-    // rasm (spelling) variants of a word
+    // rasm (spelling) variants of a word — from the same index the ✍ marks use,
+    // so a marked word always shows its spellings and an unmarked one never does
     spellingVariants: (verseKey: string, wordPosition: number) =>
-      spellingVariantsForWord(db, verseKey, wordPosition),
+      variants().variantsForWord(verseKey, wordPosition),
     wazn: (verseKey: string, wordPosition: number) => waznForWord(db, verseKey, wordPosition),
     expressionSearch: (terms: ExprTerm[], mode: ExprMode, limit = 300) => expressionSearch(db, terms, mode, limit),
     variantVerses: (chapterId: number) => variants().versesInChapter(chapterId),
