@@ -16,25 +16,23 @@ import { toast } from "../ui/toast";
 const clean = (t: string) => (t ?? "").replace(/[\uE000-\uF8FF\u200B-\u200F\uFEFF]/g, "").trim();
 const cnum = (k: string) => Number(k.split(":")[0]);
 
-// Android caps an Intent's text extra (Binder transaction ~1 MB), so a bundle
-// with long dictionaries (Lis\u0101n al-\u02BFArab entries reach ~86k chars) can't ride
-// the normal text share. Small bundles share as text (AI apps' text target);
-// large ones are written to a .txt file and shared by URI \u2014 no size limit \u2014
-// with a clipboard fallback.
-const TEXT_SHARE_LIMIT = 50_000;
-export async function shareBundle(msg: string, title = "Share"): Promise<void> {
-  if (!msg) return;
-  if (msg.length <= TEXT_SHARE_LIMIT) { await Share.share({ message: msg }); return; }
+// Android can't put both a text message and a file in one share intent (needs a
+// native module), so we share the info as a .txt file (by URI \u2014 no size limit,
+// never hangs) and place the prompt on the clipboard to paste as the message.
+export async function shareBundle(prompt: string, body: string, title = "Share"): Promise<void> {
+  if (!body) return;
   try {
     const dest = `${FileSystem.cacheDirectory}alsiraat-share.txt`;
-    await FileSystem.writeAsStringAsync(dest, msg);
+    await FileSystem.writeAsStringAsync(dest, body);
     if (await Sharing.isAvailableAsync()) {
+      if (prompt) await Clipboard.setStringAsync(prompt);
       await Sharing.shareAsync(dest, { mimeType: "text/plain", dialogTitle: title });
+      if (prompt) toast("Prompt copied \u2014 paste it as your message; the details are attached.");
       return;
     }
   } catch { /* fall through to clipboard */ }
-  await Clipboard.setStringAsync(msg);
-  toast("Bundle is large \u2014 copied to clipboard; paste into your AI app.");
+  await Clipboard.setStringAsync((prompt ? `${prompt}\n\n` : "") + body);
+  toast("Copied to clipboard; paste into your AI app.");
 }
 
 export interface ShareOpts {

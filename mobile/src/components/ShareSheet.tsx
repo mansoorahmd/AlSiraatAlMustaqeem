@@ -76,18 +76,21 @@ export function ShareSheet({
     // exactly those sources, nothing extra
     const allSelected = sources.length > 0 && dicts.size === sources.length;
     const dictsParam = allSelected ? null : [...dicts];
-    const opts = { prompt: promptSel || "", dicts: dictsParam, translation: includeTr };
+    // Copy → full bundle (prompt + info) in one text. Share → info as a file,
+    // prompt handled separately (clipboard) since Android can't attach both.
+    const promptForOpts = mode === "copy" ? (promptSel || "") : "";
+    const opts = { prompt: promptForOpts, dicts: dictsParam, translation: includeTr };
     setBusy(true);
     // defer so the "Preparing…" state paints before compose
     setTimeout(async () => {
       try {
-        const msg = kind === "ayah" && target
+        const body = kind === "ayah" && target
           ? composeAyahShare(q, research, target, editionIds, opts)
           : target ? composeRootShare(q, research, target, opts) : "";
         setBusy(false);
         onClose();
-        if (mode === "copy") { await Clipboard.setStringAsync(msg); toast("Copied to clipboard"); }
-        else await shareBundle(msg, kind === "ayah" ? `Āyah ${target}` : "Root");
+        if (mode === "copy") { await Clipboard.setStringAsync(body); toast("Copied to clipboard"); }
+        else await shareBundle(promptSel || "", body, kind === "ayah" ? `Āyah ${target}` : "Root");
       } catch (e) {
         setBusy(false);
         toast(`${mode === "copy" ? "Copy" : "Share"} failed: ${e instanceof Error ? e.message : String(e)}`);
