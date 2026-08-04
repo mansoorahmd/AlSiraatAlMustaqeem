@@ -56,6 +56,19 @@ CREATE TABLE IF NOT EXISTS motif_roots (
     PRIMARY KEY (motif_id, root)
 );
 CREATE INDEX IF NOT EXISTS idx_motif_roots_root ON motif_roots(root);
+
+-- comparisons (بيوت-style saveable boards of pinned āyāt & roots studied side by side)
+CREATE TABLE IF NOT EXISTS compare_sets (
+    id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS compare_items (
+    id TEXT PRIMARY KEY, set_id TEXT NOT NULL,
+    kind TEXT NOT NULL, ref TEXT NOT NULL, label TEXT,
+    created_at INTEGER NOT NULL,
+    UNIQUE (set_id, kind, ref)
+);
+CREATE INDEX IF NOT EXISTS idx_compare_items_set ON compare_items(set_id);
 `;
 
 const NOTE_MIGRATIONS: [string, string][] = [
@@ -291,5 +304,73 @@ export class ResearchStore {
   removeMotifRoot(id: string, root: string): void {
     this.db.run("DELETE FROM motif_roots WHERE motif_id = ? AND root = ?", [id, root]);
     this.db.run("UPDATE motifs SET updated_at = ? WHERE id = ?", [now(), id]);
+  }
+
+  // -- comparisons (named, saveable boards of pinned āyāt & roots) --
+  private static setRow(r: any): Doc {
+    return { id: r.id, title: r.title, createdAt: r.created_at, updatedAt: r.updated_at, count: Number(r.count ?? 0) };
+  }
+  private static itemRow(r: any): Doc {
+    return { id: r.id, setId: r.set_id, kind: r.kind, ref: r.ref, label: r.label ?? null, createdAt: r.created_at };
+  }
+  private touchCompareSet(id: string): void {
+    this.db.run("UPDATE compare_sets SET updated_at = ? WHERE id = ?", [now(), id]);
+  }
+
+  /** All saved comparisons, most-recently-touched first, with member counts. */
+  listCompareSets(): Doc[] {
+    return this.db
+      .query(
+        `SELECT s.id, s.title, s.created_at, s.updated_at, COUNT(c.id) AS count
+         FROM compare_sets s LEFT JOIN compare_items c ON c.set_id = s.id
+         GROUP BY s.id ORDER BY s.updated_at DESC`,
+      )
+      .map(ResearchStore.setRow);
+  }
+  getCompareSet(id: string): Doc | undefined {
+    const r = this.db.one(
+      `SELECT s.id, s.title, s.created_at, s.updated_at, COUNT(c.id) AS count
+       FROM compare_sets s LEFT JOIN compare_items c ON c.set_id = s.id WHERE s.id = ? GROUP BY s.id`,
+      [id],
+    );
+    return r ? ResearchStore.setRow(r) : undefined;
+  }
+  saveCompareSet(doc: Doc): Doc {
+    const t = now();
+    this.db.run(
+      `INSERT INTO compare_sets (id, title, created_at, updated_at) VALUES (?,?,?,?)
+       ON CONFLICT(id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at`,
+      [doc.id, doc.title ?? "", doc.createdAt ?? t, t],
+    );
+    return this.getCompareSet(doc.id)!;
+  }
+  deleteCompareSet(id: string): boolean {
+    this.db.run("DELETE FROM compare_items WHERE set_id = ?", [id]);
+    return Number(this.db.run("DELETE FROM compare_sets WHERE id = ?", [id]).changes) > 0;
+  }
+  listCompareItems(setId: string): Doc[] {
+    return this.db
+      .query("SELECT * FROM compare_items WHERE set_id = ? ORDER BY created_at", [setId])
+      .map(ResearchStore.itemRow);
+  }
+  addCompareItem(setId: string, doc: Doc): Doc {
+    this.db.run(
+      `INSERT INTO compare_items (id, set_id, kind, ref, label, created_at) VALUES (?,?,?,?,?,?)
+       ON CONFLICT(set_id, kind, ref) DO NOTHING`,
+      [doc.id, setId, doc.kind, doc.ref, doc.label ?? null, doc.createdAt ?? now()],
+    );
+    this.touchCompareSet(setId);
+    // return the row that now holds this (set,kind,ref) — its own id or the pre-existing one
+    const r = this.db.one("SELECT * FROM compare_items WHERE set_id = ? AND kind = ? AND ref = ?", [setId, doc.kind, doc.ref]);
+    return ResearchStore.itemRow(r);
+  }
+  removeCompareItem(setId: string, itemId: string): boolean {
+    const changed = Number(this.db.run("DELETE FROM compare_items WHERE id = ? AND set_id = ?", [itemId, setId]).changes) > 0;
+    if (changed) this.touchCompareSet(setId);
+    return changed;
+  }
+  clearCompareItems(setId: string): void {
+    this.db.run("DELETE FROM compare_items WHERE set_id = ?", [setId]);
+    this.touchCompareSet(setId);
   }
 }

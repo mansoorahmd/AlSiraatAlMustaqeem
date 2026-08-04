@@ -10,6 +10,7 @@ import { SimilarityEngine } from "./similarity/compose.js";
 import { FreeTextSearch } from "./freetext.js";
 import { ResearchStore } from "./research.js";
 import { EchoIndex } from "./echoes.js";
+import { SpellingIndex } from "./spellings.js";
 
 // project root = two levels up from server/src
 const ROOT = resolve(import.meta.dirname, "..", "..");
@@ -26,6 +27,7 @@ export interface AppState {
   freetext: FreeTextSearch;
   research: ResearchStore;
   echoes: EchoIndex;
+  spellings: SpellingIndex;
 }
 
 export function createState(): AppState {
@@ -41,6 +43,7 @@ export function createState(): AppState {
     freetext: new FreeTextSearch(quran),
     research: new ResearchStore(researchDb),
     echoes: new EchoIndex(quran),
+    spellings: new SpellingIndex(quran),
   };
 }
 

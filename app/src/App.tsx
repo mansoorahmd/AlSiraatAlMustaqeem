@@ -9,6 +9,7 @@ import { Motifs } from "./screens/Motifs";
 import { Compare } from "./screens/Compare";
 import { Shortcuts } from "./components/Shortcuts";
 import { ExpressionBar } from "./components/ExpressionBar";
+import { Toast } from "./components/Toast";
 import { AppProvider, useAppState } from "./state/store";
 
 function Screen() {
@@ -33,6 +34,7 @@ export default function App() {
           <Screen />
         </main>
         <ExpressionBar />
+        <Toast />
       </div>
     </AppProvider>
   );

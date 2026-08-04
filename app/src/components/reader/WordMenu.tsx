@@ -43,6 +43,7 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
   const [chosenCaseId, setChosenCaseId] = useState<string | null>(null);
   const [lexOpen, setLexOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [spellOpen, setSpellOpen] = useState(false);
 
   // every case that can still receive evidence (open or partial)
   const openCases = useAsync(async () => {
@@ -92,6 +93,13 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
     [target.verseKey, target.position, target.word !== null],
   );
 
+  // rasm spelling variants of the tapped word (same word written ≥2 ways)
+  const spelling = useAsync(
+    async () => (target.word ? api.spelling(target.verseKey, target.position) : []),
+    [target.verseKey, target.position, target.word !== null],
+  );
+  const variants = spelling.data ?? [];
+
   // close on outside click / Esc
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -107,7 +115,7 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
   }, [onClose]);
 
   // clamp to the viewport: below the word, flipped above when cut off
-  const width = 320;
+  const width = Math.min(460, window.innerWidth - 16);
   const left = Math.max(8, Math.min(target.x - width / 2, window.innerWidth - width - 8));
   const [top, setTop] = useState(target.y + 10);
   useLayoutEffect(() => {
@@ -131,70 +139,50 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
 
   return (
     <div ref={ref} className="word-menu" role="menu" style={{ left, top, width }}>
-      <div className="wm-word quran">{target.token}</div>
-      {target.word?.transliteration && (
-        <div className="wm-translit">{target.word.transliteration}</div>
-      )}
-
-      {root && (
-        <div className="wm-root">
-          <span className="wm-root-letters">{spacedRoot(root)}</span>
-          {rootInfo.data && (
-            <span className="wm-occ">
-              {rootInfo.data.total_occurrences} occurrences in the Book
-            </span>
-          )}
+      {/* header: the word, transliteration, and its root together */}
+      <div className="wm-head">
+        <div className="wm-head-word">
+          <span className="wm-word quran">{target.token}</span>
+          {target.word?.transliteration && <span className="wm-translit">{target.word.transliteration}</span>}
         </div>
-      )}
-      {isParticle && (
-        <div className="wm-root">
-          <span className="wm-occ">a particle — no root to investigate</span>
-        </div>
-      )}
+        {root ? (
+          <div className="wm-head-root">
+            <span className="wm-root-letters quran">{spacedRoot(root)}</span>
+            {rootInfo.data && <span className="wm-occ">{rootInfo.data.total_occurrences}× in the Book</span>}
+          </div>
+        ) : isParticle ? (
+          <span className="wm-occ">a particle — no root</span>
+        ) : null}
+      </div>
 
-      {/* wazn — the morphological measure of this word's shape */}
-      {wazn.data && (
-        <div className="wm-wazn">
-          <div className="wm-wazn-label">{wazn.data.label}</div>
-          {wazn.data.wazn && (
-            <div className="wm-wazn-pattern quran" dir="rtl">
-              {wazn.data.wazn}
-              {wazn.data.radicals ? <span className="wm-wazn-radicals"> · {wazn.data.radicals.join(" ")}</span> : null}
-            </div>
-          )}
-          {(wazn.data.aspect || wazn.data.voice) && (
-            <div className="wm-wazn-meta">{[wazn.data.aspect, wazn.data.voice].filter(Boolean).join(" · ")}</div>
-          )}
-          {wazn.data.sense && <div className="wm-wazn-sense">{wazn.data.sense}</div>}
-        </div>
-      )}
-
-      {/* root core meaning — open reference evidence */}
+      {/* meaning + morphology, compact lines */}
       {root && rootInfo.data?.meaning_en && (
         <div className="wm-reference">root core: {rootInfo.data.meaning_en}</div>
       )}
-
-      {/* full lexicon entries, by source */}
-      {root && rootInfo.data && rootInfo.data.meanings.length > 0 && (
-        <div className="wm-lexicons">
-          <button className="ctl wm-lex-toggle" onClick={() => setLexOpen(!lexOpen)}>
-            {lexOpen ? "hide lexicons" : `📖 full lexicons (${rootInfo.data.meanings.length})`}
+      {wazn.data && (
+        <div className="wm-morph" title={wazn.data.sense ?? undefined}>
+          <span className="wm-morph-tag">صرف</span>
+          <span>
+            {wazn.data.label}
+            {wazn.data.wazn ? <> · <span className="quran">{wazn.data.wazn}</span></> : null}
+            {wazn.data.aspect || wazn.data.voice
+              ? ` · ${[wazn.data.aspect, wazn.data.voice].filter(Boolean).join(" · ")}`
+              : ""}
+          </span>
+        </div>
+      )}
+      {variants.length > 1 && (
+        <div className="wm-morph">
+          <button className="wm-morph-toggle" onClick={() => setSpellOpen((o) => !o)}>
+            ✍ {spellOpen ? "hide spellings" : `written ${variants.length} ways`}
           </button>
-          {lexOpen && (
-            <div className="root-ref-all wm-lex-list">
-              {rootInfo.data.meanings.map((m, i) => (
-                <div key={i} className="ref-entry">
-                  <div className="ref-entry-head">
-                    <span className="stamp">{m.source}</span>
-                    <span className="ref-entry-lang">{m.language}</span>
-                  </div>
-                  <p
-                    className={`ref-entry-text${m.language === "arabic" ? " ref-ar" : ""}`}
-                    dir={m.language === "arabic" ? "rtl" : "ltr"}
-                  >
-                    {m.meaning}
-                  </p>
-                </div>
+          {spellOpen && (
+            <div className="wm-spelling-list">
+              {variants.map((v, i) => (
+                <span key={i} className={`wm-spell${i === 0 ? " common" : ""}`}>
+                  <span className="quran">{v.surface}</span>
+                  <span className="wm-spell-count">×{v.count}</span>
+                </span>
               ))}
             </div>
           )}
@@ -205,102 +193,61 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
       {root && (
         research ? (
           research.status === "established" ? (
-            <div className="wm-verdict">
-              ✒ <em>“{research.meaning}”</em>
-              <span className="wm-verdict-note">— your established meaning</span>
-            </div>
+            <div className="wm-verdict">✒ <em>“{research.meaning}”</em> <span className="wm-verdict-note">— your meaning</span></div>
           ) : (
-            <div className="wm-open-note">⚲ a case is in progress on this form</div>
+            <div className="wm-open-note">⚲ a case is in progress</div>
           )
         ) : (
           <div className="wm-open-note none">no research on this form yet</div>
         )
       )}
 
-      {root && (
-        <div className="wm-actions">
-          <button className="ink-action" onClick={openCase}>
-            ⚖ {research ? "Open the case" : "Open a case"}
+      {/* actions — a neat wrapping grid that uses the full width */}
+      <div className="wm-actions-grid">
+        {root && (
+          <button className="wm-act" onClick={openCase}>
+            ⚖ {research ? "Open case" : "Open a case"}
           </button>
+        )}
+        {root && (
           <button
-            className="ink-action"
+            className="wm-act"
             onClick={async () => {
-              if (!root) return;
               const t = await startTrail(root, target.verseKey, target.position);
               dispatch({ type: "setActiveTrail", trailId: t.id });
               dispatch({ type: "jumpToVerse", verseKey: target.verseKey, wordPosition: target.position });
               onClose();
             }}
-          >
-            ➶ Follow the thread
-          </button>
-        </div>
-      )}
-
-      {/* a case on the whole ayah — its own board and understanding */}
-      <div className="wm-actions">
+          >➶ Follow thread</button>
+        )}
         <button
-          className="ink-action"
+          className="wm-act"
           onClick={async () => {
             const c = await openOrCreateAyahCase(target.verseKey);
             dispatch({ type: "setActiveCase", caseId: c.id });
             dispatch({ type: "setTab", tab: "investigate" });
             onClose();
           }}
-        >
-          ⚖ Open case on ayah {target.verseKey}
-        </button>
-      </div>
-
-      {/* evidence can come from ANY ayah — file this one into a chosen case */}
-      {openCases.data && openCases.data.length > 0 && targetCase && (
-        <div className="wm-add-to-case">
-          {openCases.data.length > 1 ? (
-            <select
-              className="board-input wm-case-select"
-              value={targetCaseId ?? ""}
-              onChange={(e) => { setChosenCaseId(e.target.value); setAdded(null); }}
-            >
-              {openCases.data.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.title} ({c.status})
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span className="wm-case-name">{targetCase.title}</span>
-          )}
-          <button
-            className="ink-action"
-            onClick={addAyahToCase}
-            disabled={added === targetCaseId}
-          >
-            {added === targetCaseId
-              ? "✓ added"
-              : `⊕ Add ${target.verseKey} as evidence`}
-          </button>
-        </div>
-      )}
-
-      {/* add this word to an expression search (co-occurrence) */}
-      <div className="wm-actions">
+        >⚖ Case on {target.verseKey}</button>
         <button
-          className="ink-action"
+          className="wm-act"
           title="Find āyāt where this word co-occurs with others"
-          onClick={() =>
-            dispatch({ type: "pinExpr", term: { surface: target.token, root: target.word?.root ?? null } })
-          }
-        >
-          ⊕ Add to expression
-        </button>
+          onClick={() => dispatch({ type: "pinExpr", term: { surface: target.token, root: target.word?.root ?? null } })}
+        >⊕ Expression</button>
+        <button
+          className={`wm-act${notesOpen ? " active" : ""}`}
+          onClick={() => setNotesOpen((o) => !o)}
+        >✎ Note</button>
+        {root && rootInfo.data && rootInfo.data.meanings.length > 0 && (
+          <button className={`wm-act${lexOpen ? " active" : ""}`} onClick={() => setLexOpen(!lexOpen)}>
+            📖 Lexicons ({rootInfo.data.meanings.length})
+          </button>
+        )}
       </div>
 
-      {/* a note or question on this word — visible in the reader and on the board */}
-      <div className="wm-notes">
-        <button className="ctl wm-notes-toggle" onClick={() => setNotesOpen((o) => !o)}>
-          {notesOpen ? "hide notes" : "✎ Note / question on this word"}
-        </button>
-        {notesOpen && (
+      {/* expandable panels — full width below the grid */}
+      {notesOpen && (
+        <div className="wm-panel">
           <NotesPanel
             verseKey={target.verseKey}
             wordPosition={target.position}
@@ -309,8 +256,46 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
             onChanged={onNotesChanged}
             compact
           />
-        )}
-      </div>
+        </div>
+      )}
+
+      {lexOpen && root && rootInfo.data && (
+        <div className="root-ref-all wm-lex-list wm-panel">
+          {rootInfo.data.meanings.map((m, i) => (
+            <div key={i} className="ref-entry">
+              <div className="ref-entry-head">
+                <span className="stamp">{m.source}</span>
+                <span className="ref-entry-lang">{m.language}</span>
+              </div>
+              <p className={`ref-entry-text${m.language === "arabic" ? " ref-ar" : ""}`} dir={m.language === "arabic" ? "rtl" : "ltr"}>
+                {m.meaning}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* file this ayah into an open case */}
+      {openCases.data && openCases.data.length > 0 && targetCase && (
+        <div className="wm-add-to-case wm-panel">
+          {openCases.data.length > 1 ? (
+            <select
+              className="board-input wm-case-select"
+              value={targetCaseId ?? ""}
+              onChange={(e) => { setChosenCaseId(e.target.value); setAdded(null); }}
+            >
+              {openCases.data.map((c) => (
+                <option key={c.id} value={c.id}>{c.title} ({c.status})</option>
+              ))}
+            </select>
+          ) : (
+            <span className="wm-case-name">{targetCase.title}</span>
+          )}
+          <button className="wm-act" onClick={addAyahToCase} disabled={added === targetCaseId}>
+            {added === targetCaseId ? "✓ added" : `⊕ Add ${target.verseKey} as evidence`}
+          </button>
+        </div>
+      )}
 
       {/* notes & open questions on this word / root elsewhere in the Book */}
       {root && (

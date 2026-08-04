@@ -7,25 +7,37 @@ import { useState } from "react";
 import { api } from "../../api/client";
 import { useAsync } from "../../hooks/useAsync";
 import { useAppState, useAppDispatch } from "../../state/store";
+import { useAddToCompare } from "../../compare/useAddToCompare";
 import { VerseText } from "../VerseText";
 import type { Echo } from "../../api/types";
 import type { HighlightRange } from "../../persistence/types";
 
 const ECHO_WASH = "#fde68a";
 
+// A common phrase can recur in dozens of āyāt; fetching and rendering every one
+// inline (each a full RTL verse) into the already-large reader can lock the tab,
+// so we bound the inline view and offer the rest as jump chips.
+const MAX_INLINE = 12;
+
 function EchoCompare({ echo, surahName }: { echo: Echo; surahName: (k: string) => string }) {
   const { reading } = useAppState();
+  const dispatch = useAppDispatch();
+  const addToCompare = useAddToCompare();
   const script = reading.script;
+  const shown = echo.occurrences.slice(0, MAX_INLINE);
+  const overflow = echo.occurrences.slice(MAX_INLINE);
+  // key the fetch on stable primitives (never the echo object) so it can't refetch in a loop
+  const key = shown.map((o) => o.verseKey).join(",");
   const verses = useAsync(
-    () => Promise.all(echo.occurrences.map((o) => api.verse(o.verseKey, { script }))),
-    [echo, script],
+    () => Promise.all(shown.map((o) => api.verse(o.verseKey, { script }))),
+    [key, script],
   );
   if (verses.loading) return <div className="echo-compare loading">…</div>;
   const data = verses.data ?? [];
   return (
     <div className="echo-compare">
       {data.map((v, i) => {
-        const o = echo.occurrences[i]!;
+        const o = shown[i]!;
         const ranges: HighlightRange[] = [
           { start: o.start, end: o.start + echo.length - 1, color: ECHO_WASH },
         ];
@@ -34,6 +46,11 @@ function EchoCompare({ echo, surahName }: { echo: Echo; surahName: (k: string) =
           <div key={o.verseKey} className="echo-compare-row">
             <span className="echo-compare-key">
               {o.verseKey}{name ? ` · ${name}` : ""}
+              <button
+                className="cmp-pin"
+                title="Add this ayah to your active comparison"
+                onClick={() => addToCompare("ayah", o.verseKey)}
+              >⇋</button>
             </span>
             <p className="echo-compare-text quran" dir="rtl">
               <VerseText text={typeof v.text === "string" ? v.text : ""} highlightRanges={ranges} />
@@ -41,6 +58,21 @@ function EchoCompare({ echo, surahName }: { echo: Echo; surahName: (k: string) =
           </div>
         );
       })}
+      {overflow.length > 0 && (
+        <div className="echo-compare-more">
+          +{overflow.length} more:
+          {overflow.map((o) => (
+            <button
+              key={o.verseKey}
+              className="chip echo-chip"
+              title={`Go to ${o.verseKey} and highlight this phrase`}
+              onClick={() => dispatch({ type: "jumpToEcho", verseKey: o.verseKey, start: o.start, length: echo.length })}
+            >
+              {o.verseKey}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

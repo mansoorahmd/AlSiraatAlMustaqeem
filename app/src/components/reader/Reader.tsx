@@ -103,6 +103,14 @@ export function Reader({ chapters, onBackToIndex }: Props) {
   const echoKeys = useAsync(() => api.chapterEchoes(surahId), [surahId]);
   const echoSet = useMemo(() => new Set(echoKeys.data ?? []), [echoKeys.data]);
 
+  // rasm-variant marks: ayahs with words written more than one way + positions
+  const variantData = useAsync(() => api.chapterVariants(surahId), [surahId]);
+  const variantMap = useMemo(() => {
+    const m = new Map<string, number[]>();
+    for (const v of variantData.data ?? []) m.set(v.verse_key, v.positions);
+    return m;
+  }, [variantData.data]);
+
   // remember the top-most ayah in view, so Home can "continue reading" there
   const lastSeen = useRef<string | null>(reading.lastVerseKey);
   useEffect(() => {
@@ -440,6 +448,7 @@ export function Reader({ chapters, onBackToIndex }: Props) {
             verseNotes={notesMap.get(v.verse_key) ?? null}
             onNotesChanged={bumpNotes}
             hasEcho={echoSet.has(v.verse_key)}
+            variantPositions={variantMap.get(v.verse_key) ?? null}
             echoHighlightRange={
               echoHighlight?.verseKey === v.verse_key
                 ? { start: echoHighlight.start, end: echoHighlight.end }

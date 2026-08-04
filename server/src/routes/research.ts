@@ -90,5 +90,32 @@ export function researchRoutes(state: AppState): Hono {
     return c.json({ ok: true });
   });
 
+  // comparisons (saveable boards of pinned āyāt & roots)
+  r.get("/research/compare-sets", (c) => c.json(s.listCompareSets()));
+  r.put("/research/compare-sets/:id", async (c) => {
+    const doc = await c.req.json();
+    if (doc?.id !== c.req.param("id")) return c.json({ detail: "document id does not match URL" }, 400);
+    return c.json(s.saveCompareSet(doc));
+  });
+  r.delete("/research/compare-sets/:id", (c) => {
+    if (!s.deleteCompareSet(c.req.param("id"))) return c.json({ detail: `comparison not found: ${c.req.param("id")}` }, 404);
+    return c.json({ deleted: c.req.param("id") });
+  });
+  r.get("/research/compare-sets/:id/items", (c) => c.json(s.listCompareItems(c.req.param("id"))));
+  r.delete("/research/compare-sets/:id/items", (c) => {
+    s.clearCompareItems(c.req.param("id"));
+    return c.json({ ok: true });
+  });
+  r.put("/research/compare-sets/:id/items/:itemId", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { kind?: "ayah" | "root"; ref?: string; label?: string | null };
+    if (!body.kind || !body.ref) return c.json({ detail: "kind and ref are required" }, 422);
+    return c.json(s.addCompareItem(c.req.param("id"), { id: c.req.param("itemId"), ...body }));
+  });
+  r.delete("/research/compare-sets/:id/items/:itemId", (c) => {
+    if (!s.removeCompareItem(c.req.param("id"), c.req.param("itemId")))
+      return c.json({ detail: `item not found: ${c.req.param("itemId")}` }, 404);
+    return c.json({ deleted: c.req.param("itemId") });
+  });
+
   return r;
 }

@@ -539,13 +539,26 @@ group roots by their own themes:
 - **Occurrences grouped by form** on the root page: a root's ayahs are clustered
   under each derived form (lemma) with its POS + count, so the reader can see
   how the sense shifts form-to-form (noun هُدًى vs verb يَهْدِي …). Frontend-only.
-- **Compare workspace** — a session tray you pin ayahs and roots into (⇋ button
-  on each ayah and on a root's page), shown as **side-by-side columns** in a new
-  **Compare** tab (with a count badge). Ayah columns show verse + translation +
-  a jump link; root columns show core meaning, top lexicon entries, and
-  collocations; mix freely, remove a column, or clear. Store `compare` tray +
-  `pinCompare/unpinCompare/clearCompare`; `Compare` screen. Enables the classic
+- **Compare workspace** — pin ayahs and roots (⇋ button on each ayah and on a
+  root's page) and study them together in the **Compare** tab. Enables the classic
   near-synonym (عَلِمَ / عَرَفَ) and parallel-passage exercises.
+
+### V15.1 — Named, saveable comparisons (parity with mobile) ✅
+- The compare tray became a set of **named, saved comparisons** — persisted in
+  research.db (`compare_sets` + `compare_items`, routes under
+  `/research/compare-sets`, `archive.compare` client, `compare/ops.ts`). No longer
+  session-only.
+- Two views: a **list** of saved comparisons (title · count · updated · active
+  flag; rename, delete, ＋ New) and a **vertical timeline board** where each pinned
+  item is a node on a thread. Roots **shared with the item above** are pinned atop
+  the card (and washed in the verse via `focusFor`); a node **glows gold** when its
+  item shares a root with any other. Cards collapse; ayah cards carry an inline
+  **✎ Note** (same global note store) and a Read → jump; root cards show meaning,
+  lexicons, collocations, Lexicon →.
+- Pins land in the **active** comparison from anywhere (`useAddToCompare` +
+  `addToActiveCompare`), confirmed by a transient **toast** ("Added to ‹name›").
+  Active-set id is a device-local pref; the Compare tab badge = the active set's
+  count. Store: `activeCompareSetId`, `compareTick`, `toast`.
 
 ### Remaining / future (not committed)
 - **`?` shortcuts overlay** — a discoverable cheat-sheet for the keyboard

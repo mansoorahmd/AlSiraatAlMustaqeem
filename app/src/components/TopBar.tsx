@@ -4,6 +4,7 @@ import { useAsync } from "../hooks/useAsync";
 import { useAppState, useAppDispatch, type Tab } from "../state/store";
 import type { Script } from "../api/types";
 import { OpenQuestions } from "./OpenQuestions";
+import { archive } from "../persistence/db";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "home", label: "Home" },
@@ -23,9 +24,15 @@ const SCRIPTS: { id: Script; label: string }[] = [
 ];
 
 export function TopBar() {
-  const { tab, reading, compare } = useAppState();
+  const { tab, reading, activeCompareSetId, compareTick } = useAppState();
   const dispatch = useAppDispatch();
   const health = useAsync(() => api.health(), []);
+  // badge = number of items in the active comparison
+  const compareCount = useAsync(async () => {
+    if (!activeCompareSetId) return 0;
+    const s = (await archive.compare.sets()).find((x) => x.id === activeCompareSetId);
+    return s?.count ?? 0;
+  }, [activeCompareSetId, compareTick]);
   const translations = useAsync(() => api.translationResources(), []);
   const { script, translationOn, translationId, myGlossOn, fontScale } = reading;
 
@@ -68,8 +75,8 @@ export function TopBar() {
             onClick={() => dispatch({ type: "setTab", tab: t.id })}
           >
             {t.label}
-            {t.id === "compare" && compare.length > 0 && (
-              <span className="tab-badge">{compare.length}</span>
+            {t.id === "compare" && (compareCount.data ?? 0) > 0 && (
+              <span className="tab-badge">{compareCount.data}</span>
             )}
           </button>
         ))}

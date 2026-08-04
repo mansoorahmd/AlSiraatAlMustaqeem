@@ -70,6 +70,16 @@ export interface TranslationResource {
   resource_type: string | null;
 }
 
+/** One rasm spelling of a word (same word written a particular way). */
+export interface SpellingVariant { surface: string; count: number; verses: string[] }
+
+/** A saved comparison — a named board of pinned āyāt & roots. */
+export interface CompareSet { id: string; title: string; createdAt: number; updatedAt: number; count: number }
+/** One pinned member of a comparison. */
+export interface CompareItemRow {
+  id: string; setId: string; kind: "ayah" | "root"; ref: string; label: string | null; createdAt: number;
+}
+
 /** A term (picked word) in an expression search. */
 export interface ExprTerm { surface: string; root: string | null }
 /** An āyah where an expression's terms co-occur. */

@@ -7,6 +7,7 @@ import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
 import { archive, newId } from "../persistence/db";
 import { useAppState, useAppDispatch } from "../state/store";
+import { useAddToCompare } from "../compare/useAddToCompare";
 
 const spaced = (r: string) => r.split("").join(" ");
 const vsort = (k: string) => {
@@ -39,6 +40,7 @@ interface Props {
 export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: Props) {
   const { reading } = useAppState();
   const dispatch = useAppDispatch();
+  const addToCompare = useAddToCompare();
 
   const detail = useAsync(() => api.root(rootBuckwalter), [rootBuckwalter]);
   const occ = useAsync(
@@ -121,8 +123,8 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: P
         <button className="ctl root-back" onClick={onBack}>‹ All roots</button>
         <button
           className="ctl"
-          title="Add this root to the compare workspace"
-          onClick={() => dispatch({ type: "pinCompare", item: { kind: "root", buckwalter: rootBuckwalter, arabic: rootArabic } })}
+          title="Add this root to your active comparison"
+          onClick={() => addToCompare("root", rootBuckwalter, rootArabic)}
         >⇋ compare</button>
       </div>
 

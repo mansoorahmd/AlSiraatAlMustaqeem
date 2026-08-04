@@ -77,12 +77,27 @@ export function contentRoutes(state: AppState): Hono {
     return c.json(state.content.verseWords(key));
   });
 
+  // verses in a chapter that contain rasm-variant words (+ their positions)
+  r.get("/chapters/:id/variants", (c) => {
+    const id = Number(c.req.param("id"));
+    if (!state.content.getChapter(id)) return c.json({ detail: `chapter not found: ${id}` }, 404);
+    return c.json(state.spellings.chapterVariants(id));
+  });
+
   // wazn (صرف pattern) of one word — ?pos= the 1-based word position
   r.get("/verses/:key/wazn", (c) => {
     const key = c.req.param("key");
     const pos = qint(c, "pos", null, { min: 1 });
     if (pos == null) return c.json({ detail: "pos is required" }, 422);
     return c.json(waznForWord(state.quran, key, pos));
+  });
+
+  // spelling / rasm variants of one word (same word written ≥2 ways)
+  r.get("/verses/:key/spelling", (c) => {
+    const key = c.req.param("key");
+    const pos = qint(c, "pos", null, { min: 1 });
+    if (pos == null) return c.json({ detail: "pos is required" }, 422);
+    return c.json(state.spellings.variantsForWord(key, pos));
   });
 
   r.get("/verses/:key/translations", (c) => {

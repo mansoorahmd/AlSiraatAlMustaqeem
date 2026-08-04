@@ -4,7 +4,7 @@
 
 import type {
   Chapter, Verse, Word, Translation, TranslationResource, RootDetail, RootSummary, RootOccurrence,
-  Linkage, CompositeMatch, FreeTextResult, Echo, Wazn, ExprTerm, ExprHit, Script, SimilarityWeights,
+  Linkage, CompositeMatch, FreeTextResult, Echo, Wazn, SpellingVariant, ExprTerm, ExprHit, Script, SimilarityWeights,
 } from "./types";
 
 const BASE = "/api/v1";
@@ -56,9 +56,13 @@ export const api = {
     get<Verse>(`/verses/${encodeURIComponent(key)}`, opts),
   verseWords: (key: string) => get<Word[]>(`/verses/${encodeURIComponent(key)}/words`),
   wazn: (key: string, pos: number) => get<Wazn | null>(`/verses/${encodeURIComponent(key)}/wazn`, { pos }),
+  spelling: (key: string, pos: number) =>
+    get<SpellingVariant[]>(`/verses/${encodeURIComponent(key)}/spelling`, { pos }),
   verseTranslations: (key: string) => get<Translation[]>(`/verses/${encodeURIComponent(key)}/translations`),
   translationResources: () => get<TranslationResource[]>(`/translation-resources`),
   chapterEchoes: (id: number) => get<string[]>(`/chapters/${id}/echoes`),
+  chapterVariants: (id: number) =>
+    get<{ verse_key: string; positions: number[] }[]>(`/chapters/${id}/variants`),
   verseEchoes: (key: string) => get<Echo[]>(`/verses/${encodeURIComponent(key)}/echoes`),
   neighbours: (key: string, radius = 2, script: Script = "uthmani") =>
     get<Verse[]>(`/verses/${encodeURIComponent(key)}/neighbours`, { radius, script }),

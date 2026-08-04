@@ -10,15 +10,6 @@ import { archive } from "../persistence/db";
 
 export type Tab = "home" | "read" | "search" | "investigate" | "vault" | "roots" | "motifs" | "compare";
 
-/** an item pinned to the compare workspace */
-export type CompareItem =
-  | { kind: "ayah"; verseKey: string }
-  | { kind: "root"; buckwalter: string; arabic: string };
-
-export function compareId(i: CompareItem): string {
-  return i.kind === "ayah" ? `a:${i.verseKey}` : `r:${i.buckwalter}`;
-}
-
 export interface ReadingState {
   surahId: number;
   script: Script;
@@ -50,8 +41,12 @@ export interface AppState {
   echoHighlight: { verseKey: string; start: number; end: number } | null;
   /** a root to open on the Roots tab's lexicon page (from Motifs, etc.) */
   openRoot: { buckwalter: string; arabic: string } | null;
-  /** the compare workspace tray (session-only) */
-  compare: CompareItem[];
+  /** the active comparison (saved in research.db); pins land here */
+  activeCompareSetId: string | null;
+  /** bumped whenever a comparison changes, so views re-fetch */
+  compareTick: number;
+  /** a transient toast message (e.g. "Added to <comparison>") */
+  toast: string | null;
   /** expression-search tray: picked words to find co-occurring (session-only) */
   expr: ExprTerm[];
   exprMode: "verbatim" | "roots";
@@ -75,9 +70,10 @@ export type Action =
   | { type: "jumpToVerse"; verseKey: string; wordPosition?: number | null }
   | { type: "jumpToEcho"; verseKey: string; start: number; length: number }
   | { type: "openRoot"; root: { buckwalter: string; arabic: string } | null }
-  | { type: "pinCompare"; item: CompareItem }
-  | { type: "unpinCompare"; id: string }
-  | { type: "clearCompare" }
+  | { type: "setActiveCompare"; id: string | null }
+  | { type: "bumpCompare" }
+  | { type: "toast"; message: string }
+  | { type: "clearToast" }
   | { type: "pinExpr"; term: ExprTerm }
   | { type: "unpinExpr"; surface: string }
   | { type: "clearExpr" }
@@ -97,7 +93,9 @@ const initialState: AppState = {
   trailHighlight: null,
   echoHighlight: null,
   openRoot: null,
-  compare: [],
+  activeCompareSetId: null,
+  compareTick: 0,
+  toast: null,
   expr: [],
   exprMode: "verbatim",
 };
@@ -193,15 +191,14 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case "openRoot":
       return { ...state, openRoot: action.root, tab: action.root ? "roots" : state.tab };
-    case "pinCompare": {
-      const id = compareId(action.item);
-      if (state.compare.some((i) => compareId(i) === id)) return state;
-      return { ...state, compare: [...state.compare, action.item].slice(-8) };
-    }
-    case "unpinCompare":
-      return { ...state, compare: state.compare.filter((i) => compareId(i) !== action.id) };
-    case "clearCompare":
-      return { ...state, compare: [] };
+    case "setActiveCompare":
+      return { ...state, activeCompareSetId: action.id };
+    case "bumpCompare":
+      return { ...state, compareTick: state.compareTick + 1 };
+    case "toast":
+      return { ...state, toast: action.message };
+    case "clearToast":
+      return { ...state, toast: null };
     case "pinExpr": {
       const key = `${action.term.surface}|${action.term.root ?? ""}`;
       if (state.expr.some((t) => `${t.surface}|${t.root ?? ""}` === key)) return state;
@@ -254,6 +251,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     archive.prefs.get<Partial<ReadingState>>("reading").then((saved) => {
       if (saved) dispatch({ type: "hydratePrefs", reading: saved });
       hydrated.current = true;
+    });
+    archive.prefs.get<string>("activeCompareSet").then((id) => {
+      if (id) dispatch({ type: "setActiveCompare", id });
     });
   }, []);
   useEffect(() => {

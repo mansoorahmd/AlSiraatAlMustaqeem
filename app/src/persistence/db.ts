@@ -8,6 +8,7 @@
 // server the first time the app runs after this change.
 
 import type { CaseRecord, VaultEntry, TrailRecord, PrefsRecord, NoteRecord, UserRootMeaning, Motif } from "./types";
+import type { CompareSet, CompareItemRow } from "../api/types";
 
 const DB_NAME = "alsiraat-archive";
 const DB_VERSION = 1;
@@ -264,6 +265,44 @@ export const archive = {
     removeRoot: async (id: string, root: string): Promise<void> => {
       await ensureMigrated();
       return srvDelete(`/motifs/${encodeURIComponent(id)}/roots/${encodeURIComponent(root)}`);
+    },
+  },
+
+  /** Comparisons (saveable boards of pinned āyāt & roots) — research.db. */
+  compare: {
+    sets: async (): Promise<CompareSet[]> => {
+      await ensureMigrated();
+      return srvGet<CompareSet[]>("/compare-sets");
+    },
+    saveSet: async (m: { id: string; title: string; createdAt?: number }): Promise<CompareSet> => {
+      await ensureMigrated();
+      return srvPut<CompareSet>(`/compare-sets/${encodeURIComponent(m.id)}`, m);
+    },
+    removeSet: async (id: string): Promise<void> => {
+      await ensureMigrated();
+      return srvDelete(`/compare-sets/${encodeURIComponent(id)}`);
+    },
+    items: async (setId: string): Promise<CompareItemRow[]> => {
+      await ensureMigrated();
+      return srvGet<CompareItemRow[]>(`/compare-sets/${encodeURIComponent(setId)}/items`);
+    },
+    addItem: async (
+      setId: string,
+      item: { id: string; kind: "ayah" | "root"; ref: string; label?: string | null },
+    ): Promise<CompareItemRow> => {
+      await ensureMigrated();
+      return srvPut<CompareItemRow>(
+        `/compare-sets/${encodeURIComponent(setId)}/items/${encodeURIComponent(item.id)}`,
+        { kind: item.kind, ref: item.ref, label: item.label ?? null },
+      );
+    },
+    removeItem: async (setId: string, itemId: string): Promise<void> => {
+      await ensureMigrated();
+      return srvDelete(`/compare-sets/${encodeURIComponent(setId)}/items/${encodeURIComponent(itemId)}`);
+    },
+    clear: async (setId: string): Promise<void> => {
+      await ensureMigrated();
+      return srvDelete(`/compare-sets/${encodeURIComponent(setId)}/items`);
     },
   },
 

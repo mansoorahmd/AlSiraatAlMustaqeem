@@ -6,6 +6,7 @@ import { memo, useState } from "react";
 import { api } from "../../api/client";
 import { useAsync } from "../../hooks/useAsync";
 import { useAppDispatch } from "../../state/store";
+import { useAddToCompare } from "../../compare/useAddToCompare";
 import type { Verse, Word } from "../../api/types";
 import type { FormStatusRow } from "../../persistence/db";
 import { VerseText } from "../VerseText";
@@ -17,6 +18,7 @@ import type { NoteRecord, HighlightRange } from "../../persistence/types";
 
 const ECHO_WASH = "#fde68a"; // amber highlight for repeated phrase spans
 const ROOT_ECHO_WASH = "#fcd34d"; // gold highlight for a root repeated in an āyah
+const VARIANT_WASH = "#ddd6fe"; // violet highlight for rasm-variant words
 
 // Root echo (↻): a root occurring 2+ times in one āyah. `adjacent` flags a tight
 // repeat at neighbouring word positions (cognate accusative مفعول مطلق, emphatic).
@@ -79,6 +81,8 @@ interface Props {
   onNotesChanged?: () => void;
   /** this ayah contains a phrase repeated verbatim elsewhere (V10 echoes) */
   hasEcho?: boolean;
+  /** word positions in this ayah whose spelling varies across the mushaf (✍) */
+  variantPositions?: number[] | null;
   /** echo-lens: a word-position span to keep lit in this verse after a jump */
   echoHighlightRange?: { start: number; end: number } | null;
   onWordTap: (
@@ -109,16 +113,18 @@ const spacedRoot = (r: string) => r.split("").join(" ");
 export const AyahBlock = memo(function AyahBlock({
   verse, translationOn, translationId, myGlossOn, formStatus, caseRefs, rareRoots, highlightWord,
   focusRoots, focusLinked, focusPattern, focusTarget, focusReason, focusBase, focusBaseSurah,
-  focusThisSurah, verseNotes, onNotesChanged, hasEcho, echoHighlightRange, onWordTap,
+  focusThisSurah, verseNotes, onNotesChanged, hasEcho, variantPositions, echoHighlightRange, onWordTap,
 }: Props) {
   const text = typeof verse.text === "string" ? verse.text : "";
   const words = verse.words ?? null;
   const dispatch = useAppDispatch();
+  const addToCompare = useAddToCompare();
   const [casesOpen, setCasesOpen] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [echoOpen, setEchoOpen] = useState(false);
   const [rootEchoOpen, setRootEchoOpen] = useState(false);
+  const [variantOpen, setVariantOpen] = useState(false);
   const echo = rootEcho(words);
 
   // echoes for this verse, fetched only while the panel is open
@@ -145,6 +151,10 @@ export const AyahBlock = memo(function AyahBlock({
         echoRanges.push({ start: w.position, end: w.position, color: ROOT_ECHO_WASH });
       }
     }
+  }
+  // rasm variants: light every word written more than one way in the mushaf
+  if (variantOpen && variantPositions) {
+    for (const p of variantPositions) echoRanges.push({ start: p, end: p, color: VARIANT_WASH });
   }
 
   const noteCount = verseNotes?.length ?? 0;
@@ -236,6 +246,13 @@ export const AyahBlock = memo(function AyahBlock({
             onClick={() => setEchoOpen((o) => !o)}
           >≡</button>
         )}
+        {variantPositions && variantPositions.length > 0 && (
+          <button
+            className={`variant-mark${variantOpen ? " active" : ""}`}
+            title={`${variantPositions.length} word${variantPositions.length > 1 ? "s are" : " is"} written more than one way in the mushaf. Tap to highlight; tap the word for details.`}
+            onClick={() => setVariantOpen((o) => !o)}
+          >✍</button>
+        )}
         {echo.has && (
           <button
             className={`rootecho-mark${echo.adjacent ? " adjacent" : ""}${rootEchoOpen ? " active" : ""}`}
@@ -249,8 +266,8 @@ export const AyahBlock = memo(function AyahBlock({
         )}
         <button
           className="cmp-pin"
-          title="Add this ayah to the compare workspace"
-          onClick={() => dispatch({ type: "pinCompare", item: { kind: "ayah", verseKey: verse.verse_key } })}
+          title="Add this ayah to your active comparison"
+          onClick={() => addToCompare("ayah", verse.verse_key)}
         >⇋</button>
       </p>
 
