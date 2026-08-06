@@ -9,6 +9,7 @@ import { api } from "../../api/client";
 import { archive, newId } from "../../persistence/db";
 import { useAsync } from "../../hooks/useAsync";
 import type { RootSenseWithRefinement, WordSense } from "../../api/types";
+import { SensePromptPanel } from "./SensePromptPanel";
 
 const spaced = (r: string) => r.split("").join(" ");
 
@@ -39,6 +40,7 @@ export function SenseEditor({ root, focusLemma, onClose, onChanged }: Props) {
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const [promptOpen, setPromptOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const addSense = async () => {
     const label = newLabel.trim();
@@ -59,7 +61,14 @@ export function SenseEditor({ root, focusLemma, onClose, onChanged }: Props) {
             <span className="se-root quran">{spaced(root)}</span>
             {rootInfo.data?.meaning_en && <span className="se-core">{rootInfo.data.meaning_en}</span>}
           </div>
-          <button className="se-close" onClick={onClose} title="Close">✕</button>
+          <div className="se-head-actions">
+            <button
+              className="ctl"
+              title="Build an AI prompt that tests a sense against every form of this root"
+              onClick={() => setPromptOpen(true)}
+            >⇱ Create prompt</button>
+            <button className="se-close" onClick={onClose} title="Close">✕</button>
+          </div>
         </header>
 
         <div className="se-body">
@@ -125,6 +134,15 @@ export function SenseEditor({ root, focusLemma, onClose, onChanged }: Props) {
             </div>
           </aside>
         </div>
+
+        {promptOpen && (
+          <SensePromptPanel
+            root={root}
+            detail={rootInfo.data ?? null}
+            initialSense={[selected?.label, selected?.meaning].filter(Boolean).join(" — ")}
+            onClose={() => setPromptOpen(false)}
+          />
+        )}
       </div>
     </div>
   );
