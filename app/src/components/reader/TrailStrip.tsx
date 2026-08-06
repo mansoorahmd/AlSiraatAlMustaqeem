@@ -34,9 +34,16 @@ export function TrailStrip({ trailId }: { trailId: string }) {
     return () => { cancelled = true; };
   }, [trailId]);
 
+  // a word thread walks one exact written spelling; a root thread walks the family
+  const isWordThread = trail?.subjectKind === "word";
   const occs = useAsync(
-    async () => (trail?.subject ? api.rootOccurrences(trail.subject, reading.script) : null),
-    [trail?.subject, reading.script],
+    async () =>
+      !trail?.subject
+        ? null
+        : isWordThread
+          ? api.wordOccurrences(trail.subject)
+          : api.rootOccurrences(trail.subject, reading.script),
+    [trail?.subject, isWordThread, reading.script],
   );
 
   if (!trail) return null;
@@ -120,7 +127,12 @@ export function TrailStrip({ trailId }: { trailId: string }) {
             {trail.name} <span className="edit-hint">✎</span>
           </button>
         )}
-        {trail.subject && <span className="trail-subject quran">{trail.subject}</span>}
+        {trail.subject && (
+          <span className="trail-subject quran" title={isWordThread ? "following this exact written word" : "following the whole root family"}>
+            {isWordThread ? trail.subject : trail.subject.split("").join(" ")}
+            <span className="trail-kind">{isWordThread ? "word" : "root"}</span>
+          </span>
+        )}
 
         <span className="ctl-group">
           <button className="ctl" onClick={() => step(-1)} title="Previous occurrence">‹</button>
@@ -134,9 +146,11 @@ export function TrailStrip({ trailId }: { trailId: string }) {
 
         <span className="trail-hops">{trail.hops.length} hops</span>
         <span className="spacer" />
-        <button className="ctl" onClick={promote} title="Open a case with every visited ayah as evidence">
-          ⚖ promote to case
-        </button>
+        {!isWordThread && (
+          <button className="ctl" onClick={promote} title="Open a case with every visited ayah as evidence">
+            ⚖ promote to case
+          </button>
+        )}
         <button
           className="ctl"
           onClick={() => dispatch({ type: "setActiveTrail", trailId: null })}

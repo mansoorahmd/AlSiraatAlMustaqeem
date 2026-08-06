@@ -77,6 +77,14 @@ export function contentRoutes(state: AppState): Hono {
     return c.json(state.content.verseWords(key));
   });
 
+  // every place a word is written exactly this way (rasm; vowel marks ignored).
+  // Powers "follow this exact word" — works for particles and names with no root.
+  r.get("/words/occurrences", (c) => {
+    const surface = qstr(c, "surface");
+    if (!surface) return c.json({ detail: "surface is required" }, 422);
+    return c.json(state.wordForms.occurrences(surface, qint(c, "limit", 3000, { min: 1, max: 6000 }) ?? 3000));
+  });
+
   // verses in a chapter that contain rasm-variant words (+ their positions)
   r.get("/chapters/:id/variants", (c) => {
     const id = Number(c.req.param("id"));

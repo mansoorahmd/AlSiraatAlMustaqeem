@@ -60,6 +60,9 @@ export const api = {
     get<SpellingVariant[]>(`/verses/${encodeURIComponent(key)}/spelling`, { pos }),
   verseTranslations: (key: string) => get<Translation[]>(`/verses/${encodeURIComponent(key)}/translations`),
   translationResources: () => get<TranslationResource[]>(`/translation-resources`),
+  /** every place a word is written exactly this way (rasm) — rootless words too */
+  wordOccurrences: (surface: string, limit = 3000) =>
+    get<{ verse_key: string; word_position: number }[]>("/words/occurrences", { surface, limit }),
   chapterEchoes: (id: number) => get<string[]>(`/chapters/${id}/echoes`),
   chapterVariants: (id: number) =>
     get<{ verse_key: string; positions: number[] }[]>(`/chapters/${id}/variants`),

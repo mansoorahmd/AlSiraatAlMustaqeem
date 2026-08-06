@@ -1737,6 +1737,13 @@ a { color: var(--lapis); }
 .sp-actions { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
 .sp-hint { font-size: var(--fs-label); color: var(--ink-soft); }
 .sp-optional { color: var(--ink-faint); font-weight: 400; }
+
+/* which kind of thread the trail strip is following */
+.trail-kind {
+  margin-inline-start: 0.4rem; font-family: var(--font-ui); font-size: var(--fs-label);
+  color: var(--ink-soft); border: 1px solid var(--paper-edge); border-radius: 999px;
+  padding: 0 0.35rem; vertical-align: middle;
+}
 .sp-out { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; line-height: 1.5; white-space: pre; overflow-x: auto; }
 
 @media (max-width: 820px) {

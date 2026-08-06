@@ -78,6 +78,58 @@ export function spellingVariantsForWord(db: Db, verseKey: string, wordPosition: 
   return [...groups.values()].sort((a, b) => b.count - a.count);
 }
 
+// ---- exact-word index: every place a word is written the same way -------------
+// "Follow this exact word" walks the written surface (rasm), not the root, so it
+// works for particles and proper names that have no root at all. Vowel marks are
+// ignored, so the same word in a different case still matches. Built once and
+// cached: unlike the variant index this spans ALL segments, since prefixes like
+// وَ and ٱل are part of the written word.
+
+export interface WordOccurrence { verse_key: string; word_position: number }
+
+export class WordFormIndex {
+  private byRasm = new Map<string, WordOccurrence[]>();
+  private built = false;
+
+  constructor(private db: Db) {}
+
+  build(): this {
+    if (this.built) return this;
+    const rows = this.db.query<{ verse_key: string; word_position: number; form_arabic: string | null }>(
+      `SELECT ws.verse_key, ws.word_position, ws.form_arabic
+       FROM word_segments ws JOIN verses v ON v.verse_key = ws.verse_key
+       ORDER BY v.chapter_id, v.verse_number, ws.word_position, ws.segment_number`,
+    );
+    // assemble each word's full written surface in mushaf order
+    const per = new Map<string, string>();
+    const order: string[] = [];
+    for (const r of rows) {
+      const k = `${r.verse_key}#${r.word_position}`;
+      if (!per.has(k)) order.push(k);
+      per.set(k, (per.get(k) ?? "") + (r.form_arabic ?? ""));
+    }
+    for (const k of order) {
+      const rk = rasmKey(per.get(k)!);
+      if (!rk) continue;
+      const hash = k.indexOf("#");
+      const occ = { verse_key: k.slice(0, hash), word_position: Number(k.slice(hash + 1)) };
+      const list = this.byRasm.get(rk);
+      if (list) list.push(occ);
+      else this.byRasm.set(rk, [occ]);
+    }
+    this.built = true;
+    return this;
+  }
+
+  /** Every occurrence of the exact written word, in mushaf order. */
+  occurrences(surface: string, limit = 3000): WordOccurrence[] {
+    this.build();
+    const rk = rasmKey(surface);
+    if (!rk) return [];
+    return (this.byRasm.get(rk) ?? []).slice(0, limit);
+  }
+}
+
 // ---- chapter-level index: which words carry a rasm variant --------------------
 // A word occurrence is a "variant" when its (lemma | raw_features | skeleton)
 // group is written ≥2 distinct ways across the mushaf. Built once and cached so

@@ -608,6 +608,26 @@ group roots by their own themes:
     Investigate form dossier.
 - *Web only so far — mirror to mobile later.*
 
+### V17 — Follow the exact word (parity with mobile) ✅
+A thread could only follow a **root**, which left particles and proper names
+unwalkable — they have no root at all. The word menu now offers both:
+
+- **➶ Follow root** — every form of the family (unchanged behaviour).
+- **➶ Follow this word** — only this exact written spelling (rasm; vowel marks
+  ignored, so the same word in another case still matches). Available on *every*
+  word, including rootless ones.
+
+Server: `WordFormIndex` (`server/src/spellings.ts`) assembles each word's full
+written surface from **all** segments — prefixes like وَ and ٱل are part of the
+written word — and caches a rasm → occurrences map (~1s to build once, then
+instant). Route `GET /words/occurrences?surface=&limit=`; tests in
+`word-occurrences.test.ts` (rooted word, rootless مِن, prefix-sensitivity, limit).
+
+Web: `TrailRecord.subjectKind` ("root" | "word", carried in the trail doc — no
+migration), `startWordTrail`, and `TrailStrip` picks its occurrence source by
+kind and tags the subject chip *root* / *word*. Promote-to-case is hidden on word
+threads, since there's no root family to open a case on.
+
 ### Fixes & hardening (this pass) ✅
 Bugs found while getting senses working end-to-end — recorded because several
 were invisible-by-inspection and cost real time:

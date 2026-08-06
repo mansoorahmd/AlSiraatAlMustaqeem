@@ -10,7 +10,7 @@ import { useAppState, useAppDispatch } from "../../state/store";
 import {
   openOrCreateRootCase, openOrCreateAyahCase, withAyahCardAdded, normalizeCase,
 } from "../../cases/ops";
-import { startTrail } from "../../trails/ops";
+import { startTrail, startWordTrail } from "../../trails/ops";
 import { archive } from "../../persistence/db";
 import type { FormStatusRow } from "../../persistence/db";
 import type { Word } from "../../api/types";
@@ -247,14 +247,26 @@ export function WordMenu({ target, formStatus, onNotesChanged, onSensesChanged, 
         {root && (
           <button
             className="wm-act"
+            title="Walk every form of this root, occurrence by occurrence"
             onClick={async () => {
               const t = await startTrail(root, target.verseKey, target.position);
               dispatch({ type: "setActiveTrail", trailId: t.id });
               dispatch({ type: "jumpToVerse", verseKey: target.verseKey, wordPosition: target.position });
               onClose();
             }}
-          >➶ Follow thread</button>
+          >➶ Follow root</button>
         )}
+        {/* the exact written word — the only thread available for particles and names */}
+        <button
+          className="wm-act"
+          title="Walk only this exact written spelling, occurrence by occurrence"
+          onClick={async () => {
+            const t = await startWordTrail(target.token, target.verseKey, target.position);
+            dispatch({ type: "setActiveTrail", trailId: t.id });
+            dispatch({ type: "jumpToVerse", verseKey: target.verseKey, wordPosition: target.position });
+            onClose();
+          }}
+        >➶ Follow this word</button>
         <button
           className="wm-act"
           onClick={async () => {

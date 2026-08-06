@@ -118,7 +118,10 @@ export interface TrailHop {
 export interface TrailRecord {
   id: string;
   name: string;
+  /** the root, or the exact written word when subjectKind is "word" */
   subject: string | null;
+  /** what the thread follows: the root family, or one exact written form */
+  subjectKind?: "root" | "word";
   hops: TrailHop[];
   createdAt: number;
   updatedAt: number;
