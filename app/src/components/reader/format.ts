@@ -47,3 +47,14 @@ export function tokenizeVerse(text: string): VerseToken[] {
 export function tokenize(text: string): string[] {
   return text.trim().split(/\s+/u);
 }
+
+/** The corpus root gloss is a raw, unranked word-list whose entries often run
+ *  together ("...another.nafaqan (n.acc.) hole..."), which makes it unreadable
+ *  and unwrappable. Put a space after punctuation that is glued to the next
+ *  word — letters only, so "acc.)" and "3.5" are left alone. */
+export function tidyGloss(s: string): string {
+  return (s || "")
+    .replace(/([.;,])(?=[A-Za-z\u0600-\u06FF])/g, "$1 ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}

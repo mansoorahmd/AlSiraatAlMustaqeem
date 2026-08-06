@@ -14,7 +14,7 @@ import { startTrail, startWordTrail } from "../../trails/ops";
 import { archive } from "../../persistence/db";
 import type { FormStatusRow } from "../../persistence/db";
 import type { Word } from "../../api/types";
-import { spacedRoot } from "./format";
+import { spacedRoot, tidyGloss } from "./format";
 import { NotesPanel } from "./NotesPanel";
 import { RelatedNotes } from "./RelatedNotes";
 import { IndicationsPanel } from "./IndicationsPanel";
@@ -49,6 +49,8 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
   const [notesOpen, setNotesOpen] = useState(false);
   const [spellOpen, setSpellOpen] = useState(false);
   const [indicationsOpen, setIndicationsOpen] = useState(false);
+  const [coreOpen, setCoreOpen] = useState(false);
+  const [lexOpenIdx, setLexOpenIdx] = useState<Set<number>>(new Set());
 
   // every case that can still receive evidence (open or partial)
   const openCases = useAsync(async () => {
@@ -180,9 +182,22 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
       </div>
 
       {/* meaning + morphology, compact lines */}
-      {root && rootInfo.data?.meaning_en && (
-        <div className="wm-reference">root core: {rootInfo.data.meaning_en}</div>
-      )}
+      {root && rootInfo.data?.meaning_en && (() => {
+        const core = tidyGloss(rootInfo.data.meaning_en);
+        const long = core.length > 170;
+        return (
+          <div className="wm-reference">
+            <p className={`wm-reference-text${long && !coreOpen ? " clamped" : ""}`}>
+              <span className="wm-reference-label">root core</span> {core}
+            </p>
+            {long && (
+              <button className="wm-reference-more" onClick={() => setCoreOpen((o) => !o)}>
+                {coreOpen ? "show less" : "show all"}
+              </button>
+            )}
+          </div>
+        );
+      })()}
       {wazn.data && (
         <div className="wm-morph" title={wazn.data.sense ?? undefined}>
           <span className="wm-morph-tag">صرف</span>
@@ -331,9 +346,26 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
                 <span className="stamp">{m.source}</span>
                 <span className="ref-entry-lang">{m.language}</span>
               </div>
-              <p className={`ref-entry-text${m.language === "arabic" ? " ref-ar" : ""}`} dir={m.language === "arabic" ? "rtl" : "ltr"}>
-                {m.meaning}
+              <p
+                className={`ref-entry-text${m.language === "arabic" ? " ref-ar" : ""}${
+                  m.meaning.length > 320 && !lexOpenIdx.has(i) ? " clamped" : ""
+                }`}
+                dir={m.language === "arabic" ? "rtl" : "ltr"}
+              >
+                {m.language === "arabic" ? m.meaning : tidyGloss(m.meaning)}
               </p>
+              {m.meaning.length > 320 && (
+                <button
+                  className="wm-reference-more"
+                  onClick={() =>
+                    setLexOpenIdx((prev) => {
+                      const n = new Set(prev);
+                      n.has(i) ? n.delete(i) : n.add(i);
+                      return n;
+                    })
+                  }
+                >{lexOpenIdx.has(i) ? "show less" : "show all"}</button>
+              )}
             </div>
           ))}
         </div>

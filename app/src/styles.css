@@ -1614,7 +1614,36 @@ a { color: var(--lapis); }
 .wm-head-root { display: flex; flex-direction: column; align-items: flex-end; text-align: end; }
 .wm-root-letters { font-family: var(--font-arabic-ui); font-size: 1.35rem; color: var(--gold); direction: rtl; }
 .wm-occ { font-size: var(--fs-label); color: var(--ink-soft); }
-.wm-reference { font-size: var(--fs-small); color: var(--ink-soft); font-style: italic; margin: 0; }
+.wm-reference { font-size: var(--fs-small); color: var(--ink-soft); margin: 0; text-align: start; }
+.wm-reference-text {
+  margin: 0;
+  font-style: italic;
+  line-height: 1.6;
+  text-align: start;      /* long reference text is unreadable centred */
+  overflow-wrap: anywhere;
+}
+/* the corpus gloss can run to a paragraph — show a few lines, expand on demand */
+.wm-reference-text.clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.wm-reference-label {
+  font-style: normal; font-weight: 700; font-size: var(--fs-label);
+  color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em;
+  margin-inline-end: 0.15rem;
+}
+.wm-reference-more {
+  border: none; background: none; cursor: pointer; padding: 0;
+  color: var(--lapis); font-size: var(--fs-label); font-style: normal;
+}
+.ref-entry-text.clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 8;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .wm-verdict { font-size: var(--fs-small); color: var(--lapis); margin: 0; }
 .wm-verdict-note { color: var(--ink-faint); margin-inline-start: 0.35rem; }
 .wm-open-note { font-size: var(--fs-small); color: var(--gold); margin: 0; }
@@ -2385,7 +2414,8 @@ a { color: var(--lapis); }
 .wm-lex-toggle { color: var(--lapis); }
 .wm-lex-list {
   text-align: start;
-  max-height: 15rem;
+  max-height: 22rem;
+  overflow-y: auto;   /* was capped but not scrollable — entries got cut off */
   margin-top: 0.4rem;
 }
 
