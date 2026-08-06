@@ -17,7 +17,7 @@ import type { Word } from "../../api/types";
 import { spacedRoot } from "./format";
 import { NotesPanel } from "./NotesPanel";
 import { RelatedNotes } from "./RelatedNotes";
-import { SensesPanel } from "./SensesPanel";
+import { IndicationsPanel } from "./IndicationsPanel";
 
 export interface WordMenuTarget {
   verseKey: string;
@@ -33,13 +33,13 @@ interface Props {
   target: WordMenuTarget;
   formStatus: Map<string, FormStatusRow> | null;
   onNotesChanged?: () => void;
-  onSensesChanged?: () => void;
-  /** open the full Sense Editor (rendered at the reader level, not in this menu) */
-  onEditSenses?: (root: string, lemma: string | null) => void;
+  onIndicationsChanged?: () => void;
+  /** open the full Indication Editor (rendered at the reader level, not in this menu) */
+  onEditIndications?: (root: string, lemma: string | null) => void;
   onClose: () => void;
 }
 
-export function WordMenu({ target, formStatus, onNotesChanged, onSensesChanged, onEditSenses, onClose }: Props) {
+export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChanged, onEditIndications, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const dispatch = useAppDispatch();
   const { activeCaseId } = useAppState();
@@ -48,7 +48,7 @@ export function WordMenu({ target, formStatus, onNotesChanged, onSensesChanged, 
   const [lexOpen, setLexOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [spellOpen, setSpellOpen] = useState(false);
-  const [sensesOpen, setSensesOpen] = useState(false);
+  const [indicationsOpen, setIndicationsOpen] = useState(false);
 
   // every case that can still receive evidence (open or partial)
   const openCases = useAsync(async () => {
@@ -105,19 +105,19 @@ export function WordMenu({ target, formStatus, onNotesChanged, onSensesChanged, 
   );
   const variants = spelling.data ?? [];
 
-  // the reader's own senses for this word: the root's senses (with this form's
-  // refinement) + any rootless standalone senses. The active reading = this
-  // form's refinement of the primary root sense, else that sense's own text.
-  const [senseVersion, setSenseVersion] = useState(0);
-  const senses = useAsync(
-    async () => ((lemma || root) ? archive.senses.forWord(lemma, root) : null),
-    [lemma, root, senseVersion],
+  // the reader's own indications for this word: the root's indications (with this form's
+  // refinement) + any rootless standalone indications. The active reading = this
+  // form's refinement of the primary root indication, else that indication's own text.
+  const [indicationVersion, setIndicationVersion] = useState(0);
+  const indications = useAsync(
+    async () => ((lemma || root) ? archive.indications.forWord(lemma, root) : null),
+    [lemma, root, indicationVersion],
   );
-  const rootSenses = senses.data?.rootSenses ?? [];
-  const lemmaSenses = senses.data?.lemmaSenses ?? [];
-  const senseCount = rootSenses.length + lemmaSenses.length;
-  const primaryRoot = rootSenses.find((s) => s.primary) ?? null;
-  const primaryLemma = lemmaSenses.find((s) => s.primary) ?? null;
+  const rootIndications = indications.data?.rootIndications ?? [];
+  const lemmaIndications = indications.data?.lemmaIndications ?? [];
+  const indicationCount = rootIndications.length + lemmaIndications.length;
+  const primaryRoot = rootIndications.find((s) => s.primary) ?? null;
+  const primaryLemma = lemmaIndications.find((s) => s.primary) ?? null;
   // what shows under the word here
   const activeText = primaryRoot
     ? (primaryRoot.refinement?.label || primaryRoot.refinement?.meaning || primaryRoot.label || primaryRoot.meaning)
@@ -213,13 +213,13 @@ export function WordMenu({ target, formStatus, onNotesChanged, onSensesChanged, 
         </div>
       )}
 
-      {/* the reader's own reading of this word: the primary sense, refined for this form */}
+      {/* the reader's own reading of this word: the primary indication, refined for this form */}
       {activeText && (
-        <div className="wm-verdict sense">
+        <div className="wm-verdict indication">
           ✒ <em>“{activeText}”</em>
           <span className="wm-verdict-note">
-            — {activeIsRefined ? "this form" : primaryRoot ? "root sense" : "your meaning"}
-            {rootSenses.length > 1 ? ` · 1 of ${rootSenses.length} senses` : ""}
+            — {activeIsRefined ? "this form" : primaryRoot ? "root indication" : "your meaning"}
+            {rootIndications.length > 1 ? ` · 1 of ${rootIndications.length} indications` : ""}
           </span>
         </div>
       )}
@@ -283,10 +283,10 @@ export function WordMenu({ target, formStatus, onNotesChanged, onSensesChanged, 
         >⊕ Expression</button>
         {(lemma || root) && (
           <button
-            className={`wm-act${sensesOpen ? " active" : ""}`}
-            title="Your own meaning(s) for this word's root — several senses, one primary, refined per form"
-            onClick={() => { if (root) { onEditSenses?.(root, lemma); onClose(); } else setSensesOpen((o) => !o); }}
-          >✒ Senses{senseCount ? ` (${senseCount})` : ""}</button>
+            className={`wm-act${indicationsOpen ? " active" : ""}`}
+            title="Your own meaning(s) for this word's root — several indications, one primary, refined per form"
+            onClick={() => { if (root) { onEditIndications?.(root, lemma); onClose(); } else setIndicationsOpen((o) => !o); }}
+          >✒ Indications{indicationCount ? ` (${indicationCount})` : ""}</button>
         )}
         <button
           className={`wm-act${notesOpen ? " active" : ""}`}
@@ -300,12 +300,12 @@ export function WordMenu({ target, formStatus, onNotesChanged, onSensesChanged, 
       </div>
 
       {/* rooted words → full modal editor (opened at reader level); rootless → inline */}
-      {sensesOpen && !root && lemma && (
+      {indicationsOpen && !root && lemma && (
         <div className="wm-panel">
-          <SensesPanel
+          <IndicationsPanel
             lemma={lemma}
             root={root}
-            onChanged={() => { setSenseVersion((v) => v + 1); onSensesChanged?.(); }}
+            onChanged={() => { setIndicationVersion((v) => v + 1); onIndicationsChanged?.(); }}
           />
         </div>
       )}

@@ -73,10 +73,10 @@ pipeline (see "How quran.db was built" below); day-to-day you just use the exist
 ### `research.db` — the reader's own work (read-write)
 Created and migrated automatically by the server on first run. Holds everything the reader
 produces: cases (board layout, threads, clusters, slips, established meanings), trails,
-notes/questions, word senses, motifs and comparisons. **This is the one irreplaceable file.**
+notes/questions, word indications, motifs and comparisons. **This is the one irreplaceable file.**
 
 Tables: `cases`, `form_research`, `form_revisions`, `trails`, `notes`, `user_root_meanings`,
-`motifs`/`motif_roots`, `word_senses`, `compare_sets`/`compare_items` (see
+`motifs`/`motif_roots`, `word_indications`, `compare_sets`/`compare_items` (see
 `server/src/research.ts` for the schema).
 
 #### Saving your research to git

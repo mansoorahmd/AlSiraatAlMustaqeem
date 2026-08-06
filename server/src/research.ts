@@ -57,33 +57,21 @@ CREATE TABLE IF NOT EXISTS motif_roots (
 );
 CREATE INDEX IF NOT EXISTS idx_motif_roots_root ON motif_roots(root);
 
--- word senses: the reader's own meanings for a word (lemma). A word may carry
--- several senses ("feels"); one is primary (the default gloss). Global to the
--- lemma, shown wherever the word appears.
--- Senses are anchored at the ROOT (scope='root', parent_id NULL, one primary per
--- root). Each root sense has per-FORM refinements (scope='lemma', parent_id = the
--- root sense, one per lemma). Words with no root keep standalone lemma senses
--- (scope='lemma', parent_id NULL, primary per lemma).
-CREATE TABLE IF NOT EXISTS word_senses (
+-- indications: the reader's own meanings for a word, anchored at the ROOT
+-- (scope='root', parent_id NULL, one primary per root). Each root indication has
+-- per-FORM refinements (scope='lemma', parent_id = the root indication, one per
+-- lemma). Words with no root keep standalone lemman indications.
+CREATE TABLE IF NOT EXISTS word_indications (
     id TEXT PRIMARY KEY, lemma TEXT, root TEXT,
     scope TEXT NOT NULL DEFAULT 'lemma',   -- 'root' | 'lemma'
-    parent_id TEXT,                        -- refinement → its root sense; else NULL
+    parent_id TEXT,                        -- refinement -> its root indication; else NULL
     label TEXT NOT NULL DEFAULT '', meaning TEXT NOT NULL DEFAULT '',
     is_primary INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_word_senses_lemma ON word_senses(lemma);
-CREATE INDEX IF NOT EXISTS idx_word_senses_root ON word_senses(root);
--- NOTE: the parent_id index is created in the constructor, AFTER the migration
--- that adds the column (an existing word_senses table won't have it yet).
--- per-occurrence override: this exact word reads as this sense (beats the primary)
-CREATE TABLE IF NOT EXISTS sense_assignments (
-    verse_key TEXT NOT NULL, word_position INTEGER NOT NULL,
-    sense_id TEXT NOT NULL, lemma TEXT NOT NULL, updated_at INTEGER NOT NULL,
-    PRIMARY KEY (verse_key, word_position)
-);
-CREATE INDEX IF NOT EXISTS idx_sense_assign_lemma ON sense_assignments(lemma);
-CREATE INDEX IF NOT EXISTS idx_sense_assign_sense ON sense_assignments(sense_id);
+CREATE INDEX IF NOT EXISTS idx_word_indications_lemma ON word_indications(lemma);
+CREATE INDEX IF NOT EXISTS idx_word_indications_root ON word_indications(root);
+CREATE INDEX IF NOT EXISTS idx_word_indications_parent ON word_indications(parent_id);
 
 -- comparisons (بيوت-style saveable boards of pinned āyāt & roots studied side by side)
 CREATE TABLE IF NOT EXISTS compare_sets (
@@ -118,39 +106,10 @@ export class ResearchStore {
     }
     db.exec("CREATE INDEX IF NOT EXISTS idx_notes_lemma ON notes(lemma)");
     db.exec("CREATE INDEX IF NOT EXISTS idx_notes_root ON notes(root)");
-    // word_senses evolved over time — backfill scope/parent_id on pre-existing DBs
-    const senseInfo = db.query<{ name: string; notnull: number }>("PRAGMA table_info(word_senses)");
-    const senseCols = new Set(senseInfo.map((r) => r.name));
-    if (senseCols.size && !senseCols.has("scope")) {
-      db.exec("ALTER TABLE word_senses ADD COLUMN scope TEXT NOT NULL DEFAULT 'lemma'");
-    }
-    if (senseCols.size && !senseCols.has("parent_id")) {
-      db.exec("ALTER TABLE word_senses ADD COLUMN parent_id TEXT");
-    }
-    // The first schema had `lemma NOT NULL`, but ROOT senses have a null lemma.
-    // CREATE TABLE IF NOT EXISTS can't relax that, so rebuild the table once.
-    const lemmaCol = senseInfo.find((c) => c.name === "lemma");
-    if (lemmaCol && lemmaCol.notnull) {
-      db.exec(`
-        BEGIN;
-        CREATE TABLE word_senses_new (
-            id TEXT PRIMARY KEY, lemma TEXT, root TEXT,
-            scope TEXT NOT NULL DEFAULT 'lemma', parent_id TEXT,
-            label TEXT NOT NULL DEFAULT '', meaning TEXT NOT NULL DEFAULT '',
-            is_primary INTEGER NOT NULL DEFAULT 0,
-            created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-        );
-        INSERT INTO word_senses_new (id, lemma, root, scope, parent_id, label, meaning, is_primary, created_at, updated_at)
-            SELECT id, lemma, root, scope, parent_id, label, meaning, is_primary, created_at, updated_at FROM word_senses;
-        DROP TABLE word_senses;
-        ALTER TABLE word_senses_new RENAME TO word_senses;
-        COMMIT;
-      `);
-    }
-    // (re)create indexes — the rebuild above drops the table's old ones
-    db.exec("CREATE INDEX IF NOT EXISTS idx_word_senses_lemma ON word_senses(lemma)");
-    db.exec("CREATE INDEX IF NOT EXISTS idx_word_senses_root ON word_senses(root)");
-    db.exec("CREATE INDEX IF NOT EXISTS idx_word_senses_parent ON word_senses(parent_id)");
+    // "senses" were renamed to "indications". The old tables are dropped rather
+    // than migrated: the feature was still being shaped and its data was scratch.
+    db.exec("DROP TABLE IF EXISTS word_senses");
+    db.exec("DROP TABLE IF EXISTS sense_assignments");
   }
 
   // -- cases --
@@ -435,11 +394,11 @@ export class ResearchStore {
     this.touchCompareSet(setId);
   }
 
-  // -- word senses: meanings anchored at the ROOT (one primary per root), each
+  // -- word indications: meanings anchored at the ROOT (one primary per root), each
   //    carrying per-FORM refinements. A word's gloss = its form's refinement of
-  //    the root's primary sense, else that sense's text. Words with no root keep
-  //    standalone lemma senses. --
-  private static senseRow(r: any): Doc {
+  //    the root's primary indication, else that indication's text. Words with no root keep
+  //    standalone lemman indications. --
+  private static indicationRow(r: any): Doc {
     return {
       id: r.id, root: r.root ?? null, lemma: r.lemma ?? null,
       scope: r.scope ?? "lemma", parentId: r.parent_id ?? null,
@@ -448,124 +407,124 @@ export class ResearchStore {
     };
   }
 
-  getSense(id: string): Doc | undefined {
-    const r = this.db.one("SELECT * FROM word_senses WHERE id = ?", [id]);
-    return r ? ResearchStore.senseRow(r) : undefined;
+  getIndication(id: string): Doc | undefined {
+    const r = this.db.one("SELECT * FROM word_indications WHERE id = ?", [id]);
+    return r ? ResearchStore.indicationRow(r) : undefined;
   }
-  /** The senses of a root, primary first. */
-  rootSenses(root: string): Doc[] {
+  /** The indications of a root, primary first. */
+  rootIndications(root: string): Doc[] {
     return this.db
-      .query("SELECT * FROM word_senses WHERE scope='root' AND root=? ORDER BY is_primary DESC, created_at", [root])
-      .map(ResearchStore.senseRow);
+      .query("SELECT * FROM word_indications WHERE scope='root' AND root=? ORDER BY is_primary DESC, created_at", [root])
+      .map(ResearchStore.indicationRow);
   }
-  /** Standalone lemma senses (words with no root). */
-  lemmaSenses(lemma: string): Doc[] {
+  /** Standalone lemman indications (words with no root). */
+  lemmaIndications(lemma: string): Doc[] {
     return this.db
-      .query("SELECT * FROM word_senses WHERE scope='lemma' AND parent_id IS NULL AND lemma=? ORDER BY is_primary DESC, created_at", [lemma])
-      .map(ResearchStore.senseRow);
+      .query("SELECT * FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND lemma=? ORDER BY is_primary DESC, created_at", [lemma])
+      .map(ResearchStore.indicationRow);
   }
-  /** A root sense's refinement for one form (lemma), if written. */
+  /** A root indication's refinement for one form (lemma), if written. */
   refinementFor(parentId: string, lemma: string): Doc | null {
-    const r = this.db.one("SELECT * FROM word_senses WHERE parent_id=? AND lemma=? LIMIT 1", [parentId, lemma]);
-    return r ? ResearchStore.senseRow(r) : null;
+    const r = this.db.one("SELECT * FROM word_indications WHERE parent_id=? AND lemma=? LIMIT 1", [parentId, lemma]);
+    return r ? ResearchStore.indicationRow(r) : null;
   }
   refinementsForParent(parentId: string): Doc[] {
-    return this.db.query("SELECT * FROM word_senses WHERE parent_id=? ORDER BY created_at", [parentId]).map(ResearchStore.senseRow);
+    return this.db.query("SELECT * FROM word_indications WHERE parent_id=? ORDER BY created_at", [parentId]).map(ResearchStore.indicationRow);
   }
 
-  /** Everything the word menu needs: the word's root senses (each with THIS
-   *  form's refinement) and, for rootless words, standalone lemma senses. */
-  sensesForWord(lemma: string | null, root: string | null): Doc {
-    const rootSenses = root
-      ? this.rootSenses(root).map((s) => ({
+  /** Everything the word menu needs: the word's root indications (each with THIS
+   *  form's refinement) and, for rootless words, standalone lemman indications. */
+  indicationsForWord(lemma: string | null, root: string | null): Doc {
+    const rootIndications = root
+      ? this.rootIndications(root).map((s) => ({
           ...s,
           refinement: lemma ? this.refinementFor(s.id, lemma) : null,
           refinedCount: this.refinementsForParent(s.id).length, // how many forms are done
         }))
       : [];
-    const lemmaSenses = (!root && lemma) ? this.lemmaSenses(lemma) : [];
-    return { root, lemma, rootSenses, lemmaSenses };
+    const lemmaIndications = (!root && lemma) ? this.lemmaIndications(lemma) : [];
+    return { root, lemma, rootIndications, lemmaIndications };
   }
 
   private clearRootPrimary(root: string, exceptId?: string): void {
     this.db.run(
-      `UPDATE word_senses SET is_primary=0 WHERE scope='root' AND root=?${exceptId ? " AND id!=?" : ""}`,
+      `UPDATE word_indications SET is_primary=0 WHERE scope='root' AND root=?${exceptId ? " AND id!=?" : ""}`,
       exceptId ? [root, exceptId] : [root]);
   }
   private clearLemmaPrimary(lemma: string, exceptId?: string): void {
     this.db.run(
-      `UPDATE word_senses SET is_primary=0 WHERE scope='lemma' AND parent_id IS NULL AND lemma=?${exceptId ? " AND id!=?" : ""}`,
+      `UPDATE word_indications SET is_primary=0 WHERE scope='lemma' AND parent_id IS NULL AND lemma=?${exceptId ? " AND id!=?" : ""}`,
       exceptId ? [lemma, exceptId] : [lemma]);
   }
 
-  /** Create/update a root sense (root set) OR a standalone lemma sense (rootless). */
-  saveSense(doc: Doc): Doc {
+  /** Create/update a root indication (root set) OR a standalone lemman indication (rootless). */
+  saveIndication(doc: Doc): Doc {
     const t = now();
-    const existing = this.getSense(doc.id);
+    const existing = this.getIndication(doc.id);
     const root = doc.root ?? existing?.root ?? null;
     const lemma = doc.lemma ?? existing?.lemma ?? null;
     const scope = doc.scope ?? existing?.scope ?? (root ? "root" : "lemma");
     const had = scope === "root"
-      ? this.db.scalar<number>("SELECT COUNT(*) FROM word_senses WHERE scope='root' AND root=?", [root]) ?? 0
-      : this.db.scalar<number>("SELECT COUNT(*) FROM word_senses WHERE scope='lemma' AND parent_id IS NULL AND lemma=?", [lemma]) ?? 0;
+      ? this.db.scalar<number>("SELECT COUNT(*) FROM word_indications WHERE scope='root' AND root=?", [root]) ?? 0
+      : this.db.scalar<number>("SELECT COUNT(*) FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND lemma=?", [lemma]) ?? 0;
     const primary = doc.primary ?? existing?.primary ?? had === 0;
     this.db.run(
-      `INSERT INTO word_senses (id, root, lemma, scope, parent_id, label, meaning, is_primary, created_at, updated_at)
+      `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, created_at, updated_at)
        VALUES (?,?,?,?,NULL,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET root=excluded.root, lemma=excluded.lemma, scope=excluded.scope,
          label=excluded.label, meaning=excluded.meaning, is_primary=excluded.is_primary, updated_at=excluded.updated_at`,
       [doc.id, root, lemma, scope, doc.label ?? "", doc.meaning ?? "", primary ? 1 : 0, existing?.createdAt ?? t, t],
     );
     if (primary) { if (scope === "root" && root) this.clearRootPrimary(root, doc.id); else if (lemma) this.clearLemmaPrimary(lemma, doc.id); }
-    return this.getSense(doc.id)!;
+    return this.getIndication(doc.id)!;
   }
 
-  /** Create/update a per-form refinement of a root sense (upsert by parent+lemma). */
+  /** Create/update a per-form refinement of a root indication (upsert by parent+lemma). */
   saveRefinement(doc: Doc): Doc | undefined {
-    const parent = this.getSense(doc.parentId);
+    const parent = this.getIndication(doc.parentId);
     if (!parent || parent.scope !== "root") return undefined;
     const t = now();
     const existing = this.refinementFor(doc.parentId, doc.lemma);
     const id = existing?.id ?? doc.id;
     this.db.run(
-      `INSERT INTO word_senses (id, root, lemma, scope, parent_id, label, meaning, is_primary, created_at, updated_at)
+      `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, created_at, updated_at)
        VALUES (?,?,?, 'lemma', ?, ?, ?, 0, ?, ?)
        ON CONFLICT(id) DO UPDATE SET label=excluded.label, meaning=excluded.meaning, updated_at=excluded.updated_at`,
       [id, parent.root, doc.lemma, doc.parentId, doc.label ?? "", doc.meaning ?? "", existing?.createdAt ?? t, t],
     );
-    return this.getSense(id);
+    return this.getIndication(id);
   }
 
-  deleteSense(id: string): boolean {
-    const s = this.getSense(id);
+  deleteIndication(id: string): boolean {
+    const s = this.getIndication(id);
     if (!s) return false;
-    // deleting a root sense removes its refinements too
-    this.db.run("DELETE FROM word_senses WHERE id=? OR parent_id=?", [id, id]);
+    // deleting a root indication removes its refinements too
+    this.db.run("DELETE FROM word_indications WHERE id=? OR parent_id=?", [id, id]);
     if (s.primary && s.scope === "root" && s.root) {
-      const next = this.db.one<{ id: string }>("SELECT id FROM word_senses WHERE scope='root' AND root=? ORDER BY created_at LIMIT 1", [s.root]);
-      if (next) this.db.run("UPDATE word_senses SET is_primary=1 WHERE id=?", [next.id]);
+      const next = this.db.one<{ id: string }>("SELECT id FROM word_indications WHERE scope='root' AND root=? ORDER BY created_at LIMIT 1", [s.root]);
+      if (next) this.db.run("UPDATE word_indications SET is_primary=1 WHERE id=?", [next.id]);
     } else if (s.primary && s.scope === "lemma" && !s.parentId && s.lemma) {
-      const next = this.db.one<{ id: string }>("SELECT id FROM word_senses WHERE scope='lemma' AND parent_id IS NULL AND lemma=? ORDER BY created_at LIMIT 1", [s.lemma]);
-      if (next) this.db.run("UPDATE word_senses SET is_primary=1 WHERE id=?", [next.id]);
+      const next = this.db.one<{ id: string }>("SELECT id FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND lemma=? ORDER BY created_at LIMIT 1", [s.lemma]);
+      if (next) this.db.run("UPDATE word_indications SET is_primary=1 WHERE id=?", [next.id]);
     }
     return true;
   }
 
-  /** Make a root sense (or a standalone lemma sense) the primary in its group. */
-  setPrimarySense(id: string): Doc | undefined {
-    const s = this.getSense(id);
+  /** Make a root indication (or a standalone lemman indication) the primary in its group. */
+  setPrimaryIndication(id: string): Doc | undefined {
+    const s = this.getIndication(id);
     if (!s) return undefined;
     if (s.scope === "root" && s.root) this.clearRootPrimary(s.root);
     else if (s.scope === "lemma" && !s.parentId && s.lemma) this.clearLemmaPrimary(s.lemma);
     else return s; // refinements have no primary
-    this.db.run("UPDATE word_senses SET is_primary=1, updated_at=? WHERE id=?", [now(), id]);
-    return this.getSense(id);
+    this.db.run("UPDATE word_indications SET is_primary=1, updated_at=? WHERE id=?", [now(), id]);
+    return this.getIndication(id);
   }
 
-  /** Reader gloss data: for each root with a PRIMARY sense, its base text and
+  /** Reader gloss data: for each root with a PRIMARY indication, its base text and
    *  per-form refinement texts; plus rootless lemma primaries. */
   glossData(): Doc {
-    const primaries = this.db.query("SELECT * FROM word_senses WHERE scope='root' AND is_primary=1").map(ResearchStore.senseRow);
+    const primaries = this.db.query("SELECT * FROM word_indications WHERE scope='root' AND is_primary=1").map(ResearchStore.indicationRow);
     const roots = primaries
       .map((p) => ({ root: p.root, text: p.label || p.meaning }))
       .filter((x) => x.text);
@@ -577,8 +536,8 @@ export class ResearchStore {
       }
     }
     const lemmas = this.db
-      .query("SELECT * FROM word_senses WHERE scope='lemma' AND parent_id IS NULL AND is_primary=1")
-      .map(ResearchStore.senseRow)
+      .query("SELECT * FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND is_primary=1")
+      .map(ResearchStore.indicationRow)
       .map((s) => ({ lemma: s.lemma, text: s.label || s.meaning }))
       .filter((x) => x.text);
     return { roots, refinements, lemmas };

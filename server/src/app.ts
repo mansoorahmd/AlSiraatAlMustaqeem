@@ -21,7 +21,7 @@ export function createApp(state: AppState): Hono {
   app.use("/api/*", cors());
 
   // Research data is read-write and changes as the user works, so its fixed-URL
-  // reads (e.g. /senses/gloss) must never come back stale. Scoped deliberately:
+  // reads (e.g. /indications/gloss) must never come back stale. Scoped deliberately:
   // Quran content is immutable and stays cacheable.
   app.use("/api/v1/research/*", async (c, next) => {
     await next();

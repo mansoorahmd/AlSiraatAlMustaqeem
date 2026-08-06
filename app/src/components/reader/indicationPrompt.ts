@@ -1,6 +1,6 @@
-// Builds the AI hand-off prompt for testing a proposed sense against every form
+// Builds the AI hand-off prompt for testing a proposed indication against every form
 // of a root, and — when it holds — deriving each form's own BRIEF/DETAIL, which
-// paste straight into the form's two fields in the Sense Editor.
+// paste straight into the form's two fields in the Indication Editor.
 //
 // Written to work with a mid-grade model: hard rules first, the material next,
 // then an explicit method, an exact output contract, and a format-only worked
@@ -15,8 +15,8 @@ const spaced = (r: string) => r.split("").join(" ");
 export interface PromptInput {
   root: string;
   detail: RootDetail | null;
-  /** the sense being proposed, in the reader's words */
-  sense: string;
+  /** the indication being proposed, in the reader's words */
+  indication: string;
   notes: NoteRecord[];
   /** anything extra the reader wants to steer the model with */
   instructions?: string;
@@ -48,7 +48,7 @@ export function uniqueForms(detail: RootDetail | null) {
   return out;
 }
 
-export function buildSensePrompt({ root, detail, sense, notes, instructions }: PromptInput): string {
+export function buildIndicationPrompt({ root, detail, indication, notes, instructions }: PromptInput): string {
   const forms = uniqueForms(detail);
   const meanings = detail?.meanings ?? [];
   const withText = notes.filter((n) => (n.text ?? "").trim());
@@ -73,7 +73,7 @@ export function buildSensePrompt({ root, detail, sense, notes, instructions }: P
   L.push("3. IMPORTANT — the lexicon entries below quote the Qur'an and sometimes explain the");
   L.push("   word theologically (paradise, salvation, reward, the call to prayer, and so on).");
   L.push("   Those passages are LATER APPLICATION, not the word's core, and rule 1 applies to");
-  L.push("   them too. Mine each entry instead for its concrete, physical, everyday senses —");
+  L.push("   them too. Mine each entry instead for its concrete, physical, everyday indications —");
   L.push("   what the word does to soil, iron, a lip, a piece of wood — and for explicit");
   L.push("   statements of the root's origin (Maqāyīs in particular names the أصل/أصلان).");
   L.push("   Skip lines of poetry and grammarians' asides; they are illustration, not evidence.");
@@ -98,7 +98,7 @@ export function buildSensePrompt({ root, detail, sense, notes, instructions }: P
   L.push("");
 
   L.push("=== PROPOSED ROOT SENSE (the hypothesis you must test) ===");
-  L.push(sense.trim());
+  L.push(indication.trim());
   L.push("");
 
   L.push(`=== THE ${n} FORM${n === 1 ? "" : "S"} OF THIS ROOT ===`);
@@ -144,10 +144,10 @@ export function buildSensePrompt({ root, detail, sense, notes, instructions }: P
   L.push("        evidence supports more strongly.");
   L.push("Step 2. Check the PROPOSED ROOT SENSE against that core: is it the same idea, or an");
   L.push("        abstraction that has drifted from it? Sharpen the wording if needed.");
-  L.push("Step 3. For each form in order, apply its morphological pattern to the root sense and");
+  L.push("Step 3. For each form in order, apply its morphological pattern to the root indication and");
   L.push("        ask: does the result describe a coherent Arabic word? That is the test — not");
   L.push("        whether it matches any familiar translation.");
-  L.push("Step 4. Where it holds, PIVOT the root sense into that form's own specific meaning:");
+  L.push("Step 4. Where it holds, PIVOT the root indication into that form's own specific meaning:");
   L.push("        the same underlying idea, bent by what the pattern does to it.");
   L.push("Step 5. Where it strains or fails, say so and propose the shade that would fit better.");
   L.push("");
@@ -159,7 +159,7 @@ export function buildSensePrompt({ root, detail, sense, notes, instructions }: P
   L.push("");
   L.push("ROOT SENSE");
   L.push("VERDICT: holds | needs adjustment | does not hold");
-  L.push("BRIEF: <2-5 words. The root sense in its sharpest form. Lowercase, no final period.>");
+  L.push("BRIEF: <2-5 words. The root indication in its sharpest form. Lowercase, no final period.>");
   L.push("DETAIL: <1-3 sentences. The root's core idea in plain English, tied to the physical");
   L.push("        core from Step 1. No verse references, no traditional renderings.>");
   L.push("");
@@ -168,11 +168,11 @@ export function buildSensePrompt({ root, detail, sense, notes, instructions }: P
   L.push("FORM: <the Arabic form, copied exactly as given>");
   L.push("VERDICT: fits | partially fits | does not fit | insufficient evidence");
   L.push("PATTERN: <the wazn / morphological role you relied on, e.g. Form IV, active participle>");
-  L.push("BRIEF: <2-5 words. This form's meaning, pivoted from the root sense. Lowercase, no");
+  L.push("BRIEF: <2-5 words. This form's meaning, pivoted from the root indication. Lowercase, no");
   L.push("       final period. Must read as a specialisation of the root BRIEF, not a synonym");
   L.push("       of it, and not a conventional translation.>");
   L.push("DETAIL: <1-3 sentences. What this form specifically says: who/what is doing the root");
-  L.push("        idea, in what state, to what. Plain English, traceable back to the root sense.>");
+  L.push("        idea, in what state, to what. Plain English, traceable back to the root indication.>");
   L.push("WHY: <2-3 sentences. How the pattern acting on the root core produces that meaning,");
   L.push("     citing the lexicon entries you used by name.>");
   L.push("ALTERNATIVE: <only if VERDICT is not 'fits': the shade that would fit this form better,");
@@ -181,7 +181,7 @@ export function buildSensePrompt({ root, detail, sense, notes, instructions }: P
   L.push("");
   L.push("Then one closing block:");
   L.push("");
-  L.push("OVERALL: <one short paragraph: does the proposed sense hold across the whole root?>");
+  L.push("OVERALL: <one short paragraph: does the proposed indication hold across the whole root?>");
   L.push("WEAKEST LINK: <the form that fits least well, and the one thing that would settle it>");
   L.push("");
   L.push("Field rules: BRIEF and DETAIL are pasted directly into my notes, so write them as");
@@ -205,7 +205,7 @@ export function buildSensePrompt({ root, detail, sense, notes, instructions }: P
   L.push("BRIEF: he pressed a mark in");
   L.push("DETAIL: The agent performs the inscribing himself, fixing something that was until then");
   L.push("DETAIL: unfixed. The emphasis is on the act, not on what results from it.");
-  L.push("WHY: Form I carries the root idea with nothing added, so the physical sense of pressing");
+  L.push("WHY: Form I carries the root idea with nothing added, so the physical indication of pressing");
   L.push("WHY: a mark stands unmodified; entry 1 gives that concrete core.");
   L.push("ALTERNATIVE: none");
   L.push("CONFIDENCE: high");

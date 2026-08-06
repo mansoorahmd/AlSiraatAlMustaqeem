@@ -180,7 +180,7 @@ Mechanics:
   or dismiss. Your threads are ink; machine suggestions stay pencil.
 - **Clusters.** Lasso cards into a named group ("كتب = decree contexts",
   "كتب = scripture contexts"). Clusters become the skeleton of your
-  hypothesis — most roots resolve into 2–4 usage senses, and discovering
+  hypothesis — most roots resolve into 2–4 usage indications, and discovering
   that *yourself* is the payoff.
 - **Comment & reference slips.** Besides ayah cards, two more kinds of paper
   go on the board: **comment slips** (the reader's observations and
@@ -538,7 +538,7 @@ group roots by their own themes:
 ### V15 — Occurrences-by-form + compare workspace ✅
 - **Occurrences grouped by form** on the root page: a root's ayahs are clustered
   under each derived form (lemma) with its POS + count, so the reader can see
-  how the sense shifts form-to-form (noun هُدًى vs verb يَهْدِي …). Frontend-only.
+  how the indication shifts form-to-form (noun هُدًى vs verb يَهْدِي …). Frontend-only.
 - **Compare workspace** — pin ayahs and roots (⇋ button on each ayah and on a
   root's page) and study them together in the **Compare** tab. Enables the classic
   near-synonym (عَلِمَ / عَرَفَ) and parallel-passage exercises.
@@ -560,50 +560,50 @@ group roots by their own themes:
   Active-set id is a device-local pref; the Compare tab badge = the active set's
   count. Store: `activeCompareSetId`, `compareTick`, `toast`.
 
-### V16 — Word senses (several meanings per word, switchable) ✅
-- A word (lemma) can now hold **multiple senses** — the different "feels" a word
+### V16 — Word indications (several meanings per word, switchable) ✅
+- A word (lemma) can now hold **multiple indications** — the different "feels" a word
   carries in different contexts (e.g. أَفْلَحَ as *attain/triumph* vs the
-  *till/cultivate* undertone). Senses are **global to the lemma**, shown wherever
-  the word appears. Backend: `word_senses` (id, lemma, root, label, meaning,
-  is_primary) + `sense_assignments` (verse_key, word_position → sense) in
-  research.db, routes under `/research/senses` and `/research/sense-assignments`.
-- One sense is the **primary** (★) — the default gloss everywhere. You can also
-  **pin THIS āyah's occurrence** to a specific sense ("use for this āyah"), which
-  overrides the primary just there. First sense added is auto-primary; deleting
-  the primary promotes the next; deleting a sense clears its assignments.
-- Managed from the **word menu** (tap a word → *✒ Senses (N)*): list senses, add
+  *till/cultivate* undertone). Indications are **global to the lemma**, shown wherever
+  the word appears. Backend: `word_indications` (id, lemma, root, label, meaning,
+  is_primary) + `indication_assignments` (verse_key, word_position → indication) in
+  research.db, routes under `/research/indications` and `/research/indication-assignments`.
+- One indication is the **primary** (★) — the default gloss everywhere. You can also
+  **pin THIS āyah's occurrence** to a specific indication ("use for this āyah"), which
+  overrides the primary just there. First indication added is auto-primary; deleting
+  the primary promotes the next; deleting an indication clears its assignments.
+- Managed from the **word menu** (tap a word → *✒ Indications (N)*): list indications, add
   one (short label + meaning), set primary, delete, and assign the current
-  occurrence. The menu header shows the sense active on this word ("— this āyah"
+  occurrence. The menu header shows the indication active on this word ("— this āyah"
   or "— primary of N").
 - The **reader gloss** resolves in order: per-āyah assignment → the word's primary
-  sense → (fallback) the established case meaning. `SensesPanel`,
-  `archive.senses`, Reader `sensePrimary`/`senseAssign` maps + `senseTick`.
+  indication → (fallback) the established case meaning. `IndicationsPanel`,
+  `archive.indications`, Reader `indicationPrimary`/`indicationAssign` maps + `indicationTick`.
 
-  **V16.2 — root senses + per-form refinements (final model).** Redesigned so
-  senses are anchored at the **root** with per-**form** refinements:
-  - A root holds several senses (its "feels"); **one is primary** (the default
-    gloss). `word_senses` scope='root', `is_primary` unique per root.
-  - Each root sense has a **refinement** for each form (lemma) — the shade that
-    sense takes in that exact word. `word_senses` scope='lemma', `parent_id` = the
-    root sense (added `parent_id` column, self-migrating). Forms not yet refined
+  **V16.2 — root indications + per-form refinements (final model).** Redesigned so
+  indications are anchored at the **root** with per-**form** refinements:
+  - A root holds several indications (its "feels"); **one is primary** (the default
+    gloss). `word_indications` scope='root', `is_primary` unique per root.
+  - Each root indication has a **refinement** for each form (lemma) — the shade that
+    indication takes in that exact word. `word_indications` scope='lemma', `parent_id` = the
+    root indication (added `parent_id` column, self-migrating). Forms not yet refined
     show an empty "complete for ‹form›" slot (**soft** — nothing blocked).
   - Reader gloss (Primary-only): this form's refinement of the root's primary
-    sense → that sense's own text → established case meaning. Server `glossData()`
-    returns primary-sense text per root + per-form refinements + rootless lemma
-    primaries; Reader builds `senseRefine`/`senseRootText`/`senseLemmaText` maps.
-  - Rootless words (particles/names) keep a plain standalone lemma sense.
-  - **Sense Editor modal** (`SenseEditor`) — the meaning-setting surface: root
-    header + core meaning; left rail lists the root's senses (add / pick primary /
+    indication → that indication's own text → established case meaning. Server `glossData()`
+    returns primary-indication text per root + per-form refinements + rootless lemma
+    primaries; Reader builds `indicationRefine`/`indicationRootText`/`indicationLemmaText` maps.
+  - Rootless words (particles/names) keep a plain standalone lemman indication.
+  - **Indication Editor modal** (`IndicationEditor`) — the meaning-setting surface: root
+    header + core meaning; left rail lists the root's indications (add / pick primary /
     delete / rename); centre shows **every unique form of the root** with its own
-    editable meaning for the selected sense (so any form can be set from one place,
+    editable meaning for the selected indication (so any form can be set from one place,
     not just the tapped word), the tapped form pinned first and unfilled forms
     flagged; right rail is a **Dictionaries** panel (the root's lexicon entries)
-    for lookup while writing. Opened from the word menu's ✒ Senses (rooted words)
+    for lookup while writing. Opened from the word menu's ✒ Indications (rooted words)
     and from each form in the Investigate dossier. New endpoint
-    `GET /senses/:id/refinements`.
-  - Endpoints: `/senses/gloss`, `/senses/for-word`, `/senses/:id`(+`/primary`),
+    `GET /indications/:id/refinements`.
+  - Endpoints: `/indications/gloss`, `/indications/for-word`, `/indications/:id`(+`/primary`),
     `/refinements/:id`. Per-occurrence assignment removed (superseded by
-    Primary-only). `SensesPanel` rebuilt (root senses + refinement editors +
+    Primary-only). `IndicationsPanel` rebuilt (root indications + refinement editors +
     "N of M forms" completion); surfaced in the reader word menu **and** the
     Investigate form dossier.
 - *Web only so far — mirror to mobile later.*
@@ -629,25 +629,25 @@ kind and tags the subject chip *root* / *word*. Promote-to-case is hidden on wor
 threads, since there's no root family to open a case on.
 
 ### Fixes & hardening (this pass) ✅
-Bugs found while getting senses working end-to-end — recorded because several
+Bugs found while getting indications working end-to-end — recorded because several
 were invisible-by-inspection and cost real time:
 
 - **Gloss never used a form's refinement** (the headline bug). The Reader wrote
   the lookup key with a **NUL byte** separator (`` `${root}\x00${lemma}` ``) while
   `AyahBlock` read it with a **space** — an invisible mismatch, so every lookup
-  missed and the gloss silently fell back to the root sense. The word menu looked
+  missed and the gloss silently fell back to the root indication. The word menu looked
   right because it matches server-side by lemma (a different path), which made the
   bug look like a caching problem. Both sides now use one separator, verified by
   extracting the write/read separators from the two files and comparing them.
   *Lesson: for invisible-character bugs, dump raw bytes (`repr`) — don't re-read
   the source, and don't "verify" with a simulation that reimplements the logic.*
-- **`word_senses.lemma NOT NULL`** — the first schema required a lemma, but ROOT
-  senses have none, so every "add sense" 500'd. `CREATE TABLE IF NOT EXISTS` can't
+- **`word_indications.lemma NOT NULL`** — the first schema required a lemma, but ROOT
+  indications have none, so every "add indication" 500'd. `CREATE TABLE IF NOT EXISTS` can't
   relax a constraint → added a one-time table rebuild that preserves existing rows.
 - **`no such column: parent_id` on boot** — the `parent_id` index sat in `SCHEMA`,
   which runs *before* the migration that adds the column. Index creation moved
   after the migration.
-- **Sense Editor edits were lost** — the modal was rendered *inside* the word menu
+- **Indication Editor edits were lost** — the modal was rendered *inside* the word menu
   (a fixed, scrollable popup with its own outside-click handling). Moved to the
   reader level; the overlay now closes on `click` (not `mousedown`) so a focused
   field's blur-save commits first.

@@ -11,7 +11,7 @@ import type { Script, Word, Chapter } from "../../api/types";
 import type { NoteRecord } from "../../persistence/types";
 import { AyahBlock } from "./AyahBlock";
 import { WordMenu, type WordMenuTarget } from "./WordMenu";
-import { SenseEditor } from "./SenseEditor";
+import { IndicationEditor } from "./IndicationEditor";
 import { TrailStrip } from "./TrailStrip";
 import { buildFocusSpec, buildAyahFocus } from "./focus";
 import { FocusMap } from "./FocusMap";
@@ -177,15 +177,15 @@ export function Reader({ chapters, onBackToIndex }: Props) {
     return m;
   }, [formStatusRows.data]);
 
-  // the reader's own word senses: primary sense per lemma (default gloss) +
+  // the reader's own word indications: primary indication per lemma (default gloss) +
   // per-occurrence overrides in this surah. bumped when edited in the word menu.
-  const [senseTick, setSenseTick] = useState(0);
-  const glossData = useAsync(() => archive.senses.gloss(), [senseTick]);
-  // gloss resolution maps: a form's refinement of the root's primary sense beats
-  // the root sense's own text; rootless words use their standalone primary
-  const { senseRefine, senseRootText, senseLemmaText } = useMemo(() => {
+  const [indicationTick, setIndicationTick] = useState(0);
+  const glossData = useAsync(() => archive.indications.gloss(), [indicationTick]);
+  // gloss resolution maps: a form's refinement of the root's primary indication beats
+  // the root indication's own text; rootless words use their standalone primary
+  const { indicationRefine, indicationRootText, indicationLemmaText } = useMemo(() => {
     const refine = new Map<string, string>();   // `${root} ${lemma}` → text
-    const rootText = new Map<string, string>(); // root → primary sense text
+    const rootText = new Map<string, string>(); // root → primary indication text
     const lemmaText = new Map<string, string>(); // lemma → standalone primary text
     const g = glossData.data;
     if (g) {
@@ -198,11 +198,11 @@ export function Reader({ chapters, onBackToIndex }: Props) {
       }
       for (const l of g.lemmas ?? []) lemmaText.set(l.lemma, l.text);
     }
-    return { senseRefine: refine, senseRootText: rootText, senseLemmaText: lemmaText };
+    return { indicationRefine: refine, indicationRootText: rootText, indicationLemmaText: lemmaText };
   }, [glossData.data]);
 
   const [menu, setMenu] = useState<WordMenuTarget | null>(null);
-  const [senseEdit, setSenseEdit] = useState<{ root: string; lemma: string | null } | null>(null);
+  const [indicationEdit, setIndicationEdit] = useState<{ root: string; lemma: string | null } | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const [focusIdx, setFocusIdx] = useState(0);
   const [mapOpen, setMapOpen] = useState(false);
@@ -470,9 +470,9 @@ export function Reader({ chapters, onBackToIndex }: Props) {
             translationId={reading.translationId}
             myGlossOn={myGlossOn}
             formStatus={formStatus}
-            senseRefine={senseRefine}
-            senseRootText={senseRootText}
-            senseLemmaText={senseLemmaText}
+            indicationRefine={indicationRefine}
+            indicationRootText={indicationRootText}
+            indicationLemmaText={indicationLemmaText}
             caseRefs={evidenceMap?.get(v.verse_key) ?? null}
             rareRoots={rootFreq.data ?? null}
             highlightWord={
@@ -516,20 +516,20 @@ export function Reader({ chapters, onBackToIndex }: Props) {
           target={menu}
           formStatus={formStatus}
           onNotesChanged={bumpNotes}
-          onSensesChanged={() => setSenseTick((t) => t + 1)}
-          onEditSenses={(root, lemma) => setSenseEdit({ root, lemma })}
+          onIndicationsChanged={() => setIndicationTick((t) => t + 1)}
+          onEditIndications={(root, lemma) => setIndicationEdit({ root, lemma })}
           onClose={() => setMenu(null)}
         />
       )}
 
       {activeTrailId && <TrailStrip trailId={activeTrailId} />}
 
-      {senseEdit && (
-        <SenseEditor
-          root={senseEdit.root}
-          focusLemma={senseEdit.lemma}
-          onClose={() => setSenseEdit(null)}
-          onChanged={() => setSenseTick((t) => t + 1)}
+      {indicationEdit && (
+        <IndicationEditor
+          root={indicationEdit.root}
+          focusLemma={indicationEdit.lemma}
+          onClose={() => setIndicationEdit(null)}
+          onChanged={() => setIndicationTick((t) => t + 1)}
         />
       )}
     </div>

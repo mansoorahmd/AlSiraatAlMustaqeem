@@ -74,32 +74,32 @@ export interface TranslationResource {
 export interface SpellingVariant { surface: string; count: number; verses: string[] }
 
 /** One of the reader's own meanings for a word (lemma). A word may hold several
- *  senses ("feels"); one is primary (the default gloss). Global to the lemma. */
-export interface WordSense {
+ *  indications ("feels"); one is primary (the default gloss). Global to the lemma. */
+export interface WordIndication {
   id: string; root: string | null; lemma: string | null;
-  /** 'root' = a sense of the whole root; 'lemma' = a refinement or rootless sense */
+  /** 'root' = an indication of the whole root; 'lemma' = a refinement or rootless indication */
   scope: "root" | "lemma";
-  /** a refinement points at its root sense; root/standalone senses are null */
+  /** a refinement points at its root indication; root/standalone indications are null */
   parentId: string | null;
   label: string; meaning: string; primary: boolean;
   createdAt: number; updatedAt: number;
 }
-/** A root sense plus this form's refinement of it (null = not yet written). */
-export interface RootSenseWithRefinement extends WordSense {
-  refinement: WordSense | null;
-  /** how many of the root's forms have been given a refinement for this sense */
+/** A root indication plus this form's refinement of it (null = not yet written). */
+export interface RootIndicationWithRefinement extends WordIndication {
+  refinement: WordIndication | null;
+  /** how many of the root's forms have been given a refinement for this indication */
   refinedCount: number;
 }
-/** What the word menu needs for a word: its root senses (with this form's
- *  refinement) and, for rootless words, standalone lemma senses. */
-export interface SensesForWord {
+/** What the word menu needs for a word: its root indications (with this form's
+ *  refinement) and, for rootless words, standalone lemman indications. */
+export interface IndicationsForWord {
   root: string | null; lemma: string | null;
-  rootSenses: RootSenseWithRefinement[];
-  lemmaSenses: WordSense[];
+  rootIndications: RootIndicationWithRefinement[];
+  lemmaIndications: WordIndication[];
 }
-/** Reader gloss data: primary root-sense text per root, per-form refinements,
+/** Reader gloss data: primary root-indication text per root, per-form refinements,
  *  and rootless lemma primaries. */
-export interface SenseGloss {
+export interface IndicationGloss {
   roots: { root: string; text: string }[];
   refinements: { root: string; lemma: string; text: string }[];
   lemmas: { lemma: string; text: string }[];

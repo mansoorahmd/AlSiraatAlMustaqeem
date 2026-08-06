@@ -7,7 +7,7 @@ import { useState } from "react";
 import { api } from "../../api/client";
 import { useAsync } from "../../hooks/useAsync";
 import { fetchFormRevisions, type FormRevision } from "../../persistence/db";
-import { SenseEditor } from "../reader/SenseEditor";
+import { IndicationEditor } from "../reader/IndicationEditor";
 import type { RootOccurrence } from "../../api/types";
 import type { CaseRecord } from "../../persistence/types";
 import {
@@ -220,9 +220,9 @@ export function FormDossier({ caseRec, occById, mutate }: Props) {
                   <Revisions caseId={caseRec.id} lemma={lemma} />
 
                   {root && (
-                    <div className="form-senses">
+                    <div className="form-indications">
                       <button className="ctl" onClick={() => setEditorLemma(lemma)}>
-                        ✒ Senses &amp; meanings — open editor for <span className="quran">{lemma}</span>
+                        ✒ Indications &amp; meanings — open editor for <span className="quran">{lemma}</span>
                       </button>
                     </div>
                   )}
@@ -279,7 +279,7 @@ export function FormDossier({ caseRec, occById, mutate }: Props) {
       </div>
 
       {root && editorLemma && (
-        <SenseEditor root={root} focusLemma={editorLemma} onClose={() => setEditorLemma(null)} />
+        <IndicationEditor root={root} focusLemma={editorLemma} onClose={() => setEditorLemma(null)} />
       )}
     </aside>
   );

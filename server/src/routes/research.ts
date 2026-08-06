@@ -90,39 +90,39 @@ export function researchRoutes(state: AppState): Hono {
     return c.json({ ok: true });
   });
 
-  // word senses: meanings anchored at the ROOT (one primary per root) with
-  // per-form refinements; standalone lemma senses for rootless words
-  r.get("/research/senses/gloss", (c) => c.json(s.glossData()));
-  r.get("/research/senses/for-word", (c) =>
-    c.json(s.sensesForWord(c.req.query("lemma") ?? null, c.req.query("root") ?? null)));
-  r.get("/research/senses/:id/refinements", (c) => c.json(s.refinementsForParent(c.req.param("id"))));
-  r.put("/research/senses/:id", async (c) => {
+  // word indications: meanings anchored at the ROOT (one primary per root) with
+  // per-form refinements; standalone lemman indications for rootless words
+  r.get("/research/indications/gloss", (c) => c.json(s.glossData()));
+  r.get("/research/indications/for-word", (c) =>
+    c.json(s.indicationsForWord(c.req.query("lemma") ?? null, c.req.query("root") ?? null)));
+  r.get("/research/indications/:id/refinements", (c) => c.json(s.refinementsForParent(c.req.param("id"))));
+  r.put("/research/indications/:id", async (c) => {
     const doc = await c.req.json();
     if (doc?.id !== c.req.param("id")) return c.json({ detail: "document id does not match URL" }, 400);
     if (!doc.root && !doc.lemma) return c.json({ detail: "root or lemma is required" }, 422);
-    return c.json(s.saveSense(doc));
+    return c.json(s.saveIndication(doc));
   });
-  r.put("/research/senses/:id/primary", (c) => {
-    const out = s.setPrimarySense(c.req.param("id"));
-    if (!out) return c.json({ detail: `sense not found: ${c.req.param("id")}` }, 404);
+  r.put("/research/indications/:id/primary", (c) => {
+    const out = s.setPrimaryIndication(c.req.param("id"));
+    if (!out) return c.json({ detail: `indication not found: ${c.req.param("id")}` }, 404);
     return c.json(out);
   });
-  r.delete("/research/senses/:id", (c) => {
-    if (!s.deleteSense(c.req.param("id"))) return c.json({ detail: `sense not found: ${c.req.param("id")}` }, 404);
+  r.delete("/research/indications/:id", (c) => {
+    if (!s.deleteIndication(c.req.param("id"))) return c.json({ detail: `indication not found: ${c.req.param("id")}` }, 404);
     return c.json({ deleted: c.req.param("id") });
   });
 
-  // per-form refinement of a root sense (this form's shade of that sense)
+  // per-form refinement of a root indication (this form's shade of that indication)
   r.put("/research/refinements/:id", async (c) => {
     const doc = await c.req.json();
     if (doc?.id !== c.req.param("id")) return c.json({ detail: "document id does not match URL" }, 400);
     if (!doc.parentId || !doc.lemma) return c.json({ detail: "parentId and lemma are required" }, 422);
     const out = s.saveRefinement(doc);
-    if (!out) return c.json({ detail: `root sense not found: ${doc.parentId}` }, 404);
+    if (!out) return c.json({ detail: `root indication not found: ${doc.parentId}` }, 404);
     return c.json(out);
   });
   r.delete("/research/refinements/:id", (c) => {
-    if (!s.deleteSense(c.req.param("id"))) return c.json({ detail: `refinement not found: ${c.req.param("id")}` }, 404);
+    if (!s.deleteIndication(c.req.param("id"))) return c.json({ detail: `refinement not found: ${c.req.param("id")}` }, 404);
     return c.json({ deleted: c.req.param("id") });
   });
 

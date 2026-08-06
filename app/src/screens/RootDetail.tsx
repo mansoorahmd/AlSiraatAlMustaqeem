@@ -98,7 +98,7 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: P
   };
 
   // group occurrences by the derived FORM (lemma), so the reader can compare
-  // how the sense shifts across forms — the heart of organic root study
+  // how the indication shifts across forms — the heart of organic root study
   const byForm = useMemo(() => {
     const groups = new Map<string, { key: string; pos: number }[]>();
     for (const o of occ.data ?? []) {

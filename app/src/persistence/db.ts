@@ -8,7 +8,7 @@
 // server the first time the app runs after this change.
 
 import type { CaseRecord, VaultEntry, TrailRecord, PrefsRecord, NoteRecord, UserRootMeaning, Motif } from "./types";
-import type { CompareSet, CompareItemRow, WordSense, SensesForWord, SenseGloss } from "../api/types";
+import type { CompareSet, CompareItemRow, WordIndication, IndicationsForWord, IndicationGloss } from "../api/types";
 
 const DB_NAME = "alsiraat-archive";
 const DB_VERSION = 1;
@@ -268,49 +268,49 @@ export const archive = {
     },
   },
 
-  /** Word senses — meanings anchored at the ROOT (one primary per root), each
-   *  with per-form refinements. Rootless words keep standalone lemma senses. */
-  senses: {
-    /** The word's root senses (each with THIS form's refinement) + rootless senses. */
-    forWord: async (lemma: string | null, root: string | null): Promise<SensesForWord> => {
+  /** Word indications — meanings anchored at the ROOT (one primary per root), each
+   *  with per-form refinements. Rootless words keep standalone lemman indications. */
+  indications: {
+    /** The word's root indications (each with THIS form's refinement) + rootless indications. */
+    forWord: async (lemma: string | null, root: string | null): Promise<IndicationsForWord> => {
       await ensureMigrated();
       const q = new URLSearchParams();
       if (lemma) q.set("lemma", lemma);
       if (root) q.set("root", root);
-      return srvGet<SensesForWord>(`/senses/for-word?${q.toString()}`);
+      return srvGet<IndicationsForWord>(`/indications/for-word?${q.toString()}`);
     },
-    /** Reader gloss data (primary root-sense text + refinements + rootless primaries). */
-    gloss: async (): Promise<SenseGloss> => {
+    /** Reader gloss data (primary root-indication text + refinements + rootless primaries). */
+    gloss: async (): Promise<IndicationGloss> => {
       await ensureMigrated();
-      return srvGet<SenseGloss>("/senses/gloss");
+      return srvGet<IndicationGloss>("/indications/gloss");
     },
-    /** All of a root sense's per-form refinements (one per form the user has filled). */
-    refinements: async (senseId: string): Promise<WordSense[]> => {
+    /** All of a root indication's per-form refinements (one per form the user has filled). */
+    refinements: async (indicationId: string): Promise<WordIndication[]> => {
       await ensureMigrated();
-      return srvGet<WordSense[]>(`/senses/${encodeURIComponent(senseId)}/refinements`);
+      return srvGet<WordIndication[]>(`/indications/${encodeURIComponent(indicationId)}/refinements`);
     },
-    /** Create/update a root sense (pass root) or a standalone lemma sense (pass lemma, no root). */
+    /** Create/update a root indication (pass root) or a standalone lemman indication (pass lemma, no root). */
     save: async (m: {
       id: string; root?: string | null; lemma?: string | null;
       label: string; meaning: string; primary?: boolean;
-    }): Promise<WordSense> => {
+    }): Promise<WordIndication> => {
       await ensureMigrated();
-      return srvPut<WordSense>(`/senses/${encodeURIComponent(m.id)}`, m);
+      return srvPut<WordIndication>(`/indications/${encodeURIComponent(m.id)}`, m);
     },
-    /** Create/update a per-form refinement of a root sense. */
+    /** Create/update a per-form refinement of a root indication. */
     saveRefinement: async (m: {
       id: string; parentId: string; lemma: string; label: string; meaning: string;
-    }): Promise<WordSense> => {
+    }): Promise<WordIndication> => {
       await ensureMigrated();
-      return srvPut<WordSense>(`/refinements/${encodeURIComponent(m.id)}`, m);
+      return srvPut<WordIndication>(`/refinements/${encodeURIComponent(m.id)}`, m);
     },
-    setPrimary: async (id: string): Promise<WordSense> => {
+    setPrimary: async (id: string): Promise<WordIndication> => {
       await ensureMigrated();
-      return srvPut<WordSense>(`/senses/${encodeURIComponent(id)}/primary`, {});
+      return srvPut<WordIndication>(`/indications/${encodeURIComponent(id)}/primary`, {});
     },
     remove: async (id: string): Promise<void> => {
       await ensureMigrated();
-      return srvDelete(`/senses/${encodeURIComponent(id)}`);
+      return srvDelete(`/indications/${encodeURIComponent(id)}`);
     },
     removeRefinement: async (id: string): Promise<void> => {
       await ensureMigrated();

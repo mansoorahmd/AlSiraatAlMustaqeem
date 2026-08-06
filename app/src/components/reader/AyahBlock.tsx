@@ -57,12 +57,12 @@ interface Props {
   translationId: number | null;
   myGlossOn: boolean;
   formStatus: Map<string, FormStatusRow> | null;
-  /** "root lemma" → this form's refinement of the root's primary sense */
-  senseRefine?: Map<string, string> | null;
-  /** root → the root's primary sense text (fallback when the form isn't refined) */
-  senseRootText?: Map<string, string> | null;
-  /** lemma → standalone primary sense (rootless words) */
-  senseLemmaText?: Map<string, string> | null;
+  /** "root lemma" → this form's refinement of the root's primary indication */
+  indicationRefine?: Map<string, string> | null;
+  /** root → the root's primary indication text (fallback when the form isn't refined) */
+  indicationRootText?: Map<string, string> | null;
+  /** lemma → standalone primary indication (rootless words) */
+  indicationLemmaText?: Map<string, string> | null;
   /** cases in which this ayah sits as evidence */
   caseRefs: AyahCaseRef[] | null;
   /** root_arabic → total occurrences (for the rare-root ⚲ mark) */
@@ -122,7 +122,7 @@ const chapterOf = (verseKey: string) => parseInt(verseKey.split(":")[0] ?? "", 1
 const spacedRoot = (r: string) => r.split("").join(" ");
 
 export const AyahBlock = memo(function AyahBlock({
-  verse, translationOn, translationId, myGlossOn, formStatus, senseRefine, senseRootText, senseLemmaText, caseRefs, rareRoots, highlightWord,
+  verse, translationOn, translationId, myGlossOn, formStatus, indicationRefine, indicationRootText, indicationLemmaText, caseRefs, rareRoots, highlightWord,
   focusRoots, focusLinked, focusPattern, focusTarget, focusReason, focusBase, focusBaseSurah,
   focusThisSurah, surahName, verseNotes, onNotesChanged, hasEcho, variantPositions, echoHighlightRange, onWordTap,
 }: Props) {
@@ -210,27 +210,27 @@ export const AyahBlock = memo(function AyahBlock({
           glossFor={(position) => {
             if (!myGlossOn) return null;
             const w = wordByPos.get(position);
-            // Roots you've given a sense are a small set, so one cheap lookup
-            // decides whether any sense work is needed for this word at all.
+            // Roots you've given an indication are a small set, so one cheap lookup
+            // decides whether any indication work is needed for this word at all.
             if (w?.root) {
-              const rootText = senseRootText?.get(w.root);
+              const rootText = indicationRootText?.get(w.root);
               if (rootText !== undefined) {
-                // 1) this form's refinement of the root's primary sense. Try the
+                // 1) this form's refinement of the root's primary indication. Try the
                 // key as-is, then NFC-normalised (Arabic can arrive composed or
                 // decomposed from different endpoints — only checked on a miss).
                 if (w.lemma) {
                   const r =
-                    senseRefine?.get(`${w.root} ${w.lemma}`) ??
-                    senseRefine?.get(`${w.root} ${w.lemma.normalize("NFC")}`);
+                    indicationRefine?.get(`${w.root} ${w.lemma}`) ??
+                    indicationRefine?.get(`${w.root} ${w.lemma.normalize("NFC")}`);
                   if (r) return r;
                 }
-                // 2) else the root's primary sense text
+                // 2) else the root's primary indication text
                 return rootText;
               }
             }
-            // 3) rootless word: its standalone primary sense
+            // 3) rootless word: its standalone primary indication
             if (w && !w.root && w.lemma) {
-              const lt = senseLemmaText?.get(w.lemma);
+              const lt = indicationLemmaText?.get(w.lemma);
               if (lt) return lt;
             }
             // 4) else the established meaning from this ayah's own case
