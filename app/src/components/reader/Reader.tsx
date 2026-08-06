@@ -474,6 +474,7 @@ export function Reader({ chapters, onBackToIndex }: Props) {
             focusBase={focusSpec?.base ?? null}
             focusBaseSurah={focusSpec ? surahName(focusSpec.base.label) : null}
             focusThisSurah={surahName(v.verse_key)}
+            surahName={surahName(v.verse_key)}
             verseNotes={notesMap.get(v.verse_key) ?? null}
             onNotesChanged={bumpNotes}
             hasEcho={echoSet.has(v.verse_key)}

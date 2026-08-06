@@ -25,7 +25,8 @@ a { color: var(--lapis); }
   direction: rtl;
   font-family: var(--font-quran-uthmani);
   font-size: calc(var(--fs-quran) * var(--reader-scale));
-  line-height: 2.1;
+  /* generous leading: Uthmani stacks marks above and below the baseline */
+  line-height: 2.25;
 }
 
 /* ============ app shell ============ */
@@ -904,13 +905,18 @@ a { color: var(--lapis); }
 }
 
 .ayah {
-  margin: 0 0 calc(0.6rem * var(--reader-scale));
+  margin: 0 0 calc(0.4rem * var(--reader-scale));
+  /* Breathing room for Arabic descenders (ع ج ح ي) and low marks (kasra,
+     shadda). This is not cosmetic: content-visibility below applies PAINT
+     containment, which clips to the padding box — with no padding the tails of
+     letters on the first/last line get sliced off. */
+  padding: calc(0.3rem * var(--reader-scale)) 0 calc(0.55rem * var(--reader-scale));
   scroll-margin-top: 6rem;
   /* Skip layout/paint for āyāt scrolled out of view. Long surahs render
      thousands of word spans (and interlinear gloss stacks when My gloss is on);
      without this the browser lays them all out at once and the tab hangs. */
   content-visibility: auto;
-  contain-intrinsic-size: auto 5rem;
+  contain-intrinsic-size: auto 6rem;
 }
 .ayah-text { margin: 0; text-align: justify; }
 
@@ -1486,6 +1492,10 @@ a { color: var(--lapis); }
   color: var(--gold);
   margin-inline-start: 0.15rem;
   user-select: none;
+  /* keep "2:127" in reading order inside the RTL line, and hint the tooltip */
+  unicode-bidi: isolate;
+  cursor: help;
+  white-space: nowrap;
 }
 
 .evidence-mark {

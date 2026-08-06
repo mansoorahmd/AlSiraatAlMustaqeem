@@ -81,6 +81,8 @@ interface Props {
   focusBaseSurah?: string | null;
   /** human surah name for this (the focused) verse */
   focusThisSurah?: string | null;
+  /** the surah's name — shown on hover over the ayah end mark */
+  surahName?: string | null;
   /** notes/questions on this verse (ayah-level + word-level) */
   verseNotes?: NoteRecord[] | null;
   /** called when notes for this verse change, so the page refreshes marks */
@@ -112,6 +114,9 @@ function TranslationLine({ verseKey, resourceId }: { verseKey: string; resourceI
 
 const RARE_MAX = 10;
 
+/** the surah number out of a "2:127" verse key */
+const chapterOf = (verseKey: string) => parseInt(verseKey.split(":")[0] ?? "", 10);
+
 // Roots read clearest as isolated letters (ض ل ل), so they don't ligature into
 // an ambiguous blob. A hair space keeps the letters apart without joining.
 const spacedRoot = (r: string) => r.split("").join(" ");
@@ -119,7 +124,7 @@ const spacedRoot = (r: string) => r.split("").join(" ");
 export const AyahBlock = memo(function AyahBlock({
   verse, translationOn, translationId, myGlossOn, formStatus, senseRefine, senseRootText, senseLemmaText, caseRefs, rareRoots, highlightWord,
   focusRoots, focusLinked, focusPattern, focusTarget, focusReason, focusBase, focusBaseSurah,
-  focusThisSurah, verseNotes, onNotesChanged, hasEcho, variantPositions, echoHighlightRange, onWordTap,
+  focusThisSurah, surahName, verseNotes, onNotesChanged, hasEcho, variantPositions, echoHighlightRange, onWordTap,
 }: Props) {
   const text = typeof verse.text === "string" ? verse.text : "";
   const words = verse.words ?? null;
@@ -250,8 +255,12 @@ export const AyahBlock = memo(function AyahBlock({
             onClick={() => setWhyOpen((o) => !o)}
           >⊙</button>
         )}
-        <span className="ayah-num" aria-label={`ayah ${verse.verse_number}`}>
-          ﴿{arabicIndic(verse.verse_number)}﴾
+        <span
+          className="ayah-num"
+          title={`${surahName ? `${surahName} · ` : ""}${verse.verse_key}`}
+          aria-label={`${surahName ? `${surahName}, ` : ""}ayah ${verse.verse_key}`}
+        >
+          ﴿{arabicIndic(chapterOf(verse.verse_key))}:{arabicIndic(verse.verse_number)}﴾
         </span>
         {caseRefs && caseRefs.length > 0 && (
           <button
