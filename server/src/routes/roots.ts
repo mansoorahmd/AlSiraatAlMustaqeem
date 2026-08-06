@@ -28,6 +28,19 @@ export function rootRoutes(state: AppState): Hono {
     })),
   );
 
+  // the āyāt where this root and another BOTH occur — the evidence for a collocation
+  r.get("/roots/:root/with/:other", (c) => {
+    const root = c.req.param("root");
+    const other = c.req.param("other");
+    if (state.roots.getRoot(root) === null) return c.json({ detail: `root not found: ${root}` }, 404);
+    if (state.roots.getRoot(other) === null) return c.json({ detail: `root not found: ${other}` }, 404);
+    return c.json(state.linkages.sharedVerses(
+      root, other,
+      qstr(c, "script", "uthmani") ?? "uthmani",
+      qint(c, "limit", 300, { min: 1, max: 500 }) ?? 300,
+    ));
+  });
+
   r.get("/roots/:root/linkages", (c) => {
     const root = c.req.param("root");
     const links = state.linkages.coOccurringRoots(root, {

@@ -80,6 +80,10 @@ export const api = {
   root: (root: string) => get<RootDetail>(`/roots/${encodeURIComponent(root)}`),
   rootOccurrences: (root: string, script: Script = "uthmani", limit = 3000) =>
     get<RootOccurrence[]>(`/roots/${encodeURIComponent(root)}/occurrences`, { script, limit }),
+  /** the āyāt where two roots BOTH occur — the evidence behind a collocation */
+  rootPairVerses: (root: string, other: string, script: Script = "uthmani", limit = 300) =>
+    get<{ verse_key: string; chapter_id: number; verse_number: number; text: string | null }[]>(
+      `/roots/${encodeURIComponent(root)}/with/${encodeURIComponent(other)}`, { script, limit }),
   rootLinkages: (root: string, opts: { scope?: string; window?: number; sort_by?: string; limit?: number } = {}) =>
     get<Linkage[]>(`/roots/${encodeURIComponent(root)}/linkages`, opts),
 

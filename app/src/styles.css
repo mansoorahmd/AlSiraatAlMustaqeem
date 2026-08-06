@@ -2795,3 +2795,32 @@ a { color: var(--lapis); }
   padding: 1rem 0;
 }
 .error-note { color: var(--error); }
+
+/* collocation pair — the āyāt where this root and another meet */
+.colloc-chip.active { border-color: var(--gold); background: rgba(180, 83, 9, 0.07); }
+.colloc-pair {
+  margin-top: 0.7rem; border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-card); background: var(--paper-warm); overflow: hidden;
+}
+.colloc-pair-head {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--paper-edge);
+}
+.colloc-pair-roots { font-size: 1.25rem; color: var(--gold); }
+.colloc-pair-amp { color: var(--ink-faint); font-size: 0.9rem; }
+.colloc-pair-count { font-size: var(--fs-label); color: var(--ink-soft); }
+.colloc-pair-list { max-height: 26rem; overflow-y: auto; }
+.colloc-pair-row {
+  display: flex; align-items: baseline; gap: 0.7rem; width: 100%;
+  border: none; background: none; cursor: pointer; text-align: start;
+  padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--paper-edge);
+}
+.colloc-pair-row:last-child { border-bottom: none; }
+.colloc-pair-row:hover { background: var(--paper); }
+.colloc-pair-key {
+  flex: none; font-size: var(--fs-label); color: var(--gold);
+  font-variant-numeric: tabular-nums; min-width: 3.4rem;
+}
+.colloc-pair-text {
+  flex: 1; min-width: 0; font-size: 1.25rem; line-height: 2.1; color: var(--ink);
+}

@@ -60,6 +60,17 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: P
   const allMotifs = useAsync(() => archive.motifs.all(), [motifV]);
   const [newMotif, setNewMotif] = useState("");
 
+  // a collocated root whose shared āyāt are being shown
+  const [pairRoot, setPairRoot] = useState<string | null>(null);
+  const pairArabic =
+    (links.data ?? []).find((l) => l.root_buckwalter === pairRoot)?.root_arabic ?? pairRoot ?? "";
+  const pairVerses = useAsync(
+    () => (pairRoot ? api.rootPairVerses(rootBuckwalter, pairRoot, reading.script) : Promise.resolve([])),
+    [rootBuckwalter, pairRoot, reading.script],
+  );
+  // a different root page resets the open pair
+  useEffect(() => { setPairRoot(null); }, [rootBuckwalter]);
+
   const inIds = new Set((motifsIn.data ?? []).map((m) => m.id));
   const available = (allMotifs.data ?? []).filter((m) => !inIds.has(m.id));
 
@@ -221,15 +232,52 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: P
           {(links.data ?? []).map((l) => (
             <button
               key={l.root_buckwalter}
-              className="colloc-chip"
-              title={`co-occurs ${l.cooccur}× · strength ${l.score.toFixed(2)}${onOpenRoot ? " · open" : ""}`}
-              onClick={() => onOpenRoot?.(l.root_buckwalter, l.root_arabic)}
+              className={`colloc-chip${pairRoot === l.root_buckwalter ? " active" : ""}`}
+              title={`co-occurs ${l.cooccur}× · strength ${l.score.toFixed(2)} · show the shared āyāt`}
+              onClick={() =>
+                setPairRoot((cur) => (cur === l.root_buckwalter ? null : l.root_buckwalter))
+              }
             >
               <span className="quran">{spaced(l.root_arabic)}</span>
               <span className="colloc-strength">{l.cooccur}×</span>
             </button>
           ))}
         </div>
+
+        {/* the āyāt where both roots meet — read the evidence for the collocation */}
+        {pairRoot && (
+          <div className="colloc-pair">
+            <div className="colloc-pair-head">
+              <span className="quran colloc-pair-roots">
+                {spaced(rootArabic)} <span className="colloc-pair-amp">+</span> {spaced(pairArabic)}
+              </span>
+              <span className="colloc-pair-count">
+                {pairVerses.data ? `${pairVerses.data.length} āyāt together` : "…"}
+              </span>
+              <span className="spacer" />
+              {onOpenRoot && (
+                <button className="ctl" onClick={() => onOpenRoot(pairRoot, pairArabic)}>
+                  open {pairArabic} →
+                </button>
+              )}
+              <button className="cmp-x" title="Close" onClick={() => setPairRoot(null)}>✕</button>
+            </div>
+            {pairVerses.loading && <p className="loading">Finding where they meet…</p>}
+            <div className="colloc-pair-list">
+              {(pairVerses.data ?? []).map((v) => (
+                <button
+                  key={v.verse_key}
+                  className="colloc-pair-row"
+                  title={`Read ${v.verse_key}`}
+                  onClick={() => dispatch({ type: "jumpToVerse", verseKey: v.verse_key })}
+                >
+                  <span className="colloc-pair-key">{v.verse_key}</span>
+                  <span className="colloc-pair-text quran" dir="rtl">{v.text ?? ""}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* dictionary lexicons */}

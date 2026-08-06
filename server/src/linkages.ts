@@ -3,6 +3,7 @@
 import type { Db } from "./db.js";
 import { normalizeRoot } from "./text/normalize.js";
 import { round4 } from "./similarity/lexical.js";
+import { SCRIPTS } from "./content.js";
 
 export interface Linkage {
   root_buckwalter: string;
@@ -107,6 +108,39 @@ export class RootLinkages {
       });
     }
     return out;
+  }
+
+  /** The āyāt where two roots BOTH occur, in mushaf order — the evidence behind
+   *  a collocation, so "keeps company with" can be read rather than trusted.
+   *
+   *  Intersects in JS on purpose. Doing it in SQL against the word_occurrences
+   *  VIEW (either correlated EXISTS or `IN (… INTERSECT …)`) made node:sqlite
+   *  plan a pathological nested loop and hang, though the same SQL is instant in
+   *  other SQLite builds. Two indexed lookups over word_segments are predictable.
+   */
+  sharedVerses(a: string, b: string, script = "uthmani", limit = 300): {
+    verse_key: string; chapter_id: number; verse_number: number; text: string | null;
+  }[] {
+    const keysFor = (root: string) =>
+      this.db
+        .query<{ verse_key: string }>(
+          "SELECT DISTINCT verse_key FROM word_segments WHERE root_buckwalter = ? AND segment_type = 'STEM'",
+          [root],
+        )
+        .map((r) => r.verse_key);
+
+    const inB = new Set(keysFor(b));
+    const shared = keysFor(a).filter((k) => inB.has(k)).slice(0, limit);
+    if (shared.length === 0) return [];
+
+    const col = SCRIPTS[script] ?? "text_uthmani";
+    const holes = shared.map(() => "?").join(",");
+    return this.db.query(
+      `SELECT verse_key, chapter_id, verse_number, ${col} AS text
+       FROM verses WHERE verse_key IN (${holes})
+       ORDER BY chapter_id, verse_number`,
+      shared,
+    );
   }
 
   private adjacentLinks(bw: string, window: number, minCount: number): Linkage[] {
