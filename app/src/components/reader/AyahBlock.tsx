@@ -2,7 +2,7 @@
 // Optional translation underlay, plus the reader's own research feedback:
 // case marks on forms under investigation, interlinear gloss on established.
 
-import { memo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { api } from "../../api/client";
 import { useAsync } from "../../hooks/useAsync";
 import { useAppDispatch } from "../../state/store";
@@ -57,6 +57,12 @@ interface Props {
   translationId: number | null;
   myGlossOn: boolean;
   formStatus: Map<string, FormStatusRow> | null;
+  /** "root lemma" → this form's refinement of the root's primary sense */
+  senseRefine?: Map<string, string> | null;
+  /** root → the root's primary sense text (fallback when the form isn't refined) */
+  senseRootText?: Map<string, string> | null;
+  /** lemma → standalone primary sense (rootless words) */
+  senseLemmaText?: Map<string, string> | null;
   /** cases in which this ayah sits as evidence */
   caseRefs: AyahCaseRef[] | null;
   /** root_arabic → total occurrences (for the rare-root ⚲ mark) */
@@ -111,7 +117,7 @@ const RARE_MAX = 10;
 const spacedRoot = (r: string) => r.split("").join(" ");
 
 export const AyahBlock = memo(function AyahBlock({
-  verse, translationOn, translationId, myGlossOn, formStatus, caseRefs, rareRoots, highlightWord,
+  verse, translationOn, translationId, myGlossOn, formStatus, senseRefine, senseRootText, senseLemmaText, caseRefs, rareRoots, highlightWord,
   focusRoots, focusLinked, focusPattern, focusTarget, focusReason, focusBase, focusBaseSurah,
   focusThisSurah, verseNotes, onNotesChanged, hasEcho, variantPositions, echoHighlightRange, onWordTap,
 }: Props) {
@@ -161,12 +167,20 @@ export const AyahBlock = memo(function AyahBlock({
   const notedWords = new Set(
     (verseNotes ?? []).filter((n) => n.wordPosition != null).map((n) => n.wordPosition as number),
   );
-  const tokenFor = (position: number) =>
-    words?.find((w) => w.position === position)?.arabic ?? null;
+  // O(1) position → word lookup, built once. VerseText calls the *For helpers
+  // once per token; a linear .find each time made rendering O(words²) per āyah,
+  // which bites hard on long surahs once glosses/marks are on.
+  const wordByPos = useMemo(() => {
+    const m = new Map<number, Word>();
+    for (const w of words ?? []) if (w.position != null) m.set(w.position, w);
+    return m;
+  }, [words]);
+
+  const tokenFor = (position: number) => wordByPos.get(position)?.arabic ?? null;
 
   const rowFor = (position: number): FormStatusRow | null => {
-    if (!formStatus || !words) return null;
-    const lemma = words.find((w) => w.position === position)?.lemma;
+    if (!formStatus) return null;
+    const lemma = wordByPos.get(position)?.lemma;
     return lemma ? formStatus.get(lemma) ?? null : null;
   };
 
@@ -178,8 +192,7 @@ export const AyahBlock = memo(function AyahBlock({
           highlightPosition={highlightWord ?? null}
           highlightRanges={echoRanges.length ? echoRanges : undefined}
           focusFor={(position) => {
-            if (!words) return null;
-            const root = words.find((w) => w.position === position)?.root;
+            const root = wordByPos.get(position)?.root;
             if (!root) return null;
             if (focusRoots?.has(root)) return "shared";
             if (focusLinked?.has(root)) return "linked";
@@ -187,18 +200,42 @@ export const AyahBlock = memo(function AyahBlock({
           }}
           hasNoteFor={(position) => notedWords.has(position)}
           onWordTap={(position, token, rect) => {
-            const word = words?.find((w) => w.position === position) ?? null;
-            onWordTap(verse.verse_key, position, token, word, rect);
+            onWordTap(verse.verse_key, position, token, wordByPos.get(position) ?? null, rect);
           }}
           glossFor={(position) => {
             if (!myGlossOn) return null;
+            const w = wordByPos.get(position);
+            // Roots you've given a sense are a small set, so one cheap lookup
+            // decides whether any sense work is needed for this word at all.
+            if (w?.root) {
+              const rootText = senseRootText?.get(w.root);
+              if (rootText !== undefined) {
+                // 1) this form's refinement of the root's primary sense. Try the
+                // key as-is, then NFC-normalised (Arabic can arrive composed or
+                // decomposed from different endpoints — only checked on a miss).
+                if (w.lemma) {
+                  const r =
+                    senseRefine?.get(`${w.root} ${w.lemma}`) ??
+                    senseRefine?.get(`${w.root} ${w.lemma.normalize("NFC")}`);
+                  if (r) return r;
+                }
+                // 2) else the root's primary sense text
+                return rootText;
+              }
+            }
+            // 3) rootless word: its standalone primary sense
+            if (w && !w.root && w.lemma) {
+              const lt = senseLemmaText?.get(w.lemma);
+              if (lt) return lt;
+            }
+            // 4) else the established meaning from this ayah's own case
             const row = rowFor(position);
             return row?.status === "established" && row.meaning ? row.meaning : null;
           }}
           markFor={(position) => {
             const row = rowFor(position);
             if (row && row.status !== "established") return "open";
-            const root = words?.find((w) => w.position === position)?.root;
+            const root = wordByPos.get(position)?.root;
             if (
               root && rareRoots &&
               (rareRoots.get(root) ?? Infinity) <= RARE_MAX

@@ -11,7 +11,7 @@
 Research persists in `research.db` (SQLite) via `/research/*` routes. The old
 `ui/` focus-panel prototype has been retired and removed.
 
-Status: **V0–V9 done.** Research-first loop complete (research.db, slips,
+Status: **V0–V16 done.** Research-first loop complete (research.db, slips,
 form dossier, reader gloss & case marks, full lexicons) + V5 trails &
 rare-root marks + V6 modern board (zoom/pan, arrange, word threads, segment
 highlights, ayah cases, spelling variants, case navigation) + **V7 export**:
@@ -559,6 +559,89 @@ group roots by their own themes:
   `addToActiveCompare`), confirmed by a transient **toast** ("Added to ‹name›").
   Active-set id is a device-local pref; the Compare tab badge = the active set's
   count. Store: `activeCompareSetId`, `compareTick`, `toast`.
+
+### V16 — Word senses (several meanings per word, switchable) ✅
+- A word (lemma) can now hold **multiple senses** — the different "feels" a word
+  carries in different contexts (e.g. أَفْلَحَ as *attain/triumph* vs the
+  *till/cultivate* undertone). Senses are **global to the lemma**, shown wherever
+  the word appears. Backend: `word_senses` (id, lemma, root, label, meaning,
+  is_primary) + `sense_assignments` (verse_key, word_position → sense) in
+  research.db, routes under `/research/senses` and `/research/sense-assignments`.
+- One sense is the **primary** (★) — the default gloss everywhere. You can also
+  **pin THIS āyah's occurrence** to a specific sense ("use for this āyah"), which
+  overrides the primary just there. First sense added is auto-primary; deleting
+  the primary promotes the next; deleting a sense clears its assignments.
+- Managed from the **word menu** (tap a word → *✒ Senses (N)*): list senses, add
+  one (short label + meaning), set primary, delete, and assign the current
+  occurrence. The menu header shows the sense active on this word ("— this āyah"
+  or "— primary of N").
+- The **reader gloss** resolves in order: per-āyah assignment → the word's primary
+  sense → (fallback) the established case meaning. `SensesPanel`,
+  `archive.senses`, Reader `sensePrimary`/`senseAssign` maps + `senseTick`.
+
+  **V16.2 — root senses + per-form refinements (final model).** Redesigned so
+  senses are anchored at the **root** with per-**form** refinements:
+  - A root holds several senses (its "feels"); **one is primary** (the default
+    gloss). `word_senses` scope='root', `is_primary` unique per root.
+  - Each root sense has a **refinement** for each form (lemma) — the shade that
+    sense takes in that exact word. `word_senses` scope='lemma', `parent_id` = the
+    root sense (added `parent_id` column, self-migrating). Forms not yet refined
+    show an empty "complete for ‹form›" slot (**soft** — nothing blocked).
+  - Reader gloss (Primary-only): this form's refinement of the root's primary
+    sense → that sense's own text → established case meaning. Server `glossData()`
+    returns primary-sense text per root + per-form refinements + rootless lemma
+    primaries; Reader builds `senseRefine`/`senseRootText`/`senseLemmaText` maps.
+  - Rootless words (particles/names) keep a plain standalone lemma sense.
+  - **Sense Editor modal** (`SenseEditor`) — the meaning-setting surface: root
+    header + core meaning; left rail lists the root's senses (add / pick primary /
+    delete / rename); centre shows **every unique form of the root** with its own
+    editable meaning for the selected sense (so any form can be set from one place,
+    not just the tapped word), the tapped form pinned first and unfilled forms
+    flagged; right rail is a **Dictionaries** panel (the root's lexicon entries)
+    for lookup while writing. Opened from the word menu's ✒ Senses (rooted words)
+    and from each form in the Investigate dossier. New endpoint
+    `GET /senses/:id/refinements`.
+  - Endpoints: `/senses/gloss`, `/senses/for-word`, `/senses/:id`(+`/primary`),
+    `/refinements/:id`. Per-occurrence assignment removed (superseded by
+    Primary-only). `SensesPanel` rebuilt (root senses + refinement editors +
+    "N of M forms" completion); surfaced in the reader word menu **and** the
+    Investigate form dossier.
+- *Web only so far — mirror to mobile later.*
+
+### Fixes & hardening (this pass) ✅
+Bugs found while getting senses working end-to-end — recorded because several
+were invisible-by-inspection and cost real time:
+
+- **Gloss never used a form's refinement** (the headline bug). The Reader wrote
+  the lookup key with a **NUL byte** separator (`` `${root}\x00${lemma}` ``) while
+  `AyahBlock` read it with a **space** — an invisible mismatch, so every lookup
+  missed and the gloss silently fell back to the root sense. The word menu looked
+  right because it matches server-side by lemma (a different path), which made the
+  bug look like a caching problem. Both sides now use one separator, verified by
+  extracting the write/read separators from the two files and comparing them.
+  *Lesson: for invisible-character bugs, dump raw bytes (`repr`) — don't re-read
+  the source, and don't "verify" with a simulation that reimplements the logic.*
+- **`word_senses.lemma NOT NULL`** — the first schema required a lemma, but ROOT
+  senses have none, so every "add sense" 500'd. `CREATE TABLE IF NOT EXISTS` can't
+  relax a constraint → added a one-time table rebuild that preserves existing rows.
+- **`no such column: parent_id` on boot** — the `parent_id` index sat in `SCHEMA`,
+  which runs *before* the migration that adds the column. Index creation moved
+  after the migration.
+- **Sense Editor edits were lost** — the modal was rendered *inside* the word menu
+  (a fixed, scrollable popup with its own outside-click handling). Moved to the
+  reader level; the overlay now closes on `click` (not `mousedown`) so a focused
+  field's blur-save commits first.
+- **Reader hangs with My gloss on** — a whole surah's interlinear gloss stacks were
+  laid out at once. Added `content-visibility: auto` per āyah (off-screen āyāt skip
+  layout/paint) and replaced per-token `words.find(...)` with an O(1) position→word
+  map built once per āyah (was O(words²) per render).
+- **"⊞ compare here" froze the tab** — it fetched and rendered *every* occurrence
+  of a repeated phrase inline. Now caps the inline list (12) with the rest as jump
+  chips, and keys its fetch on stable primitives so it can't loop.
+- **Stale research reads** — `Cache-Control: no-store` on `/api/v1/research/*`
+  only. Deliberately scoped: research data is read-write, Quran content is
+  immutable and stays cacheable. (A per-request cache-busting query param was
+  tried and reverted — it wasn't the cause and added avoidable overhead.)
 
 ### Remaining / future (not committed)
 - **`?` shortcuts overlay** — a discoverable cheat-sheet for the keyboard

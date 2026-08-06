@@ -8,7 +8,7 @@
 // server the first time the app runs after this change.
 
 import type { CaseRecord, VaultEntry, TrailRecord, PrefsRecord, NoteRecord, UserRootMeaning, Motif } from "./types";
-import type { CompareSet, CompareItemRow } from "../api/types";
+import type { CompareSet, CompareItemRow, WordSense, SensesForWord, SenseGloss } from "../api/types";
 
 const DB_NAME = "alsiraat-archive";
 const DB_VERSION = 1;
@@ -265,6 +265,56 @@ export const archive = {
     removeRoot: async (id: string, root: string): Promise<void> => {
       await ensureMigrated();
       return srvDelete(`/motifs/${encodeURIComponent(id)}/roots/${encodeURIComponent(root)}`);
+    },
+  },
+
+  /** Word senses — meanings anchored at the ROOT (one primary per root), each
+   *  with per-form refinements. Rootless words keep standalone lemma senses. */
+  senses: {
+    /** The word's root senses (each with THIS form's refinement) + rootless senses. */
+    forWord: async (lemma: string | null, root: string | null): Promise<SensesForWord> => {
+      await ensureMigrated();
+      const q = new URLSearchParams();
+      if (lemma) q.set("lemma", lemma);
+      if (root) q.set("root", root);
+      return srvGet<SensesForWord>(`/senses/for-word?${q.toString()}`);
+    },
+    /** Reader gloss data (primary root-sense text + refinements + rootless primaries). */
+    gloss: async (): Promise<SenseGloss> => {
+      await ensureMigrated();
+      return srvGet<SenseGloss>("/senses/gloss");
+    },
+    /** All of a root sense's per-form refinements (one per form the user has filled). */
+    refinements: async (senseId: string): Promise<WordSense[]> => {
+      await ensureMigrated();
+      return srvGet<WordSense[]>(`/senses/${encodeURIComponent(senseId)}/refinements`);
+    },
+    /** Create/update a root sense (pass root) or a standalone lemma sense (pass lemma, no root). */
+    save: async (m: {
+      id: string; root?: string | null; lemma?: string | null;
+      label: string; meaning: string; primary?: boolean;
+    }): Promise<WordSense> => {
+      await ensureMigrated();
+      return srvPut<WordSense>(`/senses/${encodeURIComponent(m.id)}`, m);
+    },
+    /** Create/update a per-form refinement of a root sense. */
+    saveRefinement: async (m: {
+      id: string; parentId: string; lemma: string; label: string; meaning: string;
+    }): Promise<WordSense> => {
+      await ensureMigrated();
+      return srvPut<WordSense>(`/refinements/${encodeURIComponent(m.id)}`, m);
+    },
+    setPrimary: async (id: string): Promise<WordSense> => {
+      await ensureMigrated();
+      return srvPut<WordSense>(`/senses/${encodeURIComponent(id)}/primary`, {});
+    },
+    remove: async (id: string): Promise<void> => {
+      await ensureMigrated();
+      return srvDelete(`/senses/${encodeURIComponent(id)}`);
+    },
+    removeRefinement: async (id: string): Promise<void> => {
+      await ensureMigrated();
+      return srvDelete(`/refinements/${encodeURIComponent(id)}`);
     },
   },
 

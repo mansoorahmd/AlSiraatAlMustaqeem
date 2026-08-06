@@ -7,6 +7,7 @@ import { useState } from "react";
 import { api } from "../../api/client";
 import { useAsync } from "../../hooks/useAsync";
 import { fetchFormRevisions, type FormRevision } from "../../persistence/db";
+import { SenseEditor } from "../reader/SenseEditor";
 import type { RootOccurrence } from "../../api/types";
 import type { CaseRecord } from "../../persistence/types";
 import {
@@ -51,6 +52,7 @@ export function FormDossier({ caseRec, occById, mutate }: Props) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [verdictDraft, setVerdictDraft] = useState<string | null>(null);
   const [rootRefOpen, setRootRefOpen] = useState(false);
+  const [editorLemma, setEditorLemma] = useState<string | null>(null);
 
   // evidence counts per lemma
   const cardCount = new Map<string, number>();
@@ -216,6 +218,14 @@ export function FormDossier({ caseRec, occById, mutate }: Props) {
                     )}
                   </div>
                   <Revisions caseId={caseRec.id} lemma={lemma} />
+
+                  {root && (
+                    <div className="form-senses">
+                      <button className="ctl" onClick={() => setEditorLemma(lemma)}>
+                        ✒ Senses &amp; meanings — open editor for <span className="quran">{lemma}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -267,6 +277,10 @@ export function FormDossier({ caseRec, occById, mutate }: Props) {
           </p>
         )}
       </div>
+
+      {root && editorLemma && (
+        <SenseEditor root={root} focusLemma={editorLemma} onClose={() => setEditorLemma(null)} />
+      )}
     </aside>
   );
 }

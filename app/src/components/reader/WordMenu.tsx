@@ -17,6 +17,7 @@ import type { Word } from "../../api/types";
 import { spacedRoot } from "./format";
 import { NotesPanel } from "./NotesPanel";
 import { RelatedNotes } from "./RelatedNotes";
+import { SensesPanel } from "./SensesPanel";
 
 export interface WordMenuTarget {
   verseKey: string;
@@ -32,10 +33,13 @@ interface Props {
   target: WordMenuTarget;
   formStatus: Map<string, FormStatusRow> | null;
   onNotesChanged?: () => void;
+  onSensesChanged?: () => void;
+  /** open the full Sense Editor (rendered at the reader level, not in this menu) */
+  onEditSenses?: (root: string, lemma: string | null) => void;
   onClose: () => void;
 }
 
-export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props) {
+export function WordMenu({ target, formStatus, onNotesChanged, onSensesChanged, onEditSenses, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const dispatch = useAppDispatch();
   const { activeCaseId } = useAppState();
@@ -44,6 +48,7 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
   const [lexOpen, setLexOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [spellOpen, setSpellOpen] = useState(false);
+  const [sensesOpen, setSensesOpen] = useState(false);
 
   // every case that can still receive evidence (open or partial)
   const openCases = useAsync(async () => {
@@ -99,6 +104,25 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
     [target.verseKey, target.position, target.word !== null],
   );
   const variants = spelling.data ?? [];
+
+  // the reader's own senses for this word: the root's senses (with this form's
+  // refinement) + any rootless standalone senses. The active reading = this
+  // form's refinement of the primary root sense, else that sense's own text.
+  const [senseVersion, setSenseVersion] = useState(0);
+  const senses = useAsync(
+    async () => ((lemma || root) ? archive.senses.forWord(lemma, root) : null),
+    [lemma, root, senseVersion],
+  );
+  const rootSenses = senses.data?.rootSenses ?? [];
+  const lemmaSenses = senses.data?.lemmaSenses ?? [];
+  const senseCount = rootSenses.length + lemmaSenses.length;
+  const primaryRoot = rootSenses.find((s) => s.primary) ?? null;
+  const primaryLemma = lemmaSenses.find((s) => s.primary) ?? null;
+  // what shows under the word here
+  const activeText = primaryRoot
+    ? (primaryRoot.refinement?.label || primaryRoot.refinement?.meaning || primaryRoot.label || primaryRoot.meaning)
+    : (primaryLemma?.label || primaryLemma?.meaning || "");
+  const activeIsRefined = !!primaryRoot?.refinement;
 
   // close on outside click / Esc
   useEffect(() => {
@@ -189,6 +213,17 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
         </div>
       )}
 
+      {/* the reader's own reading of this word: the primary sense, refined for this form */}
+      {activeText && (
+        <div className="wm-verdict sense">
+          ✒ <em>“{activeText}”</em>
+          <span className="wm-verdict-note">
+            — {activeIsRefined ? "this form" : primaryRoot ? "root sense" : "your meaning"}
+            {rootSenses.length > 1 ? ` · 1 of ${rootSenses.length} senses` : ""}
+          </span>
+        </div>
+      )}
+
       {/* the reader's research status for this form */}
       {root && (
         research ? (
@@ -234,6 +269,13 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
           title="Find āyāt where this word co-occurs with others"
           onClick={() => dispatch({ type: "pinExpr", term: { surface: target.token, root: target.word?.root ?? null } })}
         >⊕ Expression</button>
+        {(lemma || root) && (
+          <button
+            className={`wm-act${sensesOpen ? " active" : ""}`}
+            title="Your own meaning(s) for this word's root — several senses, one primary, refined per form"
+            onClick={() => { if (root) { onEditSenses?.(root, lemma); onClose(); } else setSensesOpen((o) => !o); }}
+          >✒ Senses{senseCount ? ` (${senseCount})` : ""}</button>
+        )}
         <button
           className={`wm-act${notesOpen ? " active" : ""}`}
           onClick={() => setNotesOpen((o) => !o)}
@@ -245,7 +287,17 @@ export function WordMenu({ target, formStatus, onNotesChanged, onClose }: Props)
         )}
       </div>
 
-      {/* expandable panels — full width below the grid */}
+      {/* rooted words → full modal editor (opened at reader level); rootless → inline */}
+      {sensesOpen && !root && lemma && (
+        <div className="wm-panel">
+          <SensesPanel
+            lemma={lemma}
+            root={root}
+            onChanged={() => { setSenseVersion((v) => v + 1); onSensesChanged?.(); }}
+          />
+        </div>
+      )}
+
       {notesOpen && (
         <div className="wm-panel">
           <NotesPanel

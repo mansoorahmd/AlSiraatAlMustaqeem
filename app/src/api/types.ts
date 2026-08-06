@@ -73,6 +73,38 @@ export interface TranslationResource {
 /** One rasm spelling of a word (same word written a particular way). */
 export interface SpellingVariant { surface: string; count: number; verses: string[] }
 
+/** One of the reader's own meanings for a word (lemma). A word may hold several
+ *  senses ("feels"); one is primary (the default gloss). Global to the lemma. */
+export interface WordSense {
+  id: string; root: string | null; lemma: string | null;
+  /** 'root' = a sense of the whole root; 'lemma' = a refinement or rootless sense */
+  scope: "root" | "lemma";
+  /** a refinement points at its root sense; root/standalone senses are null */
+  parentId: string | null;
+  label: string; meaning: string; primary: boolean;
+  createdAt: number; updatedAt: number;
+}
+/** A root sense plus this form's refinement of it (null = not yet written). */
+export interface RootSenseWithRefinement extends WordSense {
+  refinement: WordSense | null;
+  /** how many of the root's forms have been given a refinement for this sense */
+  refinedCount: number;
+}
+/** What the word menu needs for a word: its root senses (with this form's
+ *  refinement) and, for rootless words, standalone lemma senses. */
+export interface SensesForWord {
+  root: string | null; lemma: string | null;
+  rootSenses: RootSenseWithRefinement[];
+  lemmaSenses: WordSense[];
+}
+/** Reader gloss data: primary root-sense text per root, per-form refinements,
+ *  and rootless lemma primaries. */
+export interface SenseGloss {
+  roots: { root: string; text: string }[];
+  refinements: { root: string; lemma: string; text: string }[];
+  lemmas: { lemma: string; text: string }[];
+}
+
 /** A saved comparison — a named board of pinned āyāt & roots. */
 export interface CompareSet { id: string; title: string; createdAt: number; updatedAt: number; count: number }
 /** One pinned member of a comparison. */

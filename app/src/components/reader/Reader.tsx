@@ -11,6 +11,7 @@ import type { Script, Word, Chapter } from "../../api/types";
 import type { NoteRecord } from "../../persistence/types";
 import { AyahBlock } from "./AyahBlock";
 import { WordMenu, type WordMenuTarget } from "./WordMenu";
+import { SenseEditor } from "./SenseEditor";
 import { TrailStrip } from "./TrailStrip";
 import { buildFocusSpec, buildAyahFocus } from "./focus";
 import { FocusMap } from "./FocusMap";
@@ -164,7 +165,32 @@ export function Reader({ chapters, onBackToIndex }: Props) {
     return m;
   }, [formStatusRows.data]);
 
+  // the reader's own word senses: primary sense per lemma (default gloss) +
+  // per-occurrence overrides in this surah. bumped when edited in the word menu.
+  const [senseTick, setSenseTick] = useState(0);
+  const glossData = useAsync(() => archive.senses.gloss(), [senseTick]);
+  // gloss resolution maps: a form's refinement of the root's primary sense beats
+  // the root sense's own text; rootless words use their standalone primary
+  const { senseRefine, senseRootText, senseLemmaText } = useMemo(() => {
+    const refine = new Map<string, string>();   // `${root} ${lemma}` → text
+    const rootText = new Map<string, string>(); // root → primary sense text
+    const lemmaText = new Map<string, string>(); // lemma → standalone primary text
+    const g = glossData.data;
+    if (g) {
+      for (const r of g.roots ?? []) rootText.set(r.root, r.text);
+      for (const r of g.refinements ?? []) {
+        // key must match AyahBlock's lookup exactly: root + single space + lemma.
+        // Also index the NFC form so a lemma in the other Unicode normalisation matches.
+        refine.set(`${r.root} ${r.lemma}`, r.text);
+        refine.set(`${r.root} ${r.lemma.normalize("NFC")}`, r.text);
+      }
+      for (const l of g.lemmas ?? []) lemmaText.set(l.lemma, l.text);
+    }
+    return { senseRefine: refine, senseRootText: rootText, senseLemmaText: lemmaText };
+  }, [glossData.data]);
+
   const [menu, setMenu] = useState<WordMenuTarget | null>(null);
+  const [senseEdit, setSenseEdit] = useState<{ root: string; lemma: string | null } | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const [focusIdx, setFocusIdx] = useState(0);
   const [mapOpen, setMapOpen] = useState(false);
@@ -432,6 +458,9 @@ export function Reader({ chapters, onBackToIndex }: Props) {
             translationId={reading.translationId}
             myGlossOn={myGlossOn}
             formStatus={formStatus}
+            senseRefine={senseRefine}
+            senseRootText={senseRootText}
+            senseLemmaText={senseLemmaText}
             caseRefs={evidenceMap?.get(v.verse_key) ?? null}
             rareRoots={rootFreq.data ?? null}
             highlightWord={
@@ -474,11 +503,22 @@ export function Reader({ chapters, onBackToIndex }: Props) {
           target={menu}
           formStatus={formStatus}
           onNotesChanged={bumpNotes}
+          onSensesChanged={() => setSenseTick((t) => t + 1)}
+          onEditSenses={(root, lemma) => setSenseEdit({ root, lemma })}
           onClose={() => setMenu(null)}
         />
       )}
 
       {activeTrailId && <TrailStrip trailId={activeTrailId} />}
+
+      {senseEdit && (
+        <SenseEditor
+          root={senseEdit.root}
+          focusLemma={senseEdit.lemma}
+          onClose={() => setSenseEdit(null)}
+          onChanged={() => setSenseTick((t) => t + 1)}
+        />
+      )}
     </div>
   );
 }
