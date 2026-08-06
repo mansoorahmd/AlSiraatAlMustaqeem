@@ -1611,7 +1611,17 @@ a { color: var(--lapis); }
 .wm-head-word { display: flex; flex-direction: column; }
 .wm-word { font-size: 1.7rem; line-height: 1.5; color: var(--ink); }
 .wm-translit { color: var(--ink-faint); font-style: italic; font-size: var(--fs-small); }
-.wm-head-root { display: flex; flex-direction: column; align-items: flex-end; text-align: end; }
+.wm-head-root {
+  display: flex; flex-direction: column; align-items: flex-end; text-align: end;
+  border: none; background: none; padding: 0; cursor: pointer; font: inherit;
+  border-radius: var(--radius-card);
+}
+.wm-head-root:hover .wm-root-letters { color: var(--gold-bright); text-decoration: underline; }
+.wm-head-root:hover .wm-root-go { opacity: 1; }
+.wm-root-go {
+  display: block; font-size: var(--fs-label); color: var(--lapis);
+  opacity: 0; transition: opacity var(--t-fast) var(--ease-paper);
+}
 .wm-root-letters { font-family: var(--font-arabic-ui); font-size: 1.35rem; color: var(--gold); direction: rtl; }
 .wm-occ { font-size: var(--fs-label); color: var(--ink-soft); }
 .wm-reference { font-size: var(--fs-small); color: var(--ink-soft); margin: 0; text-align: start; }

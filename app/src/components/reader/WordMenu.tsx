@@ -172,10 +172,23 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
           {target.word?.transliteration && <span className="wm-translit">{target.word.transliteration}</span>}
         </div>
         {root ? (
-          <div className="wm-head-root">
+          <button
+            className="wm-head-root"
+            title={`Open the lexicon page for ${spacedRoot(root)}`}
+            onClick={() => {
+              dispatch({
+                type: "openRoot",
+                root: { buckwalter: target.word?.root_buckwalter ?? root, arabic: root },
+              });
+              onClose();
+            }}
+          >
             <span className="wm-root-letters quran">{spacedRoot(root)}</span>
-            {rootInfo.data && <span className="wm-occ">{rootInfo.data.total_occurrences}× in the Book</span>}
-          </div>
+            <span className="wm-occ">
+              {rootInfo.data ? `${rootInfo.data.total_occurrences}× in the Book` : ""}
+              <span className="wm-root-go">open root →</span>
+            </span>
+          </button>
         ) : isParticle ? (
           <span className="wm-occ">a particle — no root</span>
         ) : null}
