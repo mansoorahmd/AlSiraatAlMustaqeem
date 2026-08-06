@@ -11,7 +11,7 @@
 Research persists in `research.db` (SQLite) via `/research/*` routes. The old
 `ui/` focus-panel prototype has been retired and removed.
 
-Status: **V0–V16 done.** Research-first loop complete (research.db, slips,
+Status: **V0–V17 done.** Research-first loop complete (research.db, slips,
 form dossier, reader gloss & case marks, full lexicons) + V5 trails &
 rare-root marks + V6 modern board (zoom/pan, arrange, word threads, segment
 highlights, ayah cases, spelling variants, case navigation) + **V7 export**:
