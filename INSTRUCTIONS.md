@@ -72,11 +72,29 @@ pipeline (see "How quran.db was built" below); day-to-day you just use the exist
 
 ### `research.db` — the reader's own work (read-write)
 Created and migrated automatically by the server on first run. Holds everything the reader
-produces: cases (board layout, threads, clusters, slips, established meanings), trails, and
-notes/questions. **This is the one irreplaceable file — back it up by copying it.**
+produces: cases (board layout, threads, clusters, slips, established meanings), trails,
+notes/questions, word senses, motifs and comparisons. **This is the one irreplaceable file.**
 
-Tables: `cases`, `form_research`, `form_revisions`, `trails`, `notes` (see
+Tables: `cases`, `form_research`, `form_revisions`, `trails`, `notes`, `user_root_meanings`,
+`motifs`/`motif_roots`, `word_senses`, `compare_sets`/`compare_items` (see
 `server/src/research.ts` for the schema).
+
+#### Saving your research to git
+
+```bash
+npm run save                    # checkpoint + commit research.db
+npm run save -- "after surah 2" # ...with your own message
+```
+
+`research.db` **is** tracked in git (unlike `quran.db`, which is too large). But SQLite runs it
+in **WAL mode**, so recent work often sits in the transient `research.db-wal` sidecar — which is
+gitignored. A plain `git commit research.db` can therefore archive a database that is *missing
+your latest work*, with no warning.
+
+`npm run save` fixes that: it folds the WAL back into `research.db`
+(`PRAGMA wal_checkpoint(TRUNCATE)`), then commits — and says so if nothing changed. **The server
+can stay running.** If it reports the checkpoint was blocked by an active connection, close the
+app and run it again.
 
 ---
 
