@@ -114,6 +114,7 @@ export function Reader({ chapters, onBackToIndex }: Props) {
 
   // remember the top-most ayah in view, so Home can "continue reading" there
   const lastSeen = useRef<string | null>(reading.lastVerseKey);
+  const settle = useRef<number | null>(null);
   useEffect(() => {
     if (!verses.data) return;
     const els = Array.from(
@@ -133,14 +134,25 @@ export function Reader({ chapters, onBackToIndex }: Props) {
         for (const [k, top] of tops) if (top < bestTop) { bestTop = top; best = k; }
         if (best && best !== lastSeen.current) {
           lastSeen.current = best;
-          dispatch({ type: "setLastVerse", verseKey: best });
+          // Collapse bursts into one dispatch. Expanding a panel (echo compare,
+          // notes) reflows the page, so this callback can fire many times in a
+          // frame; dispatching each one re-rendered and re-persisted every time.
+          if (settle.current !== null) window.clearTimeout(settle.current);
+          const nextKey = best; // captured: `best` is reassigned on later fires
+          settle.current = window.setTimeout(() => {
+            settle.current = null;
+            dispatch({ type: "setLastVerse", verseKey: nextKey });
+          }, 200);
         }
       },
       // a thin band near the top of the page = "what I'm currently reading"
       { rootMargin: "-8% 0px -82% 0px" },
     );
     els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
+    return () => {
+      io.disconnect();
+      if (settle.current !== null) window.clearTimeout(settle.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [verses.data, surahId]);
 

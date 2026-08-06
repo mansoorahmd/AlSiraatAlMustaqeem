@@ -918,6 +918,14 @@ a { color: var(--lapis); }
   content-visibility: auto;
   contain-intrinsic-size: auto 6rem;
 }
+
+/* An āyah with a panel open is being read, and its subtree changes size as the
+   panel loads. Opt it out of visibility skipping so the growing content isn't
+   re-measured against containment on every change. */
+.ayah:has(.echo-panel, .ayah-notes, .focus-why) {
+  content-visibility: visible;
+  contain-intrinsic-size: none;
+}
 .ayah-text { margin: 0; text-align: justify; }
 
 .word {

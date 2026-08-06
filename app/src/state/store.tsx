@@ -256,10 +256,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (id) dispatch({ type: "setActiveCompare", id });
     });
   }, []);
+  // Persist on a trailing debounce. lastVerseKey changes as you scroll, and an
+  // un-debounced write hit IndexedDB on every tick — enough main-thread work to
+  // stall the page when a burst arrives (e.g. a panel expanding shifts āyāt).
+  const latestReading = useRef(state.reading);
+  latestReading.current = state.reading;
   useEffect(() => {
     if (!hydrated.current) return;
-    void archive.prefs.set("reading", state.reading);
+    const t = window.setTimeout(() => { void archive.prefs.set("reading", latestReading.current); }, 500);
+    return () => window.clearTimeout(t);
   }, [state.reading]);
+  // don't lose the last change if the tab goes away mid-debounce
+  useEffect(() => {
+    const flush = () => { if (hydrated.current) void archive.prefs.set("reading", latestReading.current); };
+    window.addEventListener("pagehide", flush);
+    return () => { window.removeEventListener("pagehide", flush); flush(); };
+  }, []);
 
   return (
     <StateCtx.Provider value={state}>
