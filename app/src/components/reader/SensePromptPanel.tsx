@@ -21,6 +21,7 @@ interface Props {
 
 export function SensePromptPanel({ root, detail, initialSense = "", onClose }: Props) {
   const [sense, setSense] = useState(initialSense);
+  const [instructions, setInstructions] = useState("");
   const [prompt, setPrompt] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -32,7 +33,7 @@ export function SensePromptPanel({ root, detail, initialSense = "", onClose }: P
 
   const build = () => {
     if (!sense.trim()) return;
-    setPrompt(buildSensePrompt({ root, detail, sense, notes: notes.data ?? [] }));
+    setPrompt(buildSensePrompt({ root, detail, sense, notes: notes.data ?? [], instructions }));
     setCopied(false);
   };
 
@@ -70,11 +71,25 @@ export function SensePromptPanel({ root, detail, initialSense = "", onClose }: P
               value={sense}
               onChange={(e) => setSense(e.target.value)}
             />
+            <label className="sp-label" htmlFor="sp-extra">
+              Special instructions <span className="sp-optional">(optional)</span>
+            </label>
+            <textarea
+              id="sp-extra"
+              className="board-input"
+              rows={2}
+              placeholder="e.g. weigh Maqāyīs above the others · answer in Urdu · keep the physical sense in every form"
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+            />
+
             <p className="sp-note">
-              The prompt will carry <strong>{forms.length}</strong> form{forms.length === 1 ? "" : "s"} of this root,
-              your <strong>{dictCount}</strong> dictionary entr{dictCount === 1 ? "y" : "ies"}, and
-              {" "}<strong>{noteCount}</strong> note{noteCount === 1 ? "" : "s"}/question{noteCount === 1 ? "" : "s"} —
-              and asks for a per-form verdict in a fixed format, using only that material.
+              Carries <strong>{forms.length}</strong> form{forms.length === 1 ? "" : "s"} of this root,
+              your <strong>{dictCount}</strong> dictionary entr{dictCount === 1 ? "y" : "ies"} and
+              {" "}<strong>{noteCount}</strong> note{noteCount === 1 ? "" : "s"}/question{noteCount === 1 ? "" : "s"}.
+              It tells the model to <strong>ignore tafsir and translation conventions</strong> and reason only from
+              the lexicons and each form's pattern — then, where the sense holds, to return a
+              {" "}<strong>brief and detail per form</strong> you can paste straight into the fields here.
             </p>
             <div className="sp-actions">
               <button className="ctl establish-btn" disabled={!sense.trim() || notes.loading} onClick={build}>
@@ -87,8 +102,10 @@ export function SensePromptPanel({ root, detail, initialSense = "", onClose }: P
             <textarea className="board-input sp-out" rows={18} readOnly value={prompt} onFocus={(e) => e.currentTarget.select()} />
             <div className="sp-actions">
               <button className="ctl establish-btn" onClick={copy}>{copied ? "✓ Copied" : "Copy prompt"}</button>
-              <button className="ctl" onClick={() => setPrompt(null)}>‹ Edit sense</button>
-              <span className="sp-hint">Paste into your AI of choice, then record its verdict as each form's meaning.</span>
+              <button className="ctl" onClick={() => setPrompt(null)}>‹ Edit</button>
+              <span className="sp-hint">
+                Paste into your AI, then copy each form's BRIEF → label and DETAIL → meaning.
+              </span>
             </div>
           </div>
         )}
