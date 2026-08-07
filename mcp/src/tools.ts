@@ -11,7 +11,42 @@ import { z } from "zod";
 import type { AppState } from "../../server/src/state.js";
 import { waznForWord } from "../../server/src/wazn.js";
 import { expressionSearch } from "../../server/src/expressions.js";
+import { foldArabic } from "../../server/src/text/normalize.js";
 import { AI_SOURCE, guard, proposalId } from "./core.js";
+
+// Resolve a caller-supplied form against a root's actual derived forms.
+//
+// A refinement must key to the corpus's EXACT spelling (that is what the reader's
+// app matches on, harakat and all), but a model rarely reproduces the vocalisation
+// byte-for-byte — e.g. it offers نَذْر for the vow when the corpus writes نَّذْر.
+// So: exact match first; then a diacritic-insensitive match, but ONLY when it is
+// unambiguous — because different forms can share one consonantal skeleton (نذر is
+// the verb نَذَرْ, the vow-noun نَّذْر AND the noun نُذْر). When several forms collapse
+// together we refuse to guess and hand back the real spellings to choose from,
+// instead of silently attaching to the wrong one — or bouncing with no way forward.
+export interface FormRef { form: string; pos: string | null; occurrences: number }
+export type FormMatch =
+  | { form: string }
+  | { ambiguous: FormRef[] }
+  | { unknown: true };
+
+export function makeFormResolver(forms: FormRef[]): (input: string) => FormMatch {
+  const exact = new Map(forms.map((f) => [f.form.normalize("NFC"), f]));
+  const byFold = new Map<string, FormRef[]>();
+  for (const f of forms) {
+    const k = foldArabic(f.form);
+    (byFold.get(k) ?? byFold.set(k, []).get(k)!).push(f);
+  }
+  return (input: string): FormMatch => {
+    const nfc = (input ?? "").normalize("NFC");
+    const hit = exact.get(nfc);
+    if (hit) return { form: hit.form };
+    const cands = byFold.get(foldArabic(nfc)) ?? [];
+    if (cands.length === 1) return { form: cands[0]!.form };
+    if (cands.length > 1) return { ambiguous: cands };
+    return { unknown: true };
+  };
+}
 
 const SCRIPT = z
   .enum(["uthmani", "uthmani_simple", "imlaei", "imlaei_simple", "indopak"])
@@ -448,7 +483,11 @@ const propose_indication: Tool = {
     meaning: z.string().default("").describe("The root's meaning in this indication, 1–3 sentences."),
     refinements: z
       .array(z.object({
-        form: z.string().describe("The derived form (lemma) in Arabic."),
+        form: z.string().describe(
+          "The derived form (lemma) in Arabic. Copy it verbatim from study_root/compare_forms — " +
+          "harakat and all. Minor vowel differences are tolerated when only one form fits, but " +
+          "forms that share a skeleton (e.g. the verb نَذَرْ vs the noun نَّذْر) must be given exactly.",
+        ),
         label: z.string(),
         meaning: z.string().default(""),
       }))
@@ -462,7 +501,10 @@ const propose_indication: Tool = {
     const id = proposalId("ind");
     guard.mustNotExist(state, "indication", id);
 
-    const known = new Set((d.forms ?? []).map((f) => f.lemma_arabic));
+    const formRefs: FormRef[] = (d.forms ?? [])
+      .filter((f) => f.lemma_arabic)
+      .map((f) => ({ form: f.lemma_arabic as string, pos: f.pos_english, occurrences: f.occurrence_count }));
+    const resolveForm = makeFormResolver(formRefs);
     const saved = state.research.saveIndication(
       guard.sanitiseIndication({ id, root: d.root_arabic, lemma: null, scope: "root", label, meaning: a.meaning ?? "" }),
     );
@@ -470,17 +512,27 @@ const propose_indication: Tool = {
     const refined: unknown[] = [];
     const rejected: unknown[] = [];
     for (const r of a.refinements ?? []) {
-      if (!known.has(r.form)) {
-        rejected.push({ form: r.form, why: "not a form of this root" });
+      const m = resolveForm(r.form);
+      if ("ambiguous" in m) {
+        rejected.push({
+          form: r.form,
+          why: "several forms of this root share these letters — resend with one of the exact spellings below",
+          candidates: m.ambiguous,
+        });
+        continue;
+      }
+      if ("unknown" in m) {
+        rejected.push({ form: r.form, why: "not a form of this root", known_forms: formRefs.map((f) => f.form) });
         continue;
       }
       const out = state.research.saveRefinement(
         guard.sanitiseIndication({
-          id: proposalId("ref"), parentId: saved.id, lemma: r.form,
+          id: proposalId("ref"), parentId: saved.id, lemma: m.form,
           label: r.label ?? "", meaning: r.meaning ?? "",
         }),
       );
-      refined.push({ form: r.form, id: (out as any)?.id });
+      // echo the exact spelling we attached to, which may differ from the input
+      refined.push({ form: m.form, requested: r.form, id: (out as any)?.id });
     }
     return {
       proposed: true,
