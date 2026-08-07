@@ -160,7 +160,10 @@ function IndicationChip({
       </button>
       <button className="ie-chip-label" onClick={onSelect}>
         <span className="ie-chip-name">{indication.label || "(unlabelled)"}</span>
-        <span className="ie-chip-meta">{indication.refinedCount} refined</span>
+        <span className="ie-chip-meta">
+          {indication.refinedCount} refined
+          {indication.source === "ai" && <span className="ai-badge" title="Proposed by an AI — accept it in ✦ Proposed">AI</span>}
+        </span>
       </button>
       <button className="indication-del" title="Delete indication" onClick={onDelete}>✕</button>
     </div>

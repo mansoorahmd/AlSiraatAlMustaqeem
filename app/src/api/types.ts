@@ -82,6 +82,8 @@ export interface WordIndication {
   /** a refinement points at its root indication; root/standalone indications are null */
   parentId: string | null;
   label: string; meaning: string; primary: boolean;
+  /** 'me' = the reader wrote it; 'ai' = proposed via the MCP server, awaiting review */
+  source?: "me" | "ai";
   createdAt: number; updatedAt: number;
 }
 /** A root indication plus this form's refinement of it (null = not yet written). */
@@ -91,12 +93,18 @@ export interface RootIndicationWithRefinement extends WordIndication {
   refinedCount: number;
 }
 /** What the word menu needs for a word: its root indications (with this form's
- *  refinement) and, for rootless words, standalone lemman indications. */
+ *  refinement) and, for rootless words, standalone lemma indications. */
 export interface IndicationsForWord {
   root: string | null; lemma: string | null;
   rootIndications: RootIndicationWithRefinement[];
   lemmaIndications: WordIndication[];
 }
+/** What an AI proposed through the MCP server, awaiting the reader's review. */
+export interface Proposed {
+  notes: import("../persistence/types").NoteRecord[];
+  indications: WordIndication[];
+}
+
 /** Reader gloss data: primary root-indication text per root, per-form refinements,
  *  and rootless lemma primaries. */
 export interface IndicationGloss {

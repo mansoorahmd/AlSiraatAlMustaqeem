@@ -8,7 +8,7 @@
 // server the first time the app runs after this change.
 
 import type { CaseRecord, VaultEntry, TrailRecord, PrefsRecord, NoteRecord, UserRootMeaning, Motif } from "./types";
-import type { CompareSet, CompareItemRow, WordIndication, IndicationsForWord, IndicationGloss } from "../api/types";
+import type { CompareSet, CompareItemRow, WordIndication, IndicationsForWord, IndicationGloss, Proposed } from "../api/types";
 
 const DB_NAME = "alsiraat-archive";
 const DB_VERSION = 1;
@@ -269,7 +269,7 @@ export const archive = {
   },
 
   /** Word indications — meanings anchored at the ROOT (one primary per root), each
-   *  with per-form refinements. Rootless words keep standalone lemman indications. */
+   *  with per-form refinements. Rootless words keep standalone lemma indications. */
   indications: {
     /** The word's root indications (each with THIS form's refinement) + rootless indications. */
     forWord: async (lemma: string | null, root: string | null): Promise<IndicationsForWord> => {
@@ -289,7 +289,7 @@ export const archive = {
       await ensureMigrated();
       return srvGet<WordIndication[]>(`/indications/${encodeURIComponent(indicationId)}/refinements`);
     },
-    /** Create/update a root indication (pass root) or a standalone lemman indication (pass lemma, no root). */
+    /** Create/update a root indication (pass root) or a standalone lemma indication (pass lemma, no root). */
     save: async (m: {
       id: string; root?: string | null; lemma?: string | null;
       label: string; meaning: string; primary?: boolean;
@@ -315,6 +315,18 @@ export const archive = {
     removeRefinement: async (id: string): Promise<void> => {
       await ensureMigrated();
       return srvDelete(`/refinements/${encodeURIComponent(id)}`);
+    },
+  },
+
+  /** Proposals an AI made through the MCP server, for the reader to review. */
+  proposed: {
+    all: async (): Promise<Proposed> => {
+      await ensureMigrated();
+      return srvGet<Proposed>("/proposed");
+    },
+    accept: async (kind: "note" | "indication", id: string): Promise<void> => {
+      await ensureMigrated();
+      await srvPut(`/proposed/${kind}/${encodeURIComponent(id)}/accept`, {});
     },
   },
 

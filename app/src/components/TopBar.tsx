@@ -4,6 +4,7 @@ import { useAsync } from "../hooks/useAsync";
 import { useAppState, useAppDispatch, type Tab } from "../state/store";
 import type { Script } from "../api/types";
 import { OpenQuestions } from "./OpenQuestions";
+import { Proposed } from "./Proposed";
 import { archive } from "../persistence/db";
 
 const TABS: { id: Tab; label: string }[] = [
@@ -86,6 +87,9 @@ export function TopBar() {
 
       {/* every unanswered question across the Book, one click away */}
       <OpenQuestions />
+
+      {/* anything an AI proposed via the MCP server, awaiting review */}
+      <Proposed />
 
       {/* reading settings — always available in the top toolbar */}
       <div className="settings-wrap" ref={settingsRef}>

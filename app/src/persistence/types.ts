@@ -168,6 +168,8 @@ export interface NoteRecord {
   /** form (exact spelling) and root of the noted word — for cross-references */
   lemma?: string | null;
   root?: string | null;
+  /** 'me' = the reader wrote it; 'ai' = proposed via the MCP server */
+  source?: "me" | "ai";
   createdAt: number;
   updatedAt: number;
 }

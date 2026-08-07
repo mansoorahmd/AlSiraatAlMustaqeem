@@ -10,12 +10,13 @@ and establishing their own understanding.
 
 ## Architecture
 
-A TypeScript app in two parts, run as one npm workspace:
+A TypeScript app in three parts, run as one npm workspace:
 
 ```
 AlSiraatAlMustaqeem/
 ├── app/                  # React + Vite single-page app (the reader & investigation UI)
 ├── server/               # Hono API on Node (serves /api/v1) + Vitest parity tests
+├── mcp/                  # MCP server (stdio) — lets an AI study the corpus with you
 ├── quran.db              # read-only content (Quran text, words, roots, translations)
 ├── research.db           # read-write user research (cases, trails, notes, established meanings)
 ├── package.json          # workspace root — the commands below live here
@@ -28,6 +29,8 @@ AlSiraatAlMustaqeem/
 - **`server/`** — the back end (Hono + Node's built-in `node:sqlite`). Reads `quran.db`
   (read-only) and reads/writes `research.db`. Ported 1:1 from the original Python/FastAPI backend
   and verified by golden-parity tests (`server/test/`).
+- **`mcp/`** — an MCP server over stdio that reuses the back end's query layer, so an AI client
+  can study the corpus and your research with you. See "The MCP server" below.
 
 > The backend was migrated from Python to TypeScript — see `BACKEND_TS_MIGRATION.md`. The old
 > Python data-pipeline and API code are no longer in this repo (archived separately).
@@ -42,7 +45,7 @@ no native build tools needed.
 All commands run from the **project root**.
 
 ```bash
-npm install        # one-time — installs the app + server workspaces
+npm install        # one-time — installs the app, server and mcp workspaces
 
 npm run dev        # start API (:8000) and web app (:5174) together
                    # open http://localhost:5174
@@ -77,7 +80,8 @@ notes/questions, word indications, motifs and comparisons. **This is the one irr
 
 Tables: `cases`, `form_research`, `form_revisions`, `trails`, `notes`, `user_root_meanings`,
 `motifs`/`motif_roots`, `word_indications`, `compare_sets`/`compare_items` (see
-`server/src/research.ts` for the schema).
+`server/src/research.ts` for the schema). `notes` and `word_indications` carry a `source`
+column — `'me'` for your own work, `'ai'` for anything proposed through the MCP server.
 
 #### Saving your research to git
 
@@ -95,6 +99,68 @@ your latest work*, with no warning.
 (`PRAGMA wal_checkpoint(TRUNCATE)`), then commits — and says so if nothing changed. **The server
 can stay running.** If it reports the checkpoint was blocked by an active connection, close the
 app and run it again.
+
+---
+
+## The MCP server (`mcp/`)
+
+Lets an AI assistant (Claude Desktop, Claude Code, any MCP client) study the Book *with* you:
+it can read the corpus and your research, and propose notes and indications for you to review.
+
+```bash
+npm run mcp                       # run it directly (stdio; for a client to launch)
+npm run typecheck                 # includes the mcp workspace
+QF_RESEARCH_DB=/tmp/smoke.db npm run smoke -w @alsiraat/mcp   # end-to-end smoke test
+```
+
+### Client configuration
+
+Add to your MCP client's config (Claude Desktop: `claude_desktop_config.json`). No `env` block
+is needed — it resolves this project's own `quran.db` and `research.db`:
+
+```json
+{
+  "mcpServers": {
+    "alsiraat": {
+      "command": "npm",
+      "args": ["start", "-w", "@alsiraat/mcp"],
+      "cwd": "C:/Users/baapo/Claude/Projects/AlSiraatAlMustaqeem"
+    }
+  }
+}
+```
+
+Point it at a different database with `QF_QURAN_DB` / `QF_RESEARCH_DB` if needed. The app's own
+server does **not** need to be running — the MCP server opens the databases directly.
+
+### What it exposes
+
+**Tools — composed** (one call answers a study question): `study_root`, `read_ayah`,
+`find_where_roots_meet`, `trace_word`, `search_quran`, `compare_forms`, `my_research_on`.
+**Tools — thin** (single endpoints): `get_root`, `list_roots`, `get_verses`, `get_linkages`,
+`get_echoes`, `get_wazn`, `get_spelling_variants`, `get_similar_ayat`.
+
+**Prompts:** `test_indication` (test a proposed meaning against every form of a root),
+`study_ayah`, `review_my_root`.
+
+**Resources:** `alsiraat://method` (the organic method and its hard rules — clients read this
+first), `alsiraat://write-policy`, `alsiraat://research/summary`.
+
+### The boundary on writes — enforced in code, not trusted to the model
+
+| | |
+|---|---|
+| Corpus (`quran.db`) | **read-only**, always |
+| Translations | **not exposed at all** — the method builds meaning from Arabic, morphology and the lexicons |
+| May write | notes/questions, and indications with per-form refinements — nothing else |
+| May never | edit or delete anything (including its own earlier proposals) |
+| May never | set an indication **primary** (your default gloss) |
+| May never | touch cases, motifs, comparisons or your root meanings |
+| Every write | tagged `source='ai'` and listed under **✦ Proposed** in the app to accept or discard |
+
+`mcp/src/core.ts` holds the guard; `mcp/src/method.ts` holds the methodology text. The guard
+forces `primary: false` explicitly — omitting it would let the *first* indication for a root be
+auto-promoted, which is precisely what must not happen.
 
 ---
 

@@ -2824,3 +2824,40 @@ a { color: var(--lapis); }
 .colloc-pair-text {
   flex: 1; min-width: 0; font-size: 1.25rem; line-height: 2.1; color: var(--ink);
 }
+
+/* proposals from the MCP server, awaiting the reader's review */
+.proposed-wrap { position: relative; }
+.proposed-btn.active, .proposed-btn { white-space: nowrap; }
+.proposed-count {
+  margin-inline-start: 0.35rem; background: var(--gold); color: #fff;
+  border-radius: 999px; padding: 0 0.35rem; font-size: var(--fs-label);
+  font-variant-numeric: tabular-nums;
+}
+.proposed-panel {
+  position: absolute; top: calc(100% + 0.4rem); right: 0; z-index: 60;
+  width: min(34rem, 90vw); max-height: 70vh; overflow-y: auto;
+  background: var(--paper); border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-card); box-shadow: var(--shadow-lift); padding: 0.8rem;
+  text-align: start;
+}
+.proposed-head { font-size: var(--fs-label); color: var(--ink-soft); margin: 0 0 0.7rem; line-height: 1.5; }
+.proposed-row {
+  display: flex; align-items: flex-start; gap: 0.7rem;
+  padding: 0.5rem 0; border-bottom: 1px solid var(--paper-edge);
+}
+.proposed-row:last-child { border-bottom: none; }
+.proposed-main { flex: 1; min-width: 0; }
+.proposed-title { font-size: var(--fs-small); font-weight: 600; color: var(--ink); }
+.proposed-ref {
+  border: none; background: none; cursor: pointer; padding: 0;
+  color: var(--gold); font-size: var(--fs-label); margin-inline-end: 0.4rem;
+}
+.proposed-kind { font-size: var(--fs-label); color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+.proposed-scope { font-size: var(--fs-label); color: var(--ink-soft); margin-inline-start: 0.4rem; }
+.proposed-text { margin: 0.2rem 0 0; font-size: var(--fs-small); color: var(--ink-soft); line-height: 1.5; }
+.proposed-actions { display: flex; flex-direction: column; gap: 0.3rem; flex: none; }
+.ai-badge {
+  margin-inline-start: 0.35rem; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em;
+  color: var(--gold); border: 1px solid var(--gold-soft, rgba(180,83,9,0.4));
+  border-radius: 3px; padding: 0 0.2rem; vertical-align: middle;
+}

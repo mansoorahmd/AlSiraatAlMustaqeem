@@ -5,15 +5,17 @@
   "description": "AlSiraatAlMustaqeem \u2014 a detective-style Quran study app (React SPA + TypeScript API).",
   "workspaces": [
     "app",
-    "server"
+    "server",
+    "mcp"
   ],
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,green \"npm run dev -w server\" \"npm run dev -w app\"",
     "test": "npm test -w server",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w app",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w app && npm run typecheck -w @alsiraat/mcp",
     "build": "npm run build -w app",
     "start": "npm run build -w app && npm run start:static -w server",
-    "save": "node --no-warnings scripts/save-research.mjs"
+    "save": "node --no-warnings scripts/save-research.mjs",
+    "mcp": "npm start -w @alsiraat/mcp"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

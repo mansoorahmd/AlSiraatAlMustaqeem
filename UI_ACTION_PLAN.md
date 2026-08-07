@@ -11,7 +11,7 @@
 Research persists in `research.db` (SQLite) via `/research/*` routes. The old
 `ui/` focus-panel prototype has been retired and removed.
 
-Status: **V0–V18 done.** Research-first loop complete (research.db, slips,
+Status: **V0–V19 done.** Research-first loop complete (research.db, slips,
 form dossier, reader gloss & case marks, full lexicons) + V5 trails &
 rare-root marks + V6 modern board (zoom/pan, arrange, word threads, segment
 highlights, ayah cases, spelling variants, case navigation) + **V7 export**:
@@ -591,7 +591,7 @@ group roots by their own themes:
     indication → that indication's own text → established case meaning. Server `glossData()`
     returns primary-indication text per root + per-form refinements + rootless lemma
     primaries; Reader builds `indicationRefine`/`indicationRootText`/`indicationLemmaText` maps.
-  - Rootless words (particles/names) keep a plain standalone lemman indication.
+  - Rootless words (particles/names) keep a plain standalone lemma indication.
   - **Indication Editor modal** (`IndicationEditor`) — the meaning-setting surface: root
     header + core meaning; left rail lists the root's indications (add / pick primary /
     delete / rename); centre shows **every unique form of the root** with its own
@@ -650,6 +650,47 @@ threads, since there's no root family to open a case on.
   `RootLinkages.sharedVerses` + `GET /roots/:root/with/:other`; tests assert the
   count equals the `cooccur` that `/linkages` reports, plus symmetry, mushaf
   order, limit and 404s.
+
+### V19 — MCP server: study the Book with an AI ✅
+A third workspace, `mcp/`, speaking MCP over **stdio** so Claude Desktop / Claude Code can
+work on the corpus and the reader's research directly. It reuses `server/src`'s query
+layer via `createState()`, so it inherits every index (roots, echoes, spellings,
+word-forms, linkages, similarity) without duplicating logic.
+
+**Decided scope** — corpus read-only, research read + *limited* writes:
+
+| | |
+|---|---|
+| Corpus | read-only, always |
+| Translations | **not exposed** — meaning is built from Arabic, morphology and the lexicons |
+| May write | notes/questions + indications with per-form refinements |
+| May never | edit or delete anything, set an indication **primary**, or touch cases/motifs/comparisons |
+| Every write | tagged `source='ai'`, surfaced under **✦ Proposed** to accept or discard |
+
+- **Tools, two layers.** Composed (`study_root`, `read_ayah`, `find_where_roots_meet`,
+  `trace_word`, `search_quran`, `compare_forms`, `my_research_on`) so one call answers a
+  study question; plus thin mirrors (`get_root`, `list_roots`, `get_verses`, `get_linkages`,
+  `get_echoes`, `get_wazn`, `get_spelling_variants`, `get_similar_ayat`) as escape hatches.
+- **Methodology travels with the server.** Resources `alsiraat://method` (the organic method
+  and its hard rules), `alsiraat://write-policy`, `alsiraat://research/summary`; prompts
+  `test_indication`, `study_ayah`, `review_my_root`. Every prompt is prefixed with the method,
+  so a client inherits the rules — including the real loophole: the lexicons themselves quote
+  the Qur'an and gloss words theologically, and those passages are later application.
+- **Provenance + review.** `notes` and `word_indications` gained a `source` column
+  (self-migrating), `/research/proposed` lists what an AI proposed, and
+  `/research/proposed/:kind/:id/accept` adopts it. The app shows a **✦ Proposed** badge in the
+  toolbar with accept/discard per record, and an `AI` tag on proposed indications in the editor.
+- **Verified against a real MCP client** (`mcp/scripts/smoke.ts`, `npm run smoke -w @alsiraat/mcp`):
+  17 tools listed with correct read-only annotations, composed tools returning real data,
+  refusals surfacing as readable messages, and the database asserted afterwards.
+
+> Two bugs worth remembering, both caught by that smoke test rather than by reading:
+> **(1)** `guard.sanitiseIndication` *deleted* the `primary` key instead of forcing it false —
+> and `saveIndication` treats a missing flag as "first indication for this root becomes
+> primary", so the AI's proposal silently became the reader's default gloss. It now sets
+> `primary: false` explicitly. **(2)** `server/src/state.ts` resolves its database paths at
+> *import* time, so setting `process.env` before calling `createState()` was too late; the MCP
+> entry point imports it dynamically after settling the environment.
 
 ### Fixes & hardening (this pass) ✅
 Bugs found while getting indications working end-to-end — recorded because several

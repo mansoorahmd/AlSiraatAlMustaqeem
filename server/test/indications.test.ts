@@ -1,6 +1,6 @@
 // Word indications — meanings anchored at the ROOT (one primary per root), each with
 // per-form refinements. A form's gloss = its refinement of the primary indication,
-// else the indication's own text. Rootless words keep standalone lemman indications.
+// else the indication's own text. Rootless words keep standalone lemma indications.
 
 import { describe, it, expect, beforeAll } from "vitest";
 import type { Hono } from "hono";
@@ -63,7 +63,7 @@ describe("word indications (root + refinements)", () => {
     expect(g.refinements.find((x: any) => x.lemma === "أَفْلَحَ")).toBeUndefined();
   });
 
-  it("rootless word keeps a standalone lemman indication", async () => {
+  it("rootless word keeps a standalone lemma indication", async () => {
     await put(`${B}/indications/L1`, { id: "L1", lemma: "مِن", label: "from/of", meaning: "origin or part" });
     const w = await j(await app.request(`${B}/indications/for-word?lemma=${encodeURIComponent("مِن")}`));
     expect(w.lemmaIndications).toHaveLength(1);

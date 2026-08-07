@@ -24,3 +24,6 @@ __pycache__/
 .DS_Store
 .fuse_hidden*
 Thumbs.db
+
+# --- mcp workspace ---
+mcp/node_modules/

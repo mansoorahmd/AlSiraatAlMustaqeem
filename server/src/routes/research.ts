@@ -90,8 +90,21 @@ export function researchRoutes(state: AppState): Hono {
     return c.json({ ok: true });
   });
 
+  // proposals from the MCP server, awaiting the reader's review
+  r.get("/research/proposed", (c) => c.json(s.listProposed()));
+  r.put("/research/proposed/:kind/:id/accept", (c) => {
+    const kind = c.req.param("kind");
+    if (kind !== "note" && kind !== "indication") {
+      return c.json({ detail: "kind must be note or indication" }, 422);
+    }
+    if (!s.acceptProposed(kind, c.req.param("id"))) {
+      return c.json({ detail: `no AI-proposed ${kind}: ${c.req.param("id")}` }, 404);
+    }
+    return c.json({ accepted: c.req.param("id") });
+  });
+
   // word indications: meanings anchored at the ROOT (one primary per root) with
-  // per-form refinements; standalone lemman indications for rootless words
+  // per-form refinements; standalone lemma indications for rootless words
   r.get("/research/indications/gloss", (c) => c.json(s.glossData()));
   r.get("/research/indications/for-word", (c) =>
     c.json(s.indicationsForWord(c.req.query("lemma") ?? null, c.req.query("root") ?? null)));

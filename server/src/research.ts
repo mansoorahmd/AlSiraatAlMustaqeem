@@ -37,9 +37,11 @@ CREATE TABLE IF NOT EXISTS notes (
     id TEXT PRIMARY KEY, verse_key TEXT NOT NULL, word_position INTEGER,
     kind TEXT NOT NULL DEFAULT 'note', text TEXT NOT NULL DEFAULT '',
     answer TEXT NOT NULL DEFAULT '', resolved INTEGER NOT NULL DEFAULT 0,
-    lemma TEXT, root TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+    lemma TEXT, root TEXT, source TEXT NOT NULL DEFAULT 'me',
+    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_notes_verse ON notes(verse_key);
+CREATE INDEX IF NOT EXISTS idx_notes_source ON notes(source);
 
 -- the reader's own meaning for a root, saved alongside the dictionary lexicons
 CREATE TABLE IF NOT EXISTS user_root_meanings (
@@ -60,15 +62,16 @@ CREATE INDEX IF NOT EXISTS idx_motif_roots_root ON motif_roots(root);
 -- indications: the reader's own meanings for a word, anchored at the ROOT
 -- (scope='root', parent_id NULL, one primary per root). Each root indication has
 -- per-FORM refinements (scope='lemma', parent_id = the root indication, one per
--- lemma). Words with no root keep standalone lemman indications.
+-- lemma). Words with no root keep standalone lemma indications.
 CREATE TABLE IF NOT EXISTS word_indications (
     id TEXT PRIMARY KEY, lemma TEXT, root TEXT,
     scope TEXT NOT NULL DEFAULT 'lemma',   -- 'root' | 'lemma'
     parent_id TEXT,                        -- refinement -> its root indication; else NULL
     label TEXT NOT NULL DEFAULT '', meaning TEXT NOT NULL DEFAULT '',
-    is_primary INTEGER NOT NULL DEFAULT 0,
+    is_primary INTEGER NOT NULL DEFAULT 0, source TEXT NOT NULL DEFAULT 'me',
     created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS idx_word_indications_source ON word_indications(source);
 CREATE INDEX IF NOT EXISTS idx_word_indications_lemma ON word_indications(lemma);
 CREATE INDEX IF NOT EXISTS idx_word_indications_root ON word_indications(root);
 CREATE INDEX IF NOT EXISTS idx_word_indications_parent ON word_indications(parent_id);
@@ -91,6 +94,8 @@ const NOTE_MIGRATIONS: [string, string][] = [
   ["answer", "TEXT NOT NULL DEFAULT ''"],
   ["lemma", "TEXT"],
   ["root", "TEXT"],
+  // who wrote it: 'me' (the reader) or 'ai' (proposed via the MCP server)
+  ["source", "TEXT NOT NULL DEFAULT 'me'"],
 ];
 
 const now = () => Date.now();
@@ -110,6 +115,14 @@ export class ResearchStore {
     // than migrated: the feature was still being shaped and its data was scratch.
     db.exec("DROP TABLE IF EXISTS word_senses");
     db.exec("DROP TABLE IF EXISTS sense_assignments");
+    // provenance: records proposed by an AI through the MCP server are tagged,
+    // so the reader can always tell them apart and review them
+    const indCols = new Set(db.query<{ name: string }>("PRAGMA table_info(word_indications)").map((r) => r.name));
+    if (indCols.size && !indCols.has("source")) {
+      db.exec("ALTER TABLE word_indications ADD COLUMN source TEXT NOT NULL DEFAULT 'me'");
+    }
+    db.exec("CREATE INDEX IF NOT EXISTS idx_notes_source ON notes(source)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_word_indications_source ON word_indications(source)");
   }
 
   // -- cases --
@@ -212,7 +225,8 @@ export class ResearchStore {
     return {
       id: r.id, verseKey: r.verse_key, wordPosition: r.word_position, kind: r.kind,
       text: r.text, answer: r.answer ?? "", resolved: !!r.resolved,
-      lemma: r.lemma ?? null, root: r.root ?? null, createdAt: r.created_at, updatedAt: r.updated_at,
+      lemma: r.lemma ?? null, root: r.root ?? null, source: r.source ?? "me",
+      createdAt: r.created_at, updatedAt: r.updated_at,
     };
   }
   listNotes(opts: { verse?: string; root?: string; lemma?: string } = {}): Doc[] {
@@ -229,13 +243,14 @@ export class ResearchStore {
     doc = { ...doc, updatedAt: t };
     doc.createdAt ??= t;
     this.db.run(
-      `INSERT INTO notes (id, verse_key, word_position, kind, text, answer, resolved, lemma, root, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)
+      `INSERT INTO notes (id, verse_key, word_position, kind, text, answer, resolved, lemma, root, source, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET verse_key=excluded.verse_key, word_position=excluded.word_position,
          kind=excluded.kind, text=excluded.text, answer=excluded.answer, resolved=excluded.resolved,
          lemma=excluded.lemma, root=excluded.root, updated_at=excluded.updated_at`,
       [doc.id, doc.verseKey, doc.wordPosition ?? null, doc.kind ?? "note", doc.text ?? "",
-       doc.answer ?? "", doc.resolved ? 1 : 0, doc.lemma ?? null, doc.root ?? null, doc.createdAt, t],
+       doc.answer ?? "", doc.resolved ? 1 : 0, doc.lemma ?? null, doc.root ?? null,
+       doc.source === "ai" ? "ai" : "me", doc.createdAt, t],
     );
     return doc;
   }
@@ -394,16 +409,37 @@ export class ResearchStore {
     this.touchCompareSet(setId);
   }
 
+  // -- provenance: what an AI proposed through the MCP server ------------------
+  /** Everything tagged source='ai', for the reader to review. */
+  listProposed(): Doc {
+    return {
+      notes: this.db
+        .query("SELECT * FROM notes WHERE source = 'ai' ORDER BY created_at DESC")
+        .map(ResearchStore.noteRow),
+      indications: this.db
+        .query("SELECT * FROM word_indications WHERE source = 'ai' ORDER BY created_at DESC")
+        .map(ResearchStore.indicationRow),
+    };
+  }
+  /** Accept a proposal: it becomes the reader's own record. */
+  acceptProposed(kind: "note" | "indication", id: string): boolean {
+    const table = kind === "note" ? "notes" : "word_indications";
+    return Number(
+      this.db.run(`UPDATE ${table} SET source = 'me' WHERE id = ? AND source = 'ai'`, [id]).changes,
+    ) > 0;
+  }
+
   // -- word indications: meanings anchored at the ROOT (one primary per root), each
   //    carrying per-FORM refinements. A word's gloss = its form's refinement of
   //    the root's primary indication, else that indication's text. Words with no root keep
-  //    standalone lemman indications. --
+  //    standalone lemma indications. --
   private static indicationRow(r: any): Doc {
     return {
       id: r.id, root: r.root ?? null, lemma: r.lemma ?? null,
       scope: r.scope ?? "lemma", parentId: r.parent_id ?? null,
       label: r.label ?? "", meaning: r.meaning ?? "",
-      primary: !!r.is_primary, createdAt: r.created_at, updatedAt: r.updated_at,
+      primary: !!r.is_primary, source: r.source ?? "me",
+      createdAt: r.created_at, updatedAt: r.updated_at,
     };
   }
 
@@ -417,7 +453,7 @@ export class ResearchStore {
       .query("SELECT * FROM word_indications WHERE scope='root' AND root=? ORDER BY is_primary DESC, created_at", [root])
       .map(ResearchStore.indicationRow);
   }
-  /** Standalone lemman indications (words with no root). */
+  /** Standalone lemma indications (words with no root). */
   lemmaIndications(lemma: string): Doc[] {
     return this.db
       .query("SELECT * FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND lemma=? ORDER BY is_primary DESC, created_at", [lemma])
@@ -433,7 +469,7 @@ export class ResearchStore {
   }
 
   /** Everything the word menu needs: the word's root indications (each with THIS
-   *  form's refinement) and, for rootless words, standalone lemman indications. */
+   *  form's refinement) and, for rootless words, standalone lemma indications. */
   indicationsForWord(lemma: string | null, root: string | null): Doc {
     const rootIndications = root
       ? this.rootIndications(root).map((s) => ({
@@ -457,7 +493,7 @@ export class ResearchStore {
       exceptId ? [lemma, exceptId] : [lemma]);
   }
 
-  /** Create/update a root indication (root set) OR a standalone lemman indication (rootless). */
+  /** Create/update a root indication (root set) OR a standalone lemma indication (rootless). */
   saveIndication(doc: Doc): Doc {
     const t = now();
     const existing = this.getIndication(doc.id);
@@ -469,11 +505,12 @@ export class ResearchStore {
       : this.db.scalar<number>("SELECT COUNT(*) FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND lemma=?", [lemma]) ?? 0;
     const primary = doc.primary ?? existing?.primary ?? had === 0;
     this.db.run(
-      `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, created_at, updated_at)
-       VALUES (?,?,?,?,NULL,?,?,?,?,?)
+      `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, source, created_at, updated_at)
+       VALUES (?,?,?,?,NULL,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET root=excluded.root, lemma=excluded.lemma, scope=excluded.scope,
          label=excluded.label, meaning=excluded.meaning, is_primary=excluded.is_primary, updated_at=excluded.updated_at`,
-      [doc.id, root, lemma, scope, doc.label ?? "", doc.meaning ?? "", primary ? 1 : 0, existing?.createdAt ?? t, t],
+      [doc.id, root, lemma, scope, doc.label ?? "", doc.meaning ?? "", primary ? 1 : 0,
+       doc.source === "ai" ? "ai" : existing?.source ?? "me", existing?.createdAt ?? t, t],
     );
     if (primary) { if (scope === "root" && root) this.clearRootPrimary(root, doc.id); else if (lemma) this.clearLemmaPrimary(lemma, doc.id); }
     return this.getIndication(doc.id)!;
@@ -487,10 +524,11 @@ export class ResearchStore {
     const existing = this.refinementFor(doc.parentId, doc.lemma);
     const id = existing?.id ?? doc.id;
     this.db.run(
-      `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, created_at, updated_at)
-       VALUES (?,?,?, 'lemma', ?, ?, ?, 0, ?, ?)
+      `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, source, created_at, updated_at)
+       VALUES (?,?,?, 'lemma', ?, ?, ?, 0, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET label=excluded.label, meaning=excluded.meaning, updated_at=excluded.updated_at`,
-      [id, parent.root, doc.lemma, doc.parentId, doc.label ?? "", doc.meaning ?? "", existing?.createdAt ?? t, t],
+      [id, parent.root, doc.lemma, doc.parentId, doc.label ?? "", doc.meaning ?? "",
+       doc.source === "ai" ? "ai" : existing?.source ?? "me", existing?.createdAt ?? t, t],
     );
     return this.getIndication(id);
   }
@@ -510,7 +548,7 @@ export class ResearchStore {
     return true;
   }
 
-  /** Make a root indication (or a standalone lemman indication) the primary in its group. */
+  /** Make a root indication (or a standalone lemma indication) the primary in its group. */
   setPrimaryIndication(id: string): Doc | undefined {
     const s = this.getIndication(id);
     if (!s) return undefined;
