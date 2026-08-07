@@ -31,53 +31,6 @@ export const skeleton = (rk: string) => {
   return out;
 };
 
-interface StemRow { verse_key: string; word_position: number; form_arabic: string | null; segment_number: number; raw_features: string | null }
-
-function stemSurfaces(rows: StemRow[]): Map<string, { vk: string; surface: string; raw: string }> {
-  const per = new Map<string, { vk: string; surface: string; raw: string }>();
-  for (const r of rows) {
-    const k = `${r.verse_key}#${r.word_position}`;
-    const cur = per.get(k);
-    per.set(k, { vk: r.verse_key, surface: (cur?.surface ?? "") + (r.form_arabic ?? ""), raw: r.raw_features ?? cur?.raw ?? "" });
-  }
-  return per;
-}
-
-/** Distinct spellings of the exact word (same raw_features + skeleton) the
- *  tapped occurrence is. Returns a single entry when there's no variation. */
-export function spellingVariantsForWord(db: Db, verseKey: string, wordPosition: number): SpellingVariant[] {
-  const lb = db.scalar<string>(
-    `SELECT lemma_buckwalter FROM word_segments
-     WHERE verse_key = ? AND word_position = ? AND segment_type = 'STEM' AND lemma_buckwalter IS NOT NULL
-     LIMIT 1`,
-    [verseKey, wordPosition],
-  );
-  if (!lb) return [];
-
-  const rows = db.query<StemRow>(
-    `SELECT verse_key, word_position, form_arabic, segment_number, raw_features FROM word_segments
-     WHERE lemma_buckwalter = ? AND segment_type = 'STEM'
-     ORDER BY verse_key, word_position, segment_number`,
-    [lb],
-  );
-  const per = stemSurfaces(rows);
-  const self = per.get(`${verseKey}#${wordPosition}`);
-  if (!self) return [];
-  const targetRaw = self.raw;
-  const targetSkel = skeleton(rasmKey(self.surface));
-
-  const groups = new Map<string, { surface: string; count: number; verses: string[] }>();
-  for (const { vk, surface, raw } of per.values()) {
-    const rk = rasmKey(surface);
-    if (raw !== targetRaw || skeleton(rk) !== targetSkel) continue;
-    let g = groups.get(rk);
-    if (!g) { g = { surface, count: 0, verses: [] }; groups.set(rk, g); }
-    g.count++;
-    if (g.verses.length < 100) g.verses.push(vk);
-  }
-  return [...groups.values()].sort((a, b) => b.count - a.count);
-}
-
 // ---- exact-word index: every place a word is written the same way -------------
 // "Follow this exact word" walks the written surface (rasm), not the root, so it
 // works for particles and proper names that have no root at all. Vowel marks are

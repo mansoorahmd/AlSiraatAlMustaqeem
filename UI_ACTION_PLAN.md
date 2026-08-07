@@ -11,7 +11,7 @@
 Research persists in `research.db` (SQLite) via `/research/*` routes. The old
 `ui/` focus-panel prototype has been retired and removed.
 
-Status: **V0–V17 done.** Research-first loop complete (research.db, slips,
+Status: **V0–V18 done.** Research-first loop complete (research.db, slips,
 form dossier, reader gloss & case marks, full lexicons) + V5 trails &
 rare-root marks + V6 modern board (zoom/pan, arrange, word threads, segment
 highlights, ayah cases, spelling variants, case navigation) + **V7 export**:
@@ -628,6 +628,29 @@ migration), `startWordTrail`, and `TrailStrip` picks its occurrence source by
 kind and tags the subject chip *root* / *word*. Promote-to-case is hidden on word
 threads, since there's no root family to open a case on.
 
+### V18 — Reader & root-page polish ✅
+- **Āyah end mark carries the reference.** ﴿٢:١٢٧﴾ instead of ﴿١٢٧﴾ — surah and
+  āyah — with the surah name on hover ("Al-Baqarah · 2:127") and in the aria
+  label. `unicode-bidi: isolate` keeps the numerals in reading order inside the
+  RTL line.
+- **Long glosses are readable.** The corpus root gloss can be a paragraph (ن-ف-ق
+  is 1,125 characters) and arrived as a centred, unclamped wall with entries glued
+  together ("…another.nafaqan (n.acc.) hole…"). `tidyGloss()` spaces punctuation
+  that is stuck to the next word (letters only, so "acc.)" and "3.5" survive);
+  the block is left-aligned, clamped to 4 lines, with *show all*. Lexicon entries
+  clamp to 8 lines each and the list now actually scrolls — `.wm-lex-list` had a
+  `max-height` with no `overflow`, so entries past 15rem were unreachable.
+- **Tapping the root opens its lexicon page.** The root in the word-menu header is
+  now a link (hover shows "open root →"), keyed by `root_buckwalter` — not the
+  Arabic form — so it lands on the same record the Roots explorer uses and your
+  my-meaning / motif tags for that root are not split into a duplicate.
+- **Collocations show their evidence.** Clicking a "keeps company with" chip opens
+  the **āyāt where both roots occur** inline (verse key + text, click to read),
+  with "open ‹root› →" still in the panel header. Server
+  `RootLinkages.sharedVerses` + `GET /roots/:root/with/:other`; tests assert the
+  count equals the `cooccur` that `/linkages` reports, plus symmetry, mushaf
+  order, limit and 404s.
+
 ### Fixes & hardening (this pass) ✅
 Bugs found while getting indications working end-to-end — recorded because several
 were invisible-by-inspection and cost real time:
@@ -662,6 +685,28 @@ were invisible-by-inspection and cost real time:
   only. Deliberately scoped: research data is read-write, Quran content is
   immutable and stays cacheable. (A per-request cache-busting query param was
   tried and reverted — it wasn't the cause and added avoidable overhead.)
+
+- **Arabic descenders were clipped** (ع ج ح, low kasra/shadda). Self-inflicted:
+  `content-visibility: auto` — added to keep long surahs responsive — applies
+  **paint containment**, which clips to the padding box, and `.ayah` had no
+  padding. Fixed with vertical padding that scales with the reader size plus
+  leading 2.1 → 2.25, keeping the perf win.
+- **Expanding echo "compare here" hung the tab.** Not volume: the server answers
+  in 2-5ms and the inline list was already capped at 12. Expanding a panel reflows
+  the page, so the reader's IntersectionObserver fired in bursts; each fire
+  dispatched `setLastVerse`, and the store wrote the *whole* reading prefs to
+  IndexedDB on every `reading` change — which also meant ordinary scrolling was
+  hitting IndexedDB every tick. Prefs now persist on a 500ms trailing debounce
+  (with a pagehide/unmount flush), observer bursts collapse into one settled
+  dispatch, and an āyah with a panel open opts out of content-visibility.
+- **node:sqlite plans some SQL pathologically.** Both correlated `EXISTS` and
+  `IN (… INTERSECT …)` against the `word_occurrences` VIEW wedged the process with
+  no error, though the same SQL runs in 0.08s under other SQLite builds. Root-pair
+  lookups use two indexed `word_segments` queries intersected in JS (~50ms); the
+  reason is recorded at the call site so it isn't "simplified" back.
+- **Dead code removed:** `spellingVariantsForWord` / `stemSurfaces` (superseded by
+  `SpellingIndex.variantsForWord` during the مِمَّا fix) and the per-occurrence
+  sense-assignment tables/methods (superseded by primary-only indications).
 
 ### Remaining / future (not committed)
 - **`?` shortcuts overlay** — a discoverable cheat-sheet for the keyboard
