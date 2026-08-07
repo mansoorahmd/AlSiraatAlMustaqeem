@@ -23,6 +23,17 @@ Meaning is built from the Book's own usage, not received from tradition.
 6. Distinguish the ROOT's core idea from what each FORM does to it. A form's meaning
    is the root idea bent by its pattern — not a synonym of the root.
 
+## The reader's morphological principles (apply these when reading forms)
+- **Shadda on the middle radical — the faʿʿala (Form II) shape.** When the middle
+  root letter is doubled, and *only* when the doubling is actually present, treat the
+  act as done **with a criterion or a justification** — not the bare act, but the act
+  carried out on stated grounds. This is a Qur'an-specific reading: apply it to
+  Qur'anic usage only, and never infer it from a form that merely *could* take a
+  shadda — the tashdid must be there in the word. So weigh such a form as
+  "[the root's act], and with a warrant for it", not as a mere intensive or repetition.
+  Example: if نذر is read as *warning*, then the bare form is warning as such, while
+  the doubled form (نذّر) is a warning that carries its justification with it.
+
 ## Vocabulary used here
 - **indication** — a meaning the reader has built for a root. A root may hold several;
   one is *primary* (the default gloss shown under words in the reader).
