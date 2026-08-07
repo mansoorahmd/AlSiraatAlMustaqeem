@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS notes (
     created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_notes_verse ON notes(verse_key);
-CREATE INDEX IF NOT EXISTS idx_notes_source ON notes(source);
+-- source indexes are created in the constructor, AFTER the migration adds the column
 
 -- the reader's own meaning for a root, saved alongside the dictionary lexicons
 CREATE TABLE IF NOT EXISTS user_root_meanings (
@@ -71,7 +71,6 @@ CREATE TABLE IF NOT EXISTS word_indications (
     is_primary INTEGER NOT NULL DEFAULT 0, source TEXT NOT NULL DEFAULT 'me',
     created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_word_indications_source ON word_indications(source);
 CREATE INDEX IF NOT EXISTS idx_word_indications_lemma ON word_indications(lemma);
 CREATE INDEX IF NOT EXISTS idx_word_indications_root ON word_indications(root);
 CREATE INDEX IF NOT EXISTS idx_word_indications_parent ON word_indications(parent_id);
