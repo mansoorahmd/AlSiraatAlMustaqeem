@@ -115,36 +115,44 @@ QF_RESEARCH_DB=/tmp/smoke.db npm run smoke -w @alsiraat/mcp   # end-to-end smoke
 
 ### Client configuration
 
-Add to your MCP client's config (Claude Desktop: `claude_desktop_config.json`). No `env` block
-is needed — the server resolves this project's own `quran.db` and `research.db` from its own
-location, whatever the working directory:
+**First, once:** run `npm install` in the project root — `mcp/` is a workspace and needs its
+dependencies.
+
+Then point your client at the launcher by absolute path. Nothing else is needed — no `cwd`, no
+`env`:
 
 ```json
 {
   "mcpServers": {
     "Organic-Quranic-Methodology": {
       "command": "node",
-      "args": ["--import", "tsx", "src/index.ts"],
-      "cwd": "C:\\Users\\baapo\\Claude\\Projects\\AlSiraatAlMustaqeem\\mcp"
+      "args": ["C:\\Users\\baapo\\Claude\\Projects\\AlSiraatAlMustaqeem\\mcp\\bin\\start.mjs"]
     }
   }
 }
 ```
 
-> **Do not launch it through `npm start`.** npm prints its banner
-> (`> @alsiraat/mcp@0.1.0 start …`) to **stdout**, and on stdio transport stdout *is* the
-> JSON-RPC channel — the client dies with `Unexpected token '>', "> @alsiraa"... is not valid
-> JSON`. If you must go through npm, `--silent` suppresses it:
-> `cmd /c "cd /d <repo> && npm start --silent -w @alsiraat/mcp"`. Launching `node` directly, as
-> above, avoids the problem entirely.
->
-> `mcp/src/index.ts` also redirects `console.log/info/debug/warn` to stderr, so a stray log line
-> in shared server code cannot corrupt the protocol. It cannot protect against a *launcher*
-> that writes to stdout before the server starts.
+`mcp/bin/start.mjs` exists because launching this server is deceptively fragile. Two failures
+worth knowing about, both hit in practice:
 
-Point it at a different database with `QF_QURAN_DB` / `QF_RESEARCH_DB` if needed. The app's own
-server does **not** need to be running — the MCP server opens the databases directly. Run
-`npm install` once first, since `mcp/` is a new workspace.
+- **`npm start` breaks the protocol.** npm prints its banner to **stdout**, and on stdio
+  transport stdout *is* the JSON-RPC channel, so the client dies with
+  `Unexpected token '>', "> @alsiraa"... is not valid JSON`. (`npm start --silent` avoids it,
+  but see the next point.)
+- **`node --import tsx src/index.ts` breaks too.** Clients launch servers with an arbitrary
+  working directory — Claude Desktop on Windows uses `C:\WINDOWS\system32` and ignores `cwd` —
+  and `--import tsx` resolves the loader **relative to the working directory**, so it fails with
+  `Cannot find package 'tsx' imported from C:\WINDOWS\system32\`.
+
+The launcher sidesteps both: it is plain `.mjs` (no loader needed to start), registers tsx
+programmatically resolved **from its own location**, prints only to stderr, and says plainly
+what to do if dependencies are missing. Databases are likewise resolved from the file's location,
+not the working directory.
+
+Override the databases with `QF_QURAN_DB` / `QF_RESEARCH_DB` if you want it to read a copy. The
+app's own server does **not** need to be running — the MCP server opens the databases directly.
+
+For running it by hand (not via a client), `npm run mcp` from the project root still works.
 
 ### What it exposes
 

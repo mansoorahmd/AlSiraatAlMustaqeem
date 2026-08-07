@@ -684,11 +684,15 @@ word-forms, linkages, similarity) without duplicating logic.
   17 tools listed with correct read-only annotations, composed tools returning real data,
   refusals surfacing as readable messages, and the database asserted afterwards.
 
-> **Launcher footgun:** `npm start` prints its banner to **stdout**, which on stdio *is* the
-> JSON-RPC channel — the client fails with `Unexpected token '>', "> @alsiraa"...`. The
-> documented config therefore launches `node --import tsx src/index.ts` directly (`--silent`
-> also works if you must use npm). `index.ts` additionally routes `console.*` to stderr so a
-> stray log in shared code cannot corrupt the protocol.
+> **Launching it is deceptively fragile** — two real failures, hence `mcp/bin/start.mjs`:
+> **(a)** `npm start` prints its banner to **stdout**, which on stdio *is* the JSON-RPC channel,
+> so the client fails with `Unexpected token '>', "> @alsiraa"...`. **(b)** `node --import tsx
+> src/index.ts` fails too, because clients launch with an arbitrary working directory (Claude
+> Desktop on Windows uses `C:\WINDOWS\system32` and ignores `cwd`) and `--import` resolves the
+> loader relative to the CWD: `Cannot find package 'tsx' imported from C:\WINDOWS\system32\`.
+> The launcher is plain `.mjs`, registers tsx resolved from **its own** location, suppresses the
+> node:sqlite ExperimentalWarning, and explains itself if dependencies are missing. `index.ts`
+> also routes `console.*` to stderr so a stray log in shared code cannot corrupt the protocol.
 >
 > Two bugs worth remembering, both caught by that smoke test rather than by reading:
 > **(1)** `guard.sanitiseIndication` *deleted* the `primary` key instead of forcing it false —
