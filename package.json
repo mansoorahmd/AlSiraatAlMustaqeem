@@ -15,7 +15,7 @@
     "build": "npm run build -w app",
     "start": "npm run build -w app && npm run start:static -w server",
     "save": "node --no-warnings scripts/save-research.mjs",
-    "mcp": "npm start -w @alsiraat/mcp"
+    "mcp": "npm start --silent -w @alsiraat/mcp"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

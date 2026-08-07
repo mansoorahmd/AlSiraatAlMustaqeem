@@ -116,22 +116,35 @@ QF_RESEARCH_DB=/tmp/smoke.db npm run smoke -w @alsiraat/mcp   # end-to-end smoke
 ### Client configuration
 
 Add to your MCP client's config (Claude Desktop: `claude_desktop_config.json`). No `env` block
-is needed — it resolves this project's own `quran.db` and `research.db`:
+is needed — the server resolves this project's own `quran.db` and `research.db` from its own
+location, whatever the working directory:
 
 ```json
 {
   "mcpServers": {
-    "alsiraat": {
-      "command": "npm",
-      "args": ["start", "-w", "@alsiraat/mcp"],
-      "cwd": "C:/Users/baapo/Claude/Projects/AlSiraatAlMustaqeem"
+    "Organic-Quranic-Methodology": {
+      "command": "node",
+      "args": ["--import", "tsx", "src/index.ts"],
+      "cwd": "C:\\Users\\baapo\\Claude\\Projects\\AlSiraatAlMustaqeem\\mcp"
     }
   }
 }
 ```
 
+> **Do not launch it through `npm start`.** npm prints its banner
+> (`> @alsiraat/mcp@0.1.0 start …`) to **stdout**, and on stdio transport stdout *is* the
+> JSON-RPC channel — the client dies with `Unexpected token '>', "> @alsiraa"... is not valid
+> JSON`. If you must go through npm, `--silent` suppresses it:
+> `cmd /c "cd /d <repo> && npm start --silent -w @alsiraat/mcp"`. Launching `node` directly, as
+> above, avoids the problem entirely.
+>
+> `mcp/src/index.ts` also redirects `console.log/info/debug/warn` to stderr, so a stray log line
+> in shared server code cannot corrupt the protocol. It cannot protect against a *launcher*
+> that writes to stdout before the server starts.
+
 Point it at a different database with `QF_QURAN_DB` / `QF_RESEARCH_DB` if needed. The app's own
-server does **not** need to be running — the MCP server opens the databases directly.
+server does **not** need to be running — the MCP server opens the databases directly. Run
+`npm install` once first, since `mcp/` is a new workspace.
 
 ### What it exposes
 

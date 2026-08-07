@@ -684,6 +684,12 @@ word-forms, linkages, similarity) without duplicating logic.
   17 tools listed with correct read-only annotations, composed tools returning real data,
   refusals surfacing as readable messages, and the database asserted afterwards.
 
+> **Launcher footgun:** `npm start` prints its banner to **stdout**, which on stdio *is* the
+> JSON-RPC channel — the client fails with `Unexpected token '>', "> @alsiraa"...`. The
+> documented config therefore launches `node --import tsx src/index.ts` directly (`--silent`
+> also works if you must use npm). `index.ts` additionally routes `console.*` to stderr so a
+> stray log in shared code cannot corrupt the protocol.
+>
 > Two bugs worth remembering, both caught by that smoke test rather than by reading:
 > **(1)** `guard.sanitiseIndication` *deleted* the `primary` key instead of forcing it false —
 > and `saveIndication` treats a missing flag as "first indication for this root becomes
