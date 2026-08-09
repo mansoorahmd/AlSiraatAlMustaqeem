@@ -42,8 +42,12 @@ export function makeFormResolver(forms: FormRef[]): (input: string) => FormMatch
     const hit = exact.get(nfc);
     if (hit) return { form: hit.form };
     const cands = byFold.get(foldArabic(nfc)) ?? [];
-    if (cands.length === 1) return { form: cands[0]!.form };
-    if (cands.length > 1) return { ambiguous: cands };
+    // collapse candidates that are the SAME spelling (POS-homographs like رَّحِيم
+    // Adjective + Noun): there is nothing to disambiguate, they save to one lemma.
+    // Only DIFFERENT spellings sharing a skeleton (نَذَرْ / نَّذْر / نُذْر) are ambiguous.
+    const distinct = [...new Map(cands.map((c) => [c.form.normalize("NFC"), c])).values()];
+    if (distinct.length === 1) return { form: distinct[0]!.form };
+    if (distinct.length > 1) return { ambiguous: distinct };
     return { unknown: true };
   };
 }

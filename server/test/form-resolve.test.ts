@@ -49,4 +49,19 @@ describe("form resolver for refinements", () => {
   it("reports a genuinely unknown form", () => {
     expect(resolve("كتاب")).toEqual({ unknown: true });
   });
+
+  it("accepts a POS-homograph: one spelling analysed as two forms is not ambiguous", () => {
+    // رَّحِيم is both Adjective and Noun in the corpus — same spelling, two rows.
+    // A refinement keys to the spelling, so this must resolve, not bounce.
+    const rahim: FormRef[] = [
+      { form: "رَّحِيم", pos: "Adjective", occurrences: 112 },
+      { form: "رَّحِيم", pos: "Noun", occurrences: 4 },
+      { form: "رَّحْمَٰن", pos: "Noun", occurrences: 45 },
+      { form: "رَّحْمَٰن", pos: "Adjective", occurrences: 12 },
+    ];
+    const r = makeFormResolver(rahim);
+    // loose vowels / mark ordering — the fold ignores diacritics entirely
+    expect(r("رحيم")).toEqual({ form: "رَّحِيم" });
+    expect(r("رحمن")).toEqual({ form: "رَّحْمَٰن" });
+  });
 });
