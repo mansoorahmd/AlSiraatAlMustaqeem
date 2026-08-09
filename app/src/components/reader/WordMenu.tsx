@@ -107,6 +107,24 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
   );
   const variants = spelling.data ?? [];
 
+  // jump to the FIRST place this exact spelling (rasm) is written — landing on the
+  // word itself. wordOccurrences matches by rasm and returns mushaf order, so [0]
+  // is the first occurrence; fall back to the variant's own verse list if needed.
+  const jumpToSpelling = async (v: { surface: string; verses: string[] }) => {
+    try {
+      const occ = await api.wordOccurrences(v.surface, 1);
+      if (occ[0]) {
+        dispatch({ type: "jumpToVerse", verseKey: occ[0].verse_key, wordPosition: occ[0].word_position });
+        onClose();
+        return;
+      }
+    } catch { /* fall back to the verse list below */ }
+    if (v.verses[0]) {
+      dispatch({ type: "jumpToVerse", verseKey: v.verses[0] });
+      onClose();
+    }
+  };
+
   // the reader's own indications for this word: the root's indications (with this form's
   // refinement) + any rootless standalone indications. The active reading = this
   // form's refinement of the primary root indication, else that indication's own text.
@@ -231,10 +249,16 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
           {spellOpen && (
             <div className="wm-spelling-list">
               {variants.map((v, i) => (
-                <span key={i} className={`wm-spell${i === 0 ? " common" : ""}`}>
+                <button
+                  key={i}
+                  type="button"
+                  className={`wm-spell${i === 0 ? " common" : ""}`}
+                  title={`Go to the first place written ${v.surface}`}
+                  onClick={() => jumpToSpelling(v)}
+                >
                   <span className="quran">{v.surface}</span>
                   <span className="wm-spell-count">×{v.count}</span>
-                </span>
+                </button>
               ))}
             </div>
           )}

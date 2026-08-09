@@ -2409,7 +2409,10 @@ a { color: var(--lapis); }
 .wm-morph .quran { font-size: 1.1rem; color: var(--ink); }
 .wm-morph-toggle { border: none; background: none; cursor: pointer; color: var(--gold); font-size: var(--fs-small); padding: 0; }
 .wm-spelling-list { display: flex; flex-wrap: wrap; gap: 0.6rem; width: 100%; margin-top: 0.15rem; }
-.wm-spell { display: inline-flex; align-items: baseline; gap: 0.2rem; }
+.wm-spell { display: inline-flex; align-items: baseline; gap: 0.2rem;
+  border: 0; background: transparent; padding: 0.15rem 0.35rem; margin: -0.15rem -0.1rem;
+  border-radius: 6px; cursor: pointer; font: inherit; transition: background 0.12s ease; }
+.wm-spell:hover { background: var(--wash, rgba(0,0,0,0.05)); }
 .wm-spell .quran { font-size: 1.3rem; color: var(--ink); }
 .wm-spell.common .quran { color: var(--gold); }
 .wm-spell-count { font-size: var(--fs-label); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
