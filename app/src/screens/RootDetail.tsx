@@ -111,16 +111,22 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: P
   // group occurrences by the derived FORM (lemma), so the reader can compare
   // how the indication shifts across forms — the heart of organic root study
   const byForm = useMemo(() => {
-    const groups = new Map<string, { key: string; pos: number }[]>();
+    // one chip per āyah (dedupe by verse_key), but also keep the raw occurrence
+    // count: a form can appear more than once in a single āyah, so occurrences ≥
+    // āyāt. Counting occ from the rows we actually show keeps the two numbers
+    // consistent with the list even when it is truncated.
+    const groups = new Map<string, { verses: { key: string; pos: number }[]; occ: number }>();
     for (const o of occ.data ?? []) {
       const form = o.lemma_arabic ?? "—";
-      let arr = groups.get(form);
-      if (!arr) { arr = []; groups.set(form, arr); }
-      if (!arr.some((x) => x.key === o.verse_key)) arr.push({ key: o.verse_key, pos: o.word_position });
+      let g = groups.get(form);
+      if (!g) { g = { verses: [], occ: 0 }; groups.set(form, g); }
+      g.occ += 1;
+      if (!g.verses.some((x) => x.key === o.verse_key)) g.verses.push({ key: o.verse_key, pos: o.word_position });
     }
-    const out = [...groups.entries()].map(([form, verses]) => ({
+    const out = [...groups.entries()].map(([form, g]) => ({
       form,
-      verses: verses.sort((a, b) => vsort(a.key) - vsort(b.key)),
+      verses: g.verses.sort((a, b) => vsort(a.key) - vsort(b.key)),
+      occ: g.occ,
     }));
     out.sort((a, b) => b.verses.length - a.verses.length);
     return out;
@@ -331,7 +337,16 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: P
             <div className="occ-form-head">
               <span className="occ-form quran">{g.form}</span>
               {posOfForm.get(g.form) && <span className="occ-form-pos">{posOfForm.get(g.form)}</span>}
-              <span className="occ-form-count">{g.verses.length}</span>
+              <span
+                className="occ-form-count"
+                title={
+                  g.occ === g.verses.length
+                    ? `${g.verses.length} āyāt`
+                    : `${g.occ} occurrences across ${g.verses.length} āyāt — this form appears more than once in some āyah`
+                }
+              >
+                {g.verses.length}{g.occ !== g.verses.length ? ` āyāt · ${g.occ}×` : ""}
+              </span>
             </div>
             <div className="root-occ">
               {g.verses.map((v) => (
