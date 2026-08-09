@@ -13,12 +13,21 @@ export interface SpellingVariant {
 // RASM key: keep only base rasm letters + dagger-alif + wasla + small wāw/yāʾ.
 export const rasmKey = (s: string) => (s || '').replace(/[^\u0621-\u064A\u0670\u0671\u06E5\u06E6]/g, '');
 
-// SKELETON: collapse hamza seats (→ ء) and long-a letters (→ ا), small yāʾ/wāw,
-// then squash runs — so the same word written two ways still groups together.
+// SKELETON: collapse the letters that carry the same word's long-ā across the two
+// mushaf spellings, so the same word written two ways still lands in one group:
+//   • hamza seats → ء
+//   • every long-ā carrier → ا: alif, alif-maqṣūra ى, dagger-alif ٰ, waṣla ٱ, madda آ,
+//     AND the mater-lectionis wāw و / superscript wāw ۥ (the archaic ā, as in
+//     ٱلصَّلَوٰة, ٱلزَّكَوٰة, ٱلْحَيَوٰة — written with wāw where imlāʾī uses alif)
+//   • tāʾ-marbūṭa ة → open tāʾ ت (رَحْمَت vs رَحْمَة, نِعْمَت vs نِعْمَة …)
+// then squash runs. This only ever merges within one lemma + full morphological
+// analysis (both are in the group key), so it unifies one word-form's spellings and
+// never conflates different words. The distinct rasm spellings are still tracked
+// separately inside the group, so each variant is counted and shown.
 const SKEL: Record<string, string> = {
   "ء": "ء", "أ": "ء", "إ": "ء", "ؤ": "ء", "ئ": "ء", "ٱ": "ا",
-  "آ": "ا", "ا": "ا", "ى": "ا", "ٰ": "ا",
-  "ۦ": "ي", "ۥ": "و",
+  "آ": "ا", "ا": "ا", "ى": "ا", "ٰ": "ا", "و": "ا", "ۥ": "ا",
+  "ة": "ت", "ۦ": "ي",
 };
 export const skeleton = (rk: string) => {
   let out = "";
