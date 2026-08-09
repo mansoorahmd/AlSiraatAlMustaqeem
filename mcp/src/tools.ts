@@ -124,7 +124,10 @@ const study_root: Tool = {
       total_occurrences: d.total_occurrences,
       corpus_gloss: d.meaning_en,
       note: "corpus_gloss is a raw unranked word-list, not an authority — weigh the lexicon entries.",
-      forms: [...new Map((d.forms ?? []).map((f) => [f.lemma_arabic, f])).values()].map((f) => ({
+      // one row per (spelling, part of speech) — do NOT dedupe by spelling alone:
+      // a spelling can be two forms (e.g. رَّحِيم Adjective ×112 AND Noun ×4), and
+      // collapsing them dropped one row's count entirely. Keep them attributable.
+      forms: (d.forms ?? []).map((f) => ({
         form: f.lemma_arabic,
         pos: f.pos_english,
         occurrences: f.occurrence_count,
