@@ -12,7 +12,10 @@ import type { AppState } from "../../server/src/state.js";
 import { waznForWord } from "../../server/src/wazn.js";
 import { expressionSearch } from "../../server/src/expressions.js";
 import { foldArabic } from "../../server/src/text/normalize.js";
-import { AI_SOURCE, guard, proposalId } from "./core.js";
+import { AI_SOURCE, guard, proposalId, WriteRefused } from "./core.js";
+import {
+  caseSummary, expectVersion, findOwnItem, mustGetCase, placeItem, saveGuarded,
+} from "./cases.js";
 
 // Resolve a caller-supplied form against a root's actual derived forms.
 //
@@ -362,6 +365,9 @@ const my_research_on: Tool = {
       }));
       out.notes = state.research.listNotes({ root: ar });
       out.my_root_meaning = state.research.getRootMeaning(d?.root_buckwalter ?? root);
+      out.cases = (state.research.listCases() as any[])
+        .filter((c) => c.subject?.value === ar)
+        .map((c) => caseSummary(c));
     }
     if (verse_key) {
       out.verse_key = verse_key;
@@ -554,7 +560,310 @@ const propose_indication: Tool = {
   },
 };
 
+// ------------------------------------------------------- the Investigate board ----
+// Read + create + write, inside the reader's boundary: add freely, change only your
+// own items, and never write a conclusion (verdict / status / established meaning) —
+// those go into `proposals` for the reader to accept. See cases.ts for the guard.
+
+const VERSION = z.number().optional().describe(
+  "The case's updated_at from your last read. A whole case is rewritten on save, so " +
+  "this is checked to make sure you don't overwrite an edit the reader made meanwhile. " +
+  "Omit only right after you created the case.",
+);
+
+const list_cases: Tool = {
+  name: "list_cases",
+  title: "The reader's investigations",
+  description:
+    "Every case on the Investigate board: subject, status, how much evidence is on it, " +
+    "which forms are established, and what is awaiting the reader's review.",
+  schema: {
+    subject: z.string().optional().describe("Filter by root, phrase or verse key."),
+    status: z.enum(["open", "partial", "closed", "any"]).default("any"),
+  },
+  run: (state, a) => {
+    const all = (state.research.listCases() as any[]).map((c) => caseSummary(c));
+    return all.filter((c: any) =>
+      (a.status === "any" || c.status === a.status) &&
+      (!a.subject || c.subject?.value === a.subject || c.title?.includes(a.subject)));
+  },
+};
+
+const read_case: Tool = {
+  name: "read_case",
+  title: "Read one case in full",
+  description:
+    "The whole board for one case: every evidence āyah, slip, link and group, each marked " +
+    "with who added it. Read this before writing, and keep `updated_at` for your next write.",
+  schema: { case_id: z.string() },
+  run: (state, { case_id }) => caseSummary(mustGetCase(state, case_id), { full: true }),
+};
+
+const open_case: Tool = {
+  name: "open_case",
+  title: "Open a new case (writes)",
+  description:
+    "Start an investigation on a root, a phrase, or an āyah. Use list_cases first — if one " +
+    "already exists for this subject, add to that instead of opening a duplicate.",
+  writes: true,
+  schema: {
+    subject_type: z.enum(["root", "phrase", "ayah"]),
+    subject: z.string().describe("The root (Arabic), the phrase text, or a verse key."),
+    title: z.string().describe("A short title for the investigation."),
+    description: z.string().default("").describe("The question this case is meant to settle."),
+  },
+  run: (state, a) => {
+    const subject = a.subject_type === "root"
+      ? (getRoot(state, a.subject)?.root_arabic ?? a.subject)
+      : a.subject;
+    const now = Date.now();
+    const saved = state.research.saveCase({
+      id: proposalId("case"),
+      subject: { type: a.subject_type, value: subject },
+      title: guard.requireText(a.title, "title"),
+      description: a.description ?? "",
+      cards: [], slips: [], threads: [], clusters: [], formResearch: {},
+      verdict: "", status: "open", createdAt: now, updatedAt: now,
+      source: AI_SOURCE,
+    }) as any;
+    return { created: true, case_id: saved.id, updated_at: saved.updatedAt, subject };
+  },
+};
+
+const add_evidence: Tool = {
+  name: "add_evidence",
+  title: "Pin āyāt to a case (writes)",
+  description:
+    "Add āyāt as evidence cards. Optionally anchor a card to one word. Cards are placed on " +
+    "the board for you. Duplicates of an āyah already on the board are skipped.",
+  writes: true,
+  schema: {
+    case_id: z.string(),
+    ayat: z.array(z.object({
+      verse_key: z.string(),
+      word_position: z.number().int().min(1).optional(),
+    })).min(1).max(40),
+    expect_version: VERSION,
+  },
+  run: (state, a) => {
+    const c = mustGetCase(state, a.case_id);
+    expectVersion(c, a.expect_version);
+    const next = { ...c, cards: [...(c.cards ?? [])] };
+    const added: unknown[] = [];
+    const skipped: unknown[] = [];
+    for (const item of a.ayat) {
+      const vk = guard.verseKey(item.verse_key);
+      if (!state.content.getVerse(vk, { script: "uthmani" })) {
+        skipped.push({ verse_key: vk, why: "no such āyah" });
+        continue;
+      }
+      if (next.cards.some((k: any) => k.verseKey === vk && (k.wordPosition ?? null) === (item.word_position ?? null))) {
+        skipped.push({ verse_key: vk, why: "already on the board" });
+        continue;
+      }
+      const at = placeItem(next);
+      const card = {
+        id: proposalId("card"), verseKey: vk, wordPosition: item.word_position ?? null,
+        ...at, source: AI_SOURCE,
+      };
+      next.cards.push(card);
+      added.push({ id: card.id, verse_key: vk });
+    }
+    const saved = saveGuarded(state, c, next);
+    return { added, skipped, updated_at: saved.updatedAt };
+  },
+};
+
+const add_slip: Tool = {
+  name: "add_slip",
+  title: "Add an observation or a citation to a case (writes)",
+  description:
+    "Put your own reasoning on the board as a comment slip, or a cited source as a reference " +
+    "slip (with source + locator). Attach it to one derived form, or to the root itself.",
+  writes: true,
+  schema: {
+    case_id: z.string(),
+    kind: z.enum(["comment", "reference"]).default("comment"),
+    text: z.string().describe("The observation, or what the source says."),
+    form: z.string().nullable().default(null).describe("The lemma this concerns, or null for the root."),
+    source: z.string().default("").describe("Reference slips: e.g. \"Lisān al-ʿArab\"."),
+    locator: z.string().default("").describe("Reference slips: e.g. \"under ر-ح-م\", \"vol 8 p. 2925\"."),
+    expect_version: VERSION,
+  },
+  run: (state, a) => {
+    const c = mustGetCase(state, a.case_id);
+    expectVersion(c, a.expect_version);
+    const text = guard.requireText(a.text, "text");
+    if (a.kind === "reference" && !String(a.source ?? "").trim()) {
+      throw new WriteRefused("A reference slip needs `source` — say which lexicon or work it comes from.");
+    }
+    const next = { ...c, slips: [...(c.slips ?? [])] };
+    const at = placeItem(next);
+    const slip = {
+      id: proposalId("slip"), kind: a.kind, form: a.form ?? null, text,
+      source: a.source || undefined, locator: a.locator || undefined,
+      ...at, author: AI_SOURCE,
+    };
+    next.slips.push(slip);
+    const saved = saveGuarded(state, c, next);
+    return { added: slip.id, updated_at: saved.updatedAt };
+  },
+};
+
+const link_evidence: Tool = {
+  name: "link_evidence",
+  title: "Link two items on a case (writes)",
+  description:
+    "Draw a labelled thread between two cards or slips — the relationship you are claiming " +
+    "between them (e.g. \"same construction\", \"contrast\"). Both ids must be on this case.",
+  writes: true,
+  schema: {
+    case_id: z.string(),
+    from_id: z.string(),
+    to_id: z.string(),
+    label: z.string().describe("What the link asserts, in a few words."),
+    expect_version: VERSION,
+  },
+  run: (state, a) => {
+    const c = mustGetCase(state, a.case_id);
+    expectVersion(c, a.expect_version);
+    const ids = new Set([...(c.cards ?? []), ...(c.slips ?? [])].map((i: any) => i.id));
+    for (const id of [a.from_id, a.to_id]) {
+      if (!ids.has(id)) throw new WriteRefused(`${id} is not a card or slip on this case.`);
+    }
+    const thread = {
+      id: proposalId("th"), fromCardId: a.from_id, toCardId: a.to_id,
+      label: guard.requireText(a.label, "label"),
+      source: "suggested" as const, accepted: false, author: AI_SOURCE,
+    };
+    const saved = saveGuarded(state, c, { ...c, threads: [...(c.threads ?? []), thread] });
+    return { added: thread.id, updated_at: saved.updatedAt, note: "Offered as a suggested thread; the reader accepts it to make it ink." };
+  },
+};
+
+const group_evidence: Tool = {
+  name: "group_evidence",
+  title: "Group items on a case (writes)",
+  description:
+    "Gather cards/slips into a named cluster — your proposed grouping of the evidence " +
+    "(e.g. \"physical sense\", \"used of rain\").",
+  writes: true,
+  schema: {
+    case_id: z.string(),
+    name: z.string(),
+    item_ids: z.array(z.string()).min(1),
+    expect_version: VERSION,
+  },
+  run: (state, a) => {
+    const c = mustGetCase(state, a.case_id);
+    expectVersion(c, a.expect_version);
+    const ids = new Set([...(c.cards ?? []), ...(c.slips ?? [])].map((i: any) => i.id));
+    const missing = a.item_ids.filter((i: string) => !ids.has(i));
+    if (missing.length) throw new WriteRefused(`Not on this case: ${missing.join(", ")}`);
+    const cluster = {
+      id: proposalId("cl"), name: guard.requireText(a.name, "name"),
+      cardIds: a.item_ids, source: AI_SOURCE,
+    };
+    const saved = saveGuarded(state, c, { ...c, clusters: [...(c.clusters ?? []), cluster] });
+    return { added: cluster.id, updated_at: saved.updatedAt };
+  },
+};
+
+const revise_own_item: Tool = {
+  name: "revise_own_item",
+  title: "Change or remove something you added (writes)",
+  description:
+    "Reword or delete an item YOU put on the board — a slip's text, a thread's or cluster's " +
+    "label, or remove any of your own items. The reader's own items are refused: their work " +
+    "is never edited or deleted by this server.",
+  writes: true,
+  schema: {
+    case_id: z.string(),
+    item_id: z.string(),
+    action: z.enum(["retext", "remove"]),
+    text: z.string().default("").describe("The new text/label, for action=retext."),
+    expect_version: VERSION,
+  },
+  run: (state, a) => {
+    const c = mustGetCase(state, a.case_id);
+    expectVersion(c, a.expect_version);
+    const { kind } = findOwnItem(c, a.item_id); // refuses if it is the reader's
+    const key = ({ card: "cards", slip: "slips", thread: "threads", cluster: "clusters" } as const)[kind];
+    let next: any;
+    if (a.action === "remove") {
+      next = { ...c, [key]: (c[key] ?? []).filter((i: any) => i.id !== a.item_id) };
+      // drop threads that pointed at a removed card/slip, so the board stays consistent
+      if (kind === "card" || kind === "slip") {
+        next.threads = (next.threads ?? []).filter(
+          (t: any) => t.fromCardId !== a.item_id && t.toCardId !== a.item_id,
+        );
+        next.clusters = (next.clusters ?? []).map((g: any) => ({
+          ...g, cardIds: (g.cardIds ?? []).filter((id: string) => id !== a.item_id),
+        }));
+      }
+    } else {
+      if (kind === "card") {
+        throw new WriteRefused("An evidence card has no text to change — remove it instead.");
+      }
+      const text = guard.requireText(a.text, "text");
+      next = {
+        ...c,
+        [key]: (c[key] ?? []).map((i: any) =>
+          i.id !== a.item_id ? i
+            : kind === "slip" ? { ...i, text }
+            : kind === "cluster" ? { ...i, name: text }
+            : { ...i, label: text }), // thread
+      };
+    }
+    const saved = saveGuarded(state, c, next);
+    return { [a.action === "remove" ? "removed" : "updated"]: a.item_id, updated_at: saved.updatedAt };
+  },
+};
+
+const propose_conclusion: Tool = {
+  name: "propose_conclusion",
+  title: "Propose a verdict or an established meaning (proposal)",
+  description:
+    "State what you think the case has shown — either the case verdict, or one form's " +
+    "meaning. This is PARKED for the reader: it does not set the verdict, close the case, " +
+    "or mark any form established. Only the reader applies a conclusion.",
+  writes: true,
+  schema: {
+    case_id: z.string(),
+    kind: z.enum(["verdict", "form"]).default("verdict"),
+    form: z.string().nullable().default(null).describe("For kind='form': the lemma. Copy it verbatim from study_root."),
+    text: z.string().describe("The conclusion, stated plainly."),
+    reasoning: z.string().default("").describe("The evidence it rests on."),
+    suggested_status: z.enum(["open", "partial", "closed"]).optional()
+      .describe("What state you think the case has reached. Advisory only."),
+    expect_version: VERSION,
+  },
+  run: (state, a) => {
+    const c = mustGetCase(state, a.case_id);
+    expectVersion(c, a.expect_version);
+    const text = guard.requireText(a.text, "text");
+    if (a.kind === "form" && !String(a.form ?? "").trim()) {
+      throw new WriteRefused("kind='form' needs `form` — which lemma the meaning is for.");
+    }
+    const entry = {
+      id: proposalId("concl"), kind: a.kind, form: a.kind === "form" ? a.form : null,
+      text, reasoning: a.reasoning ?? "", suggestedStatus: a.suggested_status,
+      createdAt: Date.now(),
+    };
+    const entries = [...((c.proposals?.entries ?? []) as any[]), entry];
+    const saved = saveGuarded(state, c, { ...c, proposals: { entries } });
+    return {
+      proposed: true, id: entry.id, updated_at: saved.updatedAt,
+      applied: false, awaiting_review: true,
+      note: "Parked for the reader. The case's verdict, status and established forms are unchanged.",
+    };
+  },
+};
+
 export const TOOLS: Tool[] = [
   study_root, read_ayah, find_where_roots_meet, trace_word, search_quran, compare_forms,
   my_research_on, ...thin, add_note, propose_indication,
+  // the Investigate board
+  list_cases, read_case, open_case, add_evidence, add_slip, link_evidence, group_evidence,
+  revise_own_item, propose_conclusion,
 ];

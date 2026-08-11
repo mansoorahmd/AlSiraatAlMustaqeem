@@ -2864,3 +2864,27 @@ a { color: var(--lapis); }
   color: var(--gold); border: 1px solid var(--gold-soft, rgba(180,83,9,0.4));
   border-radius: 3px; padding: 0 0.2rem; vertical-align: middle;
 }
+
+/* ---- AI contributions on the Investigate board ---------------------------- */
+/* Anything an AI added through the MCP server is marked, so the reader can always
+   see whose work is whose. Items the reader made carry no marker. */
+.board-card.by-ai { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+.board-card.by-ai::after {
+  content: "✦"; position: absolute; top: 4px; right: 6px;
+  font-size: 0.72rem; color: var(--gold); pointer-events: none;
+}
+
+/* proposed conclusions — inert until accepted */
+.desk-proposals { margin: 0.75rem 0 0.25rem; padding: 0.6rem 0.75rem;
+  border: 1px dashed var(--gold); border-radius: 8px; background: rgba(180, 130, 40, 0.04); }
+.desk-proposals-head { font-size: var(--fs-label); margin: 0 0 0.5rem; color: var(--gold); }
+.desk-proposals-note { color: var(--ink-soft); font-weight: 400; }
+.desk-proposal { display: flex; gap: 0.75rem; align-items: flex-start;
+  justify-content: space-between; padding: 0.4rem 0; border-top: 1px solid var(--rule); }
+.desk-proposal:first-of-type { border-top: 0; }
+.desk-proposal-what { display: flex; flex-direction: column; gap: 0.15rem; }
+.desk-proposal-kind { font-size: var(--fs-label); color: var(--ink-soft); text-transform: uppercase;
+  letter-spacing: 0.04em; }
+.desk-proposal-text { color: var(--ink); }
+.desk-proposal-why { font-size: var(--fs-label); color: var(--ink-soft); font-style: italic; }
+.desk-proposal-acts { display: flex; gap: 0.35rem; flex-shrink: 0; }

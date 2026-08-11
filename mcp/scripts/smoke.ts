@@ -52,6 +52,40 @@ console.log("  bad verse key ->", (bad as any).isError, txt(bad as any).slice(0,
 const bad2 = await c.callTool({ name: "add_note", arguments: { verse_key: "2:5", text: "   " } });
 console.log("  empty text   ->", (bad2 as any).isError, txt(bad2 as any).slice(0, 60));
 
+console.log("\n--- the Investigate board ---");
+const opened = JSON.parse(await call("open_case", {
+  subject_type: "root", subject: "فلح", title: "smoke case", description: "does it break open?",
+}));
+console.log("  opened:", opened.case_id);
+const ev = JSON.parse(await call("add_evidence", {
+  case_id: opened.case_id, ayat: [{ verse_key: "2:5" }, { verse_key: "23:1" }],
+  expect_version: opened.updated_at,
+}));
+console.log("  evidence:", ev.added.length, "added,", ev.skipped.length, "skipped");
+const sl = JSON.parse(await call("add_slip", {
+  case_id: opened.case_id, kind: "reference", text: "the أصل is splitting the soil",
+  source: "Maqāyīs", locator: "under ف-ل-ح", expect_version: ev.updated_at,
+}));
+const lk = JSON.parse(await call("link_evidence", {
+  case_id: opened.case_id, from_id: ev.added[0].id, to_id: ev.added[1].id,
+  label: "same construction", expect_version: sl.updated_at,
+}));
+const concl = JSON.parse(await call("propose_conclusion", {
+  case_id: opened.case_id, kind: "verdict", text: "to break through into the open",
+  reasoning: "the physical core in Maqāyīs", suggested_status: "closed",
+  expect_version: lk.updated_at,
+}));
+console.log("  conclusion parked:", concl.proposed, "| applied:", concl.applied);
+const board = JSON.parse(await call("read_case", { case_id: opened.case_id }));
+console.log("  board:", board.counts.evidence_cards.yours, "cards,", board.counts.slips.yours,
+  "slips,", board.counts.threads.yours, "threads | verdict still:", JSON.stringify(board.verdict),
+  "| status:", board.status, "| awaiting reader:", board.awaiting_reader.length);
+// the guards: stale version, and touching what the reader owns
+const stale = await c.callTool({ name: "add_evidence", arguments: {
+  case_id: opened.case_id, ayat: [{ verse_key: "3:1" }], expect_version: 1,
+} });
+console.log("  stale write   ->", (stale as any).isError, txt(stale as any).slice(0, 48));
+
 console.log("\n--- resources ---");
 const meth = await c.readResource({ uri: "alsiraat://method" });
 console.log("  method chars:", (meth.contents[0] as any).text.length);

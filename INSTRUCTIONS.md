@@ -160,6 +160,9 @@ For running it by hand (not via a client), `npm run mcp` from the project root s
 `find_where_roots_meet`, `trace_word`, `search_quran`, `compare_forms`, `my_research_on`.
 **Tools — thin** (single endpoints): `get_root`, `list_roots`, `get_verses`, `get_linkages`,
 `get_echoes`, `get_wazn`, `get_spelling_variants`, `get_similar_ayat`.
+**Tools — the Investigate board**: `list_cases`, `read_case` (read); `open_case`,
+`add_evidence`, `add_slip`, `link_evidence`, `group_evidence`, `revise_own_item`,
+`propose_conclusion` (write).
 
 **Prompts:** `test_indication` (test a proposed meaning against every form of a root),
 `study_ayah`, `review_my_root`.
@@ -173,11 +176,27 @@ first), `alsiraat://write-policy`, `alsiraat://research/summary`.
 |---|---|
 | Corpus (`quran.db`) | **read-only**, always |
 | Translations | **not exposed at all** — the method builds meaning from Arabic, morphology and the lexicons |
-| May write | notes/questions, and indications with per-form refinements — nothing else |
-| May never | edit or delete anything (including its own earlier proposals) |
+| May write | notes/questions; indications with per-form refinements; cases and their board items |
+| May never | edit or delete **your** notes, indications, or board items |
 | May never | set an indication **primary** (your default gloss) |
-| May never | touch cases, motifs, comparisons or your root meanings |
-| Every write | tagged `source='ai'` and listed under **✦ Proposed** in the app to accept or discard |
+| May never | write a case's **verdict** or **status**, or mark a form **established** — proposals only |
+| May never | touch motifs, comparisons or your root meanings |
+| Every write | tagged as AI-authored and reviewable in the app (**✦ Proposed**, and ✦ on board items) |
+
+**The Investigate board.** An AI may open cases and add evidence āyāt, comment and
+reference slips, labelled threads and clusters — and may reword or remove *only the items
+it added itself*. Its conclusions go into a `proposals` list on the case, shown under
+**✦ Proposed conclusions** on the desk; accepting one there is the only way it can become
+your verdict or an established form meaning.
+
+Two mechanics worth knowing:
+
+- **Card placement is automatic.** The AI never supplies board coordinates; the server
+  places new cards/slips on a free grid slot so nothing lands on top of your layout.
+- **Board writes are version-checked.** A case is stored as one JSON document and
+  rewritten whole on save, so a concurrent AI write could otherwise clobber an edit you
+  made in the app. Every write carries the `updated_at` the AI last read and is **refused**
+  if the case moved on — it must re-read and retry. Nothing of yours is lost silently.
 
 `mcp/src/core.ts` holds the guard; `mcp/src/method.ts` holds the methodology text. The guard
 forces `primary: false` explicitly — omitting it would let the *first* indication for a root be

@@ -20,6 +20,10 @@ export interface HighlightRange {
   color: string;
 }
 
+/** Who put an item on the board. Absent means the reader ('me') — everything that
+ *  predates AI access is theirs, and an AI may only ever touch its own items. */
+export type ItemSource = "me" | "ai";
+
 export interface EvidenceCardRecord {
   id: string;
   verseKey: string;
@@ -29,6 +33,7 @@ export interface EvidenceCardRecord {
   rotation: number; // legacy paper tilt (modern board renders flat)
   /** segment highlights painted on this card */
   highlights?: HighlightRange[];
+  source?: ItemSource;
 }
 
 export type SlipKind = "comment" | "reference";
@@ -46,6 +51,8 @@ export interface SlipRecord {
   x: number;
   y: number;
   rotation: number;
+  /** who authored the slip. NOT `source` above — that is the work being cited. */
+  author?: ItemSource;
 }
 
 export interface ThreadRecord {
@@ -58,12 +65,15 @@ export interface ThreadRecord {
   label: string;
   source: "user" | "suggested";
   accepted: boolean; // suggested threads become ink when accepted
+  /** who authored it: distinct from `source` above, which is how it was offered */
+  author?: ItemSource;
 }
 
 export interface ClusterRecord {
   id: string;
   name: string;
   cardIds: string[]; // card or slip ids
+  source?: ItemSource;
 }
 
 export type FormStatus = "open" | "established";
@@ -75,6 +85,23 @@ export interface FormResearchEntry {
 }
 
 export type CaseStatus = "open" | "partial" | "closed";
+
+/** A conclusion an AI wants to draw, awaiting the reader's decision. */
+export interface CaseProposal {
+  id: string;
+  /** what it concludes about: the case verdict, or one form's meaning */
+  kind: "verdict" | "form";
+  /** for kind 'form': which lemma. null for the case verdict. */
+  form: string | null;
+  text: string;
+  /** the status the AI thinks the case has reached, if it says so */
+  suggestedStatus?: CaseStatus;
+  reasoning?: string;
+  createdAt: number;
+}
+export interface CaseProposals {
+  entries: CaseProposal[];
+}
 
 export interface CaseRecord {
   id: string;
@@ -90,6 +117,9 @@ export interface CaseRecord {
   formResearch: Record<string, FormResearchEntry>;
   verdict: string;
   status: CaseStatus;
+  /** An AI's proposed conclusions, parked until the reader accepts them. These NEVER
+   *  affect `verdict`, `status` or `formResearch` — only the reader applies those. */
+  proposals?: CaseProposals;
   /** id of the curated case file, if this is a guided investigation */
   curatedId?: string;
   revealedClueCount?: number;

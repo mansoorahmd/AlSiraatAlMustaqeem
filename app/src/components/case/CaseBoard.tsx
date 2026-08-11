@@ -659,7 +659,8 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
               return (
                 <div key={card.id}
                   ref={(el) => { if (el) cardEls.current.set(card.id, el); else cardEls.current.delete(card.id); }}
-                  className={`desk-card board-card ${objClasses(card.id)}`}
+                  className={`desk-card board-card ${objClasses(card.id)}${card.source === "ai" ? " by-ai" : ""}`}
+                  title={card.source === "ai" ? "Added by an AI through the MCP server" : undefined}
                   style={{ left: x, top: y, width: CARD_W }}
                   onClick={(e) => {
                     // in thread mode, clicking non-word card area anchors the whole card
@@ -725,7 +726,8 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
               return (
                 <div key={slip.id}
                   ref={(el) => { if (el) cardEls.current.set(slip.id, el); else cardEls.current.delete(slip.id); }}
-                  className={`board-card slip slip-${slip.kind} ${objClasses(slip.id)}`}
+                  className={`board-card slip slip-${slip.kind} ${objClasses(slip.id)}${slip.author === "ai" ? " by-ai" : ""}`}
+                  title={slip.author === "ai" ? "Added by an AI through the MCP server" : undefined}
                   style={{ left: x, top: y, width: CARD_W - 30 }}
                   onClick={() => {
                     if (mode.kind === "thread" || mode.kind === "cluster") onObjectClick(slip.id);

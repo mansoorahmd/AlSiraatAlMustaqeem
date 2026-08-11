@@ -47,16 +47,25 @@ write is a proposal, tagged as yours, awaiting their review.`;
 
 export const WRITE_POLICY = `What this server lets an AI change:
 
-ALLOWED (as proposals, tagged AI-authored, awaiting the reader's review)
+ALLOWED (tagged AI-authored, awaiting the reader's review)
   • add a note or an open question on an āyah or a word
   • propose an indication for a root, with per-form refinements
+  • open a case on the Investigate board, and add evidence āyāt, comment and
+    reference slips, labelled threads and clusters to any case
+  • reword or remove items YOU added to a board
+  • propose a case verdict or a form's established meaning — parked for the reader
 
 NEVER
   • touch the Quran corpus — it is opened read-only
-  • edit or delete anything, including your own earlier proposals
+  • edit or delete the reader's own notes, indications, or board items
   • set which indication is primary (the reader's default gloss)
-  • touch cases, motifs, comparisons, or the reader's root meanings
-  • see translations`;
+  • write a case's verdict or status, or mark a form established — proposals only
+  • touch motifs, comparisons, or the reader's root meanings
+  • see translations
+
+A case is stored as one document and rewritten whole on save, so every board write
+takes the \`updated_at\` you last read (\`expect_version\`) and is refused if the case
+changed meanwhile. Re-read with read_case and retry — never work from a stale copy.`;
 
 export interface PromptDef {
   name: string;

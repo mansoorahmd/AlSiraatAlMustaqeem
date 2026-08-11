@@ -88,6 +88,34 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
     void archive.cases.save(next);
   };
 
+  // accepting is the ONLY path from a proposal into the case's own conclusions —
+  // the MCP server can never write verdict / status / formResearch itself.
+  const acceptProposal = (p: NonNullable<CaseRecord["proposals"]>["entries"][number]) => {
+    if (!caseRec) return;
+    const rest = (caseRec.proposals?.entries ?? []).filter((e) => e.id !== p.id);
+    let next: CaseRecord = { ...caseRec, proposals: { entries: rest } };
+    if (p.kind === "verdict") {
+      next = { ...next, verdict: p.text, ...(p.suggestedStatus ? { status: p.suggestedStatus } : {}) };
+    } else if (p.form) {
+      next = {
+        ...next,
+        formResearch: {
+          ...next.formResearch,
+          [p.form]: { status: "established", meaning: p.text, establishedAt: Date.now() },
+        },
+      };
+    }
+    mutate(next);
+  };
+
+  const discardProposal = (id: string) => {
+    if (!caseRec) return;
+    mutate({
+      ...caseRec,
+      proposals: { entries: (caseRec.proposals?.entries ?? []).filter((e) => e.id !== id) },
+    });
+  };
+
   const setStatus = (status: CaseRecord["status"]) => {
     if (!caseRec) return;
     mutate({ ...caseRec, status });
@@ -284,6 +312,39 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
             {caseRec.verdict || "write your conclusion…"} <span className="edit-hint">✎</span>
           </p>
         )
+      )}
+
+      {/* conclusions an AI proposed through the MCP — inert until accepted here */}
+      {(caseRec.proposals?.entries?.length ?? 0) > 0 && (
+        <section className="desk-proposals">
+          <h2 className="desk-proposals-head">
+            ✦ Proposed conclusions
+            <span className="desk-proposals-note">
+              — suggested by an AI. Nothing is applied until you accept it.
+            </span>
+          </h2>
+          {caseRec.proposals!.entries.map((p) => (
+            <div key={p.id} className="desk-proposal">
+              <div className="desk-proposal-what">
+                <span className="desk-proposal-kind">
+                  {p.kind === "verdict" ? "verdict" : `form · ${p.form}`}
+                </span>
+                <span className="desk-proposal-text">{p.text}</span>
+                {p.reasoning && <span className="desk-proposal-why">{p.reasoning}</span>}
+              </div>
+              <div className="desk-proposal-acts">
+                <button
+                  className="ctl"
+                  title={p.kind === "verdict" ? "Make this the case verdict" : "Mark this form established with this meaning"}
+                  onClick={() => acceptProposal(p)}
+                >✓ accept</button>
+                <button className="ctl" title="Remove this proposal" onClick={() => discardProposal(p.id)}>
+                  ✕ discard
+                </button>
+              </div>
+            </div>
+          ))}
+        </section>
       )}
 
       <section className="desk-main">
