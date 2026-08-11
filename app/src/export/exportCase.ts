@@ -4,7 +4,7 @@
 // references, established meanings, and the verdict. Every ayah links to
 // quran.com so the report is shareable and navigable outside the app.
 
-import type { CaseRecord, EvidenceCardRecord } from "../persistence/types";
+import type { CaseRecord, EvidenceCardRecord, NoteRecord } from "../persistence/types";
 import type { RootOccurrence } from "../api/types";
 import { tokenizeVerse } from "../components/reader/format";
 
@@ -13,6 +13,10 @@ export interface ExportData {
   extraTexts: Map<string, string>;
   /** root core meaning (reference) for root cases */
   rootCoreEn?: string | null;
+  /** The reader's notes and questions on the āyāt of this case. These live outside the
+   *  case document (the `notes` table, keyed by verse + word), so the report used to
+   *  omit them entirely — losing reasoning recorded while reading. */
+  notes?: NoteRecord[];
 }
 
 const esc = (s: string) =>
@@ -103,6 +107,12 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
     !t.label.trim() && [t.fromCardId, t.toCardId].some((id) => c.slips.some((s) => s.id === id));
   const threads = c.threads.filter((t) => t.accepted && !isAttachment(t));
 
+  // unanswered questions on this case's āyāt: real unfinished business, worth naming
+  const caseVerses = new Set(cards.map((k) => k.verseKey));
+  const openQs = (d.notes ?? []).filter(
+    (n) => n.kind === "question" && !n.resolved && !n.answer && caseVerses.has(n.verseKey),
+  );
+
   // findings vs unfinished business — a report should also say what is NOT settled
   const meanings = Object.entries(c.formResearch).filter(([, fr]) => fr.status === "established");
   const openForms = Object.entries(c.formResearch).filter(([, fr]) => fr.status !== "established");
@@ -126,6 +136,9 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
         (t.fromCardId === card.id && t.toCardId === s.id) ||
         (t.toCardId === card.id && t.fromCardId === s.id)),
     );
+    // notes the reader wrote on this āyah while reading — answered questions included,
+    // unanswered ones are also collected below into "Questions still open"
+    const myNotes = (d.notes ?? []).filter((n) => n.verseKey === card.verseKey);
     return `
       <div class="evidence">
         <div class="ev-head">
@@ -134,9 +147,16 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
           ${card.source === "ai" ? `<span class="pill ai">AI-added</span>` : ""}
         </div>
         <p class="ev-text quran" dir="rtl">${renderVerseHtml(card, d)}</p>
-        ${attached.length ? `<ul class="ev-notes">${attached
-          .map((s) => `<li class="mixed">${mixedText(s.text)}${s.kind === "reference" && s.source ? ` <em>(${esc(s.source)}${s.locator ? `, ${esc(s.locator)}` : ""})</em>` : ""}</li>`)
-          .join("")}</ul>` : ""}
+        ${attached.length || myNotes.length ? `<ul class="ev-notes">${[
+          ...attached.map((s) => `<li class="mixed">${mixedText(s.text)}${s.kind === "reference" && s.source ? ` <em>(${esc(s.source)}${s.locator ? `, ${esc(s.locator)}` : ""})</em>` : ""}</li>`),
+          ...myNotes.map((n) => `<li class="mixed note-${n.kind}">${
+            n.kind === "question" ? `<span class="qmark">?</span> ` : ""
+          }${mixedText(n.text)}${
+            n.wordPosition ? ` <span class="at-word">(word ${n.wordPosition})</span>` : ""
+          }${n.answer ? `<div class="note-answer mixed">→ ${mixedText(n.answer)}</div>` : ""}${
+            n.source === "ai" ? ` <span class="pill ai">AI</span>` : ""
+          }</li>`),
+        ].join("")}</ul>` : ""}
       </div>`;
   };
 
@@ -258,6 +278,11 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
   /* Slip text is often mixed Arabic + English + verse numbers. Without plaintext
      bidi the refs and punctuation jump to the wrong end of the line. */
   .mixed { unicode-bidi:plaintext; }
+  .ev-notes .note-question { color:var(--ink); }
+  .qmark { display:inline-block; width:1rem; height:1rem; line-height:1rem; text-align:center;
+    border-radius:50%; background:var(--gold); color:#fff; font-size:.7rem; font-weight:700; }
+  .note-answer { margin:.15rem 0 0 .2rem; color:var(--soft); font-style:italic; }
+  .at-word { color:var(--faint); font-size:.8rem; }
   .mixed .quran, .ar { font-family:"Amiri Quran","Scheherazade New",serif; }
   h3 { font-size:.95rem; margin:1.2rem 0 .4rem; }
   .cluster-block { margin: 0 0 1.2rem; }
@@ -317,6 +342,10 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
   ${threadRows ? `<h2>Connections drawn</h2><ul>${threadRows}</ul>` : ""}
 
   ${refRows ? `<h2>Sources consulted</h2><ol>${refRows}</ol>` : ""}
+
+  ${openQs.length ? `<h2>Questions still open</h2><ul>${openQs
+      .map((n) => `<li class="mixed"><a class="vkey" href="${quranUrl(n.verseKey)}" target="_blank" rel="noopener">${esc(n.verseKey)}</a> ${mixedText(n.text)}</li>`)
+      .join("")}</ul>` : ""}
 
   ${meanings.length ? `<h2>${isAyah ? "Established understanding" : "Findings by form"}</h2>${meaningRows}` : ""}
 
@@ -378,6 +407,11 @@ export function buildCaseMarkdown(c: CaseRecord, d: ExportData): string {
     for (const s of attachedTo(card.id)) {
       lines.push(`\n  - ${s.text}${s.kind === "reference" && s.source ? ` *(${s.source}${s.locator ? `, ${s.locator}` : ""})*` : ""}`);
     }
+    // the reader's own notes/questions on this āyah, recorded while reading
+    for (const n of (d.notes ?? []).filter((x) => x.verseKey === card.verseKey)) {
+      lines.push(`\n  - ${n.kind === "question" ? "**Q:** " : ""}${n.text}${n.wordPosition ? ` (word ${n.wordPosition})` : ""}${n.source === "ai" ? " *(AI)*" : ""}`);
+      if (n.answer) lines.push(`\n    → ${n.answer}`);
+    }
   };
 
   if (cards.length) {
@@ -433,6 +467,15 @@ export function buildCaseMarkdown(c: CaseRecord, d: ExportData): string {
     refs.forEach((s, i) => {
       lines.push(`${i + 1}. **${s.source || "—"}**${s.locator ? `, ${s.locator}` : ""}${s.text ? ` — ${s.text}` : ""}`);
     });
+  }
+
+  const caseVerses = new Set(cards.map((k) => k.verseKey));
+  const openQs = (d.notes ?? []).filter(
+    (n) => n.kind === "question" && !n.resolved && !n.answer && caseVerses.has(n.verseKey),
+  );
+  if (openQs.length) {
+    lines.push(`\n## Questions still open`);
+    for (const n of openQs) lines.push(`- [${n.verseKey}](${quranUrl(n.verseKey)}) ${n.text}`);
   }
 
   const all = Object.entries(c.formResearch);

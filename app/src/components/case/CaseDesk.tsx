@@ -7,7 +7,7 @@ import { archive, fetchFormStatus, type FormStatusRow } from "../../persistence/
 import { useAsync } from "../../hooks/useAsync";
 import { useAppState, useAppDispatch } from "../../state/store";
 import type { RootOccurrence, Word } from "../../api/types";
-import type { CaseRecord } from "../../persistence/types";
+import type { CaseRecord, NoteRecord } from "../../persistence/types";
 import {
   withCardAdded, withCardRemoved, withAyahCardAdded, cardIdFor, normalizeCase,
 } from "../../cases/ops";
@@ -170,7 +170,14 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
     if (root) {
       try { rootCoreEn = (await api.root(root)).meaning_en; } catch { /* offline is fine */ }
     }
-    return { occById: byId, extraTexts: extraVerses.data ?? new Map(), rootCoreEn };
+    // the reader's notes live outside the case document, so fetch the ones on this
+    // case's āyāt — otherwise reasoning recorded while reading is missing from the report
+    let notes: NoteRecord[] = [];
+    try {
+      const verses = new Set((caseRec?.cards ?? []).map((k) => k.verseKey));
+      notes = (await archive.notes.all()).filter((n) => verses.has(n.verseKey));
+    } catch { /* offline is fine — the report just omits them */ }
+    return { occById: byId, extraTexts: extraVerses.data ?? new Map(), rootCoreEn, notes };
   };
 
   const onToggle = (occ: RootOccurrence) => {
