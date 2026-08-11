@@ -60,6 +60,17 @@ function endpointName(id: string, word: number | null | undefined, c: CaseRecord
   return id;
 }
 
+
+/** Slip prose is often mixed Arabic + English + verse refs. Escape it, then wrap each
+ *  Arabic run so it renders in the Quran face and is bidi-isolated from the English —
+ *  without isolation the refs and punctuation jump to the wrong end of the line. */
+function mixedText(s: string): string {
+  return esc(s).replace(
+    /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF][\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF\s\u064B-\u0652]*/g,
+    (run) => `<span class="ar" dir="rtl">${run}</span>`,
+  );
+}
+
 // ---- HTML report --------------------------------------------------------------
 
 function renderVerseHtml(card: EvidenceCardRecord, d: ExportData): string {
@@ -80,6 +91,7 @@ function renderVerseHtml(card: EvidenceCardRecord, d: ExportData): string {
 
 export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
   const isAyah = c.subject.type === "ayah";
+  const isPhrase = c.subject.type === "phrase";
   const subjectDisplay = isAyah ? c.subject.value : c.subject.value.split("").join(" ");
   const date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
   const cards = sortedCards(c);
@@ -101,7 +113,7 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
         <div class="meaning-form quran">${esc(lemma)}</div>
         <div class="meaning-body">
           <span class="pill ${fr.status}">${fr.status === "established" ? "established" : "under investigation"}</span>
-          ${fr.meaning ? `<p class="meaning-text">“${esc(fr.meaning)}”</p>` : ""}
+          ${fr.meaning ? `<p class="meaning-text mixed">“${mixedText(fr.meaning)}”</p>` : ""}
         </div>
       </div>`)
     .join("");
@@ -123,7 +135,7 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
         </div>
         <p class="ev-text quran" dir="rtl">${renderVerseHtml(card, d)}</p>
         ${attached.length ? `<ul class="ev-notes">${attached
-          .map((s) => `<li>${esc(s.text)}${s.kind === "reference" && s.source ? ` <em>(${esc(s.source)}${s.locator ? `, ${esc(s.locator)}` : ""})</em>` : ""}</li>`)
+          .map((s) => `<li class="mixed">${mixedText(s.text)}${s.kind === "reference" && s.source ? ` <em>(${esc(s.source)}${s.locator ? `, ${esc(s.locator)}` : ""})</em>` : ""}</li>`)
           .join("")}</ul>` : ""}
       </div>`;
   };
@@ -138,9 +150,9 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
       if (!inGroup.length && !slipsIn.length) return "";
       return `
       <div class="cluster-block">
-        <h3 class="cluster-name">${esc(g.name)} <span class="cluster-count">${inGroup.length} ${inGroup.length === 1 ? "āyah" : "āyāt"}</span></h3>
+        <h3 class="cluster-name mixed">${mixedText(g.name)} <span class="cluster-count">${inGroup.length} ${inGroup.length === 1 ? "āyah" : "āyāt"}</span></h3>
         ${slipsIn.length ? `<ul class="cluster-notes">${slipsIn
-          .map((s) => `<li>${esc(s.text)}${s.kind === "reference" && s.source ? ` <em>(${esc(s.source)})</em>` : ""}</li>`)
+          .map((s) => `<li class="mixed">${mixedText(s.text)}${s.kind === "reference" && s.source ? ` <em>(${esc(s.source)})</em>` : ""}</li>`)
           .join("")}</ul>` : ""}
         ${inGroup.map(evidenceCard).join("")}
       </div>`;
@@ -179,13 +191,13 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
     .sort((a, b) => (a[0] === "" ? 1 : b[0] === "" ? -1 : a[0].localeCompare(b[0])))
     .map(([form, slips]) => `
       ${form ? `<h3 class="note-form quran">${esc(form)}</h3>` : c.clusters.length || byForm.size > 1 ? `<h3 class="note-form">On the root as a whole</h3>` : ""}
-      <ul>${slips.map((s) => `<li>${esc(s.text)}${s.author === "ai" ? ` <span class="pill ai">AI</span>` : ""}</li>`).join("")}</ul>`)
+      <ul>${slips.map((s) => `<li class="mixed">${mixedText(s.text)}${s.author === "ai" ? ` <span class="pill ai">AI</span>` : ""}</li>`).join("")}</ul>`)
     .join("");
 
   const refRows = refs
     .map((s, i) => `
       <li id="ref${i + 1}">
-        <strong>${esc(s.source || "—")}</strong>${s.locator ? `, ${esc(s.locator)}` : ""}${s.text ? ` — ${esc(s.text)}` : ""}
+        <strong>${esc(s.source || "—")}</strong>${s.locator ? `, ${esc(s.locator)}` : ""}${s.text ? ` — ${mixedText(s.text)}` : ""}
       </li>`)
     .join("");
 
@@ -211,17 +223,25 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
   h1 { font-size:1.5rem; margin:0 0 .2rem; }
   h2 { font-size:.78rem; letter-spacing:.14em; text-transform:uppercase; color:var(--faint);
     margin: 2rem 0 .7rem; border-bottom:1px solid var(--edge); padding-bottom:.3rem; }
-  .subject { font-size:2.2rem; color:var(--gold); line-height:1.5; direction:rtl; text-align:left; }
-  .meta { color:var(--soft); font-size:.85rem; }
+  /* Arabic needs headroom: harakat rise above the line and descenders drop below,
+     so a tight line-height makes the subject collide with the meta line under it. */
+  .subject { font-size:1.75rem; color:var(--gold); line-height:1.9; unicode-bidi:plaintext;
+    text-align:left; margin:.1rem 0 .35rem; }
+  .meta { color:var(--soft); font-size:.85rem; clear:both; }
   .desc { font-style:italic; color:var(--soft); margin:.4rem 0 0; }
   .pill { display:inline-block; font-size:.68rem; font-weight:600; letter-spacing:.05em; text-transform:uppercase;
     border-radius:999px; padding:.1rem .6rem; border:1px solid var(--edge); color:var(--soft); }
   .pill.established { color:#166534; border-color:#bbf7d0; background:#f0fdf4; }
-  .status { float:right; margin-top:.3rem; }
+  .rpt-head { margin:0 0 .3rem; }
+  .rpt-head-top { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; }
+  .rpt-head-top h1 { flex:1 1 auto; }
+  .status { flex:0 0 auto; margin-top:.35rem; }
+  .meta .dot { color:var(--edge); margin:0 .1rem; }
   .verdict { font-size:1.05rem; font-style:italic; color:var(--blue);
     border-left:3px solid var(--blue); padding:.4rem 0 .4rem 1rem; margin:.5rem 0; }
   .meaning { display:flex; gap:1.2rem; align-items:baseline; padding:.5rem 0; border-bottom:1px dotted var(--edge); }
-  .meaning-form { font-size:1.5rem; min-width:7rem; direction:rtl; text-align:left; }
+  .meaning-form { font-size:1.25rem; min-width:7rem; line-height:1.9;
+    unicode-bidi:plaintext; text-align:left; }
   .meaning-text { margin:.25rem 0 0; font-style:italic; }
   .rootcore { color:var(--soft); font-size:.85rem; margin:.3rem 0 0; }
   .evidence { border:1px solid var(--edge); border-radius:10px; padding:.7rem 1rem; margin:.6rem 0;
@@ -230,11 +250,15 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
   .vkey { font-size:.78rem; font-weight:600; color:var(--blue); text-decoration:none;
     border:1px solid #dbeafe; background:#eff6ff; border-radius:6px; padding:.05rem .5rem; }
   .lemma { color:var(--soft); font-size:1.05rem; }
-  .ev-text { margin:0; font-size:1.6rem; line-height:2.3; }
+  .ev-text { margin:0; font-size:1.35rem; line-height:2.15; }
   .subj { color:var(--gold); font-weight:700; }
   ul { margin:.3rem 0; padding-left:1.3rem; }
   li { margin:.3rem 0; }
   .th-label { color:var(--soft); font-style:italic; }
+  /* Slip text is often mixed Arabic + English + verse numbers. Without plaintext
+     bidi the refs and punctuation jump to the wrong end of the line. */
+  .mixed { unicode-bidi:plaintext; }
+  .mixed .quran, .ar { font-family:"Amiri Quran","Scheherazade New",serif; }
   h3 { font-size:.95rem; margin:1.2rem 0 .4rem; }
   .cluster-block { margin: 0 0 1.2rem; }
   .cluster-name { color:var(--ink); border-left:3px solid var(--gold); padding-left:.6rem; }
@@ -242,7 +266,8 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
   .cluster-notes { margin:.2rem 0 .6rem; color:var(--soft); font-style:italic; }
   .ev-notes { margin:.4rem 0 0; padding-left:1.1rem; font-size:.9rem; color:var(--soft);
     border-top:1px dotted var(--edge); padding-top:.4rem; }
-  .note-form { direction:rtl; text-align:left; font-size:1.3rem; }
+  .note-form { unicode-bidi:plaintext; text-align:left; font-size:1.15rem;
+    line-height:1.9; color:var(--gold); }
   .pill.ai { color:var(--gold); border-color:#fcd34d; background:#fffbeb; }
   .open-note { color:var(--soft); font-style:italic; }
   .tag { font-size:.9rem; color:var(--gold); }
@@ -264,11 +289,25 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
 <body>
 <button class="printbtn" onclick="window.print()">Print / Save as PDF</button>
 <div class="page">
-  <span class="pill status">${esc(c.status)}</span>
-  <h1>${esc(c.title)}</h1>
-  <div class="subject quran">${esc(subjectDisplay)}</div>
-  <div class="meta">${isAyah ? `Ayah <a class="vkey" href="${quranUrl(c.subject.value)}" target="_blank" rel="noopener">${esc(c.subject.value)}</a>` : "Root family"} · ${cards.length} evidence · exported ${esc(date)}</div>
-  ${c.description ? `<h2>The question</h2><p class="desc">${esc(c.description)}</p>` : ""}
+  <header class="rpt-head">
+    <div class="rpt-head-top">
+      <h1 class="mixed">${mixedText(c.title)}</h1>
+      <span class="pill status">${esc(c.status)}</span>
+    </div>
+    ${isPhrase ? "" : `<div class="subject quran">${esc(subjectDisplay)}</div>`}
+    <div class="meta">
+      ${isAyah
+        ? `Āyah <a class="vkey" href="${quranUrl(c.subject.value)}" target="_blank" rel="noopener">${esc(c.subject.value)}</a>`
+        : isPhrase ? `Phrase / theme <span class="ar" dir="rtl">${esc(c.subject.value)}</span>` : "Root family"}
+      <span class="dot">·</span> ${cards.length} ${cards.length === 1 ? "āyah" : "āyāt"}
+      ${c.clusters.length ? `<span class="dot">·</span> ${c.clusters.length} group${c.clusters.length === 1 ? "" : "s"}` : ""}
+      ${threads.length ? `<span class="dot">·</span> ${threads.length} connection${threads.length === 1 ? "" : "s"}` : ""}
+      ${refs.length ? `<span class="dot">·</span> ${refs.length} source${refs.length === 1 ? "" : "s"}` : ""}
+      ${meanings.length ? `<span class="dot">·</span> ${meanings.length} established` : ""}
+      <span class="dot">·</span> exported ${esc(date)}
+    </div>
+  </header>
+  ${c.description ? `<h2>The question</h2><p class="desc mixed">${mixedText(c.description)}</p>` : ""}
   ${d.rootCoreEn ? `<p class="rootcore"><strong>Root core (lexical reference, not authority):</strong> ${esc(d.rootCoreEn)}</p>` : ""}
 
   ${cards.length ? `<h2>The evidence</h2>${evidenceRows}` : ""}
@@ -282,7 +321,7 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
   ${meanings.length ? `<h2>${isAyah ? "Established understanding" : "Findings by form"}</h2>${meaningRows}` : ""}
 
   ${c.verdict
-    ? `<h2>Conclusion</h2><p class="verdict">“${esc(c.verdict)}”</p>`
+    ? `<h2>Conclusion</h2><p class="verdict mixed">“${mixedText(c.verdict)}”</p>`
     : `<h2>Conclusion</h2><p class="open-note">This case is still ${esc(c.status)} — no verdict has been recorded yet.</p>`}
 
   ${openForms.length ? `<h2>Still open</h2><ul>${openForms

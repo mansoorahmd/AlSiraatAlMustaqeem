@@ -425,7 +425,9 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
                 ),
               )
             }
-            title="Auto-arrange: grouped by form, mushaf order inside; slips beside their evidence"
+            title={caseRec.clusters.length
+              ? "Auto-arrange: your clusters first (members together), then by form; slips beside their evidence"
+              : "Auto-arrange: grouped by form, mushaf order inside; slips beside their evidence"}
           >
             <span className="tbtn-ic">⇤</span> Arrange
           </button>

@@ -536,6 +536,25 @@ export function arrangeBoard(
     }
   }
 
+  // A cluster is the reader's OWN grouping, so it outranks the by-form default: if any
+  // clusters exist, their members are laid out together and in cluster order, and only
+  // what is left over falls back to form grouping. Otherwise the board would scatter
+  // the very grouping the reader just made.
+  const clusterOf = new Map<string, string>();
+  for (const g of c.clusters) {
+    for (const id of g.cardIds) if (!clusterOf.has(id)) clusterOf.set(id, g.id);
+  }
+  const clusterBlocks: string[][] = c.clusters
+    .map((g) => {
+      const memberCards = c.cards
+        .filter((k) => clusterOf.get(k.id) === g.id)
+        .sort((x, y2) => verseSort(x.verseKey, x.wordPosition) - verseSort(y2.verseKey, y2.wordPosition))
+        .map((k) => k.id);
+      const memberSlips = c.slips.filter((sl) => clusterOf.get(sl.id) === g.id).map((sl) => sl.id);
+      return [...memberCards, ...memberSlips];
+    })
+    .filter((ids) => ids.length > 0);
+
   const pos = new Map<string, { x: number; y: number }>();
   let y = ARR_Y0;
   const layoutRow = (ids: string[]) => {
@@ -553,12 +572,24 @@ export function arrangeBoard(
       y += rowH + ARR_ROW_GAP;
     }
   };
-  for (const g of ordered) {
-    const slipIds = c.slips.filter((sl) => slipGroup.get(sl.id) === g.lemma).map((sl) => sl.id);
-    layoutRow([...g.cards.map((card) => card.id), ...slipIds]);
+  // clusters first, in the reader's order
+  for (const ids of clusterBlocks) {
+    layoutRow(ids);
     y += ARR_GROUP_GAP;
   }
-  const loose = c.slips.filter((sl) => !slipGroup.has(sl.id)).map((sl) => sl.id);
+  // then whatever is not in a cluster, still grouped by form
+  for (const g of ordered) {
+    const cardIds = g.cards.map((card) => card.id).filter((id) => !clusterOf.has(id));
+    const slipIds = c.slips
+      .filter((sl) => slipGroup.get(sl.id) === g.lemma && !clusterOf.has(sl.id))
+      .map((sl) => sl.id);
+    if (!cardIds.length && !slipIds.length) continue;
+    layoutRow([...cardIds, ...slipIds]);
+    y += ARR_GROUP_GAP;
+  }
+  const loose = c.slips
+    .filter((sl) => !slipGroup.has(sl.id) && !clusterOf.has(sl.id))
+    .map((sl) => sl.id);
   if (loose.length) layoutRow(loose);
 
   return {
