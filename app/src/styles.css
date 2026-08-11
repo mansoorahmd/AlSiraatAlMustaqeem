@@ -2194,7 +2194,10 @@ a { color: var(--lapis); }
 
 /* --- cluster chips & editors --- */
 .cluster-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-.cluster-chip { display: inline-flex; align-items: center; gap: 0.35rem; }
+.cluster-chip { display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+/* pinned: the highlight stays on the board while the reader scrolls */
+.cluster-chip.pinned { border-color: #d97706; box-shadow: 0 0 0 1px #d97706 inset; }
+.cluster-pin { font-size: 0.7rem; line-height: 1; }
 .chip-x {
   appearance: none;
   border: none;

@@ -51,6 +51,11 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
   const [ayahKey, setAyahKey] = useState("");
   const [ayahError, setAyahError] = useState(false);
   const [hoverCluster, setHoverCluster] = useState<string | null>(null);
+  // Hover alone is useless once you scroll: the pointer has to leave the chip and the
+  // highlight drops. Clicking a chip PINS its highlight so it survives scrolling; an
+  // active hover still previews another cluster, falling back to the pinned one.
+  const [pinnedCluster, setPinnedCluster] = useState<string | null>(null);
+  const focusCluster = hoverCluster ?? pinnedCluster;
   const [notesCardId, setNotesCardId] = useState<string | null>(null);
   const cardEls = useRef(new Map<string, HTMLDivElement>());
   const [, bump] = useState(0);
@@ -336,8 +341,8 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
   const editingSlip = editSlip ? caseRec.slips.find((s) => s.id === editSlip) ?? null : null;
 
   const objClasses = (id: string) => {
-    const inHover = hoverCluster !== null &&
-      caseRec.clusters.some((g) => g.id === hoverCluster && g.cardIds.includes(id));
+    const inHover = focusCluster !== null &&
+      caseRec.clusters.some((g) => g.id === focusCluster && g.cardIds.includes(id));
     const selected = mode.kind === "cluster" && mode.selected.includes(id);
     const threadFrom = mode.kind === "thread" && mode.from?.id === id;
     const hlPending = mode.kind === "highlight" && mode.pending?.cardId === id;
@@ -533,13 +538,26 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
           {caseRec.clusters.map((g) => (
             <span
               key={g.id}
-              className={`chip cluster-chip${hoverCluster === g.id ? " active" : ""}`}
+              className={`chip cluster-chip${focusCluster === g.id ? " active" : ""}`
+                + (pinnedCluster === g.id ? " pinned" : "")}
+              title={pinnedCluster === g.id
+                ? "Click to unpin — the highlight is staying on while you scroll"
+                : "Click to keep this cluster highlighted while you scroll"}
               onMouseEnter={() => setHoverCluster(g.id)}
               onMouseLeave={() => setHoverCluster(null)}
+              onClick={() => setPinnedCluster((p) => (p === g.id ? null : g.id))}
             >
+              {pinnedCluster === g.id && <span className="cluster-pin" aria-hidden>📌</span>}
               {g.name} ×{g.cardIds.length}
-              <button className="chip-x" title="Dissolve this cluster"
-                onClick={() => mutate(withClusterRemoved(caseRec, g.id))}>✕</button>
+              <button
+                className="chip-x"
+                title="Dissolve this cluster"
+                onClick={(e) => {
+                  e.stopPropagation(); // don't toggle the pin when dissolving
+                  if (pinnedCluster === g.id) setPinnedCluster(null);
+                  mutate(withClusterRemoved(caseRec, g.id));
+                }}
+              >✕</button>
             </span>
           ))}
         </div>
