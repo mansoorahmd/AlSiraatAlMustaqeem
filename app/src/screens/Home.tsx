@@ -3,10 +3,14 @@
 // recent trails, and how much meaning they've established. Read-only over the
 // existing stores; every item is a one-click jump back in.
 
+import { useState } from "react";
 import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
 import { archive, fetchFormStatus } from "../persistence/db";
-import { normalizeCase } from "../cases/ops";
+import {
+  normalizeCase, createSubjectCase, openOrCreateRootCase, openOrCreateAyahCase,
+} from "../cases/ops";
+import type { SubjectType } from "../persistence/types";
 import { useAppState, useAppDispatch } from "../state/store";
 
 const spaced = (r: string) => r.split("").join(" ");
@@ -23,7 +27,15 @@ export function Home() {
   const contKey = reading.lastVerseKey ?? `${reading.surahId}:1`;
   const contSurah = parseInt(contKey.split(":")[0] ?? "1", 10);
   const chapter = useAsync(() => api.chapter(contSurah), [contSurah]);
-  const cases = useAsync(() => archive.cases.all(), []);
+  // "＋ new" — a case on a phrase or a theme, not anchored to a root or an āyah
+  const [newCaseOpen, setNewCaseOpen] = useState(false);
+  const [newType, setNewType] = useState<SubjectType>("phrase");
+  const [newSubject, setNewSubject] = useState("");
+  const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [casesRev, setCasesRev] = useState(0); // bump to re-read after creating
+
+  const cases = useAsync(() => archive.cases.all(), [casesRev]);
   const trails = useAsync(() => archive.trails.all(), []);
   const notes = useAsync(() => archive.notes.all(), []);
   const forms = useAsync(() => fetchFormStatus(), []);
@@ -86,9 +98,82 @@ export function Home() {
 
       <div className="home-grid">
         <section className="home-card">
-          <h2 className="home-card-title">Open cases</h2>
+          <h2 className="home-card-title">
+            Open cases
+            <button
+              className="ctl home-card-act"
+              title="Open a case on a phrase or a theme — not tied to one root or āyah"
+              onClick={() => setNewCaseOpen((o) => !o)}
+            >＋ new</button>
+          </h2>
+
+          {/* a case that isn't anchored to a root or an āyah: a phrase, or a theme */}
+          {newCaseOpen && (
+            <form
+              className="home-newcase"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const value = newSubject.trim();
+                if (!value) return;
+                // root/āyah cases are looked up by subject elsewhere (the word menu
+                // assumes one per root), so reuse an existing one rather than making
+                // a duplicate. A phrase/theme case is always new.
+                const c = newType === "root" ? await openOrCreateRootCase(value)
+                  : newType === "ayah" ? await openOrCreateAyahCase(value)
+                  : await createSubjectCase(newType, value, newTitle, newDesc);
+                setNewCaseOpen(false);
+                setNewSubject(""); setNewTitle(""); setNewDesc("");
+                setCasesRev((r) => r + 1);
+                openCase(c.id);
+              }}
+            >
+              <div className="home-newcase-row">
+                <select
+                  className="board-input"
+                  value={newType}
+                  onChange={(e) => setNewType(e.target.value as SubjectType)}
+                  title="What the investigation is about"
+                >
+                  <option value="phrase">phrase / theme</option>
+                  <option value="root">root</option>
+                  <option value="ayah">āyah</option>
+                </select>
+                <input
+                  className="board-input"
+                  autoFocus
+                  placeholder={
+                    newType === "root" ? "the root, e.g. رحم"
+                      : newType === "ayah" ? "verse key, e.g. 2:255"
+                      : "the phrase, or what this is about"
+                  }
+                  value={newSubject}
+                  onChange={(e) => setNewSubject(e.target.value)}
+                />
+              </div>
+              <input
+                className="board-input"
+                placeholder="title (optional — defaults to the subject)"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+              />
+              <textarea
+                className="board-input"
+                rows={2}
+                placeholder="the question this case is asking (optional)"
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+              />
+              <div className="home-newcase-acts">
+                <button className="ctl" type="submit" disabled={!newSubject.trim()}>open case</button>
+                <button className="ctl" type="button" onClick={() => setNewCaseOpen(false)}>cancel</button>
+              </div>
+            </form>
+          )}
+
           {openCases.length === 0 ? (
-            <p className="home-empty">No open investigations. Tap a word while reading to start one.</p>
+            <p className="home-empty">
+              No open investigations. Tap a word while reading to start one, or ＋ new for a phrase or theme.
+            </p>
           ) : (
             <ul className="home-list">
               {openCases.slice(0, 6).map((c) => (

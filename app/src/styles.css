@@ -2888,3 +2888,15 @@ a { color: var(--lapis); }
 .desk-proposal-text { color: var(--ink); }
 .desk-proposal-why { font-size: var(--fs-label); color: var(--ink-soft); font-style: italic; }
 .desk-proposal-acts { display: flex; gap: 0.35rem; flex-shrink: 0; }
+
+/* ---- Home: open a case on a phrase or a theme ----------------------------- */
+/* The root/āyah paths start from something you are reading; this one doesn't, so
+   it lives on the Home card beside the open-case list. */
+.home-card-title { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.home-card-act { font-size: var(--fs-label); padding: 0.1rem 0.45rem; }
+.home-newcase { display: flex; flex-direction: column; gap: 0.4rem;
+  margin: 0 0 0.7rem; padding: 0.6rem; border: 1px dashed var(--rule); border-radius: 8px; }
+.home-newcase-row { display: flex; gap: 0.4rem; }
+.home-newcase-row select { flex: 0 0 auto; }
+.home-newcase-row input { flex: 1 1 auto; min-width: 0; }
+.home-newcase-acts { display: flex; gap: 0.4rem; justify-content: flex-end; }

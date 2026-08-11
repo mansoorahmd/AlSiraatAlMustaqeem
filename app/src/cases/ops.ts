@@ -4,7 +4,7 @@
 import { archive, newId } from "../persistence/db";
 import type {
   CaseRecord, EvidenceCardRecord, ThreadRecord, ClusterRecord,
-  SlipRecord, SlipKind, HighlightRange,
+  SlipRecord, SlipKind, HighlightRange, SubjectType,
 } from "../persistence/types";
 import type { RootOccurrence } from "../api/types";
 
@@ -33,6 +33,36 @@ export async function openOrCreateRootCase(
       sparkWordPosition: spark?.wordPosition,
     },
     title: `The root ${spacedRoot(root)}`,
+    cards: [],
+    slips: [],
+    threads: [],
+    clusters: [],
+    formResearch: {},
+    verdict: "",
+    status: "open",
+    createdAt: now,
+    updatedAt: now,
+  };
+  await archive.cases.save(rec);
+  return rec;
+}
+
+/** Open a case on a phrase or a free-form theme — an investigation that isn't anchored
+ *  to one root or one āyah. Unlike the root/āyah helpers this always creates: two
+ *  enquiries can share a phrase and still be different questions. */
+export async function createSubjectCase(
+  subjectType: SubjectType,
+  value: string,
+  title: string,
+  description = "",
+): Promise<CaseRecord> {
+  const now = Date.now();
+  const subject = value.trim();
+  const rec: CaseRecord = {
+    id: newId("case"),
+    subject: { type: subjectType, value: subject },
+    title: title.trim() || subject || "Untitled case",
+    description,
     cards: [],
     slips: [],
     threads: [],
