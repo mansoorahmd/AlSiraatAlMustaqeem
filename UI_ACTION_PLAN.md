@@ -11,7 +11,7 @@
 Research persists in `research.db` (SQLite) via `/research/*` routes. The old
 `ui/` focus-panel prototype has been retired and removed.
 
-Status: **V0–V19 done.** Research-first loop complete (research.db, slips,
+Status: **V0–V20 done.** Research-first loop complete (research.db, slips,
 form dossier, reader gloss & case marks, full lexicons) + V5 trails &
 rare-root marks + V6 modern board (zoom/pan, arrange, word threads, segment
 highlights, ayah cases, spelling variants, case navigation) + **V7 export**:
@@ -663,8 +663,8 @@ word-forms, linkages, similarity) without duplicating logic.
 |---|---|
 | Corpus | read-only, always |
 | Translations | **not exposed** — meaning is built from Arabic, morphology and the lexicons |
-| May write | notes/questions + indications with per-form refinements |
-| May never | edit or delete anything, set an indication **primary**, or touch cases/motifs/comparisons |
+| May write | notes/questions + indications with per-form refinements (see V20 for the board) |
+| May never | edit or delete the reader's work, set an indication **primary**, or touch motifs/comparisons |
 | Every write | tagged `source='ai'`, surfaced under **✦ Proposed** to accept or discard |
 
 - **Tools, two layers.** Composed (`study_root`, `read_ayah`, `find_where_roots_meet`,
@@ -701,6 +701,44 @@ word-forms, linkages, similarity) without duplicating logic.
 > `primary: false` explicitly. **(2)** `server/src/state.ts` resolves its database paths at
 > *import* time, so setting `process.env` before calling `createState()` was too late; the MCP
 > entry point imports it dynamically after settling the environment.
+
+### V20 — MCP: read, create and write on the Investigate board ✅
+The board was walled off in V19. It is now open — deliberately, and asymmetrically: an AI may
+**add** freely and **change only what it added**, and may never draw the conclusion. Nine tools
+(26 total): `list_cases`, `read_case` (read); `open_case`, `add_evidence`, `add_slip`,
+`link_evidence`, `group_evidence`, `revise_own_item`, `propose_conclusion` (write).
+`my_research_on` now really returns cases — its description had claimed so since V19.
+
+| | |
+|---|---|
+| May create | cases on a root / phrase / āyah |
+| May add | evidence āyāt, comment + reference slips, labelled threads, clusters |
+| May change | **only items it authored** — the reader's are refused by id |
+| May never | write `verdict`, `status` or `formResearch`; conclusions go to `proposals` |
+| Reader applies | **✦ Proposed conclusions** on the desk — accept turns one into the verdict or an established form meaning; nothing else can |
+
+- **The guard is structural, not advisory** (`mcp/src/cases.ts`). `saveGuarded()` restores
+  `verdict`/`status`/`formResearch` from the *pre-write* document on every save, so even a buggy
+  tool cannot apply a conclusion — the prohibition does not depend on each tool behaving.
+- **Whole-document saves force optimistic concurrency.** A case is one JSON blob rewritten by
+  `saveCase`, so there is no partial write and a concurrent app edit would be clobbered. Every
+  board write carries the `updated_at` it last read (`expect_version`) and is **refused** if the
+  case moved on. The AI re-reads and retries; the reader never loses an edit silently.
+- **The AI never supplies board coordinates.** `placeItem()` walks a grid and returns the first
+  slot that collides with nothing, so additions never land on top of the reader's layout.
+- **Provenance lives inside the case JSON** — no migration. The subtle part: `SlipRecord.source`
+  already means *the work being cited* and `ThreadRecord.source` *how a thread was offered*, so
+  slips and threads carry provenance on `author`, and `isAiOwned` checks both fields
+  **explicitly** rather than falling through one to the other. The first version did fall
+  through — which would have read a reader's slip citing Lane's Lexicon as AI-authored and let
+  the AI delete it. There is a test named for that trap.
+- **Visible in the app.** AI cards/slips get a gold rule and a ✦ corner mark (title explains
+  the origin); proposed conclusions render in a dashed panel on the desk with accept/discard.
+- **Tested per prohibition** (`server/test/case-boundary.test.ts`, 11 tests): each refusal has
+  its own test — editing the reader's card, deleting their slip, verdict/status untouched while
+  evidence still lands, an established-form proposal never reaching `formResearch`, a stale
+  write refused, linking ids that are not on the case. Plus a board round-trip in the smoke
+  test, verified through a real client handshake.
 
 ### Fixes & hardening (this pass) ✅
 Bugs found while getting indications working end-to-end — recorded because several
