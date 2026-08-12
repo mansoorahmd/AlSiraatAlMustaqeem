@@ -13,6 +13,7 @@
 // (resolved from this file's node_modules) before the TypeScript entry is imported.
 
 import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
 
 const require = createRequire(import.meta.url);
 
@@ -26,7 +27,8 @@ process.emitWarning = (warning, ...rest) => {
 
 try {
   // resolved from mcp/, not from the working directory
-  const { register } = await import(require.resolve("tsx/esm/api"));
+  const tsxApi = pathToFileURL(require.resolve("tsx/esm/api")).href;
+  const { register } = await import(tsxApi);
   register();
 } catch (err) {
   process.stderr.write(
