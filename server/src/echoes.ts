@@ -37,8 +37,15 @@ export class EchoIndex {
 
   build(): this {
     if (this.built) return this;
+    // Tokenize the UTHMANI text, not imlaei-simple. The reader positions words by
+    // splitting the displayed (Uthmani) verse and skipping non-letter pause marks, and
+    // foldArabic strips exactly those marks + diacritics — so folded-Uthmani words line
+    // up 1:1 with the reader's word positions. imlaei-simple SEGMENTS differently
+    // (يا ايها = 2 words vs يَـٰٓأَيُّهَا = 1), which shifted every echo highlight.
+    // (Uthmani is the reader's default/mushaf script; imlaei/indopak readers would need
+    //  a per-script index — a later refinement if wanted.)
     const rows = this.db.query<{ verse_key: string; chapter_id: number; verse_number: number; t: string | null }>(
-      `SELECT verse_key, chapter_id, verse_number, text_imlaei_simple AS t
+      `SELECT verse_key, chapter_id, verse_number, text_uthmani AS t
        FROM verses ORDER BY chapter_id, verse_number`,
     );
     const tmp = new Map<string, Set<string>>();
