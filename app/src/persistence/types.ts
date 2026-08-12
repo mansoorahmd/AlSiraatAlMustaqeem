@@ -1,5 +1,5 @@
 // Typed records for the research archive (research.db via the API).
-// Mirrors UI_ACTION_PLAN.md §6 (research-first model).
+// Mirrors DESIGN.md (research-first model).
 
 export type SubjectType = "root" | "phrase" | "ayah";
 

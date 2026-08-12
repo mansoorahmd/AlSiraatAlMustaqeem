@@ -43,7 +43,7 @@ AlSiraatAlMustaqeem/
 ├── package.json          # workspace root — the commands below live here
 ├── run-dev.bat / .sh     # convenience dev launchers
 ├── BACKEND_TS_MIGRATION.md
-└── UI_ACTION_PLAN.md
+└── DESIGN.md
 ```
 
 - **`app/`** — the front end (React 18 + Vite + TypeScript). Talks to the API at `/api/v1`.
