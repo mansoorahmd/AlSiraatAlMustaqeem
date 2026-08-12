@@ -59,6 +59,15 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
   const [notesCardId, setNotesCardId] = useState<string | null>(null);
   const cardEls = useRef(new Map<string, HTMLDivElement>());
   const [, bump] = useState(0);
+  // the grouped board tools live in one floating popover now
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const toolsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!toolsOpen) return;
+    const onDown = (e: MouseEvent) => { if (toolsRef.current && !toolsRef.current.contains(e.target as Node)) setToolsOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [toolsOpen]);
 
   // ---- CAD-style zoom & pan ----
   const boardRef = useRef<HTMLDivElement>(null);
@@ -370,198 +379,162 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
 
   return (
     <div className="board-wrap">
-      {/* toolbar */}
-      <div className="board-toolbar">
-        <span className="tb-group">
-          <button className="tbtn" onClick={() => addSlip("comment")} title="Add a comment slip">
-            <span className="tbtn-ic">✎</span> Comment
-          </button>
-          <button className="tbtn" onClick={() => addSlip("reference")} title="Add a cited reference">
-            <span className="tbtn-ic">🔖</span> Reference
-          </button>
-        </span>
-
-        <span className="tb-group">
-          <button
-            className={`tbtn${mode.kind === "thread" ? " on" : ""}`}
-            onClick={() =>
-              setMode(mode.kind === "thread" ? { kind: "idle" } : { kind: "thread", from: null })
-            }
-            title="Connect two cards, slips — or specific words"
-          >
-            <span className="tbtn-ic">🧵</span> Thread
-          </button>
-          <button
-            className={`tbtn${mode.kind === "cluster" ? " on" : ""}`}
-            onClick={() =>
-              setMode(mode.kind === "cluster" ? { kind: "idle" } : { kind: "cluster", selected: [] })
-            }
-            title="Group cards under a name"
-          >
-            <span className="tbtn-ic">◎</span> Cluster
-          </button>
-          <button
-            className={`tbtn${mode.kind === "highlight" ? " on" : ""}`}
-            onClick={() =>
-              setMode(
-                mode.kind === "highlight"
-                  ? { kind: "idle" }
-                  : { kind: "highlight", color: PALETTE[0], pending: null },
-              )
-            }
-            title="Paint a word range on a card"
-          >
-            <span className="tbtn-ic">🖍</span> Highlight
-          </button>
-        </span>
-
-        <span className="tb-group">
-          <button
-            className="tbtn"
-            onClick={() =>
-              mutate(
-                arrangeBoard(caseRec, occById, (id) =>
-                  cardEls.current.get(id)?.offsetHeight,
-                ),
-              )
-            }
-            title={caseRec.clusters.length
-              ? "Auto-arrange: your clusters first (members together), then by form; slips beside their evidence"
-              : "Auto-arrange: grouped by form, mushaf order inside; slips beside their evidence"}
-          >
-            <span className="tbtn-ic">⇤</span> Arrange
-          </button>
-          <span className="ctl-group add-ayah">
-            <input
-              className={`board-input ayah-key-input${ayahError ? " invalid" : ""}`}
-              placeholder="＋ Ayah e.g. 24:35"
-              value={ayahKey}
-              onChange={(e) => { setAyahKey(e.target.value); setAyahError(false); }}
-              onKeyDown={async (e) => {
-                if (e.key === "Enter" && /^\d{1,3}:\d{1,3}$/.test(ayahKey.trim())) {
-                  const ok = await onAddAyah(ayahKey.trim());
-                  if (ok) setAyahKey(""); else setAyahError(true);
-                }
-              }}
-            />
-            <button
-              className="tbtn"
-              disabled={!/^\d{1,3}:\d{1,3}$/.test(ayahKey.trim())}
-              onClick={async () => {
-                const ok = await onAddAyah(ayahKey.trim());
-                if (ok) setAyahKey(""); else setAyahError(true);
-              }}
-            >
-              add
-            </button>
-          </span>
-        </span>
-
-        <span className="tb-group zoom-ctl" aria-label="Zoom">
-          <button className="tbtn" onClick={() => zoomTo(scale / 1.2)} title="Zoom out">−</button>
-          <button className="tbtn zoom-pct" onClick={() => zoomTo(1)} title="Reset to 100%">
-            {Math.round(scale * 100)}%
-          </button>
-          <button className="tbtn" onClick={() => zoomTo(scale * 1.2)} title="Zoom in">＋</button>
-          <button
-            className="tbtn"
-            onClick={() => {
-              const el = boardRef.current;
-              if (!el) return;
-              const ns = Math.min(1, Math.max(0.25, Math.min(
-                (el.clientWidth - 24) / extentW,
-                (el.clientHeight - 24) / extentH,
-              )));
-              setScale(ns);
-              el.scrollLeft = 0;
-              el.scrollTop = 0;
-            }}
-            title="Fit the whole board"
-          >
-            ⊡ fit
-          </button>
-        </span>
-
-        {mode.kind === "thread" && (
-          <span className="board-hint">
-            {mode.from === null
-              ? "pick a card, slip — or click a specific word…"
-              : "now pick what to connect it to (Esc cancels)"}
-          </span>
-        )}
-        {mode.kind === "highlight" && (
-          <span className="tb-group palette">
-            {PALETTE.map((col) => (
+      {/* grouped board tools — one floating button, opens a popover */}
+      <div className="board-tools" ref={toolsRef}>
+        <button
+          className={`board-tools-fab${toolsOpen ? " on" : ""}`}
+          onClick={() => setToolsOpen((o) => !o)}
+          title="Board tools"
+          aria-haspopup="menu"
+          aria-expanded={toolsOpen}
+        >
+          <span className="tbtn-ic">⚒</span> Tools <span className="tb-caret">▾</span>
+        </button>
+        {toolsOpen && (
+          <div className="board-tools-menu" role="menu">
+            <div className="btm-row">
+              <button className="tbtn" onClick={() => { addSlip("comment"); setToolsOpen(false); }} title="Add a comment slip">
+                <span className="tbtn-ic">✎</span> Comment
+              </button>
+              <button className="tbtn" onClick={() => { addSlip("reference"); setToolsOpen(false); }} title="Add a cited reference">
+                <span className="tbtn-ic">🔖</span> Reference
+              </button>
+            </div>
+            <div className="btm-row">
               <button
-                key={col}
-                className={`swatch${mode.color === col ? " on" : ""}`}
-                style={{ backgroundColor: col }}
-                onClick={() => setMode({ ...mode, color: col })}
-                title="Highlight color"
+                className={`tbtn${mode.kind === "thread" ? " on" : ""}`}
+                onClick={() => { setMode(mode.kind === "thread" ? { kind: "idle" } : { kind: "thread", from: null }); setToolsOpen(false); }}
+                title="Connect two cards, slips — or specific words"
+              >
+                <span className="tbtn-ic">🧵</span> Thread
+                {suggestions.length > 0 && <span className="tbtn-badge">{suggestions.length}</span>}
+              </button>
+              <button
+                className={`tbtn${mode.kind === "cluster" ? " on" : ""}`}
+                onClick={() => { setMode(mode.kind === "cluster" ? { kind: "idle" } : { kind: "cluster", selected: [] }); setToolsOpen(false); }}
+                title="Group cards under a name"
+              >
+                <span className="tbtn-ic">◎</span> Cluster
+              </button>
+              <button
+                className={`tbtn${mode.kind === "highlight" ? " on" : ""}`}
+                onClick={() => { setMode(mode.kind === "highlight" ? { kind: "idle" } : { kind: "highlight", color: PALETTE[0], pending: null }); setToolsOpen(false); }}
+                title="Paint a word range on a card"
+              >
+                <span className="tbtn-ic">🖍</span> Highlight
+              </button>
+            </div>
+
+            {/* clusters live under the Cluster tool */}
+            {caseRec.clusters.length > 0 && (
+              <div className="btm-clusters">
+                <div className="btm-sub">Clusters — click to keep highlighted</div>
+                <div className="cluster-chips">
+                  {caseRec.clusters.map((g) => (
+                    <span
+                      key={g.id}
+                      className={`chip cluster-chip${focusCluster === g.id ? " active" : ""}${pinnedCluster === g.id ? " pinned" : ""}`}
+                      title={pinnedCluster === g.id ? "Click to unpin" : "Click to keep this cluster highlighted while you scroll"}
+                      onMouseEnter={() => setHoverCluster(g.id)}
+                      onMouseLeave={() => setHoverCluster(null)}
+                      onClick={() => setPinnedCluster((pv) => (pv === g.id ? null : g.id))}
+                    >
+                      {pinnedCluster === g.id && <span className="cluster-pin" aria-hidden>📌</span>}
+                      {g.name} ×{g.cardIds.length}
+                      <button
+                        className="chip-x"
+                        title="Dissolve this cluster"
+                        onClick={(e) => { e.stopPropagation(); if (pinnedCluster === g.id) setPinnedCluster(null); mutate(withClusterRemoved(caseRec, g.id)); }}
+                      >✕</button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="btm-row">
+              <button
+                className="tbtn"
+                onClick={() => { mutate(arrangeBoard(caseRec, occById, (id) => cardEls.current.get(id)?.offsetHeight)); setToolsOpen(false); }}
+                title={caseRec.clusters.length
+                  ? "Auto-arrange: your clusters first (members together), then by form; slips beside their evidence"
+                  : "Auto-arrange: grouped by form, mushaf order inside; slips beside their evidence"}
+              >
+                <span className="tbtn-ic">⇤</span> Arrange
+              </button>
+            </div>
+
+            <div className="btm-row add-ayah">
+              <input
+                className={`board-input ayah-key-input${ayahError ? " invalid" : ""}`}
+                placeholder="＋ Ayah e.g. 24:35"
+                value={ayahKey}
+                onChange={(e) => { setAyahKey(e.target.value); setAyahError(false); }}
+                onKeyDown={async (e) => {
+                  if (e.key === "Enter" && /^\d{1,3}:\d{1,3}$/.test(ayahKey.trim())) {
+                    const ok = await onAddAyah(ayahKey.trim());
+                    if (ok) setAyahKey(""); else setAyahError(true);
+                  }
+                }}
               />
-            ))}
-            <button
-              className={`swatch eraser${mode.color === null ? " on" : ""}`}
-              onClick={() => setMode({ ...mode, color: null })}
-              title="Eraser"
-            >
-              ⌫
-            </button>
-            <span className="board-hint">
-              {mode.pending ? "…now click the last word of the segment" : "click the first word of a segment"}
-            </span>
-          </span>
-        )}
-        {mode.kind === "cluster" && (
-          <>
-            <span className="board-hint">select ({mode.selected.length}) then name the group</span>
-            <input
-              className="board-input"
-              placeholder="cluster name…"
-              value={clusterName}
-              onChange={(e) => setClusterName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") saveCluster(); }}
-            />
-            <button className="tbtn" disabled={mode.selected.length < 2 || !clusterName.trim()} onClick={saveCluster}>
-              save group
-            </button>
-          </>
-        )}
-        {mode.kind === "idle" && suggestions.length > 0 && (
-          <span className="board-hint pencil">
-            {suggestions.length} suggested link{suggestions.length > 1 ? "s" : ""}
-          </span>
+              <button
+                className="tbtn"
+                disabled={!/^\d{1,3}:\d{1,3}$/.test(ayahKey.trim())}
+                onClick={async () => { const ok = await onAddAyah(ayahKey.trim()); if (ok) setAyahKey(""); else setAyahError(true); }}
+              >
+                add
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
-      {/* cluster chips */}
-      {caseRec.clusters.length > 0 && (
-        <div className="cluster-chips">
-          {caseRec.clusters.map((g) => (
-            <span
-              key={g.id}
-              className={`chip cluster-chip${focusCluster === g.id ? " active" : ""}`
-                + (pinnedCluster === g.id ? " pinned" : "")}
-              title={pinnedCluster === g.id
-                ? "Click to unpin — the highlight is staying on while you scroll"
-                : "Click to keep this cluster highlighted while you scroll"}
-              onMouseEnter={() => setHoverCluster(g.id)}
-              onMouseLeave={() => setHoverCluster(null)}
-              onClick={() => setPinnedCluster((p) => (p === g.id ? null : g.id))}
-            >
-              {pinnedCluster === g.id && <span className="cluster-pin" aria-hidden>📌</span>}
-              {g.name} ×{g.cardIds.length}
-              <button
-                className="chip-x"
-                title="Dissolve this cluster"
-                onClick={(e) => {
-                  e.stopPropagation(); // don't toggle the pin when dissolving
-                  if (pinnedCluster === g.id) setPinnedCluster(null);
-                  mutate(withClusterRemoved(caseRec, g.id));
-                }}
-              >✕</button>
+      {/* zoom — stays on the canvas, bottom-left */}
+      <div className="board-zoom" aria-label="Zoom">
+        <button className="tbtn" onClick={() => zoomTo(scale / 1.2)} title="Zoom out">−</button>
+        <button className="tbtn zoom-pct" onClick={() => zoomTo(1)} title="Reset to 100%">{Math.round(scale * 100)}%</button>
+        <button className="tbtn" onClick={() => zoomTo(scale * 1.2)} title="Zoom in">＋</button>
+        <button
+          className="tbtn"
+          onClick={() => {
+            const el = boardRef.current;
+            if (!el) return;
+            const ns = Math.min(1, Math.max(0.25, Math.min((el.clientWidth - 24) / extentW, (el.clientHeight - 24) / extentH)));
+            setScale(ns);
+            el.scrollLeft = 0;
+            el.scrollTop = 0;
+          }}
+          title="Fit the whole board"
+        >
+          ☡ fit
+        </button>
+      </div>
+
+      {/* contextual mode bar — appears while a tool mode is active */}
+      {mode.kind !== "idle" && (
+        <div className="board-mode-bar">
+          {mode.kind === "thread" && (
+            <span className="board-hint">
+              {mode.from === null ? "pick a card, slip — or click a specific word…" : "now pick what to connect it to (Esc cancels)"}
             </span>
-          ))}
+          )}
+          {mode.kind === "highlight" && (
+            <>
+              {PALETTE.map((col) => (
+                <button key={col} className={`swatch${mode.color === col ? " on" : ""}`} style={{ backgroundColor: col }} onClick={() => setMode({ ...mode, color: col })} title="Highlight color" />
+              ))}
+              <button className={`swatch eraser${mode.color === null ? " on" : ""}`} onClick={() => setMode({ ...mode, color: null })} title="Eraser">⌫</button>
+              <span className="board-hint">{mode.pending ? "…now click the last word of the segment" : "click the first word of a segment"}</span>
+            </>
+          )}
+          {mode.kind === "cluster" && (
+            <>
+              <span className="board-hint">select ({mode.selected.length}) then name the group</span>
+              <input className="board-input" placeholder="cluster name…" value={clusterName} onChange={(e) => setClusterName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveCluster(); }} />
+              <button className="tbtn" disabled={mode.selected.length < 2 || !clusterName.trim()} onClick={saveCluster}>save group</button>
+            </>
+          )}
+          <button className="tbtn mode-done" onClick={() => setMode({ kind: "idle" })} title="Done (Esc)">✕</button>
         </div>
       )}
 

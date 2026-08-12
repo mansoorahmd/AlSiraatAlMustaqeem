@@ -3021,8 +3021,8 @@ a { color: var(--lapis); }
 
 .canvas-body { position: relative; flex: 1; min-height: 0; display: flex; }
 /* the board fills the canvas body; its toolbar sits as a strip at the top */
-.canvas-body .board-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column;
-  gap: 0.5rem; padding: 0.6rem; }
+.canvas-body .board-wrap { position: relative; flex: 1; min-width: 0; display: flex;
+  flex-direction: column; padding: 0.6rem; }
 .canvas-body .board { border-radius: 12px; }
 
 /* empty hint, centred over the board, non-interactive */
@@ -3076,3 +3076,46 @@ a { color: var(--lapis); }
   .fab-label { display: none; }
   .fab { padding: 0.6rem; }
 }
+
+/* ---- board: grouped floating tools, zoom, mode bar ------------------------ */
+.board-tools { position: absolute; top: 0.9rem; inset-inline-start: 0.9rem; z-index: 6; }
+.board-tools-fab {
+  display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid var(--paper-edge);
+  background: var(--paper); color: var(--ink); border-radius: 999px; padding: 0.45rem 0.85rem;
+  font: inherit; font-size: var(--fs-small); font-weight: 600; cursor: pointer;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+}
+.board-tools-fab.on { border-color: var(--gold); }
+.board-tools-fab .tbtn-ic { color: var(--gold); }
+.tb-caret { font-size: 0.7em; color: var(--ink-faint); }
+.board-tools-menu {
+  position: absolute; top: calc(100% + 0.4rem); inset-inline-start: 0; min-width: 17rem;
+  background: var(--paper); border: 1px solid var(--paper-edge); border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(0,0,0,0.16); padding: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem;
+}
+.btm-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.btm-row .tbtn { flex: 1 1 auto; justify-content: center; }
+.btm-row.add-ayah .ayah-key-input { flex: 1 1 8rem; min-width: 0; }
+.btm-sub { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--ink-faint); padding: 0.1rem 0.1rem 0.25rem; }
+.btm-clusters { border-top: 1px solid var(--paper-edge); border-bottom: 1px solid var(--paper-edge);
+  padding: 0.4rem 0.1rem; }
+.tbtn-badge { margin-inline-start: 0.3rem; font-size: var(--fs-label); color: #fff;
+  background: var(--gold); border-radius: 999px; padding: 0 0.3rem; }
+
+.board-zoom {
+  position: absolute; inset-inline-start: 0.9rem; inset-block-end: 0.9rem; z-index: 6;
+  display: inline-flex; align-items: center; gap: 0.15rem; background: var(--paper);
+  border: 1px solid var(--paper-edge); border-radius: 999px; padding: 0.15rem 0.3rem;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+}
+.board-zoom .tbtn { padding: 0.25rem 0.5rem; }
+.board-zoom .zoom-pct { min-width: 3.2rem; }
+
+.board-mode-bar {
+  position: absolute; top: 0.9rem; inset-inline: 0; margin-inline: auto; width: max-content;
+  max-width: calc(100% - 2rem); z-index: 6; display: inline-flex; align-items: center; gap: 0.5rem;
+  flex-wrap: wrap; background: var(--paper); border: 1px solid var(--gold); border-radius: 999px;
+  padding: 0.35rem 0.7rem; box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+}
+.board-mode-bar .mode-done { margin-inline-start: 0.2rem; }
