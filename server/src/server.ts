@@ -15,7 +15,9 @@ const state = createState();
 const app = createApp(state);
 
 if (SERVE_STATIC) {
-  const root = resolve(import.meta.dirname, "..", "..", "app", "dist");
+  // QF_STATIC_ROOT lets the desktop build point at the SPA inside the app bundle;
+  // the default is the repo's app/dist for `npm start`.
+  const root = process.env.QF_STATIC_ROOT ?? resolve(import.meta.dirname, "..", "..", "app", "dist");
   app.use("/*", serveStatic({ root }));
   // SPA deep-link fallback
   app.notFound(async (c) => {

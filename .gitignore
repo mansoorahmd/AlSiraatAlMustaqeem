@@ -27,3 +27,7 @@ Thumbs.db
 
 # --- mcp workspace ---
 mcp/node_modules/
+
+# desktop (Electron) build artifacts
+electron/build/
+dist-desktop/

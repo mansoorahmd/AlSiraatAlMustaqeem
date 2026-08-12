@@ -1,0 +1,36 @@
+appId: com.mqresearchgate.app
+productName: MQ Research Gate
+directories:
+  output: dist-desktop
+
+# Ship only the shell + the bundled server; the SPA and corpus go in resources.
+files:
+  - electron/main.mjs
+  - electron/preload.mjs
+  - electron/build/**
+  - package.json
+
+# native driver + the server bundle must live outside the asar to be spawnable/loadable
+asarUnpack:
+  - "**/better-sqlite3/**"
+  - "**/*.node"
+  - electron/build/**
+
+# read-only assets the app opens at runtime
+extraResources:
+  - from: app/dist
+    to: app/dist
+  - from: quran.db
+    to: quran.db
+  # a starter research.db can be shipped to seed first run; omit to start empty
+  # - from: research.db
+  #   to: research.db
+
+win:
+  target: nsis
+mac:
+  target: dmg
+  category: public.app-category.education
+linux:
+  target: AppImage
+  category: Education

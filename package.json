@@ -2,7 +2,8 @@
   "name": "alsiraat-almustaqeem",
   "private": true,
   "version": "0.2.0",
-  "description": "AlSiraatAlMustaqeem \u2014 a detective-style Quran study app (React SPA + TypeScript API).",
+  "description": "MQ Research Gate \u2014 a detective-style Quran study app (React SPA + TypeScript API).",
+  "main": "electron/main.mjs",
   "workspaces": [
     "app",
     "server",
@@ -15,9 +16,18 @@
     "build": "npm run build -w app",
     "start": "npm run build -w app && npm run start:static -w server",
     "save": "node --no-warnings scripts/save-research.mjs",
-    "mcp": "npm start --silent -w @alsiraat/mcp"
+    "mcp": "npm start --silent -w @alsiraat/mcp",
+    "electron:build": "npm run build -w app && node electron/bundle-server.mjs",
+    "electron:dev": "npm run electron:build && electron .",
+    "desktop:dist": "npm run electron:build && electron-builder"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.0",
+    "esbuild": "^0.24.0"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.5.0"
   }
 }
