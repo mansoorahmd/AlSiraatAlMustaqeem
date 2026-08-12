@@ -3,6 +3,7 @@
 // رَءَا. Ported from the mobile app's data/spellings.ts (word-level part).
 
 import type { Db } from "./db.js";
+import { foldArabic } from "./text/normalize.js";
 
 export interface SpellingVariant {
   surface: string;
@@ -11,7 +12,13 @@ export interface SpellingVariant {
 }
 
 // RASM key: keep only base rasm letters + dagger-alif + wasla + small wāw/yāʾ.
-export const rasmKey = (s: string) => (s || '').replace(/[^\u0621-\u064A\u0670\u0671\u06E5\u06E6]/g, '');
+// U+0640 TATWEEL is excluded even though it falls inside the letter range: it is a
+// cosmetic elongation dash, not a letter. The DISPLAYED verse text writes
+// ٱلرَّحْمَـٰنِ WITH a tatweel while the morphology segments that build this index write
+// it without, so keeping it made a word tapped in the reader unmatchable — "follow this
+// word" then found nothing and showed only the tapped occurrence.
+export const rasmKey = (s: string) =>
+  (s || '').replace(/\u0640/g, '').replace(/[^\u0621-\u064A\u0670\u0671\u06E5\u06E6]/g, '');
 
 // SKELETON: collapse the letters that carry the same word's long-ā across the two
 // mushaf spellings, so the same word written two ways still lands in one group:
@@ -56,6 +63,12 @@ export interface RelatedForm { surface: string; count: number }
 
 export class WordFormIndex {
   private byRasm = new Map<string, WordOccurrence[]>();
+  /** Secondary index on the FOLDED rasm (waṣla/madda/hamza-alif/dagger-alif → ا,
+   *  alif-maqṣūra → ي, tāʾ-marbūṭa → ه). The index is built from the Uthmani
+   *  morphology, but the reader can display imlāʾī / indopak / simplified text, where
+   *  the same word is written الرحمن rather than ٱلرَّحْمَٰنِ. Without this fallback,
+   *  tapping a word in any non-Uthmani script matched nothing. */
+  private byFolded = new Map<string, WordOccurrence[]>();
   /** first surface seen for each rasm, to name it in results */
   private sample = new Map<string, string>();
   private built = false;
@@ -91,25 +104,34 @@ export class WordFormIndex {
       if (list) list.push(occ);
       else this.byRasm.set(rk, [occ]);
       if (!this.sample.has(rk)) this.sample.set(rk, full);
+      const fk = foldArabic(rk);
+      const flist = this.byFolded.get(fk);
+      if (flist) flist.push(occ);
+      else this.byFolded.set(fk, [occ]);
     }
     this.built = true;
     return this;
   }
 
-  /** Every occurrence of the exact written word, in mushaf order. */
-  occurrences(surface: string, limit = 3000): WordOccurrence[] {
+  /** Resolve a query to the occurrence list: exact rasm first, then the folded index
+   *  so a word tapped in a non-Uthmani script still matches. `mode` says which hit. */
+  lookup(surface: string): { key: string; mode: "rasm" | "folded"; list: WordOccurrence[] } {
     this.build();
     const rk = rasmKey(surface);
-    if (!rk) return [];
-    return (this.byRasm.get(rk) ?? []).slice(0, limit);
+    if (!rk) return { key: "", mode: "rasm", list: [] };
+    const exact = this.byRasm.get(rk);
+    if (exact?.length) return { key: rk, mode: "rasm", list: exact };
+    return { key: foldArabic(rk), mode: "folded", list: this.byFolded.get(foldArabic(rk)) ?? [] };
   }
 
-  /** How many times this exact written form occurs — the total, before any limit. */
+  /** Every occurrence of the exact written word, in mushaf order. */
+  occurrences(surface: string, limit = 3000): WordOccurrence[] {
+    return this.lookup(surface).list.slice(0, limit);
+  }
+
+  /** How many times this written form occurs — the total, before any limit. */
   total(surface: string): number {
-    this.build();
-    const rk = rasmKey(surface);
-    if (!rk) return 0;
-    return (this.byRasm.get(rk) ?? []).length;
+    return this.lookup(surface).list.length;
   }
 
   /** Other written forms that contain this one, i.e. the same word with ٱل / و / بِ
@@ -117,13 +139,13 @@ export class WordFormIndex {
    *  bare form — while 65 occurrences sit inside ٱلصَّلَوٰةَ and look like they do not
    *  exist. Sorted by frequency. */
   relatedForms(surface: string, limit = 12): RelatedForm[] {
-    this.build();
-    const rk = rasmKey(surface);
-    if (!rk) return [];
+    const { key, mode } = this.lookup(surface);
+    if (!key) return [];
+    const index = mode === "rasm" ? this.byRasm : this.byFolded;
     const out: RelatedForm[] = [];
-    for (const [key, list] of this.byRasm) {
-      if (key === rk || !key.includes(rk)) continue;
-      out.push({ surface: this.sample.get(key) ?? key, count: list.length });
+    for (const [k, list] of index) {
+      if (k === key || !k.includes(key)) continue;
+      out.push({ surface: this.sample.get(k) ?? list[0]?.surface ?? k, count: list.length });
     }
     return out.sort((a, b) => b.count - a.count).slice(0, limit);
   }

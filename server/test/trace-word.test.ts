@@ -83,3 +83,31 @@ describe("trace_word — exact written word", () => {
     expect(without.total).toBe(withMarks.total);
   });
 });
+
+// The bug the reader hit: "follow this word" on ٱلرَّحْمَٰنِ in 1:1 showed one occurrence.
+// Cause: the DISPLAYED verse text writes it with a TATWEEL (U+0640) — ٱلرَّحْمَـٰنِ — while
+// the morphology segments that build the index do not. rasmKey kept the tatweel because
+// it falls inside the letter range, so the tapped token matched nothing and the trail
+// showed only its own seed hop. The reader can also display imlāʾī / indopak /
+// simplified text, where the same word is الرحمن, so a folded fallback backs it up.
+describe("trace_word — a word tapped in the reader must match the index", () => {
+  const SCRIPTS = ["uthmani", "uthmani_simple", "imlaei", "imlaei_simple", "indopak"] as const;
+
+  it("finds every ٱلرَّحْمَٰنِ from the token of ANY display script", async () => {
+    const { createState } = await import("../src/state.js");
+    const s: any = state ?? createState();
+    for (const script of SCRIPTS) {
+      const verse: any = s.content.getVerse("1:1", { script });
+      const token = String(verse.text).split(/\s+/)[2]; // ٱلرَّحْمَٰنِ
+      const r = trace.run(s, { word: token, exact: true, limit: 300 });
+      expect(r.total, `script ${script} (token ${token})`).toBe(45);
+    }
+  });
+
+  it("the tatweel form and the plain form are the same word", () => {
+    const withTatweel = trace.run(state, { word: "ٱلرَّحْمَـٰنِ", exact: true, limit: 300 });
+    const without = trace.run(state, { word: "ٱلرَّحْمَٰنِ", exact: true, limit: 300 });
+    expect(withTatweel.total).toBe(without.total);
+    expect(withTatweel.total).toBe(45);
+  });
+});
