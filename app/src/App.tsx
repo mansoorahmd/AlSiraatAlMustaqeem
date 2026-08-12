@@ -8,6 +8,7 @@ import { Search } from "./screens/Search";
 import { Motifs } from "./screens/Motifs";
 import { Compare } from "./screens/Compare";
 import { Shortcuts } from "./components/Shortcuts";
+import { CommandPalette } from "./components/CommandPalette";
 import { ExpressionBar } from "./components/ExpressionBar";
 import { Toast } from "./components/Toast";
 import { AppProvider, useAppState } from "./state/store";
@@ -28,6 +29,7 @@ export default function App() {
   return (
     <AppProvider>
       <Shortcuts />
+      <CommandPalette />
       <div className="shell">
         <TopBar />
         <main className="main">

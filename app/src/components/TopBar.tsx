@@ -3,19 +3,22 @@ import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
 import { useAppState, useAppDispatch, type Tab } from "../state/store";
 import type { Script } from "../api/types";
-import { OpenQuestions } from "./OpenQuestions";
-import { Proposed } from "./Proposed";
+import { ActivityBell } from "./ActivityBell";
 import { archive } from "../persistence/db";
 
-const TABS: { id: Tab; label: string }[] = [
+// the rooms the reader inhabits — always visible
+const PRIMARY: { id: Tab; label: string }[] = [
   { id: "home", label: "Home" },
   { id: "read", label: "Read" },
-  { id: "search", label: "Search" },
   { id: "investigate", label: "Investigate" },
-  { id: "vault", label: "Vault" },
-  { id: "roots", label: "Roots" },
-  { id: "motifs", label: "Motifs" },
-  { id: "compare", label: "Compare" },
+];
+
+// the reference tools — collected under one "Study" menu
+const STUDY: { id: Tab; label: string; desc: string }[] = [
+  { id: "roots", label: "Roots", desc: "Browse roots and their lexicon entries" },
+  { id: "motifs", label: "Motifs", desc: "Recurring root groupings (بيوت)" },
+  { id: "compare", label: "Compare", desc: "Set forms or roots side by side" },
+  { id: "vault", label: "Vault", desc: "Roots you have established" },
 ];
 
 const SCRIPTS: { id: Script; label: string }[] = [
@@ -39,6 +42,10 @@ export function TopBar() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const [studyOpen, setStudyOpen] = useState(false);
+  const studyRef = useRef<HTMLDivElement>(null);
+  const studyActive = STUDY.some((s) => s.id === tab);
+
   useEffect(() => {
     if (!settingsOpen) return;
     const onDown = (e: MouseEvent) => {
@@ -52,6 +59,17 @@ export function TopBar() {
       document.removeEventListener("keydown", onKey);
     };
   }, [settingsOpen]);
+
+  useEffect(() => {
+    if (!studyOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (studyRef.current && !studyRef.current.contains(e.target as Node)) setStudyOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setStudyOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [studyOpen]);
 
   const dotClass = health.loading ? "" : health.error ? "error" : "ok";
   const statusText = health.loading
@@ -68,7 +86,7 @@ export function TopBar() {
       </div>
 
       <nav className="tabs" aria-label="Main">
-        {TABS.map((t) => (
+        {PRIMARY.map((t) => (
           <button
             key={t.id}
             className={`tab${tab === t.id ? " active" : ""}`}
@@ -76,20 +94,59 @@ export function TopBar() {
             onClick={() => dispatch({ type: "setTab", tab: t.id })}
           >
             {t.label}
-            {t.id === "compare" && (compareCount.data ?? 0) > 0 && (
-              <span className="tab-badge">{compareCount.data}</span>
-            )}
           </button>
         ))}
+
+        {/* the reference tools, grouped */}
+        <div className="study-wrap" ref={studyRef}>
+          <button
+            className={`tab study-tab${studyActive ? " active" : ""}${studyOpen ? " open" : ""}`}
+            aria-haspopup="menu"
+            aria-expanded={studyOpen}
+            onClick={() => setStudyOpen((o) => !o)}
+          >
+            Study
+            {(compareCount.data ?? 0) > 0 && <span className="tab-badge">{compareCount.data}</span>}
+            <span className="study-caret" aria-hidden>▾</span>
+          </button>
+          {studyOpen && (
+            <div className="study-menu" role="menu">
+              {STUDY.map((s) => (
+                <button
+                  key={s.id}
+                  className={`study-item${tab === s.id ? " active" : ""}`}
+                  role="menuitem"
+                  onClick={() => { dispatch({ type: "setTab", tab: s.id }); setStudyOpen(false); }}
+                >
+                  <span className="study-item-label">
+                    {s.label}
+                    {s.id === "compare" && (compareCount.data ?? 0) > 0 && (
+                      <span className="tab-badge">{compareCount.data}</span>
+                    )}
+                  </span>
+                  <span className="study-item-desc">{s.desc}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
 
       <div className="spacer" />
 
-      {/* every unanswered question across the Book, one click away */}
-      <OpenQuestions />
+      {/* command palette trigger — jump to anything, or search */}
+      <button
+        className="ctl palette-btn"
+        title="Search or jump to anything (⌘K)"
+        onClick={() => window.dispatchEvent(new CustomEvent("open-palette"))}
+      >
+        <span className="palette-ic" aria-hidden>⌕</span>
+        <span className="palette-hint">Jump or search</span>
+        <span className="palette-kbd">⌘K</span>
+      </button>
 
-      {/* anything an AI proposed via the MCP server, awaiting review */}
-      <Proposed />
+      {/* one place for everything awaiting the reader */}
+      <ActivityBell />
 
       {/* reading settings — always available in the top toolbar */}
       <div className="settings-wrap" ref={settingsRef}>

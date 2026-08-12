@@ -15,14 +15,23 @@ type Mode = "phrase" | "related";
 const spaced = (r: string) => r.split("").join(" ");
 
 export function Search() {
-  const { reading } = useAppState();
+  const { reading, searchQuery } = useAppState();
   const dispatch = useAppDispatch();
   const script = reading.script;
 
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(searchQuery ?? "");
   const [mode, setMode] = useState<Mode>("phrase");
   const [kbOpen, setKbOpen] = useState(true);
   const [debounced, setDebounced] = useState("");
+
+  // a query handed over from the command palette — seed the box once, then clear it
+  useEffect(() => {
+    if (searchQuery != null) {
+      setQ(searchQuery);
+      dispatch({ type: "setSearchQuery", query: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(q.trim()), 350);

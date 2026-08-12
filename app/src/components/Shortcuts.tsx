@@ -39,7 +39,7 @@ export function Shortcuts() {
         if (tab) { e.preventDefault(); dispatch({ type: "setTab", tab }); }
         return;
       }
-      if (e.key === "/") { e.preventDefault(); dispatch({ type: "setTab", tab: "search" }); return; }
+      // "/" and ⌘K open the command palette — handled in CommandPalette, not here
       if (e.key === "g") { awaitingGoto.current = true; window.setTimeout(() => { awaitingGoto.current = false; }, 900); return; }
       if (e.key === "j") { moveAyah(1); return; }
       if (e.key === "k") { moveAyah(-1); return; }

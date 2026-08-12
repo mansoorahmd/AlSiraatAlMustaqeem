@@ -50,6 +50,8 @@ export interface AppState {
   /** expression-search tray: picked words to find co-occurring (session-only) */
   expr: ExprTerm[];
   exprMode: "verbatim" | "roots";
+  /** a query handed to the Search screen (e.g. from the command palette) */
+  searchQuery: string | null;
 }
 
 export type Action =
@@ -78,6 +80,7 @@ export type Action =
   | { type: "unpinExpr"; surface: string }
   | { type: "clearExpr" }
   | { type: "setExprMode"; mode: "verbatim" | "roots" }
+  | { type: "setSearchQuery"; query: string | null }
   | { type: "clearJump" }
   | { type: "hydratePrefs"; reading: Partial<ReadingState> };
 
@@ -98,6 +101,7 @@ const initialState: AppState = {
   toast: null,
   expr: [],
   exprMode: "verbatim",
+  searchQuery: null,
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -208,6 +212,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, expr: state.expr.filter((t) => t.surface !== action.surface) };
     case "clearExpr":
       return { ...state, expr: [] };
+    case "setSearchQuery":
+      return { ...state, searchQuery: action.query };
     case "setExprMode":
       return { ...state, exprMode: action.mode };
     case "clearJump":
