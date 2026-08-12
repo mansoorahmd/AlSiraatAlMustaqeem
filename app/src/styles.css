@@ -3089,7 +3089,9 @@ a { color: var(--lapis); }
 .board-tools-fab .tbtn-ic { color: var(--gold); }
 .tb-caret { font-size: 0.7em; color: var(--ink-faint); }
 .board-tools-menu {
-  position: absolute; top: calc(100% + 0.4rem); inset-inline-start: 0; min-width: 17rem;
+  position: absolute; top: calc(100% + 0.4rem); inset-inline-start: 0;
+  /* wider and shorter: the tools spread across the width instead of stacking tall */
+  width: max-content; min-width: 24rem; max-width: min(36rem, calc(100vw - 2rem));
   background: var(--paper); border: 1px solid var(--paper-edge); border-radius: 12px;
   box-shadow: 0 14px 34px rgba(0,0,0,0.16); padding: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem;
   /* the tools button sits near the top of the canvas (~9rem of chrome above it), so
@@ -3100,8 +3102,9 @@ a { color: var(--lapis); }
    (Arrange, + Ayah) stay reachable even with many clusters */
 .btm-clusters .cluster-chips { max-height: 12rem; overflow-y: auto; }
 .btm-row { display: flex; gap: 0.35rem; }
-/* tool rows stack vertically so every icon lines up in one column */
-.btm-row:not(.add-ayah) { flex-direction: column; gap: 0.2rem; }
+/* tools spread across the width — a responsive grid keeps them short vertically,
+   with each button left-aligned and its icon in a fixed slot so icons still line up */
+.btm-row:not(.add-ayah) { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 0.35rem; }
 .btm-row:not(.add-ayah) .tbtn { width: 100%; justify-content: flex-start; }
 /* fixed-width, centred icon slot — emoji glyphs vary in width, this aligns them */
 .board-tools-menu .tbtn-ic { display: inline-flex; justify-content: center; width: 1.4rem; flex: 0 0 auto; }
