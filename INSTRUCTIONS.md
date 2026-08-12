@@ -8,6 +8,27 @@ and establishing their own understanding.
 
 ---
 
+## Design conventions (UI)
+
+Keep **symmetry and alignment** the default in every screen — this is a standing
+requirement, not a per-task nicety.
+
+- **One grid, not many rows.** When several controls sit together (a toolbar, a menu,
+  a button group), lay them out in a *single* grid with equal columns
+  (`repeat(n, minmax(0, 1fr))`) so every item lines up on the same grid lines. Separate
+  flex rows each size independently and drift out of alignment — avoid them for groups.
+- **Icons in a fixed slot.** Give button icons a fixed-width, centred slot
+  (e.g. `width: 1.4rem`) so glyphs of different widths (emoji especially) line up in a
+  column and the labels start at the same x.
+- **Buttons are atomic.** `.ctl` is `inline-flex`, centred, `white-space: nowrap` — a
+  button never wraps its label or drops its icon onto a second line. Let a flexible
+  neighbour (a title) shrink instead.
+- **Consistent edges.** Align left edges of stacked items; keep equal gaps; cap floating
+  popovers to the viewport (`max-height`, internal scroll) and keep a page margin
+  (`max-width: min(…, calc(100vw - 2rem))`).
+- Paper aesthetic (warm paper, ink, gold) and the CSS variables in `app/src/styles.css`
+  are the source of truth for colour/spacing — reuse them, don't hardcode.
+
 ## Architecture
 
 A TypeScript app in three parts, run as one npm workspace:

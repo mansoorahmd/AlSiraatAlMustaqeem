@@ -407,15 +407,14 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
         </button>
         {toolsOpen && (
           <div className="board-tools-menu" role="menu">
-            <div className="btm-row">
+            {/* one grid so every button aligns on the same columns */}
+            <div className="btm-grid">
               <button className="tbtn" onClick={() => { addSlip("comment"); setToolsOpen(false); }} title="Add a comment slip">
                 <span className="tbtn-ic">✎</span> Comment
               </button>
               <button className="tbtn" onClick={() => { addSlip("reference"); setToolsOpen(false); }} title="Add a cited reference">
                 <span className="tbtn-ic">🔖</span> Reference
               </button>
-            </div>
-            <div className="btm-row">
               <button
                 className={`tbtn${mode.kind === "thread" ? " on" : ""}`}
                 onClick={() => { setMode(mode.kind === "thread" ? { kind: "idle" } : { kind: "thread", from: null }); setToolsOpen(false); }}
@@ -438,9 +437,6 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
               >
                 <span className="tbtn-ic">🖍</span> Highlight
               </button>
-            </div>
-
-            <div className="btm-row">
               <button
                 className="tbtn"
                 onClick={() => { mutate(arrangeBoard(caseRec, occById, (id) => cardEls.current.get(id)?.offsetHeight)); setToolsOpen(false); }}

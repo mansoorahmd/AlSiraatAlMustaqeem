@@ -3102,13 +3102,14 @@ a { color: var(--lapis); }
    (Arrange, + Ayah) stay reachable even with many clusters */
 .btm-clusters .cluster-chips { max-height: 12rem; overflow-y: auto; }
 .btm-row { display: flex; gap: 0.35rem; }
-/* tools spread across the width — a responsive grid keeps them short vertically,
-   with each button left-aligned and its icon in a fixed slot so icons still line up */
-.btm-row:not(.add-ayah) { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 0.35rem; }
-.btm-row:not(.add-ayah) .tbtn { width: 100%; justify-content: flex-start; }
+/* all tools in ONE grid with equal columns, so every button lines up on the same
+   grid lines (rows and columns) — symmetric, short, and aligned */
+.btm-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.35rem; }
+.btm-grid .tbtn { width: 100%; justify-content: flex-start; }
 /* fixed-width, centred icon slot — emoji glyphs vary in width, this aligns them */
 .board-tools-menu .tbtn-ic { display: inline-flex; justify-content: center; width: 1.4rem; flex: 0 0 auto; }
 .btm-row.add-ayah .ayah-key-input { flex: 1 1 8rem; min-width: 0; }
+@media (max-width: 520px) { .btm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .btm-sub { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--ink-faint); padding: 0.1rem 0.1rem 0.25rem; }
 .btm-clusters { border-top: 1px solid var(--paper-edge); border-bottom: 1px solid var(--paper-edge);
