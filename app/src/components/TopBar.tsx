@@ -63,7 +63,7 @@ export function TopBar() {
   return (
     <header className="topbar">
       <div className="brand">
-        <span className="brand-arabic">الصراط المستقيم</span>
+        <span className="brand-name">MQ Research Gate</span>
         <span className="brand-sub">The Investigation</span>
       </div>
 

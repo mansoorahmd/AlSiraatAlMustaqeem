@@ -12,7 +12,6 @@ import type { FormStatusRow } from "../../persistence/db";
 import { VerseText } from "../VerseText";
 import { NotesPanel } from "./NotesPanel";
 import { EchoPanel } from "./EchoPanel";
-import { arabicIndic } from "./format";
 import type { FocusReason, FocusBase } from "./focus";
 import type { NoteRecord, HighlightRange } from "../../persistence/types";
 
@@ -260,7 +259,7 @@ export const AyahBlock = memo(function AyahBlock({
           title={`${surahName ? `${surahName} · ` : ""}${verse.verse_key}`}
           aria-label={`${surahName ? `${surahName}, ` : ""}ayah ${verse.verse_key}`}
         >
-          ﴿{arabicIndic(chapterOf(verse.verse_key))}:{arabicIndic(verse.verse_number)}﴾
+          ﴿{chapterOf(verse.verse_key)}:{verse.verse_number}﴾
         </span>
         {caseRefs && caseRefs.length > 0 && (
           <button

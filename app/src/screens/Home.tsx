@@ -70,7 +70,7 @@ export function Home() {
   return (
     <div className="sheet home">
       <header className="home-head">
-        <h1 className="home-title quran">الصراط المستقيم</h1>
+        <h1 className="home-title">MQ Research Gate</h1>
         <p className="subtitle">Your workbench — pick up where you left off.</p>
       </header>
 

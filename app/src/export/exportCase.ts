@@ -358,7 +358,7 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
 
   <div class="footer">
     <span>Original research — established from the Book's own usage.</span>
-    <span class="brand-ar">الصراط المستقيم</span>
+    <span class="brand-ar">MQ Research Gate</span>
   </div>
 </div>
 </body>
@@ -498,7 +498,7 @@ export function buildCaseMarkdown(c: CaseRecord, d: ExportData): string {
     for (const [lemma] of openForms) lines.push(`- ${lemma}`);
   }
 
-  lines.push(`\n---\n*Original research — established from the Book's own usage. الصراط المستقيم*`);
+  lines.push(`\n---\n*Original research — established from the Book's own usage. MQ Research Gate*`);
   return lines.join("\n");
 }
 
