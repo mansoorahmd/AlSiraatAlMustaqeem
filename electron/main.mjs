@@ -10,7 +10,7 @@
 //     updates and isn't tied to any source checkout. Seeded from the bundle on first
 //     run if one is shipped, else created by the server on first write.
 
-import { app, BrowserWindow, shell, utilityProcess } from "electron";
+import { app, BrowserWindow, Menu, shell, utilityProcess } from "electron";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { existsSync, copyFileSync, mkdirSync } from "node:fs";
@@ -93,8 +93,10 @@ function createWindow(port) {
     minHeight: 600,
     backgroundColor: "#f4f1ea",
     title: "MQ Research Gate",
+    autoHideMenuBar: true, // no File/Edit/View/Window/Help bar
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
+  win.setMenuBarVisibility(false);
   // open external links in the system browser, not inside the app
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("http://127.0.0.1")) return { action: "allow" };
@@ -105,6 +107,9 @@ function createWindow(port) {
 }
 
 app.whenReady().then(async () => {
+  // no native menu bar (File / Edit / View / Window / Help). On macOS a minimal app
+  // menu still shows in the system bar; on Windows/Linux the bar is gone entirely.
+  Menu.setApplicationMenu(null);
   try {
     const port = await startServer();
     createWindow(port);
