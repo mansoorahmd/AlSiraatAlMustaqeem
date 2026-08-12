@@ -3125,3 +3125,15 @@ a { color: var(--lapis); }
   padding: 0.35rem 0.7rem; box-shadow: 0 3px 12px rgba(0,0,0,0.12);
 }
 .board-mode-bar .mode-done { margin-inline-start: 0.2rem; }
+
+/* ---- cluster colours ------------------------------------------------------ */
+/* a card in a cluster wears that cluster's colour as a 2px border (set inline);
+   the width lives here so the inline border-color is all the JS supplies */
+.board-card.clustered { border-width: 2px; border-style: solid; }
+/* the pin/hover highlight uses the cluster's own colour (outline-color set inline) */
+.board-card.cluster-hover { outline-width: 2px; outline-style: solid; outline-offset: 2px; }
+
+.cluster-dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; flex: 0 0 auto;
+  display: inline-block; margin-inline-end: 0.1rem; }
+.cluster-chip { border-width: 1px; border-style: solid; }
+.cluster-chip.pinned { box-shadow: 0 0 0 1px var(--cl-color) inset; }

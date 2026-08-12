@@ -73,6 +73,8 @@ export interface ClusterRecord {
   id: string;
   name: string;
   cardIds: string[]; // card or slip ids
+  /** the cluster's colour — its member cards carry a border of this colour */
+  color?: string;
   source?: ItemSource;
 }
 

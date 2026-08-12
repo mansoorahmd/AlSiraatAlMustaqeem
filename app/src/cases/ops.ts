@@ -184,8 +184,28 @@ export function withThreadRemoved(c: CaseRecord, id: string): CaseRecord {
 
 // ---- clusters --------------------------------------------------------------
 
+// Distinct, saturated cluster colours (used for member-card borders and the chip).
+// Chosen to read clearly as borders and to be well separated from each other.
+export const CLUSTER_COLORS = [
+  "#2563eb", // blue
+  "#d97706", // amber
+  "#16a34a", // green
+  "#db2777", // pink
+  "#7c3aed", // violet
+  "#0d9488", // teal
+  "#dc2626", // red
+  "#4f46e5", // indigo
+];
+
+/** the next colour not already used by a cluster, else cycle by count */
+function nextClusterColor(c: CaseRecord): string {
+  const used = new Set(c.clusters.map((g) => g.color).filter(Boolean));
+  const free = CLUSTER_COLORS.find((col) => !used.has(col));
+  return free ?? CLUSTER_COLORS[c.clusters.length % CLUSTER_COLORS.length]!;
+}
+
 export function withClusterAdded(c: CaseRecord, name: string, cardIds: string[]): CaseRecord {
-  const g: ClusterRecord = { id: newId("cl"), name, cardIds };
+  const g: ClusterRecord = { id: newId("cl"), name, cardIds, color: nextClusterColor(c) };
   return { ...c, clusters: [...c.clusters, g] };
 }
 

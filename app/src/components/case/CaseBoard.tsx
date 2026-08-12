@@ -12,7 +12,7 @@ import {
   withThreadAdded, withThreadUpdated, withThreadRemoved,
   withClusterAdded, withClusterRemoved,
   withCardHighlighted, arrangeBoard,
-  suggestThreads, defaultPosition,
+  suggestThreads, defaultPosition, CLUSTER_COLORS,
 } from "../../cases/ops";
 import { VerseText } from "../VerseText";
 import { NotesPanel } from "../reader/NotesPanel";
@@ -330,6 +330,21 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
   const clustersOf = (id: string) =>
     caseRec.clusters.filter((g) => g.cardIds.includes(id));
 
+  // each cluster's effective colour (fall back to a stable one by index for clusters
+  // made before colours existed, or by the MCP), and the colour each card inherits
+  // from the first cluster it belongs to — drawn as its border.
+  const clusterColor = (g: { color?: string }, i: number) =>
+    g.color ?? CLUSTER_COLORS[i % CLUSTER_COLORS.length]!;
+  const memberColor = new Map<string, string>();
+  caseRec.clusters.forEach((g, i) => {
+    const col = clusterColor(g, i);
+    for (const id of g.cardIds) if (!memberColor.has(id)) memberColor.set(id, col);
+  });
+  const focusColor = (() => {
+    const i = caseRec.clusters.findIndex((g) => g.id === focusCluster);
+    return i >= 0 ? clusterColor(caseRec.clusters[i]!, i) : null;
+  })();
+
   const saveCluster = () => {
     if (mode.kind !== "cluster" || mode.selected.length < 2 || !clusterName.trim()) return;
     mutate(withClusterAdded(caseRec, clusterName.trim(), mode.selected));
@@ -430,15 +445,17 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
               <div className="btm-clusters">
                 <div className="btm-sub">Clusters — click to keep highlighted</div>
                 <div className="cluster-chips">
-                  {caseRec.clusters.map((g) => (
+                  {caseRec.clusters.map((g, gi) => (
                     <span
                       key={g.id}
                       className={`chip cluster-chip${focusCluster === g.id ? " active" : ""}${pinnedCluster === g.id ? " pinned" : ""}`}
+                      style={{ borderColor: clusterColor(g, gi), ["--cl-color" as string]: clusterColor(g, gi) }}
                       title={pinnedCluster === g.id ? "Click to unpin" : "Click to keep this cluster highlighted while you scroll"}
                       onMouseEnter={() => setHoverCluster(g.id)}
                       onMouseLeave={() => setHoverCluster(null)}
                       onClick={() => setPinnedCluster((pv) => (pv === g.id ? null : g.id))}
                     >
+                      <span className="cluster-dot" style={{ backgroundColor: clusterColor(g, gi) }} aria-hidden />
                       {pinnedCluster === g.id && <span className="cluster-pin" aria-hidden>📌</span>}
                       {g.name} ×{g.cardIds.length}
                       <button
@@ -652,9 +669,14 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
               return (
                 <div key={card.id}
                   ref={(el) => { if (el) cardEls.current.set(card.id, el); else cardEls.current.delete(card.id); }}
-                  className={`desk-card board-card ${objClasses(card.id)}${card.source === "ai" ? " by-ai" : ""}`}
+                  className={`desk-card board-card${memberColor.has(card.id) ? " clustered" : ""} ${objClasses(card.id)}${card.source === "ai" ? " by-ai" : ""}`}
                   title={card.source === "ai" ? "Added by an AI through the MCP server" : undefined}
-                  style={{ left: x, top: y, width: CARD_W }}
+                  style={{
+                    left: x, top: y, width: CARD_W,
+                    ...(memberColor.get(card.id) ? { borderColor: memberColor.get(card.id) } : {}),
+                    ...(focusColor && focusCluster && clustersOf(card.id).some((g) => g.id === focusCluster)
+                      ? { outlineColor: focusColor } : {}),
+                  }}
                   onClick={(e) => {
                     // in thread mode, clicking non-word card area anchors the whole card
                     if (mode.kind === "thread" && !(e.target as HTMLElement).closest(".word")) {
@@ -719,9 +741,14 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
               return (
                 <div key={slip.id}
                   ref={(el) => { if (el) cardEls.current.set(slip.id, el); else cardEls.current.delete(slip.id); }}
-                  className={`board-card slip slip-${slip.kind} ${objClasses(slip.id)}${slip.author === "ai" ? " by-ai" : ""}`}
+                  className={`board-card slip slip-${slip.kind}${memberColor.has(slip.id) ? " clustered" : ""} ${objClasses(slip.id)}${slip.author === "ai" ? " by-ai" : ""}`}
                   title={slip.author === "ai" ? "Added by an AI through the MCP server" : undefined}
-                  style={{ left: x, top: y, width: CARD_W - 30 }}
+                  style={{
+                    left: x, top: y, width: CARD_W - 30,
+                    ...(memberColor.get(slip.id) ? { borderColor: memberColor.get(slip.id) } : {}),
+                    ...(focusColor && focusCluster && clustersOf(slip.id).some((g) => g.id === focusCluster)
+                      ? { outlineColor: focusColor } : {}),
+                  }}
                   onClick={() => {
                     if (mode.kind === "thread" || mode.kind === "cluster") onObjectClick(slip.id);
                   }}>
