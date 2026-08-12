@@ -440,35 +440,6 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
               </button>
             </div>
 
-            {/* clusters live under the Cluster tool */}
-            {caseRec.clusters.length > 0 && (
-              <div className="btm-clusters">
-                <div className="btm-sub">Clusters — click to keep highlighted</div>
-                <div className="cluster-chips">
-                  {caseRec.clusters.map((g, gi) => (
-                    <span
-                      key={g.id}
-                      className={`chip cluster-chip${focusCluster === g.id ? " active" : ""}${pinnedCluster === g.id ? " pinned" : ""}`}
-                      style={{ borderColor: clusterColor(g, gi), ["--cl-color" as string]: clusterColor(g, gi) }}
-                      title={pinnedCluster === g.id ? "Click to unpin" : "Click to keep this cluster highlighted while you scroll"}
-                      onMouseEnter={() => setHoverCluster(g.id)}
-                      onMouseLeave={() => setHoverCluster(null)}
-                      onClick={() => setPinnedCluster((pv) => (pv === g.id ? null : g.id))}
-                    >
-                      <span className="cluster-dot" style={{ backgroundColor: clusterColor(g, gi) }} aria-hidden />
-                      {pinnedCluster === g.id && <span className="cluster-pin" aria-hidden>📌</span>}
-                      {g.name} ×{g.cardIds.length}
-                      <button
-                        className="chip-x"
-                        title="Dissolve this cluster"
-                        onClick={(e) => { e.stopPropagation(); if (pinnedCluster === g.id) setPinnedCluster(null); mutate(withClusterRemoved(caseRec, g.id)); }}
-                      >✕</button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div className="btm-row">
               <button
                 className="tbtn"
@@ -502,6 +473,35 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
                 add
               </button>
             </div>
+
+            {/* clusters live under the Cluster tool — last, since the list can grow */}
+            {caseRec.clusters.length > 0 && (
+              <div className="btm-clusters">
+                <div className="btm-sub">Clusters — click to keep highlighted</div>
+                <div className="cluster-chips">
+                  {caseRec.clusters.map((g, gi) => (
+                    <span
+                      key={g.id}
+                      className={`chip cluster-chip${focusCluster === g.id ? " active" : ""}${pinnedCluster === g.id ? " pinned" : ""}`}
+                      style={{ borderColor: clusterColor(g, gi), ["--cl-color" as string]: clusterColor(g, gi) }}
+                      title={pinnedCluster === g.id ? "Click to unpin" : "Click to keep this cluster highlighted while you scroll"}
+                      onMouseEnter={() => setHoverCluster(g.id)}
+                      onMouseLeave={() => setHoverCluster(null)}
+                      onClick={() => setPinnedCluster((pv) => (pv === g.id ? null : g.id))}
+                    >
+                      <span className="cluster-dot" style={{ backgroundColor: clusterColor(g, gi) }} aria-hidden />
+                      {pinnedCluster === g.id && <span className="cluster-pin" aria-hidden>📌</span>}
+                      {g.name} ×{g.cardIds.length}
+                      <button
+                        className="chip-x"
+                        title="Dissolve this cluster"
+                        onClick={(e) => { e.stopPropagation(); if (pinnedCluster === g.id) setPinnedCluster(null); mutate(withClusterRemoved(caseRec, g.id)); }}
+                      >✕</button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
