@@ -18,10 +18,13 @@
     "save": "node --no-warnings scripts/save-research.mjs",
     "mcp": "npm start --silent -w @alsiraat/mcp",
     "electron:build": "npm run build -w app && node electron/bundle-server.mjs",
-    "electron:dev": "npm run electron:build && electron .",
+    "electron:rebuild": "electron-rebuild -f -o better-sqlite3",
+    "electron:dev": "npm run electron:build && npm run electron:rebuild && electron .",
+    "electron:run": "electron .",
     "desktop:dist": "npm run electron:build && electron-builder"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.7.0",
     "concurrently": "^9.1.0",
     "electron": "^33.0.0",
     "electron-builder": "^25.1.0",

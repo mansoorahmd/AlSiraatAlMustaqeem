@@ -32,18 +32,36 @@ Electron main (electron/main.mjs)
 ## Develop
 
 ```bash
-npm install                 # pulls electron, electron-builder, esbuild;
+npm install                 # pulls electron, electron-builder, esbuild, @electron/rebuild;
                             # better-sqlite3 is an optionalDependency (see note)
-npm run electron:dev        # builds the SPA, bundles the server, launches Electron
+npm run electron:dev        # builds the SPA, bundles + rebuilds native, launches Electron
 ```
 
-`electron:dev` = `npm run build -w app` + `node electron/bundle-server.mjs` + `electron .`.
+`electron:dev` = build SPA + bundle server + **rebuild native for Electron** + `electron .`.
 
-> **better-sqlite3 is a native module.** `npm install` builds it against your local Node;
-> `electron-builder` rebuilds it against Electron's ABI when packaging. Because it's an
-> **optionalDependency**, a web-only contributor who lacks build tools can still
-> `npm install` — it just won't be present, and the web app (which uses `node:sqlite`)
-> doesn't need it. For `npm run electron:dev` you do need it to build successfully.
+### The native-driver ABI (important)
+
+`better-sqlite3` is a compiled `.node` binary. `npm install` builds it for your *system*
+Node (e.g. Node 22), but **Electron ships its own Node** (Electron 33 → Node 20), a
+different ABI. Loading the system build inside Electron fails with:
+
+```
+NODE_MODULE_VERSION 127 … requires NODE_MODULE_VERSION 130 … ERR_DLOPEN_FAILED
+```
+
+So the module must be **rebuilt against Electron's ABI**. `npm run electron:rebuild`
+(`electron-rebuild -f -o better-sqlite3`) does this, and `electron:dev` runs it for you.
+
+- Rebuilding for Electron takes ~30–60s. Once done, `npm run electron:run` launches
+  without rebuilding — use it while iterating.
+- Any fresh `npm install` recompiles `better-sqlite3` for system Node again, so re-run
+  `npm run electron:rebuild` (or just `electron:dev`) afterwards.
+- **Packaging handles this itself** — `electron-builder` rebuilds native deps for the
+  target Electron during `desktop:dist`, so installers are correct without extra steps.
+
+> **Web-only contributors:** `better-sqlite3` is an **optionalDependency**, so `npm
+> install` still succeeds without build tools — it just won't be present, and the web app
+> (which uses `node:sqlite`) doesn't need it. You only need it for the desktop build.
 
 ## Package installers
 
