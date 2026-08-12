@@ -82,7 +82,13 @@ export function contentRoutes(state: AppState): Hono {
   r.get("/words/occurrences", (c) => {
     const surface = qstr(c, "surface");
     if (!surface) return c.json({ detail: "surface is required" }, 422);
-    return c.json(state.wordForms.occurrences(surface, qint(c, "limit", 3000, { min: 1, max: 6000 }) ?? 3000));
+    // the index also carries each word's written surface (the MCP reports it); the HTTP
+    // contract stays {verse_key, word_position}, so project it out here
+    return c.json(
+      state.wordForms
+        .occurrences(surface, qint(c, "limit", 3000, { min: 1, max: 6000 }) ?? 3000)
+        .map(({ verse_key, word_position }) => ({ verse_key, word_position })),
+    );
   });
 
   // verses in a chapter that contain rasm-variant words (+ their positions)

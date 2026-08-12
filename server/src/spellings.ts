@@ -47,10 +47,17 @@ export const skeleton = (rk: string) => {
 // cached: unlike the variant index this spans ALL segments, since prefixes like
 // وَ and ٱل are part of the written word.
 
-export interface WordOccurrence { verse_key: string; word_position: number }
+export interface WordOccurrence { verse_key: string; word_position: number; surface?: string }
+
+/** A written form that CONTAINS the traced rasm — the same word carrying prefixes or
+ *  suffixes (ٱلصَّلَوٰة for صلوٰة). Reported so an exact trace can't be mistaken for the
+ *  word's total frequency. */
+export interface RelatedForm { surface: string; count: number }
 
 export class WordFormIndex {
   private byRasm = new Map<string, WordOccurrence[]>();
+  /** first surface seen for each rasm, to name it in results */
+  private sample = new Map<string, string>();
   private built = false;
 
   constructor(private db: Db) {}
@@ -71,13 +78,19 @@ export class WordFormIndex {
       per.set(k, (per.get(k) ?? "") + (r.form_arabic ?? ""));
     }
     for (const k of order) {
-      const rk = rasmKey(per.get(k)!);
+      const full = per.get(k)!;
+      const rk = rasmKey(full);
       if (!rk) continue;
       const hash = k.indexOf("#");
-      const occ = { verse_key: k.slice(0, hash), word_position: Number(k.slice(hash + 1)) };
+      const occ = {
+        verse_key: k.slice(0, hash),
+        word_position: Number(k.slice(hash + 1)),
+        surface: full,
+      };
       const list = this.byRasm.get(rk);
       if (list) list.push(occ);
       else this.byRasm.set(rk, [occ]);
+      if (!this.sample.has(rk)) this.sample.set(rk, full);
     }
     this.built = true;
     return this;
@@ -89,6 +102,30 @@ export class WordFormIndex {
     const rk = rasmKey(surface);
     if (!rk) return [];
     return (this.byRasm.get(rk) ?? []).slice(0, limit);
+  }
+
+  /** How many times this exact written form occurs — the total, before any limit. */
+  total(surface: string): number {
+    this.build();
+    const rk = rasmKey(surface);
+    if (!rk) return 0;
+    return (this.byRasm.get(rk) ?? []).length;
+  }
+
+  /** Other written forms that contain this one, i.e. the same word with ٱل / و / بِ
+   *  attached, or with a pronoun suffix. Without this, tracing صلوٰة reports 2 — the
+   *  bare form — while 65 occurrences sit inside ٱلصَّلَوٰةَ and look like they do not
+   *  exist. Sorted by frequency. */
+  relatedForms(surface: string, limit = 12): RelatedForm[] {
+    this.build();
+    const rk = rasmKey(surface);
+    if (!rk) return [];
+    const out: RelatedForm[] = [];
+    for (const [key, list] of this.byRasm) {
+      if (key === rk || !key.includes(rk)) continue;
+      out.push({ surface: this.sample.get(key) ?? key, count: list.length });
+    }
+    return out.sort((a, b) => b.count - a.count).slice(0, limit);
   }
 }
 

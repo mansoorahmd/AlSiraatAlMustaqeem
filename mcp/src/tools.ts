@@ -243,7 +243,10 @@ const trace_word: Tool = {
   title: "Trace a word or root through the Book",
   description:
     "Walk every occurrence of either an exact written word (rasm — works for particles and " +
-    "names with no root) or a whole root family. Use exact=true to follow one spelling.",
+    "names with no root) or a whole root family. Use exact=true to follow one spelling. " +
+    "Read `total` for the true frequency rather than counting the returned list, and in " +
+    "exact mode read `also_written`: matching is on the WHOLE written word, so a prefixed " +
+    "spelling (ٱلصَّلَوٰة) is a different form from the bare one (صلوٰة).",
   schema: {
     word: z.string().describe("An Arabic word (exact=true) or a root (exact=false)."),
     exact: z.boolean().default(false)
@@ -252,17 +255,58 @@ const trace_word: Tool = {
   },
   run: (state, { word, exact, limit }) => {
     if (exact) {
+      // The index keys on the WHOLE written word, so ٱلصَّلَوٰةَ is a different rasm from
+      // صلوٰة. Reporting only the bare form would say "2 occurrences" while 65 sit inside
+      // prefixed spellings — so return the total, and name the related forms explicitly.
+      const total = state.wordForms.total(word);
       const hits = state.wordForms.occurrences(word, limit);
-      return { following: word, mode: "exact written word", count: hits.length, occurrences: hits };
+      const texts = new Map<string, string | null>();
+      const textOf = (vk: string) => {
+        if (!texts.has(vk)) {
+          const v = state.content.getVerse(vk, { script: "uthmani" });
+          texts.set(vk, (v?.text as string) ?? null);
+        }
+        return texts.get(vk) ?? null;
+      };
+      const related = state.wordForms.relatedForms(word);
+      const relatedTotal = related.reduce((s, r) => s + r.count, 0);
+      return {
+        following: word,
+        mode: "exact written word",
+        total,
+        returned: hits.length,
+        truncated: hits.length < total,
+        occurrences: hits.map((h) => ({
+          verse_key: h.verse_key,
+          word_position: h.word_position,
+          word: h.surface,
+          text: textOf(h.verse_key),
+        })),
+        also_written: related,
+        note: related.length
+          ? `This is the BARE spelling: ${total} occurrence(s). The same letters also occur ` +
+            `inside ${relatedTotal} other word(s) carrying ٱل / و / بِ or a pronoun suffix ` +
+            `(see also_written) — trace one of those, or use exact=false for the whole root family.`
+          : undefined,
+      };
     }
     const d = getRoot(state, word);
     if (!d) return { error: `root not found: ${word} (for an exact word, pass exact=true)` };
-    const occ = rootOccurrences(state, d.root_buckwalter, limit);
+    // count first, then page: `count` used to be the returned length, so a small limit
+    // made a 99-occurrence root look like it had 5
+    const all = rootOccurrences(state, d.root_buckwalter, 3000);
+    const occ = all.slice(0, limit);
     return {
       following: d.root_arabic,
       mode: "root family",
-      count: occ.length,
-      occurrences: occ.map((o) => ({ verse_key: o.verse_key, form: o.form_arabic, text: o.verse_text })),
+      total: all.length,
+      returned: occ.length,
+      truncated: occ.length < all.length,
+      occurrences: occ.map((o) => ({
+        verse_key: o.verse_key,
+        form: o.form_arabic,
+        text: o.verse_text,
+      })),
     };
   },
 };
