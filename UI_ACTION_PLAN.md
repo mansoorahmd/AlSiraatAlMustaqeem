@@ -11,7 +11,7 @@
 Research persists in `research.db` (SQLite) via `/research/*` routes. The old
 `ui/` focus-panel prototype has been retired and removed.
 
-Status: **V0–V21 done.** Research-first loop complete (research.db, slips,
+Status: **V0–V22 done.** Research-first loop complete (research.db, slips,
 form dossier, reader gloss & case marks, full lexicons) + V5 trails &
 rare-root marks + V6 modern board (zoom/pan, arrange, word threads, segment
 highlights, ayah cases, spelling variants, case navigation) + **V7 export**:
@@ -810,6 +810,43 @@ exact spellings to choose from.
 > imlāʾī / indopak / simplified text (الرحمن, plain alif) — equally unmatchable — so there
 > is now a secondary **folded** index with exact rasm tried first. All five display scripts
 > resolve to the same 45. Tested from the real stored token of each script.
+
+### V22 — Chrome, navigation and the Investigate canvas ✅
+A pass over the shell and the case desk to make the app feel world-class, plus the
+first written UI conventions (see INSTRUCTIONS.md → "Design conventions").
+
+**Rename.** The app is **MQ Research Gate** (was الصراط المستقيم) — top bar, Home title,
+tab title, both export footers. Āyah end-marks now show Western digits (﴿1:5﴾) with the
+ornate brackets kept RTL so they don't mirror.
+
+**Top bar → hierarchy.** Eight flat tabs became **Home · Read · Investigate** primary,
+with the reference tools (Roots, Motifs, Compare, Vault) collected under one **Study**
+dropdown. A **⌘K command palette** (also `/`, or the "Jump or search" affordance) jumps
+to an āyah, surah, root, or open case, or runs a search — it replaces the Search tab.
+Open-questions and AI-proposals merged into one **activity bell**. The bar folds cleanly
+below 860px. Old `OpenQuestions.tsx` / `Proposed.tsx` removed.
+
+**Investigate is a full-page canvas** (n8n-style). The board fills the page under a slim
+top strip (back · title + status · Close/Report/MD/Discard). Everything else floats or
+slides over it:
+- A labelled **FAB stack** (bottom-right) opens **Evidence** (root) or **Related āyāt**
+  (āyah), **Dossier**, and **Details** as right **side-sheets** (new reusable `SideSheet`).
+  Details holds the description, verdict and AI proposed-conclusions review, badged.
+- The board's controls collapsed into one floating **Tools** popover (top-left): the mode
+  tools, Arrange and + Ayah in a single aligned grid, with the **clusters list moved
+  under the Cluster tool**. Zoom is its own pill (bottom-centre). Transient mode controls
+  (thread hint, highlight palette, cluster naming) live in a contextual bar shown only
+  while a mode is active.
+
+**Clusters carry a colour.** Each cluster takes a colour from an 8-colour palette; its
+member cards wear that colour as a 2px border and the chip shows a matching dot; the
+pin/hover highlight uses the cluster's own colour. Colour-less clusters (pre-existing, or
+MCP-made) fall back to a stable colour by index.
+
+**Alignment discipline, written down.** A squeezed toolbar was breaking button labels
+across lines; `.ctl` is now atomic (inline-flex, nowrap) app-wide, and control groups use
+a single equal-column grid rather than independent flex rows so items line up. The rule
+is recorded in INSTRUCTIONS.md so it holds for future design work.
 
 ### Fixes & hardening (earlier pass) ✅
 Bugs found while getting indications working end-to-end — recorded because several
