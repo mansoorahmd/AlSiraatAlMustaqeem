@@ -17,6 +17,7 @@ import { FormDossier } from "./FormDossier";
 import { AyahDossier } from "./AyahDossier";
 import { CaseBoard } from "./CaseBoard";
 import { WordMenu, type WordMenuTarget } from "../reader/WordMenu";
+import { SideSheet } from "../SideSheet";
 import { openCaseReport, downloadCaseMarkdown, type ExportData } from "../../export/exportCase";
 
 interface Props {
@@ -30,9 +31,9 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
   const [caseRec, setCaseRec] = useState<CaseRecord | null>(null);
   const [missing, setMissing] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
-  const [editingDesc, setEditingDesc] = useState(false);
-  const [editingVerdict, setEditingVerdict] = useState(false);
   const [wordMenu, setWordMenu] = useState<WordMenuTarget | null>(null);
+  // which side-sheet is open over the canvas, if any
+  const [sheet, setSheet] = useState<null | "evidence" | "related" | "dossier" | "details">(null);
   const wordsCache = useRef(new Map<string, Word[]>());
 
   // research status for the word menu (any root, not just this case's)
@@ -119,7 +120,8 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
   const setStatus = (status: CaseRecord["status"]) => {
     if (!caseRec) return;
     mutate({ ...caseRec, status });
-    if (status === "closed" && !caseRec.verdict) setEditingVerdict(true);
+    // on closing, nudge the reader to record a verdict — open the details sheet
+    if (status === "closed" && !caseRec.verdict) setSheet("details");
   };
 
   const discard = async () => {
@@ -204,19 +206,16 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
   const byId = new Map<string, RootOccurrence>();
   for (const o of occs.data ?? []) byId.set(cardIdFor(o), o);
 
+  const proposalCount = caseRec.proposals?.entries?.length ?? 0;
+
   return (
-    <div className={`case-desk script-${reading.script}`}>
-      <div className="desk-controls">
+    <div className={`case-canvas script-${reading.script}`}>
+      {/* slim top strip over the canvas */}
+      <header className="canvas-top">
         {caseStack.length > 0 && (
-          <button
-            className="ctl"
-            title="Back to the case you came from"
-            onClick={() => dispatch({ type: "backCase" })}
-          >
-            ‹ back
-          </button>
+          <button className="ctl" title="Back to the case you came from" onClick={() => dispatch({ type: "backCase" })}>‹ back</button>
         )}
-        <button className="ctl" onClick={onBackToArchive}>⌂ Case archive</button>
+        <button className="ctl" title="Case archive" onClick={onBackToArchive}>⌂</button>
         {editingTitle ? (
           <input
             className="board-input desk-title-input"
@@ -224,19 +223,10 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
             value={caseRec.title}
             onChange={(e) => setCaseRec({ ...caseRec, title: e.target.value })}
             onBlur={() => { setEditingTitle(false); mutate(caseRec); }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === "Escape") {
-                setEditingTitle(false);
-                mutate(caseRec);
-              }
-            }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") { setEditingTitle(false); mutate(caseRec); } }}
           />
         ) : (
-          <h1
-            className="desk-title editable"
-            title="Click to rename this case"
-            onClick={() => setEditingTitle(true)}
-          >
+          <h1 className="desk-title editable" title="Click to rename this case" onClick={() => setEditingTitle(true)}>
             {caseRec.title || "Untitled case"} <span className="edit-hint">✎</span>
           </h1>
         )}
@@ -244,128 +234,19 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
 
         <span className="desk-spacer" />
         {caseRec.status === "closed" ? (
-          <button className="ctl" title="Reopen this case" onClick={() => setStatus("open")}>
-            ↺ Reopen
-          </button>
+          <button className="ctl" title="Reopen this case" onClick={() => setStatus("open")}>↺ Reopen</button>
         ) : (
-          <button className="ctl" title="Mark this case closed with a verdict" onClick={() => setStatus("closed")}>
-            ✓ Close case
-          </button>
+          <button className="ctl" title="Mark this case closed with a verdict" onClick={() => setStatus("closed")}>✓ Close case</button>
         )}
-        <button
-          className="ctl"
-          title="Open a print-ready report (print → save as PDF)"
-          onClick={async () => { if (caseRec) openCaseReport(caseRec, await exportData()); }}
-        >
-          ⇩ Report
-        </button>
-        <button
-          className="ctl"
-          title="Download the case as Markdown"
-          onClick={async () => { if (caseRec) downloadCaseMarkdown(caseRec, await exportData()); }}
-        >
-          ⇩ MD
-        </button>
-        <button className="ctl danger" title="Delete this case permanently" onClick={discard}>
-          🗑 Discard
-        </button>
-      </div>
+        <button className="ctl" title="Open a print-ready report (print → save as PDF)"
+          onClick={async () => { if (caseRec) openCaseReport(caseRec, await exportData()); }}>⇩ Report</button>
+        <button className="ctl" title="Download the case as Markdown"
+          onClick={async () => { if (caseRec) downloadCaseMarkdown(caseRec, await exportData()); }}>⇩ MD</button>
+        <button className="ctl danger" title="Delete this case permanently" onClick={discard}>🗑 Discard</button>
+      </header>
 
-      {editingDesc ? (
-        <textarea
-          className="board-input desk-desc-input"
-          autoFocus
-          rows={2}
-          placeholder="what is this case about? the question, the scope, the hunch…"
-          value={caseRec.description ?? ""}
-          onChange={(e) => setCaseRec({ ...caseRec, description: e.target.value })}
-          onBlur={() => { setEditingDesc(false); mutate(caseRec); }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") { setEditingDesc(false); mutate(caseRec); }
-          }}
-        />
-      ) : (
-        <p
-          className={`desk-desc editable${caseRec.description ? "" : " empty-desc"}`}
-          title="Click to edit the case description"
-          onClick={() => setEditingDesc(true)}
-        >
-          {caseRec.description || "add a description — the question this case is asking…"}{" "}
-          <span className="edit-hint">✎</span>
-        </p>
-      )}
-
-      {caseRec.status === "closed" && (
-        editingVerdict ? (
-          <textarea
-            className="board-input desk-verdict-input"
-            autoFocus
-            rows={2}
-            placeholder="your verdict — what did you conclude?"
-            value={caseRec.verdict ?? ""}
-            onChange={(e) => setCaseRec({ ...caseRec, verdict: e.target.value })}
-            onBlur={() => { setEditingVerdict(false); mutate(caseRec); }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") { setEditingVerdict(false); mutate(caseRec); }
-            }}
-          />
-        ) : (
-          <p
-            className="desk-verdict editable"
-            title="Click to edit the verdict"
-            onClick={() => setEditingVerdict(true)}
-          >
-            <span className="desk-verdict-label">✓ verdict</span>{" "}
-            {caseRec.verdict || "write your conclusion…"} <span className="edit-hint">✎</span>
-          </p>
-        )
-      )}
-
-      {/* conclusions an AI proposed through the MCP — inert until accepted here */}
-      {(caseRec.proposals?.entries?.length ?? 0) > 0 && (
-        <section className="desk-proposals">
-          <h2 className="desk-proposals-head">
-            ✦ Proposed conclusions
-            <span className="desk-proposals-note">
-              — suggested by an AI. Nothing is applied until you accept it.
-            </span>
-          </h2>
-          {caseRec.proposals!.entries.map((p) => (
-            <div key={p.id} className="desk-proposal">
-              <div className="desk-proposal-what">
-                <span className="desk-proposal-kind">
-                  {p.kind === "verdict" ? "verdict" : `form · ${p.form}`}
-                </span>
-                <span className="desk-proposal-text">{p.text}</span>
-                {p.reasoning && <span className="desk-proposal-why">{p.reasoning}</span>}
-              </div>
-              <div className="desk-proposal-acts">
-                <button
-                  className="ctl"
-                  title={p.kind === "verdict" ? "Make this the case verdict" : "Mark this form established with this meaning"}
-                  onClick={() => acceptProposal(p)}
-                >✓ accept</button>
-                <button className="ctl" title="Remove this proposal" onClick={() => discardProposal(p.id)}>
-                  ✕ discard
-                </button>
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
-
-      <section className="desk-main">
-        <h2>The board</h2>
-        {caseRec.cards.length === 0 && caseRec.slips.length === 0 ? (
-          <div className="empty">
-            <span className="glyph">⚖</span>
-            <p>No evidence pulled yet.</p>
-            <p className="hint">
-              Pull cards from the drawer below — or add any ayah of the Book
-              with ＋ Ayah — and let the contexts speak.
-            </p>
-          </div>
-        ) : null}
+      {/* the board fills the rest of the page */}
+      <div className="canvas-body">
         <CaseBoard
           caseRec={caseRec}
           occById={byId}
@@ -374,45 +255,114 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
           onWordTap={onBoardWordTap}
           mutate={mutate}
         />
-      </section>
 
-      {subjectAyah ? (
-        <AyahDossier caseRec={caseRec} mutate={mutate} />
-      ) : (
-        <FormDossier caseRec={caseRec} occById={byId} mutate={mutate} />
-      )}
+        {caseRec.cards.length === 0 && caseRec.slips.length === 0 && (
+          <div className="board-empty-overlay">
+            <span className="glyph">⚖</span>
+            <p>No evidence pulled yet.</p>
+            <p className="hint">
+              Open {subjectAyah ? "Related āyāt" : "Evidence"} to pull cards — or add any āyah with ＋ Ayah on the toolbar.
+            </p>
+          </div>
+        )}
+
+        {/* floating action buttons — the board's companions, opened as side-sheets */}
+        <div className="fab-stack">
+          {subjectAyah ? (
+            <button className="fab" onClick={() => setSheet("related")} title="Related āyāt to pull as evidence">
+              <span className="fab-ic">❈</span><span className="fab-label">Related</span>
+            </button>
+          ) : (
+            <button className="fab" onClick={() => setSheet("evidence")} title="Every occurrence of this root — pull as evidence">
+              <span className="fab-ic">▦</span><span className="fab-label">Evidence</span>
+            </button>
+          )}
+          <button className="fab" onClick={() => setSheet("dossier")} title="Per-form research: meanings, revisions">
+            <span className="fab-ic">❏</span><span className="fab-label">Dossier</span>
+          </button>
+          <button className="fab" onClick={() => setSheet("details")} title="Description, verdict and proposed conclusions">
+            <span className="fab-ic">☰</span><span className="fab-label">Details</span>
+            {proposalCount > 0 && <span className="fab-badge">{proposalCount}</span>}
+          </button>
+        </div>
+      </div>
 
       {wordMenu && (
-        <WordMenu
-          target={wordMenu}
-          formStatus={formStatus}
-          onClose={() => setWordMenu(null)}
-        />
+        <WordMenu target={wordMenu} formStatus={formStatus} onClose={() => setWordMenu(null)} />
       )}
 
+      {/* ---- side-sheets ---- */}
+      <SideSheet open={sheet === "details"} title="Case details" onClose={() => setSheet(null)}>
+        <div className="sheet-field">
+          <label className="sheet-label">Description</label>
+          <textarea
+            className="board-input"
+            rows={3}
+            placeholder="what is this case about? the question, the scope, the hunch…"
+            value={caseRec.description ?? ""}
+            onChange={(e) => setCaseRec({ ...caseRec, description: e.target.value })}
+            onBlur={() => mutate(caseRec)}
+          />
+        </div>
+        <div className="sheet-field">
+          <label className="sheet-label">Verdict</label>
+          <textarea
+            className="board-input"
+            rows={3}
+            placeholder="your verdict — what did you conclude?"
+            value={caseRec.verdict ?? ""}
+            onChange={(e) => setCaseRec({ ...caseRec, verdict: e.target.value })}
+            onBlur={() => mutate(caseRec)}
+          />
+        </div>
+        {proposalCount > 0 && (
+          <section className="desk-proposals">
+            <h2 className="desk-proposals-head">
+              ✦ Proposed conclusions
+              <span className="desk-proposals-note">— suggested by an AI. Nothing is applied until you accept it.</span>
+            </h2>
+            {caseRec.proposals!.entries.map((p) => (
+              <div key={p.id} className="desk-proposal">
+                <div className="desk-proposal-what">
+                  <span className="desk-proposal-kind">{p.kind === "verdict" ? "verdict" : `form · ${p.form}`}</span>
+                  <span className="desk-proposal-text">{p.text}</span>
+                  {p.reasoning && <span className="desk-proposal-why">{p.reasoning}</span>}
+                </div>
+                <div className="desk-proposal-acts">
+                  <button className="ctl" title={p.kind === "verdict" ? "Make this the case verdict" : "Mark this form established with this meaning"}
+                    onClick={() => acceptProposal(p)}>✓ accept</button>
+                  <button className="ctl" title="Remove this proposal" onClick={() => discardProposal(p.id)}>✕ discard</button>
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+      </SideSheet>
+
+      <SideSheet open={sheet === "dossier"} title="Form dossier" onClose={() => setSheet(null)} wide>
+        {subjectAyah
+          ? <AyahDossier caseRec={caseRec} mutate={mutate} />
+          : <FormDossier caseRec={caseRec} occById={byId} mutate={mutate} />}
+      </SideSheet>
+
       {root && chapters.data && (
-        <EvidenceDrawer
-          root={root}
-          caseRec={caseRec}
-          chapters={chapters.data}
-          onToggle={onToggle}
-        />
+        <SideSheet open={sheet === "evidence"} title="Evidence — every occurrence" onClose={() => setSheet(null)} wide>
+          <EvidenceDrawer root={root} caseRec={caseRec} chapters={chapters.data} onToggle={onToggle} />
+        </SideSheet>
       )}
 
       {subjectAyah && (
-        <RelatedAyahsDrawer
-          verseKey={subjectAyah}
-          caseRec={caseRec}
-          onToggle={(vk) => {
-            if (!caseRec) return;
-            const existing = caseRec.cards.find((c) => c.verseKey === vk);
-            mutate(
-              existing
-                ? withCardRemoved(caseRec, existing.id)
-                : withAyahCardAdded(caseRec, vk),
-            );
-          }}
-        />
+        <SideSheet open={sheet === "related"} title="Related āyāt" onClose={() => setSheet(null)} wide>
+          <RelatedAyahsDrawer
+            verseKey={subjectAyah}
+            caseRec={caseRec}
+            onToggle={(vk) => {
+              if (!caseRec) return;
+              const existing = caseRec.cards.find((c) => c.verseKey === vk);
+              mutate(existing ? withCardRemoved(caseRec, existing.id) : withAyahCardAdded(caseRec, vk));
+            }}
+          />
+        </SideSheet>
       )}
     </div>
   );
