@@ -1496,14 +1496,15 @@ a { color: var(--lapis); }
 }
 
 .ayah-num {
-  /* the ornamental brackets ﴿ ﴾ come from the Quran face; the digits between them
-     are Latin (1:5), so keep them upright and LTR inside the RTL line */
+  /* The ornate brackets ﴿ ﴾ (U+FD3F / U+FD3E) are bidi-MIRRORED — their glyph flips
+     with text direction — so the frame must stay RTL or it inverts. The Latin digits
+     "1:5" are a European-number run and keep their own order inside the RTL isolate. */
   font-family: var(--font-quran-uthmani);
   font-size: 0.75em;
   color: var(--gold);
   margin-inline-start: 0.15rem;
   user-select: none;
-  direction: ltr;
+  direction: rtl;
   unicode-bidi: isolate;
   font-variant-numeric: tabular-nums;
   cursor: help;
