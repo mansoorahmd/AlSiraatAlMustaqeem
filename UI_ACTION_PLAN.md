@@ -11,7 +11,7 @@
 Research persists in `research.db` (SQLite) via `/research/*` routes. The old
 `ui/` focus-panel prototype has been retired and removed.
 
-Status: **V0–V20 done.** Research-first loop complete (research.db, slips,
+Status: **V0–V21 done.** Research-first loop complete (research.db, slips,
 form dossier, reader gloss & case marks, full lexicons) + V5 trails &
 rare-root marks + V6 modern board (zoom/pan, arrange, word threads, segment
 highlights, ayah cases, spelling variants, case navigation) + **V7 export**:
@@ -740,7 +740,78 @@ The board was walled off in V19. It is now open — deliberately, and asymmetric
   write refused, linking ids that are not on the case. Plus a board round-trip in the smoke
   test, verified through a real client handshake.
 
-### Fixes & hardening (this pass) ✅
+### V21 — Report as an argument, phrase cases, and the rasm-matching bugs ✅
+Driven by reading real output rather than reasoning about it. Several of these were
+**silent wrong answers**, which is the failure mode this project can least afford: a
+number that is merely wrong gets written into research as if it were evidence.
+
+**The case report was resequenced into an argument.** It led with the verdict and
+established meanings, put evidence next, and buried the reasoning in flat lists — with
+clusters, which *are* the analysis, reduced to a trailing name list. Now: the question →
+the evidence (grouped under the reader's own clusters, ungrouped āyāt last) → what the
+evidence shows (remaining slips grouped by the form they concern) → connections → sources
+→ findings by form → conclusion → still open. Reasoning travels with what it rests on: a
+slip threaded to an āyah prints under that āyah, and an unlabelled card↔slip thread is
+treated as an attachment rather than repeated as a "connection". A case with no verdict
+says so; unfinished forms get their own section.
+
+**The reader's āyah notes reached the report.** `notes` live outside the case document,
+so the export never showed them — a case could hold its best reasoning against an āyah
+and print none of it. Notes now appear beneath their āyah (questions marked, answers
+indented, word position named, AI-proposed tagged), and unanswered questions collect into
+"Questions still open".
+
+**Bidi was scrambling mixed text.** Slips mix Arabic, English and verse refs; rendered as
+one escaped string the algorithm moved "32:7–9" to the wrong end of the line. `mixedText()`
+wraps each Arabic run in an isolated `dir="rtl"` span (and in the Quran face). Also fixed
+the header overlap (a floated pill plus tight line-height on tall Arabic) and reduced the
+Arabic sizes throughout.
+
+**Cases without a root or an āyah.** Both creation paths started from something being
+read, so `phrase` — a `SubjectType` since the beginning — was unreachable in the UI while
+the MCP could create one. Home's open-cases card gained **＋ new**; root/āyah route through
+the existing `openOrCreate*` helpers, since those look a case up *by subject* and a
+duplicate would make "Open case" jump to an arbitrary one.
+
+**Board:** a cluster highlight can be **pinned** by clicking its chip (hover alone dropped
+the moment you scrolled to look at what it highlighted), and **Arrange** now lays clusters
+out first, members together, instead of grouping by form and scattering them.
+
+**`trace_word` had three defects, all silent** (`server/test/trace-word.test.ts`):
+- `count` was the length of the *returned* list, so `limit: 5` on a 99-occurrence root
+  reported 5 — indistinguishable from a rare root. Now `total` / `returned` / `truncated`.
+- exact mode returned bare coordinates with no verse text and not even the word, while
+  root mode returned text. The mode that exists for rootless particles gave nothing to
+  reason from.
+- Matching is on the **whole written word**, so ٱلصَّلَوٰةَ is a different rasm from صلوٰة:
+  tracing صلوٰة answered "2" while 65 occurrences sat inside prefixed spellings —
+  under-reporting 30-fold. Now reports `also_written` (ٱلصَّلَوٰةَ ×58, وَٱلصَّلَوٰةِ ×3 …) and
+  says the figure is the bare spelling.
+
+**`study_root` dropped POS-homograph forms.** It deduped forms by spelling with a `Map`,
+keeping the last row: رحم reported رَّحِيم ×4 (the Noun) and silently dropped the ×112
+Adjective, رَّحْمَٰن ×12 dropping the ×45 Noun — so per-form counts no longer summed to the
+root total. The corpus was correct throughout. Regression test asserts the reconciliation.
+
+**`propose_indication` refused the forms that mattered.** The resolver folds diacritics,
+then treated >1 matching row as ambiguous — but رَّحِيم is Adjective *and* Noun, one
+spelling, nothing to disambiguate. Candidates are now deduped by spelling; only genuinely
+different spellings sharing a skeleton (نَذَرْ / نَّذْر / نُذْر) stay ambiguous and return the
+exact spellings to choose from.
+
+> **"Follow this word" found nothing, and the bug was one character.** Tapping ٱلرَّحْمَٰنِ
+> in 1:1 showed a single occurrence of a word that occurs **45** times. The displayed text
+> writes it ٱلرَّحْمَـٰنِ with a **TATWEEL** (U+0640) before the dagger alif; the morphology
+> segments that build the index do not. `rasmKey` whitelists `ء-ي` — and U+0640
+> sits inside that range — so the cosmetic elongation dash survived into the key, the
+> tapped token hashed to a key no indexed word had, and the trail displayed only its own
+> seed hop. **That "1" was the tap, not a finding.** Tatweel is now stripped. The same
+> investigation exposed that the index is Uthmani-only while the reader can display
+> imlāʾī / indopak / simplified text (الرحمن, plain alif) — equally unmatchable — so there
+> is now a secondary **folded** index with exact rasm tried first. All five display scripts
+> resolve to the same 45. Tested from the real stored token of each script.
+
+### Fixes & hardening (earlier pass) ✅
 Bugs found while getting indications working end-to-end — recorded because several
 were invisible-by-inspection and cost real time:
 
