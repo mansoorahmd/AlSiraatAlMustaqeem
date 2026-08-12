@@ -3092,7 +3092,13 @@ a { color: var(--lapis); }
   position: absolute; top: calc(100% + 0.4rem); inset-inline-start: 0; min-width: 17rem;
   background: var(--paper); border: 1px solid var(--paper-edge); border-radius: 12px;
   box-shadow: 0 14px 34px rgba(0,0,0,0.16); padding: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem;
+  /* the tools button sits near the top of the canvas (~9rem of chrome above it), so
+     cap the menu to what's left and scroll inside rather than overflow the viewport */
+  max-height: calc(100vh - 9rem); overflow-y: auto; overscroll-behavior: contain;
 }
+/* the cluster list is the growable part — give it its own scroll so the action rows
+   (Arrange, + Ayah) stay reachable even with many clusters */
+.btm-clusters .cluster-chips { max-height: 12rem; overflow-y: auto; }
 .btm-row { display: flex; gap: 0.35rem; }
 /* tool rows stack vertically so every icon lines up in one column */
 .btm-row:not(.add-ayah) { flex-direction: column; gap: 0.2rem; }
