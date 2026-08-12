@@ -49,8 +49,18 @@ different ABI. Loading the system build inside Electron fails with:
 NODE_MODULE_VERSION 127 … requires NODE_MODULE_VERSION 130 … ERR_DLOPEN_FAILED
 ```
 
-So the module must be **rebuilt against Electron's ABI**. `npm run electron:rebuild`
-(`electron-rebuild -f -o better-sqlite3`) does this, and `electron:dev` runs it for you.
+So the module must match Electron's ABI. `npm run electron:rebuild` fetches a **prebuilt**
+`better-sqlite3` binary for the installed Electron version (`electron/rebuild-native.mjs`,
+via `prebuild-install`) — no compiler, and no scan of the workspace `node_modules`.
+`electron:dev` runs it for you.
+
+> Why not `electron-rebuild`? It walks the whole `node_modules` tree to find native
+> modules, which (a) needs C++ build tools to compile and (b) trips over stale npm temp
+> dirs in a workspace repo (`EACCES: … lstat 'node_modules\.<name>-xxxx'`). The prebuild
+> download sidesteps both. If a prebuild isn't available for your Electron version, the
+> script tells you to install build tools and run `npm run electron:rebuild:compile`
+> (the `electron-rebuild` fallback) — and to delete that stale `.<name>-xxxx` temp folder
+> first if you see the EACCES.
 
 - Rebuilding for Electron takes ~30–60s. Once done, `npm run electron:run` launches
   without rebuilding — use it while iterating.
