@@ -3078,7 +3078,7 @@ a { color: var(--lapis); }
 }
 
 /* ---- board: grouped floating tools, zoom, mode bar ------------------------ */
-.board-tools { position: absolute; top: 0.9rem; inset-inline-start: 0.9rem; z-index: 6; }
+.board-tools { position: absolute; top: 0.9rem; inset-inline-start: 0.9rem; z-index: 8; }
 .board-tools-fab {
   display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid var(--paper-edge);
   background: var(--paper); color: var(--ink); border-radius: 999px; padding: 0.45rem 0.85rem;
@@ -3093,8 +3093,12 @@ a { color: var(--lapis); }
   background: var(--paper); border: 1px solid var(--paper-edge); border-radius: 12px;
   box-shadow: 0 14px 34px rgba(0,0,0,0.16); padding: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem;
 }
-.btm-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-.btm-row .tbtn { flex: 1 1 auto; justify-content: center; }
+.btm-row { display: flex; gap: 0.35rem; }
+/* tool rows stack vertically so every icon lines up in one column */
+.btm-row:not(.add-ayah) { flex-direction: column; gap: 0.2rem; }
+.btm-row:not(.add-ayah) .tbtn { width: 100%; justify-content: flex-start; }
+/* fixed-width, centred icon slot — emoji glyphs vary in width, this aligns them */
+.board-tools-menu .tbtn-ic { display: inline-flex; justify-content: center; width: 1.4rem; flex: 0 0 auto; }
 .btm-row.add-ayah .ayah-key-input { flex: 1 1 8rem; min-width: 0; }
 .btm-sub { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--ink-faint); padding: 0.1rem 0.1rem 0.25rem; }
@@ -3104,7 +3108,9 @@ a { color: var(--lapis); }
   background: var(--gold); border-radius: 999px; padding: 0 0.3rem; }
 
 .board-zoom {
-  position: absolute; inset-inline-start: 0.9rem; inset-block-end: 0.9rem; z-index: 6;
+  /* bottom-centre: clear of the top-left Tools popover and the bottom-right FABs */
+  position: absolute; inset-inline: 0; margin-inline: auto; width: max-content;
+  inset-block-end: 0.9rem; z-index: 6;
   display: inline-flex; align-items: center; gap: 0.15rem; background: var(--paper);
   border: 1px solid var(--paper-edge); border-radius: 999px; padding: 0.15rem 0.3rem;
   box-shadow: 0 3px 12px rgba(0,0,0,0.12);
