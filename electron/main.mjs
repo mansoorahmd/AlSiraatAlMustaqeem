@@ -68,7 +68,11 @@ async function startServer() {
       ...process.env,
       PORT: String(port),
       SERVE_STATIC: "1",
-      QF_SQLITE_DRIVER: "better-sqlite3",
+      // use Node's built-in node:sqlite (Electron 36 bundles Node 22). It's behind a
+      // flag on Node 22, hence --experimental-sqlite. No native module, no rebuild.
+      // (To fall back to the native driver on older Electron: set QF_SQLITE_DRIVER
+      //  to "better-sqlite3" here and drop the NODE_OPTIONS flag.)
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --experimental-sqlite`.trim(),
       QF_QURAN_DB: quranDb,
       QF_RESEARCH_DB: researchDb,
       QF_STATIC_ROOT: staticRoot,

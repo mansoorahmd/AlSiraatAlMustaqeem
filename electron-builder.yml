@@ -10,10 +10,9 @@ files:
   - electron/build/**
   - package.json
 
-# native driver + the server bundle must live outside the asar to be spawnable/loadable
+# the server bundle must live outside the asar so the utility process can fork it
+# (no native modules to unpack — the desktop build uses Node's built-in node:sqlite)
 asarUnpack:
-  - "**/better-sqlite3/**"
-  - "**/*.node"
   - electron/build/**
 
 # read-only assets the app opens at runtime
