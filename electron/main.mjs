@@ -21,7 +21,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const RES = process.resourcesPath ?? join(here, "..");
 const isDev = !app.isPackaged;
 
-// A STABLE port, so the window's origin (127.0.0.1:PORT) — and therefore the
+// A STABLE port, so the window's origin (localhost:PORT) — and therefore the
 // per-origin IndexedDB where reading prefs (gloss, font, script) live — is the same on
 // every launch. A random port would give a new origin each run and silently reset all
 // settings. Try a fixed preferred port; only if it's taken do we step to the next one.
@@ -114,11 +114,16 @@ function createWindow(port) {
   win.setMenuBarVisibility(false);
   // open external links in the system browser, not inside the app
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("http://127.0.0.1")) return { action: "allow" };
+    if (url.startsWith("http://localhost") || url.startsWith("http://127.0.0.1")) return { action: "allow" };
     shell.openExternal(url);
     return { action: "deny" };
   });
-  win.loadURL(`http://127.0.0.1:${port}/`);
+  // Use `localhost`, NOT 127.0.0.1. The remote research service is on localhost:<port>, and a
+  // browser treats localhost and 127.0.0.1 as different hosts — i.e. cross-site — so the
+  // SameSite=Lax session cookie would never be sent back and the app could never appear signed
+  // in. Same host (different port) is same-site, so the cookie flows. (Safe to change: reading
+  // prefs live in research.db now, not in per-origin browser storage.)
+  win.loadURL(`http://localhost:${port}/`);
 }
 
 // Sign-in must happen INSIDE the app, or the session cookie lands in the system browser and the

@@ -62,6 +62,18 @@ export const auth = betterAuth({
       disableSignUp: true,
       expiresIn: 60 * 15,
       sendMagicLink: async ({ email, url }: { email: string; url: string }) => {
+        // `disableSignUp` only stops account creation at VERIFY time, so Better Auth would
+        // still issue a link for any address typed in. Registration is invite-only, so refuse
+        // to send unless an account already exists — otherwise this is a spam vector and the
+        // reader gets a link that silently fails later. We stay quiet about which addresses
+        // exist (the API response is identical either way).
+        const { rowCount } = await pool.query("SELECT 1 FROM users WHERE email = $1", [
+          email.trim().toLowerCase(),
+        ]);
+        if (!rowCount) {
+          console.log(`[magic-link] not sent — no account for ${email} (invite-only)`);
+          return;
+        }
         if (config.emailTransport === "console") {
           // dev: no SMTP needed — the link is printed for you to click
           console.log(`\n[magic-link] ${email}\n  ${url}\n`);
