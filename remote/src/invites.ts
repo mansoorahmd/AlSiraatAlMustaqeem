@@ -47,21 +47,10 @@ export class InviteError extends Error {
   constructor(message: string, readonly status = 400) { super(message); }
 }
 
-/**
- * Redeem an invite: create (or adopt) the user with the invite's role, bind local_id, and
- * burn the code. Single-use and expiry are enforced here; an email that already has an
- * account is rejected rather than silently re-roled.
- */
-export async function redeemInvite(
-  r: SqlRunner,
-  opts: { code: string; email: string; displayName?: string; localId?: string },
-): Promise<{ userId: string; role: Role; email: string }> {
-  const email = opts.email.trim().toLowerCase();
-  if (!email.includes("@")) throw new InviteError("a valid email is required", 422);
-
+/** Check a code is real, unused and unexpired. Throws InviteError otherwise. */
+export async function validateInvite(r: SqlRunner, code: string): Promise<Invite> {
   const found = (await r.query(
-    "SELECT code, role, expires_at, redeemed_by FROM invites WHERE code = $1",
-    [opts.code],
+    "SELECT code, role, expires_at, redeemed_by FROM invites WHERE code = $1", [code],
   )) as unknown as Invite[];
   const invite = found[0];
   if (!invite) throw new InviteError("invite not found", 404);
@@ -69,25 +58,31 @@ export async function redeemInvite(
   if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
     throw new InviteError("invite expired", 410);
   }
+  return invite;
+}
 
-  const existing = await r.query("SELECT id FROM users WHERE email = $1", [email]);
-  if (existing[0]) throw new InviteError("an account already exists for that email", 409);
+export async function emailTaken(r: SqlRunner, email: string): Promise<boolean> {
+  const rows = await r.query("SELECT 1 FROM users WHERE email = $1", [email.trim().toLowerCase()]);
+  return rows.length > 0;
+}
 
-  const created = await r.query(
-    `INSERT INTO users (email, display_name, role, local_id)
-     VALUES ($1, $2, $3, $4) RETURNING id, role, email`,
-    [email, opts.displayName ?? "", invite.role, opts.localId ?? null],
-  );
-  const user = created[0] as { id: string; role: Role; email: string };
-
-  // burn the code — the WHERE guard makes a concurrent double-redeem impossible
+/**
+ * Finish a redemption for a user Better Auth has just created: grant the invite's role, bind
+ * the device, and burn the code. The WHERE guard makes a concurrent double-redeem impossible.
+ */
+export async function finishRedeem(
+  r: SqlRunner,
+  opts: { code: string; userId: string; role: Role; localId?: string },
+): Promise<void> {
   const burned = await r.query(
     "UPDATE invites SET redeemed_by = $1 WHERE code = $2 AND redeemed_by IS NULL RETURNING code",
-    [user.id, opts.code],
+    [opts.userId, opts.code],
   );
   if (!burned[0]) throw new InviteError("invite already redeemed", 409);
-
-  return { userId: user.id, role: user.role, email: user.email };
+  await r.query(
+    "UPDATE users SET role = $1, local_id = COALESCE($2, local_id), updated_at = now() WHERE id = $3",
+    [opts.role, opts.localId ?? null, opts.userId],
+  );
 }
 
 /** Bind (or re-bind) a signed-in account to a device's local_id — Phase 1 attribution. */

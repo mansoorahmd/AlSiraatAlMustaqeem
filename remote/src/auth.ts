@@ -47,6 +47,17 @@ export const auth = betterAuth({
     fields: { expiresAt: "expires_at", createdAt: "created_at", updatedAt: "updated_at" },
   },
 
+  // Passwords are the everyday sign-in: no email transport needed, and on the desktop the app
+  // can post credentials and get a session directly (a magic link would open in the system
+  // browser and sign THAT in). Registration stays invite-only — the public /sign-up/email route
+  // is blocked in app.ts, and the only caller of signUpEmail is the invite redemption endpoint.
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 10,
+    autoSignIn: false,          // redeeming an invite shouldn't silently sign you in
+    requireEmailVerification: false, // no email transport is configured by default
+  },
+
   advanced: {
     database: {
       // Postgres mints the users uuid (gen_random_uuid); Better Auth generates the

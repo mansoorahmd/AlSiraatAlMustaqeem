@@ -77,11 +77,27 @@ export const remote = {
     }
   },
 
-  /** Ask for a magic link. In dev the link is printed in the remote's server log. */
-  signIn(email: string): Promise<unknown> {
+  /** Everyday sign-in: email + password, session cookie straight back. No email needed. */
+  signIn(email: string, password: string): Promise<unknown> {
+    return call("/api/auth/sign-in/email", {
+      method: "POST",
+      body: JSON.stringify({ email, password, rememberMe: true }),
+    });
+  },
+
+  /** Optional alternative, only useful once an email transport is configured. */
+  signInWithLink(email: string): Promise<unknown> {
     return call("/api/auth/sign-in/magic-link", {
       method: "POST",
       body: JSON.stringify({ email, callbackURL: "/signed-in" }),
+    });
+  },
+
+  /** Change your password (needs the current one). */
+  changePassword(currentPassword: string, newPassword: string): Promise<unknown> {
+    return call("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword, revokeOtherSessions: false }),
     });
   },
 
@@ -89,9 +105,14 @@ export const remote = {
     return call("/api/auth/sign-out", { method: "POST", body: "{}" });
   },
 
-  /** Redeem an invite — creates the account. No session needed: the code is the credential. */
-  redeem(opts: { code: string; email: string; displayName?: string; localId?: string }): Promise<Me> {
-    return call<Me>("/invites/redeem", { method: "POST", body: JSON.stringify(opts) });
+  /**
+   * Redeem an invite — creates the account with the password chosen here. No session needed:
+   * the code is the credential. Afterwards you sign in with email + password.
+   */
+  redeem(opts: {
+    code: string; email: string; password: string; displayName?: string; localId?: string;
+  }): Promise<{ userId: string; email: string; role: Role }> {
+    return call("/invites/redeem", { method: "POST", body: JSON.stringify(opts) });
   },
 
   /** Issue an invite (maintainer only). */

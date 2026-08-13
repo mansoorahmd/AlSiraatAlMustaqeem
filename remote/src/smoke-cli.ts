@@ -6,7 +6,7 @@
 //   npm run smoke -w @alsiraat/remote
 
 import { pool, pgRunner as r } from "./db.js";
-import { createInvite, redeemInvite, bindLocalId, loadPrincipal } from "./invites.js";
+import { createInvite, validateInvite, finishRedeem, bindLocalId, loadPrincipal } from "./invites.js";
 
 let pass = 0;
 const fails: string[] = [];
@@ -84,10 +84,16 @@ try {
     const invite = await createInvite(r, {
       issuedBy: (boss as { id: string }).id, role: "moderator", expiresInDays: 7,
     });
-    const out = await redeemInvite(r, { code: invite.code, email: EMAIL, displayName: "Smoke" });
-    if (out.role !== "moderator") throw new Error(`expected moderator, got ${out.role}`);
-    userId = out.userId;
-    return `code ${invite.code.slice(0, 8)}… → ${out.email} as ${out.role}`;
+    // the HTTP route has Better Auth create the account (it owns password hashing); here we
+    // insert directly, so this exercises the DB rules and the pg driver rather than auth
+    const inv = await validateInvite(r, invite.code);
+    const [u] = await r.query("INSERT INTO users (email, display_name) VALUES ($1,$2) RETURNING id",
+      [EMAIL, "Smoke"]) as { id: string }[];
+    userId = u!.id;
+    await finishRedeem(r, { code: invite.code, userId, role: inv.role });
+    const role = (await loadPrincipal(r, userId))!.role;
+    if (role !== "moderator") throw new Error(`expected moderator, got ${role}`);
+    return `code ${invite.code.slice(0, 8)}… → ${EMAIL} as ${role}`;
   });
 
   await check("local_id binds and reads back", async () => {

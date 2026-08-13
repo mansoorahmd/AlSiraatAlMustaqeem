@@ -47,10 +47,10 @@ by magic link. An uninvited email can request a link but no account will ever ex
 
 **Home → Research community → “Account & invites”** is the whole UI:
 
-- **Sign in** — type your email, get a single-use link. **There are no passwords anywhere**;
-  magic link replaces them, so there is nothing to set after clicking.
-- **Redeem an invite** — “I have an invite code”: paste the code + your email. This creates your
-  account and links this device's research to it. You then sign in with a link as usual.
+- **Sign in** — email + password. No email transport needed.
+- **Redeem an invite** — “I have an invite code”: enter your email, **choose a password**, paste
+  the code. That creates your account, links this device's research to it, and signs you in.
+  Every later sign-in is just email + password.
 - **Issue invites** (maintainer only) — pick a role, get a code to share (30 days, single use).
 - **Link this device** — binds your `local_id` so work done before you had an account is
   attributed to you.
@@ -59,14 +59,23 @@ by magic link. An uninvited email can request a link but no account will ever ex
 If the remote isn't running the panel says so and everything else keeps working — the remote is
 optional by design.
 
-### Desktop sign-in
+### Why passwords, not magic links
 
-A magic link opened in the *system browser* would put the session cookie in the **browser**, not
-in the app. So on the desktop the app opens the sign-in page in an **in-app window** (`openSignIn`
-→ `auth:open-sign-in` in `electron/main.mjs`), which shares the app's session; the window closes
-itself once the remote redirects to `/signed-in`. This is why `TRUSTED_ORIGINS` includes the
-desktop shell's stable port (51789) in both `localhost` and `127.0.0.1` spellings — a browser
-treats those as different origins.
+Magic link is still configured and works, but it needs an email transport to be useful, and on
+the **desktop** it's worse than that: a link opened from a mail client signs in the *system
+browser*, not the app. Passwords avoid both problems — the app posts credentials and gets a
+session cookie directly.
+
+Registration stays invite-only through two locks: the public `POST /api/auth/sign-up/email` route
+is closed (403), and the only caller of Better Auth's `signUpEmail` is `/invites/redeem`, which
+requires a valid code and grants **the role carried by the invite**.
+
+The desktop window loads `http://localhost:<port>` (not `127.0.0.1`) so it is *same-site* with
+the remote on `localhost:8100` — otherwise the browser refuses to send the `SameSite=Lax` session
+cookie and the app can never appear signed in.
+
+**Password reset needs an email transport** (Better Auth's `sendResetPassword`), so for now a
+forgotten password means a maintainer intervenes. Worth wiring up before the group grows.
 
 ## Routes
 

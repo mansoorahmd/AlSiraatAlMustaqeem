@@ -6,7 +6,7 @@
 // anywhere: sign-in is a single-use magic link.
 
 import { useCallback, useEffect, useState } from "react";
-import { remote, desktop, RemoteOffline, type Me, type Role, type InviteOut } from "../api/remote";
+import { remote, RemoteOffline, type Me, type Role, type InviteOut } from "../api/remote";
 import { fetchIdentity } from "../persistence/db";
 
 type Status = "loading" | "offline" | "blocked" | "signed-out" | "signed-in";
@@ -20,10 +20,10 @@ export function AccountSheet() {
 
   // sign-in
   const [email, setEmail] = useState("");
-  const [linkSent, setLinkSent] = useState(false);
-  const [pasteUrl, setPasteUrl] = useState("");
+  const [password, setPassword] = useState("");
   const [nameDraft, setNameDraft] = useState("");
-  const isDesktop = !!desktop()?.openSignIn;
+  // Better Auth is configured with minPasswordLength: 10
+  const canSignIn = email.includes("@") && password.length >= 10;
   // invite redemption
   const [showRedeem, setShowRedeem] = useState(false);
   const [code, setCode] = useState("");
@@ -59,33 +59,20 @@ export function AccountSheet() {
   };
 
   const doSignIn = () => guard(async () => {
-    await remote.signIn(email.trim());
-    setLinkSent(true);
-  });
-
-  /**
-   * Desktop only. The magic-link token arrives by email, so the app can't construct the
-   * verify URL itself — the reader pastes the link they received and we open it in an in-app
-   * window, which shares this app's session. (Clicking the link in a mail client opens the
-   * SYSTEM browser, which would sign that browser in and leave the app signed out.)
-   */
-  const doCompleteSignIn = () => guard(async () => {
-    const url = pasteUrl.trim();
-    if (!url.startsWith(remote.url)) {
-      throw new Error(`that link doesn’t point at ${remote.url} — paste the whole sign-in link`);
-    }
-    const { ok } = await desktop()!.openSignIn!(url);
-    if (!ok) {
-      throw new Error("that link wasn’t accepted — it may be expired or already used; request a new one");
-    }
-    setPasteUrl(""); setLinkSent(false);
-    await refresh();               // the window verified; pick up the new session
+    await remote.signIn(email.trim(), password);
+    setPassword("");
+    await refresh();
   });
 
   const doRedeem = () => guard(async () => {
-    await remote.redeem({ code: code.trim(), email: email.trim(), localId: localId ?? undefined });
-    setShowRedeem(false); setCode("");
-    setLinkSent(false);
+    await remote.redeem({
+      code: code.trim(), email: email.trim(), password,
+      localId: localId ?? undefined,
+    });
+    // the account now exists with this password — sign straight in with it
+    await remote.signIn(email.trim(), password);
+    setShowRedeem(false); setCode(""); setPassword("");
+    await refresh();
   });
 
   const doIssue = () => guard(async () => {
@@ -132,53 +119,33 @@ export function AccountSheet() {
         <>
           <p className="home-empty">
             Sign in to publish research for review and pull the group’s established readings.
-            There’s no password — we email you a single-use link.
           </p>
-          <label className="acct-label" htmlFor="acct-email">Your email</label>
+          <label className="acct-label" htmlFor="acct-email">Email</label>
           <input
             id="acct-email" className="board-input" type="email" autoComplete="email"
             placeholder="you@example.org" value={email}
-            onChange={(e) => { setEmail(e.target.value); setLinkSent(false); }}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <label className="acct-label" htmlFor="acct-pw">
+            Password{showRedeem ? " — choose one (10+ characters)" : ""}
+          </label>
+          <input
+            id="acct-pw" className="board-input" type="password"
+            autoComplete={showRedeem ? "new-password" : "current-password"}
+            placeholder={showRedeem ? "at least 10 characters" : "your password"}
+            value={password} onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !showRedeem && canSignIn) doSignIn(); }}
           />
           <div className="acct-acts">
-            <button className="ctl" disabled={busy || !email.includes("@")} onClick={doSignIn}>
-              {busy ? "Sending…" : "✉ Send sign-in link"}
-            </button>
+            {!showRedeem && (
+              <button className="ctl" disabled={busy || !canSignIn} onClick={doSignIn}>
+                {busy ? "Signing in…" : "Sign in"}
+              </button>
+            )}
             <button className="ctl" onClick={() => setShowRedeem((s) => !s)}>
-              I have an invite code
+              {showRedeem ? "← Back to sign in" : "I have an invite code"}
             </button>
           </div>
-          {linkSent && (
-            <div className="acct-block">
-              <p className="home-empty">
-                If <strong>{email}</strong> has an account, a sign-in link is on its way.
-                {" "}(Registration is invite-only, so no link is sent for an address that hasn’t
-                been invited — for privacy we can’t say which.)
-              </p>
-              {isDesktop ? (
-                <>
-                  <label className="acct-label" htmlFor="acct-link">Paste the sign-in link</label>
-                  <input
-                    id="acct-link" className="board-input" placeholder={`${remote.url}/api/auth/magic-link/verify?...`}
-                    value={pasteUrl} onChange={(e) => setPasteUrl(e.target.value)}
-                  />
-                  <p className="home-empty">
-                    The desktop app needs the link itself: opening it from your mail client would
-                    sign in your <em>browser</em> instead of the app.
-                  </p>
-                  <button className="ctl" disabled={busy || !pasteUrl.trim()} onClick={doCompleteSignIn}>
-                    {busy ? "Signing in…" : "Finish signing in"}
-                  </button>
-                </>
-              ) : (
-                <p className="home-empty">
-                  Open the link in this browser, then
-                  <button className="ctl acct-inline" onClick={() => void refresh()}>refresh</button>.
-                </p>
-              )}
-            </div>
-          )}
-
           {showRedeem && (
             <div className="acct-block">
               <label className="acct-label" htmlFor="acct-code">Invite code</label>
@@ -187,11 +154,16 @@ export function AccountSheet() {
                 value={code} onChange={(e) => setCode(e.target.value)}
               />
               <p className="home-empty">
-                Redeeming creates your account{localId ? " and links this device’s research to it" : ""}.
-                You’ll then sign in with a link.
+                This creates your account with the password above
+                {localId ? ", and links this device’s research to it" : ""}. After this you just
+                sign in with your email and password.
               </p>
-              <button className="ctl" disabled={busy || !code.trim() || !email.includes("@")} onClick={doRedeem}>
-                {busy ? "Redeeming…" : "Redeem invite"}
+              <button
+                className="ctl"
+                disabled={busy || !code.trim() || !canSignIn}
+                onClick={doRedeem}
+              >
+                {busy ? "Creating your account…" : "Redeem invite"}
               </button>
             </div>
           )}

@@ -15,7 +15,10 @@ import { config } from "./config.js";
 import { pgRunner } from "./db.js";
 import { sessionMiddleware } from "./session.js";
 import { requireRole, type Env } from "./roles.js";
-import { createInvite, redeemInvite, bindLocalId, loadPrincipal, setDisplayName, InviteError } from "./invites.js";
+import {
+  createInvite, bindLocalId, loadPrincipal, setDisplayName,
+  validateInvite, emailTaken, finishRedeem, InviteError,
+} from "./invites.js";
 
 export function createApp(): Hono<Env> {
   const app = new Hono<Env>();
@@ -24,6 +27,13 @@ export function createApp(): Hono<Env> {
   // cover EVERY route the app calls — /me and /invites too, not just the auth endpoints — or the
   // browser blocks the request and the app can't tell that apart from the server being down.
   app.use("*", cors({ origin: config.trustedOrigins, credentials: true }));
+
+  // Registration is invite-only, so the public sign-up endpoint is closed. Email+password is
+  // enabled for SIGN-IN, and the only thing allowed to create an account is /invites/redeem,
+  // which calls auth.api.signUpEmail internally (a server-side call, not this HTTP route).
+  // This must be registered BEFORE the catch-all below.
+  app.post("/api/auth/sign-up/email", (c) =>
+    c.json({ detail: "registration is invite-only — redeem an invite code" }, 403));
 
   // Better Auth speaks Web-standard Request/Response — hand it the raw request
   app.all("/api/auth/*", (c) => auth.handler(c.req.raw));
@@ -83,20 +93,33 @@ export function createApp(): Hono<Env> {
     }
   });
 
-  // public: the invite code is the credential. Creates the account so the invitee can
-  // then sign in by magic link (Better Auth itself never creates users).
+  // Public: the invite code is the credential. Creates the account WITH a password, so every
+  // later sign-in is just email + password — no email transport, and no magic link to shuttle
+  // into the desktop app. Better Auth creates the user (it owns password hashing, storing it in
+  // `account`); we then apply the invite's role and burn the code.
   app.post("/invites/redeem", async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
-      { code?: string; email?: string; displayName?: string; localId?: string };
-    if (!body.code || !body.email) return c.json({ detail: "code and email are required" }, 422);
+      { code?: string; email?: string; password?: string; displayName?: string; localId?: string };
+    if (!body.code || !body.email || !body.password) {
+      return c.json({ detail: "code, email and password are required" }, 422);
+    }
+    const email = body.email.trim().toLowerCase();
     try {
-      return c.json(await redeemInvite(pgRunner, {
-        code: body.code, email: body.email,
-        displayName: body.displayName, localId: body.localId,
-      }), 201);
+      const invite = await validateInvite(pgRunner, body.code);
+      if (await emailTaken(pgRunner, email)) {
+        throw new InviteError("an account already exists for that email", 409);
+      }
+      const created = await auth.api.signUpEmail({
+        body: { email, password: body.password, name: body.displayName?.trim() || "" },
+      });
+      const userId = String(created.user.id);
+      await finishRedeem(pgRunner, { code: body.code, userId, role: invite.role, localId: body.localId });
+      return c.json({ userId, email, role: invite.role }, 201);
     } catch (e) {
       if (e instanceof InviteError) return c.json({ detail: e.message }, e.status as 400);
-      throw e;
+      // Better Auth rejects e.g. too-short passwords with its own APIError
+      const msg = (e as Error).message || "could not create the account";
+      return c.json({ detail: msg }, 400);
     }
   });
 

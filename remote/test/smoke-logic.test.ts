@@ -8,7 +8,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { runMigrations, type SqlRunner } from "../src/migrate.js";
-import { createInvite, redeemInvite, bindLocalId, loadPrincipal } from "../src/invites.js";
+import { createInvite, validateInvite, finishRedeem, bindLocalId, loadPrincipal } from "../src/invites.js";
 
 const MIGR = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 const TAG = "smoke-logic";
@@ -53,7 +53,11 @@ describe("smoke checks (same assertions the CLI makes)", () => {
     const invite = await createInvite(r, {
       issuedBy: (boss as { id: string }).id, role: "moderator", expiresInDays: 7,
     });
-    const out = await redeemInvite(r, { code: invite.code, email: `new-${TAG}@x.invalid` });
+    const inv = await validateInvite(r, invite.code);
+    const [u] = await r.query("INSERT INTO users (email) VALUES ($1) RETURNING id",
+      [`new-${TAG}@x.invalid`]) as { id: string }[];
+    await finishRedeem(r, { code: invite.code, userId: u!.id, role: inv.role });
+    const out = { userId: u!.id, role: (await loadPrincipal(r, u!.id))!.role };
     expect(out.role).toBe("moderator");
 
     const local = "11111111-2222-3333-4444-555555555555";

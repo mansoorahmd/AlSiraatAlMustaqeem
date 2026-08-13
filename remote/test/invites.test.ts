@@ -7,7 +7,9 @@ import { PGlite } from "@electric-sql/pglite";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { runMigrations, type SqlRunner } from "../src/migrate.js";
-import { createInvite, redeemInvite, bindLocalId, loadPrincipal, InviteError } from "../src/invites.js";
+import {
+  createInvite, validateInvite, emailTaken, finishRedeem, bindLocalId, loadPrincipal, InviteError,
+} from "../src/invites.js";
 
 const MIGR = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 
@@ -33,6 +35,21 @@ beforeEach(async () => {
   maintainer = rows[0]!.id;
 });
 
+/**
+ * Mirrors exactly what POST /invites/redeem does, with a plain INSERT standing in for
+ * Better Auth's signUpEmail (which owns account creation + password hashing). The rules being
+ * tested — validity, single use, expiry, duplicate email, role from the invite — are ours.
+ */
+async function redeem(opts: { code: string; email: string; localId?: string }) {
+  const email = opts.email.trim().toLowerCase();
+  if (!email.includes("@")) throw new InviteError("a valid email is required", 422);
+  const invite = await validateInvite(r, opts.code);
+  if (await emailTaken(r, email)) throw new InviteError("an account already exists for that email", 409);
+  const [u] = await r.query("INSERT INTO users (email) VALUES ($1) RETURNING id", [email]) as { id: string }[];
+  await finishRedeem(r, { code: opts.code, userId: u!.id, role: invite.role, localId: opts.localId });
+  return { userId: u!.id, role: invite.role, email };
+}
+
 describe("issuing invites", () => {
   it("defaults to the researcher role and is unredeemed", async () => {
     const inv = await createInvite(r, { issuedBy: maintainer });
@@ -50,7 +67,7 @@ describe("issuing invites", () => {
 describe("redeeming invites", () => {
   it("creates the account with the role from the INVITE, not the request", async () => {
     const inv = await createInvite(r, { issuedBy: maintainer, role: "moderator" });
-    const out = await redeemInvite(r, { code: inv.code, email: "New@Example.org", displayName: "New" });
+    const out = await redeem({ code: inv.code, email: "New@Example.org" });
     expect(out.role).toBe("moderator");
     expect(out.email).toBe("new@example.org"); // normalised
     // and it really is their role in the domain table
@@ -59,34 +76,34 @@ describe("redeeming invites", () => {
 
   it("is single-use", async () => {
     const inv = await createInvite(r, { issuedBy: maintainer });
-    await redeemInvite(r, { code: inv.code, email: "first@example.org" });
-    await expect(redeemInvite(r, { code: inv.code, email: "second@example.org" }))
+    await redeem({ code: inv.code, email: "first@example.org" });
+    await expect(redeem({ code: inv.code, email: "second@example.org" }))
       .rejects.toThrow(/already redeemed/);
   });
 
   it("rejects an unknown code", async () => {
-    await expect(redeemInvite(r, { code: "nope", email: "x@example.org" }))
+    await expect(redeem({ code: "nope", email: "x@example.org" }))
       .rejects.toThrow(/not found/);
   });
 
   it("rejects an expired invite", async () => {
     const inv = await createInvite(r, { issuedBy: maintainer, code: "expiring" });
     await r.query("UPDATE invites SET expires_at = now() - interval '1 day' WHERE code = 'expiring'");
-    await expect(redeemInvite(r, { code: inv.code, email: "late@example.org" }))
+    await expect(redeem({ code: inv.code, email: "late@example.org" }))
       .rejects.toThrow(/expired/);
   });
 
   it("refuses an email that already has an account", async () => {
     const a = await createInvite(r, { issuedBy: maintainer });
     const b = await createInvite(r, { issuedBy: maintainer });
-    await redeemInvite(r, { code: a.code, email: "dup@example.org" });
-    await expect(redeemInvite(r, { code: b.code, email: "dup@example.org" }))
+    await redeem({ code: a.code, email: "dup@example.org" });
+    await expect(redeem({ code: b.code, email: "dup@example.org" }))
       .rejects.toThrow(/already exists/);
   });
 
   it("rejects a malformed email with 422", async () => {
     const inv = await createInvite(r, { issuedBy: maintainer });
-    await expect(redeemInvite(r, { code: inv.code, email: "not-an-email" }))
+    await expect(redeem({ code: inv.code, email: "not-an-email" }))
       .rejects.toThrow(InviteError);
   });
 });
@@ -95,13 +112,13 @@ describe("local_id binding (Phase 1 attribution)", () => {
   it("binds at redemption", async () => {
     const inv = await createInvite(r, { issuedBy: maintainer });
     const local = "11111111-2222-3333-4444-555555555555";
-    const out = await redeemInvite(r, { code: inv.code, email: "bound@example.org", localId: local });
+    const out = await redeem({ code: inv.code, email: "bound@example.org", localId: local });
     expect((await loadPrincipal(r, out.userId))!.localId).toBe(local);
   });
 
   it("can be bound or re-bound afterwards", async () => {
     const inv = await createInvite(r, { issuedBy: maintainer });
-    const out = await redeemInvite(r, { code: inv.code, email: "later@example.org" });
+    const out = await redeem({ code: inv.code, email: "later@example.org" });
     expect((await loadPrincipal(r, out.userId))!.localId).toBeNull();
     const local = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
     await bindLocalId(r, out.userId, local);
