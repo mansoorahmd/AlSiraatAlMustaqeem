@@ -20,8 +20,11 @@ import { createInvite, redeemInvite, bindLocalId, loadPrincipal, InviteError } f
 export function createApp(): Hono<Env> {
   const app = new Hono<Env>();
 
-  // credentialed CORS for the app's origins (must be explicit, not "*")
-  app.use("/api/auth/*", cors({ origin: config.trustedOrigins, credentials: true }));
+  // Credentialed CORS for the app's origins (must be an explicit list, never "*"). This has to
+  // cover EVERY route the app calls — /me and /invites too, not just the auth endpoints — or the
+  // browser blocks the request and the app can't tell that apart from the server being down.
+  app.use("*", cors({ origin: config.trustedOrigins, credentials: true }));
+
   // Better Auth speaks Web-standard Request/Response — hand it the raw request
   app.all("/api/auth/*", (c) => auth.handler(c.req.raw));
 

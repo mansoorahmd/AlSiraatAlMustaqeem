@@ -102,8 +102,14 @@ No research schema, no auth — can run in parallel with Phase 3.
   Desktop: `openSignIn` opens the sign-in page in an **in-app Electron window** so the cookie
   lands in the app's session, closing itself on the remote's new `GET /signed-in` page; the
   shell's stable port is in `TRUSTED_ORIGINS` (both `localhost` and `127.0.0.1`).
-  *AC:* app typecheck + build clean; remote 27/27. ⚠ Runtime flow (in-app window, cross-origin
-  cookie) needs your local run — see below.
+  *AC:* app typecheck + build clean; remote 31/31 (incl. `cors.test.ts`); `auth.ts`/`session.ts`
+  now typecheck against the real `better-auth@1.6.27`.
+- [x] **3.5a Fix: CORS only covered `/api/auth/*`** — ✅ `/me`, `/invites`, `/invites/redeem` had
+  no CORS headers, so the browser blocked them. Because a CORS rejection throws from `fetch()`
+  exactly like an unreachable server, the app reported the misleading *"research server isn't
+  reachable"*. Now `app.use("*", cors(...))`, pinned by `cors.test.ts`; the client additionally
+  probes `/health` with `mode: "no-cors"` to tell **down** from **origin-blocked** and says which.
+  ⚠ Still needs your local run: the in-app sign-in window and the cross-origin session cookie.
 
 **Phase 3 complete** — also `npm run smoke -w @alsiraat/remote`: 9/9 against real Postgres
 (version, migrations, Better Auth tables, `gen_random_uuid()` default, role CHECK, dissent FK,

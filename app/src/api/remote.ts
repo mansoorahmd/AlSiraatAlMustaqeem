@@ -17,7 +17,12 @@ export interface InviteOut { code: string; role: Role; expires_at: string | null
 export class RemoteError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
 }
-/** Thrown when the remote can't be reached at all (not running, no network). */
+/**
+ * Thrown when the request never got an answer. NOTE: a CORS rejection makes fetch() throw
+ * exactly like an unreachable server, so this covers both "not running" and "running but not
+ * allowing this origin" — the browser deliberately doesn't tell us which. `reachable()` below
+ * separates them so we can say something true rather than guessing.
+ */
 export class RemoteOffline extends Error {}
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -40,6 +45,21 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const remote = {
   url: REMOTE,
+
+  /**
+   * Is the service actually running? A `no-cors` probe gets an opaque response that succeeds
+   * whenever the server answered at all — even if CORS would block a real read. So:
+   *   probe fails  → the server is down / unreachable
+   *   probe passes but /me threw → it's up, but rejecting this origin (CORS)
+   */
+  async reachable(): Promise<boolean> {
+    try {
+      await fetch(`${REMOTE}/health`, { mode: "no-cors", cache: "no-store" });
+      return true;
+    } catch {
+      return false;
+    }
+  },
 
   /** The signed-in account, or null when signed out (401) / unreachable. */
   async me(): Promise<Me | null> {

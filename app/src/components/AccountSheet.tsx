@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { remote, desktop, RemoteOffline, type Me, type Role, type InviteOut } from "../api/remote";
 import { fetchIdentity } from "../persistence/db";
 
-type Status = "loading" | "offline" | "signed-out" | "signed-in";
+type Status = "loading" | "offline" | "blocked" | "signed-out" | "signed-in";
 
 export function AccountSheet() {
   const [status, setStatus] = useState<Status>("loading");
@@ -36,8 +36,13 @@ export function AccountSheet() {
       setMe(who);
       setStatus(who ? "signed-in" : "signed-out");
     } catch (e) {
-      setStatus(e instanceof RemoteOffline ? "offline" : "signed-out");
-      if (!(e instanceof RemoteOffline)) setErr((e as Error).message);
+      if (e instanceof RemoteOffline) {
+        // fetch throws identically for "down" and "CORS-blocked" — probe to tell them apart
+        setStatus((await remote.reachable()) ? "blocked" : "offline");
+        return;
+      }
+      setStatus("signed-out");
+      setErr((e as Error).message);
     }
   }, []);
 
@@ -80,6 +85,19 @@ export function AccountSheet() {
         <p className="home-empty">
           The research server isn’t reachable at <code>{remote.url}</code>. That’s fine — all your
           study works offline; only publishing and reviewing need it.
+        </p>
+        <button className="ctl" onClick={() => void refresh()}>Try again</button>
+      </>
+    );
+  }
+
+  if (status === "blocked") {
+    return (
+      <>
+        <p className="home-empty">
+          The research server at <code>{remote.url}</code> is running but refused this app’s
+          origin (<code>{window.location.origin}</code>). Add it to the server’s{" "}
+          <code>TRUSTED_ORIGINS</code> and restart it.
         </p>
         <button className="ctl" onClick={() => void refresh()}>Try again</button>
       </>
