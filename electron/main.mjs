@@ -21,16 +21,25 @@ const here = dirname(fileURLToPath(import.meta.url));
 const RES = process.resourcesPath ?? join(here, "..");
 const isDev = !app.isPackaged;
 
-// pick a free port so we never collide with a dev server on 8000
-function freePort() {
-  return new Promise((res, rej) => {
+// A STABLE port, so the window's origin (127.0.0.1:PORT) — and therefore the
+// per-origin IndexedDB where reading prefs (gloss, font, script) live — is the same on
+// every launch. A random port would give a new origin each run and silently reset all
+// settings. Try a fixed preferred port; only if it's taken do we step to the next one.
+const PREFERRED_PORT = 51789;
+
+function isFree(port) {
+  return new Promise((res) => {
     const srv = net.createServer();
-    srv.on("error", rej);
-    srv.listen(0, "127.0.0.1", () => {
-      const p = srv.address().port;
-      srv.close(() => res(p));
-    });
+    srv.once("error", () => res(false));
+    srv.listen(port, "127.0.0.1", () => srv.close(() => res(true)));
   });
+}
+
+async function stablePort() {
+  for (let p = PREFERRED_PORT; p < PREFERRED_PORT + 20; p++) {
+    if (await isFree(p)) return p;
+  }
+  return PREFERRED_PORT; // give up gracefully; the server will report if truly blocked
 }
 
 async function waitForHealth(port, tries = 100) {
@@ -48,7 +57,7 @@ async function waitForHealth(port, tries = 100) {
 let child = null;
 
 async function startServer() {
-  const port = await freePort();
+  const port = await stablePort();
 
   // read-only corpus from the bundle; research db in userData
   const quranDb = isDev ? join(here, "..", "quran.db") : join(RES, "quran.db");
