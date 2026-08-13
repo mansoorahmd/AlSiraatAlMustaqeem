@@ -377,13 +377,29 @@ export const archive = {
     remove: (rootArabic: string) => idbDel("vault", rootArabic),
   },
 
-  /** UI prefs — deliberately device-local (font size, script, position). */
+  /** UI prefs (font size, script, active comparison). Stored in research.db via the
+   *  server so they persist with the reader's data and are shared between the web and
+   *  desktop builds — not in the browser's per-origin IndexedDB, which reset whenever
+   *  the desktop shell changed port. Reads fall back to IndexedDB once, migrating any
+   *  existing value up to the server so nothing is lost. */
   prefs: {
     get: async <T>(key: string): Promise<T | undefined> => {
+      try {
+        const { value } = await srvGet<{ value: T | null }>(`/settings/${encodeURIComponent(key)}`);
+        if (value != null) return value as T;
+      } catch { /* server unreachable — fall back to local */ }
+      // legacy / first-run fallback: read the old IndexedDB pref and carry it up
       const rec = await idbGet<PrefsRecord>("prefs", key);
-      return rec?.value as T | undefined;
+      if (rec?.value != null) {
+        try { await srvPut(`/settings/${encodeURIComponent(key)}`, { value: rec.value }); } catch { /* offline */ }
+        return rec.value as T;
+      }
+      return undefined;
     },
-    set: (key: string, value: unknown) => idbPut("prefs", { key, value }),
+    set: async (key: string, value: unknown) => {
+      try { await srvPut(`/settings/${encodeURIComponent(key)}`, { value }); }
+      catch { await idbPut("prefs", { key, value }); } // offline safety net
+    },
   },
 };
 

@@ -59,6 +59,13 @@ CREATE TABLE IF NOT EXISTS motif_roots (
 );
 CREATE INDEX IF NOT EXISTS idx_motif_roots_root ON motif_roots(root);
 
+-- device-independent UI settings (reading prefs, active comparison): a small
+-- key -> JSON value store, so they persist with the reader's data rather than in the
+-- browser's per-origin IndexedDB (which reset when the desktop shell changed port).
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL
+);
+
 -- indications: the reader's own meanings for a word, anchored at the ROOT
 -- (scope='root', parent_id NULL, one primary per root). Each root indication has
 -- per-FORM refinements (scope='lemma', parent_id = the root indication, one per
@@ -578,5 +585,20 @@ export class ResearchStore {
       .map((s) => ({ lemma: s.lemma, text: s.label || s.meaning }))
       .filter((x) => x.text);
     return { roots, refinements, lemmas };
+  }
+
+  // ---- settings: device-independent key -> JSON value --------------------------
+  getSetting(key: string): unknown {
+    const row = this.db.one<{ value: string }>("SELECT value FROM settings WHERE key = ?", [key]);
+    if (!row) return undefined;
+    try { return JSON.parse(row.value); } catch { return undefined; }
+  }
+
+  setSetting(key: string, value: unknown): void {
+    this.db.run(
+      `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+      [key, JSON.stringify(value ?? null), now()],
+    );
   }
 }

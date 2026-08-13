@@ -166,5 +166,13 @@ export function researchRoutes(state: AppState): Hono {
     return c.json({ deleted: c.req.param("itemId") });
   });
 
+  // settings — device-independent key/value UI prefs (reading prefs, active comparison)
+  r.get("/research/settings/:key", (c) => c.json({ value: s.getSetting(c.req.param("key")) ?? null }));
+  r.put("/research/settings/:key", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { value?: unknown };
+    s.setSetting(c.req.param("key"), body.value ?? null);
+    return c.json({ ok: true });
+  });
+
   return r;
 }
