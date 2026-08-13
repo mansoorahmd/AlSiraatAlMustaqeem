@@ -27,6 +27,18 @@ export function createApp(): Hono<Env> {
 
   app.get("/health", (c) => c.json({ status: "ok", service: "remote" }));
 
+  // Where a verified magic link lands. Two jobs: tell a human it worked, and give the desktop
+  // sign-in window a URL it can recognise so it knows the cookie is set and can close itself.
+  app.get("/signed-in", (c) =>
+    c.html(
+      `<!doctype html><meta charset="utf-8"><title>Signed in</title>
+       <style>body{font-family:Georgia,serif;background:#f4f1ea;color:#3b3226;
+         display:grid;place-items:center;height:100vh;margin:0;text-align:center}
+         p{max-width:22rem;line-height:1.5}</style>
+       <div><h1>Signed in</h1>
+       <p>You can close this window and return to MQ Research Gate.</p></div>`,
+    ));
+
   // everything below may know who the caller is
   app.use("*", sessionMiddleware);
 

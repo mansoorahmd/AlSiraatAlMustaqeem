@@ -8,4 +8,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("desktop", {
   // → { path, bytes, at } on success, or { canceled: true } if the dialog was dismissed
   backupResearch: () => ipcRenderer.invoke("research:backup"),
+  // Open the remote's sign-in page in an IN-APP window, so the Better Auth session cookie
+  // is stored in this app's session rather than the system browser's.
+  openSignIn: (url) => ipcRenderer.invoke("auth:open-sign-in", url),
 });

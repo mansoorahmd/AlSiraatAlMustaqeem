@@ -43,12 +43,38 @@ Two independent locks:
 So the flow is: maintainer issues a code → invitee redeems it (account created) → invitee signs in
 by magic link. An uninvited email can request a link but no account will ever exist for it.
 
+## Using it from the app (no curl needed)
+
+**Home → Research community → “Account & invites”** is the whole UI:
+
+- **Sign in** — type your email, get a single-use link. **There are no passwords anywhere**;
+  magic link replaces them, so there is nothing to set after clicking.
+- **Redeem an invite** — “I have an invite code”: paste the code + your email. This creates your
+  account and links this device's research to it. You then sign in with a link as usual.
+- **Issue invites** (maintainer only) — pick a role, get a code to share (30 days, single use).
+- **Link this device** — binds your `local_id` so work done before you had an account is
+  attributed to you.
+- **Sign out.**
+
+If the remote isn't running the panel says so and everything else keeps working — the remote is
+optional by design.
+
+### Desktop sign-in
+
+A magic link opened in the *system browser* would put the session cookie in the **browser**, not
+in the app. So on the desktop the app opens the sign-in page in an **in-app window** (`openSignIn`
+→ `auth:open-sign-in` in `electron/main.mjs`), which shares the app's session; the window closes
+itself once the remote redirects to `/signed-in`. This is why `TRUSTED_ORIGINS` includes the
+desktop shell's stable port (51789) in both `localhost` and `127.0.0.1` spellings — a browser
+treats those as different origins.
+
 ## Routes
 
 | Route | Who |
 |---|---|
 | `/api/auth/*` | Better Auth (magic-link sign-in, session) |
 | `GET /health` | public |
+| `GET /signed-in` | public — the magic-link landing page |
 | `POST /invites` | maintainer |
 | `POST /invites/redeem` | public — the code *is* the credential |
 | `GET /me` | any signed-in user (id, role, bound localId) |

@@ -121,6 +121,35 @@ function createWindow(port) {
   win.loadURL(`http://127.0.0.1:${port}/`);
 }
 
+// Sign-in must happen INSIDE the app, or the session cookie lands in the system browser and
+// the app stays signed out. We open a small child window on the remote's origin; it shares this
+// app's session (same partition), so once the magic link is verified there, the cookie is ours.
+// The window closes itself when the remote reports the session is established.
+ipcMain.handle("auth:open-sign-in", async (_e, url) => {
+  const remote = new URL(url);
+  const win = new BrowserWindow({
+    width: 520, height: 640,
+    title: "Sign in — MQ Research Gate",
+    autoHideMenuBar: true,
+    parent: BrowserWindow.getFocusedWindow() ?? undefined,
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
+  });
+  // keep it on the remote's origin; anything else opens in the real browser
+  win.webContents.setWindowOpenHandler(({ url: u }) => {
+    if (new URL(u).origin === remote.origin) return { action: "allow" };
+    shell.openExternal(u);
+    return { action: "deny" };
+  });
+  await win.loadURL(url);
+  return new Promise((resolve) => {
+    // the callbackURL we ask for is /signed-in; reaching it means the cookie is set
+    win.webContents.on("did-navigate", (_ev, to) => {
+      if (to.startsWith(`${remote.origin}/signed-in`)) { win.close(); resolve({ ok: true }); }
+    });
+    win.on("closed", () => resolve({ ok: true }));
+  });
+});
+
 // Renderer asks to back up research.db → pick a location natively, then have the
 // running server write the copy there (the server owns the live db connection, so its
 // VACUUM INTO captures uncheckpointed WAL). Returns { path, bytes, at } or { canceled }.

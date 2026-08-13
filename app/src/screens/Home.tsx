@@ -12,6 +12,8 @@ import {
 } from "../cases/ops";
 import type { SubjectType } from "../persistence/types";
 import { useAppState, useAppDispatch } from "../state/store";
+import { SideSheet } from "../components/SideSheet";
+import { AccountSheet } from "../components/AccountSheet";
 
 const spaced = (r: string) => r.split("").join(" ");
 const vsort = (k: string) => {
@@ -53,6 +55,7 @@ export function Home() {
   };
   const shortPath = (p: string) => p.replace(/^.*[/\\]/, "");
   const kb = (n: number) => `${(n / 1024).toFixed(0)} KB`;
+  const [accountOpen, setAccountOpen] = useState(false);
 
   const cases = useAsync(() => archive.cases.all(), [casesRev]);
   const trails = useAsync(() => archive.trails.all(), []);
@@ -291,11 +294,27 @@ export function Home() {
           {backupErr && <p className="home-empty">Couldn’t back up: {backupErr}</p>}
           {identity.data && (
             <p className="home-empty" title={identity.data.localId}>
-              Local identity: <code>{identity.data.localId.slice(0, 8)}…</code> · not yet linked to an account
+              Local identity: <code>{identity.data.localId.slice(0, 8)}…</code>
             </p>
           )}
         </section>
+
+        <section className="home-card">
+          <h2 className="home-card-title">Research community</h2>
+          <p className="home-empty">
+            Optional. Publish your findings for review, and pull the readings the group has
+            agreed — while your own established meanings stay yours. Everything here works
+            offline without it.
+          </p>
+          <button className="ctl" onClick={() => setAccountOpen(true)}>
+            ⚯ Account &amp; invites
+          </button>
+        </section>
       </div>
+
+      <SideSheet open={accountOpen} title="Research community" onClose={() => setAccountOpen(false)}>
+        <AccountSheet />
+      </SideSheet>
     </div>
   );
 }

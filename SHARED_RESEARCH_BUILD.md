@@ -93,6 +93,18 @@ No research schema, no auth — can run in parallel with Phase 3.
   *AC:* invite → sign-in → session survives offline (year-long session, sign-in verified live ✅);
   role gate enforced and tested ✅; local work authored before sign-in adopts the bound account ✅.
 
+### Phase 3.5 — Account UI (added: the plan specified the server, never the client)
+
+- [x] **3.5 Account & invites UI** — ✅ `app/src/api/remote.ts` (credentialed client for the
+  remote; treats "not running" as *not connected*, never an error) + `AccountSheet.tsx` in a
+  Home side-sheet: sign in by magic link, redeem an invite, issue invites (maintainer), link this
+  device's `local_id`, sign out. **No passwords anywhere** — magic link replaces them.
+  Desktop: `openSignIn` opens the sign-in page in an **in-app Electron window** so the cookie
+  lands in the app's session, closing itself on the remote's new `GET /signed-in` page; the
+  shell's stable port is in `TRUSTED_ORIGINS` (both `localhost` and `127.0.0.1`).
+  *AC:* app typecheck + build clean; remote 27/27. ⚠ Runtime flow (in-app window, cross-origin
+  cookie) needs your local run — see below.
+
 **Phase 3 complete** — also `npm run smoke -w @alsiraat/remote`: 9/9 against real Postgres
 (version, migrations, Better Auth tables, `gen_random_uuid()` default, role CHECK, dissent FK,
 invite flow via node-postgres, `local_id` binding, cleanup).
