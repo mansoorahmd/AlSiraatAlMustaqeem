@@ -82,16 +82,20 @@ No research schema, no auth — can run in parallel with Phase 3.
   `redeemInvite()` as the only creation path, granting the role carried by the invite.
   `src/invites.ts` + `bootstrap-cli.ts` (the first maintainer can't be invited).
   `invites.test.ts` (10 tests: single-use, expiry, duplicate email, role-from-invite).  ⇢ 3.1
-  ⚠ The Better Auth *config* is unverified at runtime — the package wouldn't install in the
-  sandbox, so `auth.ts`/`session.ts` are written to the current docs but need your local run.
+  **Verified live** against PostgreSQL 18.4: service boots, magic link issued and redeemed,
+  session cookie set, `GET /me` returns the bootstrapped maintainer's id + role — so the whole
+  authn → session → role-gate chain works, not just the unit-tested parts.
 - [x] **3.3 Role middleware** — ✅ `src/roles.ts`: ordered ladder + `requireRole(min)`
   (401/403/200), hand-rolled. `role-boundary.test.ts` (7 tests).  ⇢ 3.1
 - [x] **3.4 Bind `local_id` → account** — ✅ `users.local_id`, bound at redemption
   (`redeemInvite({ localId })`) or later via `POST /me/local-id` (`bindLocalId`); reported by
   `GET /me`. Tested both paths.  ⇢ 1.1, 3.2
-  *AC:* invite → sign-in → session survives offline (year-long session ✅, sign-in flow pending
-  your local run); role gate enforced and tested ✅; local work authored before sign-in adopts the
-  bound account ✅.
+  *AC:* invite → sign-in → session survives offline (year-long session, sign-in verified live ✅);
+  role gate enforced and tested ✅; local work authored before sign-in adopts the bound account ✅.
+
+**Phase 3 complete** — also `npm run smoke -w @alsiraat/remote`: 9/9 against real Postgres
+(version, migrations, Better Auth tables, `gen_random_uuid()` default, role CHECK, dissent FK,
+invite flow via node-postgres, `local_id` binding, cleanup).
 
 ---
 
