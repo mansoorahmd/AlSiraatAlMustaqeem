@@ -29,6 +29,26 @@ requirement, not a per-task nicety.
 - Paper aesthetic (warm paper, ink, gold) and the CSS variables in `app/src/styles.css`
   are the source of truth for colour/spacing — reuse them, don't hardcode.
 
+### Build what people already know
+
+This app is for the general public, not for us. For anything that exists in ordinary web
+apps — accounts, sign-in, settings, profiles, invites — **use the conventional pattern**.
+Novelty belongs in the research surfaces (the board, trails, the mushaf), never in the
+plumbing. A reader should never have to *learn* how to sign in.
+
+- **Account panels** look the way account panels look: avatar (initials fallback) + name +
+  role badge + email, then labelled rows, then sign-out set apart at the end.
+- **Show values, not forms.** Display a field as text with a pencil/edit affordance; open the
+  input only when editing, with explicit Save/Cancel (Enter saves, Esc cancels). Never leave a
+  bare input and a floating Save sitting on screen — that reads as an unfinished form.
+- **Labels above controls**, controls full-width in a panel, all sharing **one left edge**.
+  Don't hang a label to the left of an input in a narrow sheet.
+- **One primary action per section** (`.ctl.primary`, filled), everything else secondary.
+  Alternative paths ("Have an invite code?") read as a sentence with a link, not a rival button.
+- **Icon-only buttons need `title` + `aria-label`**, and a visible hover state.
+- Errors appear in a tinted block near the top of the panel with `role="alert"` — not as a
+  bare red sentence wherever the failure happened.
+
 ## Architecture
 
 A TypeScript app in three parts, run as one npm workspace:

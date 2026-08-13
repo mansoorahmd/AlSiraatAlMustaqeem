@@ -3148,23 +3148,6 @@ a { color: var(--lapis); }
 .cluster-chip { border-width: 1px; border-style: solid; }
 .cluster-chip.pinned { box-shadow: 0 0 0 1px var(--cl-color) inset; }
 
-/* --- account / research-community panel (Phase 3.5) ------------------------------
-   Lives in a right side-sheet from Home. Stacked form rows on one column so labels,
-   inputs and buttons share a left edge (see INSTRUCTIONS.md design conventions). */
-.acct-label { display: block; font-size: var(--fs-small); color: var(--ink-soft);
-  margin: 0.6rem 0 0.2rem; }
-.acct-block { margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid var(--paper-edge); }
-.acct-h3 { font-size: var(--fs-small); font-weight: 600; color: var(--ink);
-  margin: 0 0 0.5rem; letter-spacing: 0.02em; }
-/* one flex row that wraps — every control stays atomic and aligned */
-.acct-acts { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
-  margin-top: 0.6rem; }
-.acct-inline { margin-inline-start: 0.4rem; padding-block: 0.1rem; }
-.acct-code { font-family: ui-monospace, monospace; background: var(--paper-warm);
-  border: 1px solid var(--paper-edge); border-radius: 3px; padding: 0.1rem 0.35rem;
-  word-break: break-all; }
-.acct-err { color: #8f2d2d; }
-
 /* account control in the top bar — fixed icon slot so the label starts at the same x
    whether signed in or out (see the alignment conventions in INSTRUCTIONS.md) */
 .account-btn { display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap; }
@@ -3181,3 +3164,95 @@ a { color: var(--lapis); }
 .home-status { display: flex; align-items: center; gap: 0.4rem; margin: 0.9rem 0 0;
   padding-top: 0.7rem; border-top: 1px solid var(--paper-edge);
   font-size: var(--fs-small); color: var(--ink-soft); }
+
+/* ============ account panel ============
+   Deliberately conventional (see INSTRUCTIONS.md → UI conventions): avatar + name + role
+   badge, values as text with a pencil to edit, every label and control on ONE left edge,
+   full-width inputs, one primary action per section. */
+.acct { display: flex; flex-direction: column; align-items: stretch; gap: 0.9rem; }
+.acct-note { margin: 0; font-size: var(--fs-small); color: var(--ink-soft); line-height: 1.55; }
+.acct-hint { font-size: var(--fs-small); color: var(--ink-faint); }
+.acct-error { margin: 0; padding: 0.5rem 0.7rem; border-radius: 6px;
+  background: color-mix(in srgb, var(--error) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--error) 35%, transparent);
+  color: var(--wax-dark); font-size: var(--fs-small); }
+
+/* --- identity header --- */
+.acct-head { display: flex; align-items: flex-start; gap: 0.75rem; }
+.acct-avatar {
+  flex: 0 0 auto; width: 2.75rem; height: 2.75rem; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--lapis); color: #fff; font-weight: 600; letter-spacing: 0.02em;
+}
+.acct-who { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem;
+  min-width: 0; flex: 1; }
+.acct-name-row { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
+.acct-name { font-weight: 600; font-size: 1.05rem; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-email { font-size: var(--fs-small); color: var(--ink-soft);
+  overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.acct-name-edit { display: flex; align-items: center; gap: 0.4rem; width: 100%; }
+.acct-name-edit input { flex: 1; min-width: 0; }
+
+/* a quiet icon-only affordance — the familiar "edit this" pencil */
+.icon-btn {
+  flex: 0 0 auto; width: 1.75rem; height: 1.75rem; display: grid; place-items: center;
+  border: 1px solid transparent; border-radius: 6px; background: none; cursor: pointer;
+  color: var(--ink-faint); font-size: 0.9rem; line-height: 1;
+}
+.icon-btn:hover { color: var(--lapis); border-color: var(--paper-edge); background: var(--paper-warm); }
+
+.role-pill {
+  margin-top: 0.15rem; padding: 0.05rem 0.5rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+  background: var(--paper-warm); border: 1px solid var(--paper-edge); color: var(--ink-soft);
+}
+.role-maintainer { background: color-mix(in srgb, var(--gold) 12%, transparent);
+  border-color: color-mix(in srgb, var(--gold) 40%, transparent); color: var(--gold); }
+.role-moderator { background: color-mix(in srgb, var(--lapis) 10%, transparent);
+  border-color: color-mix(in srgb, var(--lapis) 35%, transparent); color: var(--lapis); }
+
+/* --- labelled fields: label above, full-width control, one left edge --- */
+.acct-field { display: flex; flex-direction: column; gap: 0.25rem; }
+.acct-field > label { font-size: var(--fs-small); font-weight: 500; color: var(--ink-soft); }
+.acct-field input, .acct-field select, .acct-name-edit input {
+  width: 100%; padding: 0.45rem 0.6rem; font: inherit; font-size: var(--fs-ui);
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--paper-edge); border-radius: 6px;
+}
+.acct-field input:focus, .acct-field select:focus, .acct-name-edit input:focus {
+  outline: 2px solid color-mix(in srgb, var(--lapis) 45%, transparent); outline-offset: 1px;
+  border-color: var(--lapis);
+}
+
+/* --- fact rows (definition list): term left, value right, aligned --- */
+.acct-rows { margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.acct-row { display: flex; align-items: center; gap: 0.75rem; }
+.acct-row dt { flex: 0 0 7.5rem; font-size: var(--fs-small); color: var(--ink-soft); }
+.acct-row dd { margin: 0; flex: 1; display: flex; align-items: center; gap: 0.5rem;
+  font-size: var(--fs-small); }
+.acct-ok { color: var(--ink); }
+.acct-muted { color: var(--ink-faint); }
+
+/* --- sections --- */
+.acct-section { display: flex; flex-direction: column; gap: 0.6rem;
+  padding-top: 0.9rem; border-top: 1px solid var(--paper-edge); }
+.acct-section h3 { margin: 0; font-size: var(--fs-small); font-weight: 600; color: var(--ink); }
+.acct-actions { display: flex; gap: 0.5rem; }
+.acct-alt { margin: 0; font-size: var(--fs-small); color: var(--ink-soft); }
+.acct-footer { padding-top: 0.9rem; border-top: 1px solid var(--paper-edge); }
+
+.acct-code-box { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 0.6rem; border-radius: 6px;
+  background: var(--paper-warm); border: 1px solid var(--paper-edge); }
+.acct-code-box code { font-family: ui-monospace, monospace; font-size: var(--fs-small);
+  word-break: break-all; flex: 1; min-width: 8rem; }
+
+/* one clear primary action per section */
+.ctl.primary { background: var(--lapis); border-color: var(--lapis); color: #fff; font-weight: 500; }
+.ctl.primary:hover:not(:disabled) { background: #1d4ed8; border-color: #1d4ed8; }
+.ctl.primary:disabled { background: var(--ink-faint); border-color: var(--ink-faint); color: #fff; }
+
+/* an inline text button that reads as a link (for "or do this instead") */
+.linkish { background: none; border: none; padding: 0; font: inherit; color: var(--lapis);
+  cursor: pointer; text-decoration: underline; }

@@ -1,15 +1,32 @@
-// The research-community account panel: sign in, redeem an invite, issue invites
-// (maintainer), link this device, sign out.
+// The research-community account panel.
+//
+// Built to the pattern people already know from ordinary web apps (see the UI conventions in
+// INSTRUCTIONS.md): an avatar + name + role badge header, values shown as TEXT with a pencil
+// to edit rather than raw inputs left sitting open, labelled rows sharing one left edge, one
+// primary action per section, and sign-out set apart at the end.
 //
 // The remote is OPTIONAL — if it isn't running we say so plainly and the reader carries on
-// working offline, which is the whole premise (SHARED_RESEARCH.md §2). There are no passwords
-// anywhere: sign-in is a single-use magic link.
+// working offline, which is the whole premise (SHARED_RESEARCH.md §2).
 
 import { useCallback, useEffect, useState } from "react";
 import { remote, RemoteOffline, type Me, type Role, type InviteOut } from "../api/remote";
 import { fetchIdentity } from "../persistence/db";
 
 type Status = "loading" | "offline" | "blocked" | "signed-out" | "signed-in";
+
+const ROLE_HELP: Record<Role, string> = {
+  reader: "can pull the group's readings",
+  researcher: "can submit work for review",
+  moderator: "can approve submissions",
+  maintainer: "full authority, can invite",
+};
+
+/** Up to two initials — the conventional avatar fallback. */
+function initials(me: Me): string {
+  const src = me.displayName.trim() || me.email;
+  const parts = src.split(/[\s@._-]+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+}
 
 export function AccountSheet() {
   const [status, setStatus] = useState<Status>("loading");
@@ -18,19 +35,19 @@ export function AccountSheet() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // sign-in
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [nameDraft, setNameDraft] = useState("");
-  // Better Auth is configured with minPasswordLength: 10
-  const canSignIn = email.includes("@") && password.length >= 10;
-  // invite redemption
   const [showRedeem, setShowRedeem] = useState(false);
   const [code, setCode] = useState("");
-  // invite issuing
+  // profile editing — closed by default, opened with the pencil
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  // invites
   const [newRole, setNewRole] = useState<Role>("researcher");
   const [issued, setIssued] = useState<InviteOut | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const canSignIn = email.includes("@") && password.length >= 10;
 
   const refresh = useCallback(async () => {
     setErr(null);
@@ -41,7 +58,6 @@ export function AccountSheet() {
       setStatus(who ? "signed-in" : "signed-out");
     } catch (e) {
       if (e instanceof RemoteOffline) {
-        // fetch throws identically for "down" and "CORS-blocked" — probe to tell them apart
         setStatus((await remote.reachable()) ? "blocked" : "offline");
         return;
       }
@@ -66,180 +82,204 @@ export function AccountSheet() {
 
   const doRedeem = () => guard(async () => {
     await remote.redeem({
-      code: code.trim(), email: email.trim(), password,
-      localId: localId ?? undefined,
+      code: code.trim(), email: email.trim(), password, localId: localId ?? undefined,
     });
-    // the account now exists with this password — sign straight in with it
     await remote.signIn(email.trim(), password);
     setShowRedeem(false); setCode(""); setPassword("");
     await refresh();
   });
 
-  const doIssue = () => guard(async () => {
-    setIssued(await remote.createInvite({ role: newRole, expiresInDays: 30 }));
-    setCopied(false);
+  const saveName = () => guard(async () => {
+    await remote.setName(nameDraft);
+    setEditingName(false);
+    await refresh();
   });
 
-  const doBind = () => guard(async () => {
-    if (localId) { await remote.bindLocalId(localId); await refresh(); }
-  });
+  if (status === "loading") return <p className="acct-note">Checking…</p>;
 
-  if (status === "loading") return <p className="home-empty">Checking…</p>;
-
-  if (status === "offline") {
+  if (status === "offline" || status === "blocked") {
     return (
-      <>
-        <p className="home-empty">
-          The research server isn’t reachable at <code>{remote.url}</code>. That’s fine — all your
-          study works offline; only publishing and reviewing need it.
+      <div className="acct">
+        <p className="acct-note">
+          {status === "offline" ? (
+            <>The research server isn’t running at <code>{remote.url}</code>. That’s fine — all
+            your study works offline; only publishing and reviewing need it.</>
+          ) : (
+            <>The research server is running but refused this app’s origin
+            (<code>{window.location.origin}</code>). Add it to <code>TRUSTED_ORIGINS</code> and
+            restart it.</>
+          )}
         </p>
         <button className="ctl" onClick={() => void refresh()}>Try again</button>
-      </>
-    );
-  }
-
-  if (status === "blocked") {
-    return (
-      <>
-        <p className="home-empty">
-          The research server at <code>{remote.url}</code> is running but refused this app’s
-          origin (<code>{window.location.origin}</code>). Add it to the server’s{" "}
-          <code>TRUSTED_ORIGINS</code> and restart it.
-        </p>
-        <button className="ctl" onClick={() => void refresh()}>Try again</button>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      {err && <p className="home-empty acct-err">{err}</p>}
+    <div className="acct">
+      {err && <p className="acct-error" role="alert">{err}</p>}
 
       {status === "signed-out" && (
         <>
-          <p className="home-empty">
-            Sign in to publish research for review and pull the group’s established readings.
+          <p className="acct-note">
+            {showRedeem
+              ? "Your invite creates the account. Choose a password now — you’ll use it every time after."
+              : "Sign in to publish research for review and pull the group’s established readings."}
           </p>
-          <label className="acct-label" htmlFor="acct-email">Email</label>
-          <input
-            id="acct-email" className="board-input" type="email" autoComplete="email"
-            placeholder="you@example.org" value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <label className="acct-label" htmlFor="acct-pw">
-            Password{showRedeem ? " — choose one (10+ characters)" : ""}
-          </label>
-          <input
-            id="acct-pw" className="board-input" type="password"
-            autoComplete={showRedeem ? "new-password" : "current-password"}
-            placeholder={showRedeem ? "at least 10 characters" : "your password"}
-            value={password} onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !showRedeem && canSignIn) doSignIn(); }}
-          />
-          <div className="acct-acts">
-            {!showRedeem && (
-              <button className="ctl" disabled={busy || !canSignIn} onClick={doSignIn}>
+
+          <div className="acct-field">
+            <label htmlFor="acct-email">Email</label>
+            <input
+              id="acct-email" type="email" autoComplete="email"
+              placeholder="you@example.org" value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+
+          <div className="acct-field">
+            <label htmlFor="acct-pw">Password</label>
+            <input
+              id="acct-pw" type="password"
+              autoComplete={showRedeem ? "new-password" : "current-password"}
+              placeholder={showRedeem ? "at least 10 characters" : ""}
+              value={password} onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !showRedeem && canSignIn) doSignIn(); }}
+            />
+            {showRedeem && <span className="acct-hint">At least 10 characters.</span>}
+          </div>
+
+          {showRedeem && (
+            <div className="acct-field">
+              <label htmlFor="acct-code">Invite code</label>
+              <input
+                id="acct-code" placeholder="paste the code you were sent"
+                value={code} onChange={(e) => setCode(e.target.value)}
+              />
+              {localId && <span className="acct-hint">This device’s research will be linked to the new account.</span>}
+            </div>
+          )}
+
+          <div className="acct-actions">
+            {showRedeem ? (
+              <button className="ctl primary" disabled={busy || !code.trim() || !canSignIn} onClick={doRedeem}>
+                {busy ? "Creating your account…" : "Create account"}
+              </button>
+            ) : (
+              <button className="ctl primary" disabled={busy || !canSignIn} onClick={doSignIn}>
                 {busy ? "Signing in…" : "Sign in"}
               </button>
             )}
-            <button className="ctl" onClick={() => setShowRedeem((s) => !s)}>
-              {showRedeem ? "← Back to sign in" : "I have an invite code"}
-            </button>
           </div>
-          {showRedeem && (
-            <div className="acct-block">
-              <label className="acct-label" htmlFor="acct-code">Invite code</label>
-              <input
-                id="acct-code" className="board-input" placeholder="paste the code you were sent"
-                value={code} onChange={(e) => setCode(e.target.value)}
-              />
-              <p className="home-empty">
-                This creates your account with the password above
-                {localId ? ", and links this device’s research to it" : ""}. After this you just
-                sign in with your email and password.
-              </p>
-              <button
-                className="ctl"
-                disabled={busy || !code.trim() || !canSignIn}
-                onClick={doRedeem}
-              >
-                {busy ? "Creating your account…" : "Redeem invite"}
-              </button>
-            </div>
-          )}
+
+          <p className="acct-alt">
+            {showRedeem ? (
+              <>Already have an account?{" "}
+                <button className="linkish" onClick={() => setShowRedeem(false)}>Sign in</button></>
+            ) : (
+              <>Have an invite code?{" "}
+                <button className="linkish" onClick={() => setShowRedeem(true)}>Create your account</button></>
+            )}
+          </p>
         </>
       )}
 
       {status === "signed-in" && me && (
         <>
-          <p className="home-lex">
-            <strong>{me.displayName || me.email}</strong> · {me.role}
-          </p>
-          {me.displayName && <p className="home-empty">{me.email}</p>}
+          {/* identity header — avatar, name, role, email: the familiar arrangement */}
+          <header className="acct-head">
+            <div className="acct-avatar" aria-hidden>{initials(me)}</div>
+            <div className="acct-who">
+              {editingName ? (
+                <div className="acct-name-edit">
+                  <input
+                    aria-label="Display name" autoFocus value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && nameDraft.trim()) saveName();
+                      if (e.key === "Escape") { setEditingName(false); setNameDraft(me.displayName); }
+                    }}
+                  />
+                  <button className="ctl primary" disabled={busy || !nameDraft.trim()} onClick={saveName}>Save</button>
+                  <button className="ctl" onClick={() => { setEditingName(false); setNameDraft(me.displayName); }}>
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="acct-name-row">
+                  <span className="acct-name">{me.displayName || me.email.split("@")[0]}</span>
+                  <button
+                    className="icon-btn" title="Edit your name" aria-label="Edit your name"
+                    onClick={() => { setNameDraft(me.displayName); setEditingName(true); }}
+                  >✎</button>
+                </div>
+              )}
+              <span className="acct-email">{me.email}</span>
+              <span className={`role-pill role-${me.role}`} title={ROLE_HELP[me.role]}>{me.role}</span>
+            </div>
+          </header>
 
-          <label className="acct-label" htmlFor="acct-name">
-            Display name — what other researchers see on your work
-          </label>
-          <div className="acct-acts">
-            <input
-              id="acct-name" className="board-input" placeholder="your name"
-              value={nameDraft} onChange={(e) => setNameDraft(e.target.value)}
-            />
-            <button
-              className="ctl"
-              disabled={busy || !nameDraft.trim() || nameDraft.trim() === me.displayName}
-              onClick={() => guard(async () => { await remote.setName(nameDraft); await refresh(); })}
-            >Save</button>
-          </div>
-          <p className="home-empty">
-            This device: {me.localId
-              ? <>linked (<code>{me.localId.slice(0, 8)}…</code>)</>
-              : <>not linked to your account yet</>}
-          </p>
-          {!me.localId && localId && (
-            <button className="ctl" disabled={busy} onClick={doBind}>
-              ⚭ Link this device’s research
-            </button>
-          )}
+          <dl className="acct-rows">
+            <div className="acct-row">
+              <dt>This device</dt>
+              <dd>
+                {me.localId ? (
+                  <span className="acct-ok">Linked <code>{me.localId.slice(0, 8)}…</code></span>
+                ) : (
+                  <>
+                    <span className="acct-muted">Not linked</span>
+                    {localId && (
+                      <button className="ctl" disabled={busy}
+                        onClick={() => guard(async () => { await remote.bindLocalId(localId); await refresh(); })}>
+                        Link this device
+                      </button>
+                    )}
+                  </>
+                )}
+              </dd>
+            </div>
+          </dl>
 
           {me.role === "maintainer" && (
-            <div className="acct-block">
-              <h3 className="acct-h3">Invite a researcher</h3>
-              <div className="acct-acts">
-                <select
-                  className="board-input" value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as Role)}
-                  title="What the invitee will be able to do"
-                >
-                  <option value="reader">reader — pull only</option>
-                  <option value="researcher">researcher — may submit</option>
-                  <option value="moderator">moderator — may approve</option>
-                  <option value="maintainer">maintainer — full authority</option>
+            <section className="acct-section">
+              <h3>Invite a researcher</h3>
+              <div className="acct-field">
+                <label htmlFor="acct-role">They can</label>
+                <select id="acct-role" value={newRole} onChange={(e) => setNewRole(e.target.value as Role)}>
+                  {(Object.keys(ROLE_HELP) as Role[]).map((r) => (
+                    <option key={r} value={r}>{r} — {ROLE_HELP[r]}</option>
+                  ))}
                 </select>
-                <button className="ctl" disabled={busy} onClick={doIssue}>
-                  {busy ? "Creating…" : "＋ Create invite"}
+              </div>
+              <div className="acct-actions">
+                <button className="ctl primary" disabled={busy}
+                  onClick={() => guard(async () => {
+                    setIssued(await remote.createInvite({ role: newRole, expiresInDays: 30 }));
+                    setCopied(false);
+                  })}>
+                  {busy ? "Creating…" : "Create invite"}
                 </button>
               </div>
               {issued && (
-                <p className="home-empty">
-                  Share this code (expires in 30 days, single use):{" "}
-                  <code className="acct-code">{issued.code}</code>
-                  <button
-                    className="ctl acct-inline"
-                    onClick={() => { void navigator.clipboard?.writeText(issued.code); setCopied(true); }}
-                  >{copied ? "copied" : "copy"}</button>
-                </p>
+                <div className="acct-code-box">
+                  <code>{issued.code}</code>
+                  <button className="ctl"
+                    onClick={() => { void navigator.clipboard?.writeText(issued.code); setCopied(true); }}>
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                  <span className="acct-hint">Single use, expires in 30 days.</span>
+                </div>
               )}
-            </div>
+            </section>
           )}
 
-          <div className="acct-block">
-            <button className="ctl" disabled={busy} onClick={() => guard(async () => { await remote.signOut(); await refresh(); })}>
+          <div className="acct-footer">
+            <button className="ctl" disabled={busy}
+              onClick={() => guard(async () => { await remote.signOut(); await refresh(); })}>
               Sign out
             </button>
           </div>
         </>
       )}
-    </>
+    </div>
   );
 }
