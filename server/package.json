@@ -10,6 +10,7 @@
     "start": "cross-env NODE_NO_WARNINGS=1 tsx src/server.ts",
     "start:static": "cross-env NODE_NO_WARNINGS=1 SERVE_STATIC=1 tsx src/server.ts",
     "typecheck": "tsc --noEmit",
+    "corpus": "cross-env NODE_NO_WARNINGS=1 NODE_OPTIONS=--experimental-sqlite tsx src/corpus/cli.ts",
     "test": "cross-env NODE_NO_WARNINGS=1 vitest run"
   },
   "dependencies": {

@@ -54,14 +54,18 @@ spine everything hangs off. Lock both before writing sync code.
 
 No research schema, no auth — can run in parallel with Phase 3.
 
-- [ ] **2.1 Patch file format** — manifest (`sha256` + signature, target schema version) +
-  ops list (upsert/delete by **natural key**: verse key, root, segment position — never rowid).
-- [ ] **2.2 Client applier** — verify signature, apply in order, record `corpus_version`;
-  idempotent and resumable.  ⇢ 2.1
-  *AC:* a signed patch upgrades `quran.db` deterministically; a bad/again-applied patch is a
-  safe no-op; a tampered signature is rejected; `corpus_version` recorded.
-- [ ] **2.3 Patch generator** (author side) — may start as a manual script behind the
-  maintainer; the client contract is fixed by 2.1.  ⇢ 2.1
+- [x] **2.1 Patch file format** — ✅ `server/src/corpus/patch.ts`: signed envelope (Ed25519 over
+  canonical bytes + `sha256`), patch with `schemaVersion`/`patchVersion`/`parent`, ops = upsert/
+  delete by **natural key**. Documented in `CORPUS.md`.
+- [x] **2.2 Client applier** — ✅ `applyPatch`: verify → order + idempotency gate → apply in one
+  transaction; `corpus_version`/`schema_version` recorded in a `corpus_meta` table inside
+  `quran.db`; `GET /corpus/version` reports it.  ⇢ 2.1
+  *AC:* signed patch upgrades deterministically; bad/again-applied = safe no-op; tamper + untrusted
+  key rejected; atomic rollback on a bad op. ✅ `corpus-patch.test.ts` (6 tests). 114/114 total.
+- [x] **2.3 Patch generator** (author side) — ✅ `server/src/corpus/cli.ts` (`keygen`/`sign`/
+  `apply`/`version`) via `npm run corpus -w server -- …`; private key gitignored.  ⇢ 2.1
+- [ ] **2.4 Desktop integration** (follow-up) — copy `quran.db` to user-data (writable), apply
+  pending patches on startup before opening the window, show the edition in the UI. (See `CORPUS.md`.)
 
 ---
 

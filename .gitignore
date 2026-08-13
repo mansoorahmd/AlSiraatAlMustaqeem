@@ -32,3 +32,8 @@ mcp/node_modules/
 # desktop (Electron) build artifacts
 electron/build/
 dist-desktop/
+
+# corpus signing — the maintainer's PRIVATE key must never be committed
+# (the public key corpus/trusted-key.pub.pem is committed and trusted by clients)
+corpus/*.priv.pem
+corpus/maintainer-key*.pem

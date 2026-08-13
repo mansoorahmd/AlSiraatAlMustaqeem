@@ -154,9 +154,11 @@ CREATE TABLE IF NOT EXISTS derived_sync_state (
 );
 ```
 
-`local_id` (the account-independent identity, Phase 1) and `corpus_version` (Phase 2) are single
-values, so they live in the existing **`settings`** table (your own data), not here — sync never
-needs to write them.
+`local_id` (the account-independent identity, Phase 1) lives in the existing **`settings`** table
+(your own data), not here — sync never writes it. `corpus_version` / `schema_version` (Phase 2)
+are a property of the *corpus*, so they live in a tiny **`corpus_meta`** table **inside
+`quran.db`** — the version travels with the file it describes (a rebuilt or re-shipped corpus
+carries its own version), rather than in research.db.
 
 ---
 

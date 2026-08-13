@@ -12,6 +12,7 @@ import { rootRoutes } from "./routes/roots.js";
 import { similarityRoutes } from "./routes/similarity.js";
 import { researchRoutes } from "./routes/research.js";
 import { echoRoutes } from "./routes/echoes.js";
+import { corpusRoutes } from "./routes/corpus.js";
 
 export function createApp(state: AppState): Hono {
   const app = new Hono();
@@ -44,6 +45,7 @@ export function createApp(state: AppState): Hono {
   v1.route("/", similarityRoutes(state));
   v1.route("/", researchRoutes(state));
   v1.route("/", echoRoutes(state));
+  v1.route("/", corpusRoutes(state));
 
   app.route("/api/v1", v1);
 
