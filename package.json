@@ -7,12 +7,15 @@
   "workspaces": [
     "app",
     "server",
-    "mcp"
+    "mcp",
+    "remote"
   ],
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,green \"npm run dev -w server\" \"npm run dev -w app\"",
     "test": "npm test -w server",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w app && npm run typecheck -w @alsiraat/mcp",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w app && npm run typecheck -w @alsiraat/mcp && npm run typecheck -w @alsiraat/remote",
+    "remote:dev": "npm run dev -w @alsiraat/remote",
+    "remote:migrate": "npm run migrate -w @alsiraat/remote",
     "build": "npm run build -w app",
     "start": "npm run build -w app && npm run start:static -w server",
     "mcp": "npm start --silent -w @alsiraat/mcp",

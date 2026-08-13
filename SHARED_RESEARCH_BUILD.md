@@ -71,15 +71,17 @@ No research schema, no auth — can run in parallel with Phase 3.
 
 ## Phase 3 — Remote foundation: Postgres + Better Auth + roles
 
-- [ ] **3.1 Stand up the remote research service** (Postgres, schema from §9), separate from the
-  local Hono API.
-- [ ] **3.2 Better Auth** — magic-link / passkey sign-in + invite redemption; `users` / `invites`
-  tables; long-lived cached session (sign in once, then offline indefinitely).  ⇢ 3.1
-- [ ] **3.3 Role middleware** — ordered ladder `reader < researcher < moderator < maintainer`,
-  `requireRole(...)` on the gated routes, with **`role-boundary.test.ts`** beside the existing
-  boundary tests.  ⇢ 3.2
-- [ ] **3.4 Bind `local_id` → account** on first sign-in; stamp remote rows with `author_id`.  ⇢ 1.1, 3.2
-  *AC:* invite → sign-in → session survives offline; role gate enforced and tested; local work
+- [x] **3.1 Stand up the remote research service** — ✅ new `remote/` workspace (Hono + `pg`),
+  full schema in `migrations/0001_init.sql`, forward-only idempotent migration runner + CLI,
+  service skeleton. Schema validated against real Postgres via **PGlite** (`migrations.test.ts`).
+  Defaults to `postgres://postgres:researchgate@localhost:5432/researchgate`. (You run `createdb`
+  + `npm run remote:migrate` on your box.)
+- [ ] **3.2 Better Auth** — magic-link sign-in + invite redemption; long-lived cached session
+  (sign in once, then offline indefinitely).  ⇢ 3.1  *(next step)*
+- [x] **3.3 Role middleware** — ✅ `src/roles.ts`: ordered ladder + `requireRole(min)`
+  (401/403/200), hand-rolled. `role-boundary.test.ts` (7 tests).  ⇢ 3.1
+- [ ] **3.4 Bind `local_id` → account** on first sign-in; stamp remote rows with `author_id`.  ⇢ 1.1, 3.2  *(next step)*
+  *AC:* invite → sign-in → session survives offline; role gate enforced and tested ✅; local work
   authored before sign-in adopts the bound account.
 
 ---
