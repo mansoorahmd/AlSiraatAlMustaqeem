@@ -10,7 +10,7 @@
 //     updates and isn't tied to any source checkout. Seeded from the bundle on first
 //     run if one is shipped, else created by the server on first write.
 
-import { app, BrowserWindow, Menu, shell, utilityProcess } from "electron";
+import { app, BrowserWindow, Menu, dialog, ipcMain, shell, utilityProcess } from "electron";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { existsSync, copyFileSync, mkdirSync } from "node:fs";
@@ -55,9 +55,11 @@ async function waitForHealth(port, tries = 100) {
 }
 
 let child = null;
+let serverPort = null; // set once the server is up, so IPC handlers can reach it
 
 async function startServer() {
   const port = await stablePort();
+  serverPort = port;
 
   // read-only corpus from the bundle; research db in userData
   const quranDb = isDev ? join(here, "..", "quran.db") : join(RES, "quran.db");
@@ -103,7 +105,11 @@ function createWindow(port) {
     backgroundColor: "#f4f1ea",
     title: "MQ Research Gate",
     autoHideMenuBar: true, // no File/Edit/View/Window/Help bar
-    webPreferences: { contextIsolation: true, nodeIntegration: false },
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: join(here, "preload.cjs"), // exposes window.desktop (backup save dialog)
+    },
   });
   win.setMenuBarVisibility(false);
   // open external links in the system browser, not inside the app
@@ -114,6 +120,32 @@ function createWindow(port) {
   });
   win.loadURL(`http://127.0.0.1:${port}/`);
 }
+
+// Renderer asks to back up research.db → pick a location natively, then have the
+// running server write the copy there (the server owns the live db connection, so its
+// VACUUM INTO captures uncheckpointed WAL). Returns { path, bytes, at } or { canceled }.
+ipcMain.handle("research:backup", async () => {
+  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+  const stamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
+  const { canceled, filePath } = await dialog.showSaveDialog(win, {
+    title: "Back up research",
+    defaultPath: `research-${stamp}.db`,
+    filters: [{ name: "SQLite database", extensions: ["db"] }],
+  });
+  if (canceled || !filePath) return { canceled: true };
+  const dest = filePath.endsWith(".db") ? filePath : `${filePath}.db`;
+  const res = await fetch(`http://127.0.0.1:${serverPort}/api/v1/research/backup`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    // the native dialog already confirmed any overwrite, so allow it
+    body: JSON.stringify({ dest, overwrite: true }),
+  });
+  if (!res.ok) {
+    const { detail } = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    throw new Error(detail ?? `HTTP ${res.status}`);
+  }
+  return res.json();
+});
 
 app.whenReady().then(async () => {
   // no native menu bar (File / Edit / View / Window / Help). On macOS a minimal app

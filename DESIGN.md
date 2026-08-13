@@ -21,7 +21,7 @@ is at the end.
 | Decision | Choice |
 |---|---|
 | Core metaphors | Case board + trail expeditions + case files |
-| Vocabulary mechanic | **Original research** — no reveal, no answer key; meanings are *built* and *established*, once, by the reader |
+| Vocabulary mechanic | **Original research** — meanings are *built* and *established* by the reader, not looked up. The gate is **status, not visibility**: others' readings may be visible, but your own dated establishment stands as a separate record of what *you* held |
 | Unit of research | The word **form** (lemma); the root's dictionary meaning is open reference evidence |
 | Evidence | Āyah cards + the reader's **comment slips** + **reference slips** (citations), on the board, indexed per-form in the dossier |
 | Establishing | Per form: submit a meaning → *established*; a root-level verdict when the evidenced forms are done (a case may close *partial*) |
@@ -39,8 +39,12 @@ THE MUSHAF ANSWERS BACK (open forms marked, established forms show your gloss)
 ```
 Every jump leaves a visible trail. Three principles hold it together:
 
-1. **Nothing is revealed — everything is built.** There is no answer key; the meaning is
-   the *product* of the case, not a hidden solution.
+1. **Meaning is built, not looked up.** There is no answer key handed to you; the meaning
+   is the *product* of the case. Others' established readings may be visible (see the shared
+   research layer, `SHARED_RESEARCH.md`), but what distinguishes your scholarship is that
+   your own establishment is a **separate, dated record of what you yourself held** —
+   standing alongside the group's, never overwritten by it. *(The earlier framing "nothing
+   is revealed" is retired: the gate is status, not visibility.)*
 2. **The root's core meaning is reference evidence**, not the answer. The interesting
    question — why هُدًى here and not هِدَايَة — is settled by the occurrences, the reader's
    reasoning, and the sources they cite.
@@ -82,6 +86,14 @@ similar, echoes, spelling), `/roots/{root}` (+forms, occurrences, linkages),
 `compare_sets`, `/research/proposed`); the schema self-migrates additively on connect.
 `notes` and `word_indications` carry a `source` (`me`/`ai`). See `INSTRUCTIONS.md` for the
 full schema and the MCP write boundary.
+
+A planned **shared research layer** (`SHARED_RESEARCH.md`) adds an optional, invite-only
+remote for publishing and peer-reviewing work — local study stays offline and account-free.
+Two channels share only a login: the **corpus** flows one-way down as signed, versioned
+**static patch files** (not a hosted DB — corrections are releases, applied in order); the
+**research** channel carries submissions up and pulls down into `derived`, drop-safe tables
+that sync can rebuild and never lets a bug touch your own work. Globally-established readings
+coexist with your local ones; disagreement is preserved as **dissent**, not resolved away.
 
 ---
 

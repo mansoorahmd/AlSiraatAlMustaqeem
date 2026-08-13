@@ -33,6 +33,28 @@ async function srvDelete(path: string): Promise<void> {
   if (!res.ok && res.status !== 404) throw new Error(`DELETE ${path} → ${res.status}`);
 }
 
+// ---- backup --------------------------------------------------------------------
+
+export interface BackupResult { path: string; bytes: number; at: number }
+
+/**
+ * Back up research.db — the one irreplaceable file. On the desktop we ask the native
+ * shell for a save location (a real folder the user picks); on the web build we let the
+ * server write a timestamped copy into a sibling backups/ folder and report the path.
+ * Either way the copy is complete (WAL folded in) and safe to take while working.
+ */
+export async function backupResearch(): Promise<BackupResult | { canceled: true }> {
+  const desktop = (window as unknown as { desktop?: { backupResearch(): Promise<BackupResult | { canceled: true }> } }).desktop;
+  if (desktop?.backupResearch) return desktop.backupResearch();
+  const res = await fetch(`${API}/backup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (!res.ok) throw new Error(`backup failed → ${res.status}`);
+  return res.json() as Promise<BackupResult>;
+}
+
 // ---- typed access ---------------------------------------------------------------
 
 export const archive = {

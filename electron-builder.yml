@@ -6,7 +6,7 @@ directories:
 # Ship only the shell + the bundled server; the SPA and corpus go in resources.
 files:
   - electron/main.mjs
-  - electron/preload.mjs
+  - electron/preload.cjs
   - electron/build/**
   - package.json
 

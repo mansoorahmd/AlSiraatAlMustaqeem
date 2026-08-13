@@ -49,8 +49,10 @@ function openRaw(path: string, readOnly: boolean): RawDb {
 
 export class Db {
   readonly raw: RawDb;
+  readonly path: string;
 
   constructor(path: string, opts: { readOnly?: boolean } = {}) {
+    this.path = path;
     this.raw = openRaw(path, opts.readOnly ?? false);
   }
 

@@ -90,6 +90,26 @@ mobile app can call `/api/v1` directly.
 
 ## The two databases
 
+**In plain terms.** The app is one web build (optionally wrapped in a desktop window).
+Both the reader UI and the AI (through the MCP server) talk to a single Hono server, and
+that server is the *only* thing that touches either database. It **reads** the fixed Qur'an
+corpus and **reads and writes** the reader's personal research. Two files, two jobs:
+
+- **`quran.db` is the reference material** — the Qur'an and everything known *about* its
+  words: the text in every script, each word's root and form (morphology), the roots and
+  their derived forms, the classical dictionaries (Lane, Lisān, Maqāyīs, Mufradāt, etc.)
+  keyed to each root, plus translations and search indexes. It ships with the app, never
+  changes, and is the shared factual ground everyone reasons from. Think *built-in
+  dictionary and concordance*.
+- **`research.db` is what you build on top of it** — your cases and board layout, per-form
+  established meanings (with revision history), trails, notes and questions, your own root
+  indications and motifs, saved comparisons, and UI settings. The corpus is fixed; this
+  file grows with your scholarship, and it's the one irreplaceable file. Think *your
+  personal, earned understanding of the Book*.
+
+Anything an AI proposes through the MCP is tagged (`source = 'ai'`) and stays a proposal
+until you accept it, so your own work and the AI's suggestions never blur together.
+
 ### `quran.db` — content (read-only)
 The built corpus. The app never writes to it. Regenerating it requires the archived Python
 pipeline (see "How quran.db was built" below); day-to-day you just use the existing file.
@@ -106,18 +126,27 @@ column — `'me'` for your own work, `'ai'` for anything proposed through the MC
 
 #### Backing it up
 
-`research.db` is **not** tracked in git — it's your personal data, and back it up yourself
-(copy the file, sync it, whatever suits you). One caveat: SQLite runs it in **WAL mode**, so the
-newest work can sit in the transient `research.db-wal` sidecar rather than in `research.db`
-itself. Before copying the file, fold the WAL back in so the copy is complete — either close the
-app/server (a clean shutdown checkpoints), or run once against it:
+`research.db` is **not** tracked in git — it's your personal data, so keep your own backups. Any
+of three ways, all producing a *complete* copy (the WAL is folded in for you, so you never end up
+with a half-written file):
 
-```bash
-node -e "const {DatabaseSync}=require('node:sqlite');new DatabaseSync('research.db').exec('PRAGMA wal_checkpoint(TRUNCATE)')"
-```
+- **In the app** — Home → *Your data* → **Back up research**. On the desktop this opens a save
+  dialog; on the web build it drops a timestamped copy in a `backups/` folder next to the db.
+- **From the command line** (app can be closed or open):
 
-In the **desktop app**, `research.db` lives in the OS user-data dir (not the repo) — see
-`DESKTOP.md`.
+  ```bash
+  npm run backup                  # → backups/research-<timestamp>.db next to the db
+  npm run backup -- /path/out.db  # → an explicit location
+  ```
+
+  Honours `QF_RESEARCH_DB`, so it also backs up the desktop copy: `QF_RESEARCH_DB="<userData>/research.db" npm run backup`.
+- **Copy the file yourself** — fine too, but SQLite runs in **WAL mode**, so first fold the WAL in
+  (close the app for a clean shutdown, or `PRAGMA wal_checkpoint(TRUNCATE)`), else the copy misses
+  recent work.
+
+All three use SQLite's `VACUUM INTO` (see `server/src/backup.ts`), which writes a single merged
+copy atomically — safe to run while you're working. In the **desktop app**, `research.db` lives in
+the OS user-data dir (not the repo) — see `DESKTOP.md`.
 
 ---
 

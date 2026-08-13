@@ -2,10 +2,24 @@
 
 import { Hono } from "hono";
 import type { AppState } from "../state.js";
+import { backupResearch, defaultBackupPath } from "../backup.js";
 
 export function researchRoutes(state: AppState): Hono {
   const r = new Hono();
   const s = state.research;
+
+  // one-click backup: a clean, complete copy of research.db (WAL folded in).
+  // `dest` (absolute, ending .db) is optional; the default sits in a sibling
+  // backups/ folder next to the live db. Desktop passes a user-chosen path.
+  r.post("/research/backup", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { dest?: string; overwrite?: boolean };
+    const dest = body.dest?.trim() ? body.dest.trim() : defaultBackupPath(state.researchDb.path);
+    try {
+      return c.json(backupResearch(state.researchDb, dest, { overwrite: body.overwrite === true }));
+    } catch (e) {
+      return c.json({ detail: (e as Error).message }, 400);
+    }
+  });
 
   // cases
   r.get("/research/cases", (c) => c.json(s.listCases()));

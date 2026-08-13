@@ -16,6 +16,7 @@
     "build": "npm run build -w app",
     "start": "npm run build -w app && npm run start:static -w server",
     "mcp": "npm start --silent -w @alsiraat/mcp",
+    "backup": "node --experimental-sqlite scripts/backup-research.mjs",
     "electron:build": "npm run build -w app && node electron/bundle-server.mjs",
     "electron:dev": "npm run electron:build && electron .",
     "desktop:dist": "npm run electron:build && electron-builder"

@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
-import { archive, fetchFormStatus } from "../persistence/db";
+import { archive, fetchFormStatus, backupResearch, type BackupResult } from "../persistence/db";
 import {
   normalizeCase, createSubjectCase, openOrCreateRootCase, openOrCreateAyahCase,
 } from "../cases/ops";
@@ -34,6 +34,25 @@ export function Home() {
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [casesRev, setCasesRev] = useState(0); // bump to re-read after creating
+
+  // backup of research.db — the reader's one irreplaceable file
+  const [backupState, setBackupState] = useState<"idle" | "working">("idle");
+  const [lastBackup, setLastBackup] = useState<BackupResult | null>(null);
+  const [backupErr, setBackupErr] = useState<string | null>(null);
+  const runBackup = async () => {
+    setBackupState("working");
+    setBackupErr(null);
+    try {
+      const res = await backupResearch();
+      if (!("canceled" in res)) setLastBackup(res);
+    } catch (e) {
+      setBackupErr((e as Error).message);
+    } finally {
+      setBackupState("idle");
+    }
+  };
+  const shortPath = (p: string) => p.replace(/^.*[/\\]/, "");
+  const kb = (n: number) => `${(n / 1024).toFixed(0)} KB`;
 
   const cases = useAsync(() => archive.cases.all(), [casesRev]);
   const trails = useAsync(() => archive.trails.all(), []);
@@ -252,6 +271,23 @@ export function Home() {
           <button className="ctl" onClick={() => dispatch({ type: "setTab", tab: "roots" })}>
             ⌘ Open the Roots
           </button>
+        </section>
+
+        <section className="home-card">
+          <h2 className="home-card-title">Your data</h2>
+          <p className="home-empty">
+            All your research lives in one file. Back it up somewhere safe — a copy is
+            complete and can be taken any time, even while you work.
+          </p>
+          <button className="ctl" onClick={runBackup} disabled={backupState === "working"}>
+            {backupState === "working" ? "Backing up…" : "⤓ Back up research"}
+          </button>
+          {lastBackup && (
+            <p className="home-lex" title={lastBackup.path}>
+              Saved <strong>{shortPath(lastBackup.path)}</strong> · {kb(lastBackup.bytes)}
+            </p>
+          )}
+          {backupErr && <p className="home-empty">Couldn’t back up: {backupErr}</p>}
         </section>
       </div>
     </div>
