@@ -15,7 +15,6 @@
     "typecheck": "npm run typecheck -w server && npm run typecheck -w app && npm run typecheck -w @alsiraat/mcp",
     "build": "npm run build -w app",
     "start": "npm run build -w app && npm run start:static -w server",
-    "save": "node --no-warnings scripts/save-research.mjs",
     "mcp": "npm start --silent -w @alsiraat/mcp",
     "electron:build": "npm run build -w app && node electron/bundle-server.mjs",
     "electron:dev": "npm run electron:build && electron .",

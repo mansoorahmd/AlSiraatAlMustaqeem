@@ -100,26 +100,24 @@ produces: cases (board layout, threads, clusters, slips, established meanings), 
 notes/questions, word indications, motifs and comparisons. **This is the one irreplaceable file.**
 
 Tables: `cases`, `form_research`, `form_revisions`, `trails`, `notes`, `user_root_meanings`,
-`motifs`/`motif_roots`, `word_indications`, `compare_sets`/`compare_items` (see
+`motifs`/`motif_roots`, `word_indications`, `compare_sets`/`compare_items`, `settings` (see
 `server/src/research.ts` for the schema). `notes` and `word_indications` carry a `source`
 column — `'me'` for your own work, `'ai'` for anything proposed through the MCP server.
 
-#### Saving your research to git
+#### Backing it up
+
+`research.db` is **not** tracked in git — it's your personal data, and back it up yourself
+(copy the file, sync it, whatever suits you). One caveat: SQLite runs it in **WAL mode**, so the
+newest work can sit in the transient `research.db-wal` sidecar rather than in `research.db`
+itself. Before copying the file, fold the WAL back in so the copy is complete — either close the
+app/server (a clean shutdown checkpoints), or run once against it:
 
 ```bash
-npm run save                    # checkpoint + commit research.db
-npm run save -- "after surah 2" # ...with your own message
+node -e "const {DatabaseSync}=require('node:sqlite');new DatabaseSync('research.db').exec('PRAGMA wal_checkpoint(TRUNCATE)')"
 ```
 
-`research.db` **is** tracked in git (unlike `quran.db`, which is too large). But SQLite runs it
-in **WAL mode**, so recent work often sits in the transient `research.db-wal` sidecar — which is
-gitignored. A plain `git commit research.db` can therefore archive a database that is *missing
-your latest work*, with no warning.
-
-`npm run save` fixes that: it folds the WAL back into `research.db`
-(`PRAGMA wal_checkpoint(TRUNCATE)`), then commits — and says so if nothing changed. **The server
-can stay running.** If it reports the checkpoint was blocked by an active connection, close the
-app and run it again.
+In the **desktop app**, `research.db` lives in the OS user-data dir (not the repo) — see
+`DESKTOP.md`.
 
 ---
 

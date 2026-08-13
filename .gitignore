@@ -11,7 +11,8 @@ app/dist/
 quran.db
 
 # --- sqlite runtime sidecars (transient) ---
-# research.db IS tracked (small); quran.db is ignored above.
+# research.db is NOT tracked — it's the reader's personal data (back it up yourself).
+research.db
 *.db-wal
 *.db-shm
 
