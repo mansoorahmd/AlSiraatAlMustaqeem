@@ -46,6 +46,19 @@ describe("provenance of research records", () => {
     expect((await app.request(`${B}/proposed/bogus/x/accept`, { method: "PUT" })).status).toBe(422);
   });
 
+  it("stamps the reader's local identity and origin on records they create", async () => {
+    const { localId } = await j(await app.request(`${B}/identity`));
+    expect(localId).toBeTruthy();
+    // a note the reader made carries their author_id and origin='local'
+    const mine = (await j(await app.request(`${B}/notes?verse=2:2`))).find((x: any) => x.id === "p_mine");
+    expect(mine.authorId).toBe(localId);
+    expect(mine.origin).toBe("local");
+    // an AI-proposed record is still local-origin (it lives in the reader's db) but
+    // stays distinguishable by source='ai' — origin answers "local vs remote", not "who"
+    const ai = (await j(await app.request(`${B}/notes?verse=2:3`))).find((x: any) => x.id === "p_ai");
+    expect(ai.origin).toBe("local");
+  });
+
   it("indications carry provenance too", async () => {
     await put(`${B}/indications/p_ind`, { id: "p_ind", root: "علم", label: "ai idea", meaning: "", source: "ai" });
     const proposed = await j(await app.request(`${B}/proposed`));

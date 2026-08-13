@@ -124,6 +124,14 @@ Tables: `cases`, `form_research`, `form_revisions`, `trails`, `notes`, `user_roo
 `server/src/research.ts` for the schema). `notes` and `word_indications` carry a `source`
 column — `'me'` for your own work, `'ai'` for anything proposed through the MCP server.
 
+Every top-level record you author (`cases`, `notes`, `trails`, `motifs`, `user_root_meanings`,
+`word_indications`, `compare_sets`) also carries `author_id` + `origin`: `author_id` is your
+account-independent **`local_id`** (a UUID minted on first run, kept in `settings`, exposed at
+`GET /research/identity`), and `origin` is `'local'` for your work vs `'remote'` for peer work
+pulled by a future sync. `source` says *who the agent was* (me/ai); `origin` says *where it came
+from* (local/remote). When accounts arrive, the account binds to this `local_id`, so work done
+before signing in stays correctly attributed. See `SHARED_RESEARCH_BUILD.md` (Phase 1).
+
 #### Backing it up
 
 `research.db` is **not** tracked in git — it's your personal data, so keep your own backups. Any

@@ -38,10 +38,15 @@ spine everything hangs off. Lock both before writing sync code.
 
 ## Phase 1 — Local identity (no network, no account)
 
-- [ ] **1.1 Mint `local_id`** (UUID) at first launch, persisted in `research.db` settings.
-- [ ] **1.2 Stamp `author_id = local_id`, `origin = 'local'`** on every row the reader creates
-  (notes, indications, cases, trails, motifs); backfill existing rows once.  ⇢ 1.1
-  *AC:* every new + migrated row carries author + origin; `provenance.test.ts` extended.
+- [x] **1.1 Mint `local_id`** (UUID) at first launch, persisted in `research.db` settings. ✅
+  `ResearchStore.ensureLocalId()` (stable across sessions); exposed at `GET /research/identity`.
+- [x] **1.2 Stamp `author_id = local_id`, `origin = 'local'`** on every row the reader creates. ✅
+  `author_id`/`origin` columns added additively to `cases`, `notes`, `trails`, `motifs`,
+  `user_root_meanings`, `word_indications`, `compare_sets`; set on every `save*` (preserved on
+  update); pre-Phase-1 rows backfilled once via `stampTable`. `source` (me/ai) still answers *who
+  the agent is*, `origin` answers *local vs remote*.  ⇢ 1.1
+  *AC:* every new + migrated row carries author + origin; `identity.test.ts` (mint, stability,
+  legacy backfill) + `provenance.test.ts` extended. ✅ 108/108 tests, typechecks clean.
 
 ---
 

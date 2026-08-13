@@ -1,7 +1,17 @@
 // Research store — the reader's own scholarship in research.db (read-write).
 // Port of quran_api/research.py: cases (+ form_research/revisions), trails, notes.
 
+import { randomUUID } from "node:crypto";
 import type { Db } from "./db.js";
+
+// User-authored top-level records get an author + origin stamp (Phase 1). `author_id`
+// is the account-independent local identity (see ensureLocalId); `origin` is 'local'
+// for anything the reader (or their AI) makes here, vs 'remote' for pulled peer work.
+// Child rows (form_research, motif_roots, compare_items) inherit authorship from their
+// parent and are not stamped.
+const STAMPED_TABLES = [
+  "cases", "notes", "trails", "motifs", "user_root_meanings", "word_indications", "compare_sets",
+];
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS cases (
@@ -108,6 +118,9 @@ const now = () => Date.now();
 type Doc = Record<string, any>;
 
 export class ResearchStore {
+  /** The account-independent local identity every row this reader creates is stamped with. */
+  readonly localId: string;
+
   constructor(private db: Db) {
     db.exec("PRAGMA journal_mode = WAL");
     db.exec(SCHEMA);
@@ -129,6 +142,32 @@ export class ResearchStore {
     }
     db.exec("CREATE INDEX IF NOT EXISTS idx_notes_source ON notes(source)");
     db.exec("CREATE INDEX IF NOT EXISTS idx_word_indications_source ON word_indications(source)");
+
+    // Phase 1 — local identity. Mint a stable local_id, add author_id/origin columns to the
+    // user-authored tables, and backfill pre-existing rows so nothing is left un-attributed.
+    this.localId = this.ensureLocalId();
+    for (const table of STAMPED_TABLES) this.stampTable(table);
+  }
+
+  /** One stable UUID for this reader, kept in settings (survives updates, needs no network). */
+  private ensureLocalId(): string {
+    const cur = this.getSetting("local_id");
+    if (typeof cur === "string" && cur) return cur;
+    const id = randomUUID();
+    this.setSetting("local_id", id);
+    return id;
+  }
+
+  /** Add author_id + origin to `table` if missing, and stamp any rows that predate them. */
+  private stampTable(table: string): void {
+    const cols = new Set(this.db.query<{ name: string }>(`PRAGMA table_info(${table})`).map((r) => r.name));
+    if (cols.size === 0) return; // table not present
+    if (!cols.has("author_id")) this.db.exec(`ALTER TABLE ${table} ADD COLUMN author_id TEXT`);
+    if (!cols.has("origin")) this.db.exec(`ALTER TABLE ${table} ADD COLUMN origin TEXT NOT NULL DEFAULT 'local'`);
+    this.db.run(
+      `UPDATE ${table} SET author_id = ? WHERE author_id IS NULL OR author_id = ''`,
+      [this.localId],
+    );
   }
 
   // -- cases --
@@ -145,13 +184,14 @@ export class ResearchStore {
     doc.createdAt ??= t;
     const subject = doc.subject ?? {};
     this.db.run(
-      `INSERT INTO cases (id, subject_type, subject_value, title, status, verdict, spark_verse_key, doc, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?)
+      `INSERT INTO cases (id, subject_type, subject_value, title, status, verdict, spark_verse_key, doc, created_at, updated_at, author_id, origin)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET subject_type=excluded.subject_type, subject_value=excluded.subject_value,
          title=excluded.title, status=excluded.status, verdict=excluded.verdict,
          spark_verse_key=excluded.spark_verse_key, doc=excluded.doc, updated_at=excluded.updated_at`,
       [doc.id, subject.type ?? "root", subject.value ?? "", doc.title ?? "", doc.status ?? "open",
-       doc.verdict ?? "", subject.sparkVerseKey ?? null, JSON.stringify(doc), doc.createdAt, t],
+       doc.verdict ?? "", subject.sparkVerseKey ?? null, JSON.stringify(doc), doc.createdAt, t,
+       doc.authorId ?? this.localId, doc.origin ?? "local"],
     );
     this.syncFormResearch(doc);
     return doc;
@@ -216,9 +256,10 @@ export class ResearchStore {
     doc = { ...doc, updatedAt: t };
     doc.createdAt ??= t;
     this.db.run(
-      `INSERT INTO trails (id, name, subject, doc, created_at, updated_at) VALUES (?,?,?,?,?,?)
+      `INSERT INTO trails (id, name, subject, doc, created_at, updated_at, author_id, origin) VALUES (?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET name=excluded.name, subject=excluded.subject, doc=excluded.doc, updated_at=excluded.updated_at`,
-      [doc.id, doc.name ?? "", doc.subject ?? null, JSON.stringify(doc), doc.createdAt, t],
+      [doc.id, doc.name ?? "", doc.subject ?? null, JSON.stringify(doc), doc.createdAt, t,
+       doc.authorId ?? this.localId, doc.origin ?? "local"],
     );
     return doc;
   }
@@ -232,6 +273,7 @@ export class ResearchStore {
       id: r.id, verseKey: r.verse_key, wordPosition: r.word_position, kind: r.kind,
       text: r.text, answer: r.answer ?? "", resolved: !!r.resolved,
       lemma: r.lemma ?? null, root: r.root ?? null, source: r.source ?? "me",
+      authorId: r.author_id ?? null, origin: r.origin ?? "local",
       createdAt: r.created_at, updatedAt: r.updated_at,
     };
   }
@@ -249,14 +291,15 @@ export class ResearchStore {
     doc = { ...doc, updatedAt: t };
     doc.createdAt ??= t;
     this.db.run(
-      `INSERT INTO notes (id, verse_key, word_position, kind, text, answer, resolved, lemma, root, source, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+      `INSERT INTO notes (id, verse_key, word_position, kind, text, answer, resolved, lemma, root, source, created_at, updated_at, author_id, origin)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET verse_key=excluded.verse_key, word_position=excluded.word_position,
          kind=excluded.kind, text=excluded.text, answer=excluded.answer, resolved=excluded.resolved,
          lemma=excluded.lemma, root=excluded.root, updated_at=excluded.updated_at`,
       [doc.id, doc.verseKey, doc.wordPosition ?? null, doc.kind ?? "note", doc.text ?? "",
        doc.answer ?? "", doc.resolved ? 1 : 0, doc.lemma ?? null, doc.root ?? null,
-       doc.source === "ai" ? "ai" : "me", doc.createdAt, t],
+       doc.source === "ai" ? "ai" : "me", doc.createdAt, t,
+       doc.authorId ?? this.localId, doc.origin ?? "local"],
     );
     return doc;
   }
@@ -286,9 +329,9 @@ export class ResearchStore {
       return { root, meaning: "", updatedAt: t };
     }
     this.db.run(
-      `INSERT INTO user_root_meanings (root, meaning, updated_at) VALUES (?,?,?)
+      `INSERT INTO user_root_meanings (root, meaning, updated_at, author_id, origin) VALUES (?,?,?,?,?)
        ON CONFLICT(root) DO UPDATE SET meaning=excluded.meaning, updated_at=excluded.updated_at`,
-      [root, text, t],
+      [root, text, t, this.localId, "local"],
     );
     return { root, meaning: text, updatedAt: t };
   }
@@ -325,9 +368,9 @@ export class ResearchStore {
     const t = now();
     const id = doc.id;
     this.db.run(
-      `INSERT INTO motifs (id, name, note, created_at, updated_at) VALUES (?,?,?,?,?)
+      `INSERT INTO motifs (id, name, note, created_at, updated_at, author_id, origin) VALUES (?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET name=excluded.name, note=excluded.note, updated_at=excluded.updated_at`,
-      [id, doc.name ?? "", doc.note ?? "", doc.createdAt ?? t, t],
+      [id, doc.name ?? "", doc.note ?? "", doc.createdAt ?? t, t, doc.authorId ?? this.localId, doc.origin ?? "local"],
     );
     return { id, name: doc.name ?? "", note: doc.note ?? "", roots: this.motifRoots(id), updatedAt: t };
   }
@@ -379,9 +422,9 @@ export class ResearchStore {
   saveCompareSet(doc: Doc): Doc {
     const t = now();
     this.db.run(
-      `INSERT INTO compare_sets (id, title, created_at, updated_at) VALUES (?,?,?,?)
+      `INSERT INTO compare_sets (id, title, created_at, updated_at, author_id, origin) VALUES (?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at`,
-      [doc.id, doc.title ?? "", doc.createdAt ?? t, t],
+      [doc.id, doc.title ?? "", doc.createdAt ?? t, t, doc.authorId ?? this.localId, doc.origin ?? "local"],
     );
     return this.getCompareSet(doc.id)!;
   }
@@ -445,6 +488,7 @@ export class ResearchStore {
       scope: r.scope ?? "lemma", parentId: r.parent_id ?? null,
       label: r.label ?? "", meaning: r.meaning ?? "",
       primary: !!r.is_primary, source: r.source ?? "me",
+      authorId: r.author_id ?? null, origin: r.origin ?? "local",
       createdAt: r.created_at, updatedAt: r.updated_at,
     };
   }
@@ -511,12 +555,13 @@ export class ResearchStore {
       : this.db.scalar<number>("SELECT COUNT(*) FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND lemma=?", [lemma]) ?? 0;
     const primary = doc.primary ?? existing?.primary ?? had === 0;
     this.db.run(
-      `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, source, created_at, updated_at)
-       VALUES (?,?,?,?,NULL,?,?,?,?,?,?)
+      `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, source, created_at, updated_at, author_id, origin)
+       VALUES (?,?,?,?,NULL,?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET root=excluded.root, lemma=excluded.lemma, scope=excluded.scope,
          label=excluded.label, meaning=excluded.meaning, is_primary=excluded.is_primary, updated_at=excluded.updated_at`,
       [doc.id, root, lemma, scope, doc.label ?? "", doc.meaning ?? "", primary ? 1 : 0,
-       doc.source === "ai" ? "ai" : existing?.source ?? "me", existing?.createdAt ?? t, t],
+       doc.source === "ai" ? "ai" : existing?.source ?? "me", existing?.createdAt ?? t, t,
+       doc.authorId ?? this.localId, doc.origin ?? "local"],
     );
     if (primary) { if (scope === "root" && root) this.clearRootPrimary(root, doc.id); else if (lemma) this.clearLemmaPrimary(lemma, doc.id); }
     return this.getIndication(doc.id)!;
@@ -530,11 +575,12 @@ export class ResearchStore {
     const existing = this.refinementFor(doc.parentId, doc.lemma);
     const id = existing?.id ?? doc.id;
     this.db.run(
-      `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, source, created_at, updated_at)
-       VALUES (?,?,?, 'lemma', ?, ?, ?, 0, ?, ?, ?)
+      `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, source, created_at, updated_at, author_id, origin)
+       VALUES (?,?,?, 'lemma', ?, ?, ?, 0, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET label=excluded.label, meaning=excluded.meaning, updated_at=excluded.updated_at`,
       [id, parent.root, doc.lemma, doc.parentId, doc.label ?? "", doc.meaning ?? "",
-       doc.source === "ai" ? "ai" : existing?.source ?? "me", existing?.createdAt ?? t, t],
+       doc.source === "ai" ? "ai" : existing?.source ?? "me", existing?.createdAt ?? t, t,
+       doc.authorId ?? this.localId, doc.origin ?? "local"],
     );
     return this.getIndication(id);
   }
