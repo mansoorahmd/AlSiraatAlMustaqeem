@@ -37,6 +37,11 @@ async function srvDelete(path: string): Promise<void> {
 
 export interface BackupResult { path: string; bytes: number; at: number }
 
+/** The reader's account-independent local identity (minted on first run). */
+export async function fetchIdentity(): Promise<{ localId: string }> {
+  return srvGet<{ localId: string }>("/identity");
+}
+
 /**
  * Back up research.db — the one irreplaceable file. On the desktop we ask the native
  * shell for a save location (a real folder the user picks); on the web build we let the

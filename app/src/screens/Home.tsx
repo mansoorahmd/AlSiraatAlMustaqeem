@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
-import { archive, fetchFormStatus, backupResearch, type BackupResult } from "../persistence/db";
+import { archive, fetchFormStatus, backupResearch, fetchIdentity, type BackupResult } from "../persistence/db";
 import {
   normalizeCase, createSubjectCase, openOrCreateRootCase, openOrCreateAyahCase,
 } from "../cases/ops";
@@ -58,6 +58,7 @@ export function Home() {
   const trails = useAsync(() => archive.trails.all(), []);
   const notes = useAsync(() => archive.notes.all(), []);
   const forms = useAsync(() => fetchFormStatus(), []);
+  const identity = useAsync(() => fetchIdentity(), []);
 
   const openCases = (cases.data ?? [])
     .map(normalizeCase)
@@ -288,6 +289,11 @@ export function Home() {
             </p>
           )}
           {backupErr && <p className="home-empty">Couldn’t back up: {backupErr}</p>}
+          {identity.data && (
+            <p className="home-empty" title={identity.data.localId}>
+              Local identity: <code>{identity.data.localId.slice(0, 8)}…</code> · not yet linked to an account
+            </p>
+          )}
         </section>
       </div>
     </div>
