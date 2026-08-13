@@ -33,6 +33,9 @@ mcp/node_modules/
 electron/build/
 dist-desktop/
 
+# research backups (copies of research.db — personal data, same reason it isn't tracked)
+backups/
+
 # corpus signing — the maintainer's PRIVATE key must never be committed
 # (the public key corpus/trusted-key.pub.pem is committed and trusted by clients)
 corpus/*.priv.pem
