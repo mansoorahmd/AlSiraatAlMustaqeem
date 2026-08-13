@@ -67,13 +67,7 @@ by magic link. An uninvited email can request a link but no account will ever ex
 ## Running it
 
 ```bash
-# NOTE: install with --legacy-peer-deps. better-auth declares an OPTIONAL peer on
-# @tanstack/react-start, which itself wants a vite version; we never use that integration,
-# but npm still fails the whole workspace install trying to reconcile it. Upgrading vite
-# (the app is on 8) does NOT avoid this — npm hoists the newest vite satisfying the optional
-# peer and then objects to the pin. If you'd rather not type the flag every time, put
-# `legacy-peer-deps=true` in a root .npmrc.
-npm install --legacy-peer-deps
+npm install                      # plain install; no flags needed
 
 createdb researchgate            # or: psql -U postgres -c 'CREATE DATABASE researchgate'
 npm run remote:migrate           # → applied: 0001_init.sql, 0002_auth.sql
@@ -103,3 +97,20 @@ curl -X POST localhost:8100/invites/redeem \
 
 Tests use **PGlite** (Postgres compiled to WASM, in-process) — no server needed:
 `npm test -w @alsiraat/remote`.
+
+### If `npm install` ever reports ERESOLVE about `@tanstack/react-start` / `vite`
+
+`better-auth` declares `@tanstack/react-start` as an **optional** peer (a framework
+integration we don't use), and that package declares a peer on `vite`. npm normally skips
+optional peers entirely, so a clean install is fine. But if that package ever ends up
+physically in `node_modules` — typically from an interrupted or `--no-save` install — npm must
+then satisfy *its* peers, and the vite range collides with the app's pin.
+
+The fix is to clear the stale tree, not to loosen peer checking:
+
+```bash
+rm -rf node_modules package-lock.json && npm install
+```
+
+Reach for `--legacy-peer-deps` only as a last resort: it disables peer checking for the whole
+workspace, so a genuine mismatch elsewhere would pass silently.
