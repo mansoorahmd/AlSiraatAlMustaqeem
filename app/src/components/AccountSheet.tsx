@@ -180,6 +180,13 @@ export function AccountSheet() {
                 <button className="linkish" onClick={() => setShowRedeem(true)}>Create your account</button></>
             )}
           </p>
+
+          {!showRedeem && (
+            <p className="acct-hint">
+              Forgotten your password? There’s no reset email yet — ask a maintainer to set a new
+              one for you.
+            </p>
+          )}
         </>
       )}
 

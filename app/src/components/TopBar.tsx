@@ -56,7 +56,8 @@ export function TopBar() {
         title="MQ Research Gate — home"
         onClick={() => dispatch({ type: "setTab", tab: "home" })}
       >
-        <span className="brand-mark" aria-hidden>ق</span>
+        {/* PLACEHOLDER mark — a neutral monogram until a real logo exists. */}
+        <span className="brand-mark" aria-hidden>MQ</span>
         <span className="brand-name">MQ Research Gate</span>
       </button>
 

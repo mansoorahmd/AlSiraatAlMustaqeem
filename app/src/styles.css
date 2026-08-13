@@ -54,10 +54,11 @@ a { color: var(--lapis); }
   border-radius: 6px; cursor: pointer; user-select: none;
 }
 .brand:hover { background: var(--paper); }
+/* Placeholder monogram — swap for a real logo (an <img>/inline SVG) when there is one. */
 .brand-mark {
   width: 1.6rem; height: 1.6rem; border-radius: 6px; display: grid; place-items: center;
-  background: var(--lapis); color: #fff; font-family: var(--font-arabic-ui);
-  font-size: 1.05rem; line-height: 1;
+  background: var(--lapis); color: #fff;
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.02em; line-height: 1;
 }
 .brand-name { font-size: 1rem; font-weight: 600; letter-spacing: 0.01em; color: var(--ink); }
 

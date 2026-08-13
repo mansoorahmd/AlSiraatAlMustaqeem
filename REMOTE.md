@@ -75,7 +75,9 @@ the remote on `localhost:8100` — otherwise the browser refuses to send the `Sa
 cookie and the app can never appear signed in.
 
 **Password reset needs an email transport** (Better Auth's `sendResetPassword`), so for now a
-forgotten password means a maintainer intervenes. Worth wiring up before the group grows.
+forgotten password means a maintainer runs `set-password` (above). It hashes with Better Auth's
+own hasher via `auth.$context` and upserts the `account` row, so sign-in accepts it. Worth wiring
+a real reset email before the group grows.
 
 ## Routes
 
@@ -112,6 +114,10 @@ npm run smoke -w @alsiraat/remote
 
 # the first maintainer can't be invited — create one out of band:
 npm run bootstrap -w @alsiraat/remote -- you@example.org "Your Name"
+
+# bootstrap creates the account with NO password, so give it one (also how a maintainer
+# resets a forgotten password, since no reset email is configured):
+npm run set-password -w @alsiraat/remote -- you@example.org "a good long password"
 
 npm run remote:dev               # http://localhost:8100/health
 ```
