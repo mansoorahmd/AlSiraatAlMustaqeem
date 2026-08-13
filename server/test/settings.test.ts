@@ -27,7 +27,7 @@ beforeAll(async () => {
   app = createApp(createState());
 });
 
-const get = (k: string) => app.request(`/api/v1/research/settings/${k}`).then((r) => r.json());
+const get = async (k: string) => (await app.request(`/api/v1/research/settings/${k}`)).json();
 const put = (k: string, value: unknown) =>
   app.request(`/api/v1/research/settings/${k}`, {
     method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ value }),
