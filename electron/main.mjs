@@ -121,12 +121,20 @@ function createWindow(port) {
   win.loadURL(`http://127.0.0.1:${port}/`);
 }
 
-// Sign-in must happen INSIDE the app, or the session cookie lands in the system browser and
-// the app stays signed out. We open a small child window on the remote's origin; it shares this
-// app's session (same partition), so once the magic link is verified there, the cookie is ours.
-// The window closes itself when the remote reports the session is established.
+// Sign-in must happen INSIDE the app, or the session cookie lands in the system browser and the
+// app stays signed out. The renderer passes the magic-link URL the reader received (the token
+// comes by email, so the app can't construct it); we load it in a child window that shares this
+// app's session, so verifying there gives US the cookie.
+//
+// Resolves { ok: true } only if the remote actually redirected to /signed-in — a window the user
+// simply closes, or a rejected/expired token, resolves { ok: false } so the UI can say so.
 ipcMain.handle("auth:open-sign-in", async (_e, url) => {
-  const remote = new URL(url);
+  let target;
+  try { target = new URL(url); } catch { throw new Error("not a valid URL"); }
+  if (target.protocol !== "http:" && target.protocol !== "https:") throw new Error("unsupported URL scheme");
+  // only ever load a verify link, never an arbitrary page handed to us
+  if (!target.pathname.startsWith("/api/auth/")) throw new Error("that is not a sign-in link");
+
   const win = new BrowserWindow({
     width: 520, height: 640,
     title: "Sign in — MQ Research Gate",
@@ -134,19 +142,23 @@ ipcMain.handle("auth:open-sign-in", async (_e, url) => {
     parent: BrowserWindow.getFocusedWindow() ?? undefined,
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
+  win.setMenuBarVisibility(false);
   // keep it on the remote's origin; anything else opens in the real browser
   win.webContents.setWindowOpenHandler(({ url: u }) => {
-    if (new URL(u).origin === remote.origin) return { action: "allow" };
+    if (new URL(u).origin === target.origin) return { action: "allow" };
     shell.openExternal(u);
     return { action: "deny" };
   });
-  await win.loadURL(url);
+
   return new Promise((resolve) => {
-    // the callbackURL we ask for is /signed-in; reaching it means the cookie is set
+    let verified = false;
+    const settle = () => { if (!win.isDestroyed()) win.close(); };
+    // the callbackURL we requested is /signed-in; reaching it means the cookie is set
     win.webContents.on("did-navigate", (_ev, to) => {
-      if (to.startsWith(`${remote.origin}/signed-in`)) { win.close(); resolve({ ok: true }); }
+      if (to.startsWith(`${target.origin}/signed-in`)) { verified = true; setTimeout(settle, 600); }
     });
-    win.on("closed", () => resolve({ ok: true }));
+    win.on("closed", () => resolve({ ok: verified }));
+    win.loadURL(url).catch(() => settle());
   });
 });
 

@@ -21,6 +21,8 @@ export function AccountSheet() {
   // sign-in
   const [email, setEmail] = useState("");
   const [linkSent, setLinkSent] = useState(false);
+  const [pasteUrl, setPasteUrl] = useState("");
+  const isDesktop = !!desktop()?.openSignIn;
   // invite redemption
   const [showRedeem, setShowRedeem] = useState(false);
   const [code, setCode] = useState("");
@@ -57,9 +59,25 @@ export function AccountSheet() {
   const doSignIn = () => guard(async () => {
     await remote.signIn(email.trim());
     setLinkSent(true);
-    // desktop: open the sign-in page in an in-app window so the cookie lands in the app's
-    // own session (a link opened in the system browser would sign in the BROWSER, not us)
-    await desktop()?.openSignIn?.(`${remote.url}/signed-in`).catch(() => {});
+  });
+
+  /**
+   * Desktop only. The magic-link token arrives by email, so the app can't construct the
+   * verify URL itself — the reader pastes the link they received and we open it in an in-app
+   * window, which shares this app's session. (Clicking the link in a mail client opens the
+   * SYSTEM browser, which would sign that browser in and leave the app signed out.)
+   */
+  const doCompleteSignIn = () => guard(async () => {
+    const url = pasteUrl.trim();
+    if (!url.startsWith(remote.url)) {
+      throw new Error(`that link doesn’t point at ${remote.url} — paste the whole sign-in link`);
+    }
+    const { ok } = await desktop()!.openSignIn!(url);
+    if (!ok) {
+      throw new Error("that link wasn’t accepted — it may be expired or already used; request a new one");
+    }
+    setPasteUrl(""); setLinkSent(false);
+    await refresh();               // the window verified; pick up the new session
   });
 
   const doRedeem = () => guard(async () => {
@@ -129,10 +147,34 @@ export function AccountSheet() {
             </button>
           </div>
           {linkSent && (
-            <p className="home-empty">
-              Link sent to <strong>{email}</strong>. Open it to finish signing in, then
-              <button className="ctl acct-inline" onClick={() => void refresh()}>refresh</button>.
-            </p>
+            <div className="acct-block">
+              <p className="home-empty">
+                If <strong>{email}</strong> has an account, a sign-in link is on its way.
+                {" "}(Registration is invite-only, so no link is sent for an address that hasn’t
+                been invited — for privacy we can’t say which.)
+              </p>
+              {isDesktop ? (
+                <>
+                  <label className="acct-label" htmlFor="acct-link">Paste the sign-in link</label>
+                  <input
+                    id="acct-link" className="board-input" placeholder={`${remote.url}/api/auth/magic-link/verify?...`}
+                    value={pasteUrl} onChange={(e) => setPasteUrl(e.target.value)}
+                  />
+                  <p className="home-empty">
+                    The desktop app needs the link itself: opening it from your mail client would
+                    sign in your <em>browser</em> instead of the app.
+                  </p>
+                  <button className="ctl" disabled={busy || !pasteUrl.trim()} onClick={doCompleteSignIn}>
+                    {busy ? "Signing in…" : "Finish signing in"}
+                  </button>
+                </>
+              ) : (
+                <p className="home-empty">
+                  Open the link in this browser, then
+                  <button className="ctl acct-inline" onClick={() => void refresh()}>refresh</button>.
+                </p>
+              )}
+            </div>
           )}
 
           {showRedeem && (

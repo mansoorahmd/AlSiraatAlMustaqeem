@@ -100,5 +100,9 @@ export const remote = {
 };
 
 /** Desktop bridge, when running inside Electron. */
-export const desktop = (): { openSignIn?(url: string): Promise<void> } | undefined =>
-  (window as unknown as { desktop?: { openSignIn?(url: string): Promise<void> } }).desktop;
+interface DesktopBridge {
+  /** Loads a magic-link verify URL in an in-app window. `ok` is false if it wasn't verified. */
+  openSignIn?(url: string): Promise<{ ok: boolean }>;
+}
+export const desktop = (): DesktopBridge | undefined =>
+  (window as unknown as { desktop?: DesktopBridge }).desktop;
