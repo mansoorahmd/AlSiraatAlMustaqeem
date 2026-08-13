@@ -10,6 +10,7 @@
     "start": "cross-env NODE_NO_WARNINGS=1 tsx src/server.ts",
     "migrate": "cross-env NODE_NO_WARNINGS=1 tsx src/migrate-cli.ts",
     "bootstrap": "cross-env NODE_NO_WARNINGS=1 tsx src/bootstrap-cli.ts",
+    "smoke": "cross-env NODE_NO_WARNINGS=1 tsx src/smoke-cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "cross-env NODE_NO_WARNINGS=1 vitest run"
   },
