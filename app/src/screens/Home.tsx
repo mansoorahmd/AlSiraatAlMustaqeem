@@ -238,6 +238,7 @@ export function Home() {
                     <span className="home-row-meta">{n.verseKey}</span>
                   </button>
                   <ShareButton
+                    localRef={n.id}
                     kind="question"
                     subjectKind="ayah"
                     subjectValue={n.verseKey}

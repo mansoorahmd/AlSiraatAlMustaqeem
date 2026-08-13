@@ -133,18 +133,23 @@ CREATE TABLE IF NOT EXISTS derived_redactions (
   PRIMARY KEY (target_kind, target_id, target_version)
 );
 
--- OUTBOUND queue: my submissions and where they stand. Drop-safe because the underlying work
--- lives in my own tables — losing the queue costs a re-submit, not data.
+-- OUTBOUND ledger: which of my local records I've offered upstream, and with what content.
+-- Drop-safe because the underlying work lives in my own tables — losing this costs a
+-- re-submit, not data.
+--
+-- Keyed by local_ref (not submission id), because its job is to answer "have I shared THIS
+-- record, and has it changed since?" — which is what lets a re-submission chain via
+-- supersedes instead of landing upstream as an orphaned duplicate. The frozen payload and
+-- status live on the remote; keeping a second copy here would just drift.
 CREATE TABLE IF NOT EXISTS derived_submissions (
-  id             TEXT PRIMARY KEY,            -- content-addressed submission id
-  target_kind    TEXT NOT NULL,              -- 'additive' | 'competing' | 'document'
-  status         TEXT NOT NULL DEFAULT 'draft', -- draft|queued|submitted|approved|objected|withdrawn
-  supersedes     TEXT,                        -- previous submission id (re-submission chain)
-  payload_json   TEXT NOT NULL,              -- FROZEN snapshot at submit time
-  created_at     INTEGER NOT NULL,
-  updated_at     INTEGER NOT NULL,
-  schema_version INTEGER NOT NULL
+  local_ref      TEXT PRIMARY KEY,            -- the local record (note/question/…) id
+  submission_id  TEXT NOT NULL,               -- sub_… the remote returned (chain head)
+  content_hash   TEXT NOT NULL,               -- hash of the payload AS SUBMITTED
+  kind           TEXT NOT NULL DEFAULT '',
+  status         TEXT NOT NULL DEFAULT 'submitted',
+  submitted_at   INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS idx_derived_submissions_sub ON derived_submissions(submission_id);
 
 -- per-stream pull cursor: the last seq we've pulled for each remote stream
 CREATE TABLE IF NOT EXISTS derived_sync_state (

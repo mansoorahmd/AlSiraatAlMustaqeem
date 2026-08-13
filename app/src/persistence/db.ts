@@ -42,6 +42,56 @@ export async function fetchIdentity(): Promise<{ localId: string }> {
   return srvGet<{ localId: string }>("/identity");
 }
 
+// ---- outbound submission ledger ------------------------------------------------
+
+export interface SubmissionRecord {
+  localRef: string;
+  submissionId: string;
+  contentHash: string;
+  kind: string;
+  status: string;
+  submittedAt: number;
+}
+
+/**
+ * Stable hash of what we submitted, so we can tell "unchanged" from "edited since sharing".
+ * FNV-1a over canonical JSON — this only needs to detect change, not resist an adversary, and
+ * being synchronous keeps the button's state simple (crypto.subtle is async).
+ */
+export function contentHash(value: unknown): string {
+  const sorted = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(sorted);
+    if (v && typeof v === "object") {
+      const o: Record<string, unknown> = {};
+      for (const k of Object.keys(v as Record<string, unknown>).sort()) o[k] = sorted((v as any)[k]);
+      return o;
+    }
+    return v;
+  };
+  const s = JSON.stringify(sorted(value));
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(36);
+}
+
+export const submissionLog = {
+  /** What was submitted for this local record, or null. Resilient: null when unavailable. */
+  async get(localRef: string): Promise<SubmissionRecord | null> {
+    try {
+      return await srvGet<SubmissionRecord | null>(`/submission-log/${encodeURIComponent(localRef)}`);
+    } catch { return null; }
+  },
+  all(): Promise<SubmissionRecord[]> {
+    return srvGet<SubmissionRecord[]>("/submission-log");
+  },
+  record(localRef: string, doc: { submissionId: string; contentHash: string; kind?: string }): Promise<SubmissionRecord> {
+    return srvPut<SubmissionRecord>(`/submission-log/${encodeURIComponent(localRef)}`, doc);
+  },
+};
+
 /**
  * Back up research.db — the one irreplaceable file. On the desktop we ask the native
  * shell for a save location (a real folder the user picks); on the web build we let the

@@ -104,6 +104,22 @@ CREATE TABLE IF NOT EXISTS compare_items (
     UNIQUE (set_id, kind, ref)
 );
 CREATE INDEX IF NOT EXISTS idx_compare_items_set ON compare_items(set_id);
+
+-- Outbound submission ledger (SHARED_RESEARCH_SCHEMA.md section 2, derived_submissions): what
+-- this reader has offered upstream, so the app can tell "already shared" from "changed since I
+-- shared it" and chain a re-submission via supersedes instead of orphaning a duplicate.
+-- Drop-safe: the underlying work lives in the reader's own tables, so losing this costs a
+-- re-submit, not data. local_ref + content_hash are additions to the frozen shape — they map
+-- a submission back to the local record it came from.
+CREATE TABLE IF NOT EXISTS derived_submissions (
+    local_ref TEXT PRIMARY KEY,          -- the local record's id (note/question/…)
+    submission_id TEXT NOT NULL,         -- sub_… returned by the remote
+    content_hash TEXT NOT NULL,          -- hash of the payload as submitted
+    kind TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'submitted',
+    submitted_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_derived_submissions_sub ON derived_submissions(submission_id);
 `;
 
 const NOTE_MIGRATIONS: [string, string][] = [
@@ -631,6 +647,44 @@ export class ResearchStore {
       .map((s) => ({ lemma: s.lemma, text: s.label || s.meaning }))
       .filter((x) => x.text);
     return { roots, refinements, lemmas };
+  }
+
+  // ---- outbound submission ledger (what I've offered upstream) ------------------
+  /** What was submitted for this local record, if anything. */
+  getSubmissionFor(localRef: string): Doc | undefined {
+    const r = this.db.one<{
+      local_ref: string; submission_id: string; content_hash: string;
+      kind: string; status: string; submitted_at: number;
+    }>("SELECT * FROM derived_submissions WHERE local_ref = ?", [localRef]);
+    return r ? {
+      localRef: r.local_ref, submissionId: r.submission_id, contentHash: r.content_hash,
+      kind: r.kind, status: r.status, submittedAt: r.submitted_at,
+    } : undefined;
+  }
+
+  listSubmissionLog(): Doc[] {
+    return this.db
+      .query<{ local_ref: string; submission_id: string; content_hash: string; kind: string; status: string; submitted_at: number }>(
+        "SELECT * FROM derived_submissions ORDER BY submitted_at DESC")
+      .map((r) => ({
+        localRef: r.local_ref, submissionId: r.submission_id, contentHash: r.content_hash,
+        kind: r.kind, status: r.status, submittedAt: r.submitted_at,
+      }));
+  }
+
+  /** Record (or replace) what was submitted for a local record. */
+  recordSubmission(doc: Doc): Doc {
+    const t = now();
+    this.db.run(
+      `INSERT INTO derived_submissions (local_ref, submission_id, content_hash, kind, status, submitted_at)
+       VALUES (?,?,?,?,?,?)
+       ON CONFLICT(local_ref) DO UPDATE SET submission_id=excluded.submission_id,
+         content_hash=excluded.content_hash, kind=excluded.kind,
+         status=excluded.status, submitted_at=excluded.submitted_at`,
+      [doc.localRef, doc.submissionId, doc.contentHash, doc.kind ?? "",
+       doc.status ?? "submitted", t],
+    );
+    return this.getSubmissionFor(doc.localRef)!;
   }
 
   // ---- settings: device-independent key -> JSON value --------------------------

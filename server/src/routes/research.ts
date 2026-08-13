@@ -184,6 +184,21 @@ export function researchRoutes(state: AppState): Hono {
     return c.json({ deleted: c.req.param("itemId") });
   });
 
+  // outbound submission ledger: which local records have been offered upstream, and with
+  // what content — so the app can show "shared" vs "changed since shared" and chain a
+  // re-submission via `supersedes` rather than creating an orphaned duplicate.
+  r.get("/research/submission-log", (c) => c.json(s.listSubmissionLog()));
+  r.get("/research/submission-log/:localRef", (c) =>
+    c.json(s.getSubmissionFor(c.req.param("localRef")) ?? null));
+  r.put("/research/submission-log/:localRef", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as
+      { submissionId?: string; contentHash?: string; kind?: string; status?: string };
+    if (!body.submissionId || !body.contentHash) {
+      return c.json({ detail: "submissionId and contentHash are required" }, 422);
+    }
+    return c.json(s.recordSubmission({ localRef: c.req.param("localRef"), ...body }));
+  });
+
   // settings — device-independent key/value UI prefs (reading prefs, active comparison)
   r.get("/research/settings/:key", (c) => c.json({ value: s.getSetting(c.req.param("key")) ?? null }));
   r.put("/research/settings/:key", async (c) => {

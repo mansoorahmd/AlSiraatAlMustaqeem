@@ -73,6 +73,15 @@ What's sent is a **frozen snapshot**: editing the note afterwards doesn't change
 submitted. Submissions are content-addressed, so sending the identical thing twice returns the
 same submission rather than duplicating it. Items over 1 MB are rejected — split them.
 
+The control has three states, remembered in `research.db` (`derived_submissions`) so they survive
+a restart:
+
+| | |
+|---|---|
+| **↑** | never shared — send it |
+| **Shared** | shared, unchanged since |
+| **Update** | edited since you shared — re-sharing chains to the previous submission via `supersedes`, so a moderator sees a replacement rather than two unrelated items |
+
 ### Why passwords, not magic links
 
 Magic link is still configured and works, but it needs an email transport to be useful, and on

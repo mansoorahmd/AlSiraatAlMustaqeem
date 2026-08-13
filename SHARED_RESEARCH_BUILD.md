@@ -133,6 +133,13 @@ Smallest end-to-end loop; cannot conflict, so no claim machinery yet.
 - [x] **4.3 Size cap** — ✅ >1 MB per item rejected with "split this submission" (413).  ⇢ 4.1
   *AC:* create a note → submit → it appears as an attributed remote row ✅; over-cap rejected ✅.
   `submissions.test.ts` (14 tests). 45/45 remote.
+- [x] **4.4 Local outbound ledger** — ✅ *(gap found in use: editing a shared record and
+  re-sharing produced an orphaned duplicate, because the client never passed `supersedes` — it
+  had no memory of what it had sent.)* `derived_submissions` in research.db now keys on
+  `local_ref` and stores the `content_hash` as submitted, so the share control has three honest
+  states that survive a restart: **↑** (never shared) · **Shared** (unchanged) · **Update**
+  (edited since — re-shares chained via `supersedes`). Routes `GET|PUT /research/submission-log`.
+  `submission-log.test.ts` (6 tests, incl. self-migration onto an older db). 120/120 server.
 
 ---
 
