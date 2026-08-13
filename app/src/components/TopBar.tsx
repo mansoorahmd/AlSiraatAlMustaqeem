@@ -50,10 +50,15 @@ export function TopBar() {
 
   return (
     <header className="topbar">
-      <div className="brand">
+      {/* the wordmark goes Home, as it does in every web app */}
+      <button
+        className="brand"
+        title="MQ Research Gate — home"
+        onClick={() => dispatch({ type: "setTab", tab: "home" })}
+      >
+        <span className="brand-mark" aria-hidden>ق</span>
         <span className="brand-name">MQ Research Gate</span>
-        <span className="brand-sub">The Investigation</span>
-      </div>
+      </button>
 
       <nav className="tabs" aria-label="Main">
         {PRIMARY.map((t) => (
@@ -104,15 +109,16 @@ export function TopBar() {
 
       <div className="spacer" />
 
-      {/* command palette trigger — jump to anything, or search */}
+      {/* Looks like the search field people expect, though it opens the palette.
+          A button, not an input — it never accepts typing in place. */}
       <button
-        className="ctl palette-btn"
+        className="searchbar"
         title="Search or jump to anything (⌘K)"
         onClick={() => window.dispatchEvent(new CustomEvent("open-palette"))}
       >
-        <span className="palette-ic" aria-hidden>⌕</span>
-        <span className="palette-hint">Jump or search</span>
-        <span className="palette-kbd">⌘K</span>
+        <span className="searchbar-ic" aria-hidden>⌕</span>
+        <span className="searchbar-text">Search āyāt, roots, cases…</span>
+        <kbd className="searchbar-kbd">⌘K</kbd>
       </button>
 
       {/* one place for everything awaiting the reader */}

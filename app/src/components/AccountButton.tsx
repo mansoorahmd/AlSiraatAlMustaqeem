@@ -9,11 +9,11 @@ import { remote, type Me } from "../api/remote";
 import { SideSheet } from "./SideSheet";
 import { AccountSheet } from "./AccountSheet";
 
-/** First name, else the part before @ — enough to recognise yourself at a glance. */
-function shortName(me: Me): string {
-  const name = me.displayName.trim();
-  if (name) return name.split(/\s+/)[0] ?? name;
-  return me.email.split("@")[0] ?? "account";
+/** Up to two initials — the conventional avatar fallback, same as the panel's. */
+function initials(me: Me): string {
+  const src = me.displayName.trim() || me.email;
+  const parts = src.split(/[\s@._-]+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
 export function AccountButton() {
@@ -28,14 +28,20 @@ export function AccountButton() {
 
   return (
     <>
-      <button
-        className={`ctl account-btn${me ? " signed-in" : ""}`}
-        title={me ? `${me.displayName || me.email} · ${me.role}` : "Sign in to the research community"}
-        onClick={() => setOpen(true)}
-      >
-        <span className="account-ic" aria-hidden>{me ? "◕" : "◌"}</span>
-        <span className="account-label">{me ? shortName(me) : "Sign in"}</span>
-      </button>
+      {/* Signed in → an avatar, as every app does. Signed out → a plain "Sign in" button,
+          which is what a visitor expects to look for. */}
+      {me ? (
+        <button
+          className="avatar-btn"
+          title={`${me.displayName || me.email} · ${me.role}`}
+          aria-label={`Account: ${me.displayName || me.email}`}
+          onClick={() => setOpen(true)}
+        >
+          <span aria-hidden>{initials(me)}</span>
+        </button>
+      ) : (
+        <button className="ctl" onClick={() => setOpen(true)}>Sign in</button>
+      )}
 
       <SideSheet
         open={open}
