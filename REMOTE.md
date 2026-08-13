@@ -67,9 +67,12 @@ by magic link. An uninvited email can request a link but no account will ever ex
 ## Running it
 
 ```bash
-# NOTE: install with --legacy-peer-deps. better-auth declares an optional peer on
-# @tanstack/react-start (which wants vite >=7) while the app pins vite ^5.4; we don't use
-# that integration, but npm fails the workspace install over it.
+# NOTE: install with --legacy-peer-deps. better-auth declares an OPTIONAL peer on
+# @tanstack/react-start, which itself wants a vite version; we never use that integration,
+# but npm still fails the whole workspace install trying to reconcile it. Upgrading vite
+# (the app is on 8) does NOT avoid this — npm hoists the newest vite satisfying the optional
+# peer and then objects to the pin. If you'd rather not type the flag every time, put
+# `legacy-peer-deps=true` in a root .npmrc.
 npm install --legacy-peer-deps
 
 createdb researchgate            # or: psql -U postgres -c 'CREATE DATABASE researchgate'
