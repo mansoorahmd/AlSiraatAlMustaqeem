@@ -81,18 +81,33 @@ npm run bootstrap -w @alsiraat/remote -- you@example.org "Your Name"
 npm run remote:dev               # http://localhost:8100/health
 ```
 
-Then, to exercise the flow end to end:
+Then, to exercise the flow end to end. Keep `remote:dev` running in one terminal (magic links
+are printed there) and run these in another.
+
+**Windows CMD** — one line each, double quotes, inner quotes escaped:
+
+```cmd
+:: 1. request a sign-in link; open the URL printed in the server terminal
+curl -X POST localhost:8100/api/auth/sign-in/magic-link -H "content-type: application/json" -d "{\"email\":\"you@example.org\"}"
+
+:: 2. confirm who you are (cookie jar from the browser, or -b/-c to persist one)
+curl localhost:8100/me -b cookies.txt
+
+:: 3. issue an invite (maintainer only)
+curl -X POST localhost:8100/invites -b cookies.txt -H "content-type: application/json" -d "{\"role\":\"researcher\"}"
+
+:: 4. the invitee redeems it — no auth needed, the code IS the credential
+curl -X POST localhost:8100/invites/redeem -H "content-type: application/json" -d "{\"code\":\"<code>\",\"email\":\"them@example.org\"}"
+```
+
+**bash / PowerShell 7+**:
 
 ```bash
-# 1. sign in as the maintainer — the link is printed in the server log; open it
 curl -X POST localhost:8100/api/auth/sign-in/magic-link \
   -H 'content-type: application/json' -d '{"email":"you@example.org"}'
-
-# 2. with the session cookie, issue an invite
+curl localhost:8100/me -b cookies.txt
 curl -X POST localhost:8100/invites -b cookies.txt \
   -H 'content-type: application/json' -d '{"role":"researcher"}'
-
-# 3. the invitee redeems it (no auth needed — the code is the credential)
 curl -X POST localhost:8100/invites/redeem \
   -H 'content-type: application/json' \
   -d '{"code":"<code>","email":"them@example.org","localId":"<their local_id>"}'
