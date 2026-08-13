@@ -76,13 +76,22 @@ No research schema, no auth — can run in parallel with Phase 3.
   service skeleton. Schema validated against real Postgres via **PGlite** (`migrations.test.ts`).
   Defaults to `postgres://postgres:researchgate@localhost:5432/researchgate`. (You run `createdb`
   + `npm run remote:migrate` on your box.)
-- [ ] **3.2 Better Auth** — magic-link sign-in + invite redemption; long-lived cached session
-  (sign in once, then offline indefinitely).  ⇢ 3.1  *(next step)*
+- [x] **3.2 Better Auth** — ✅ `src/auth.ts`: magic-link plugin, mapped onto our snake_case
+  `users`, year-long session refreshed weekly; `0002_auth.sql` adds session/account/verification.
+  Invite-only enforced twice: `disableSignUp: true` (Better Auth never creates a user) **and**
+  `redeemInvite()` as the only creation path, granting the role carried by the invite.
+  `src/invites.ts` + `bootstrap-cli.ts` (the first maintainer can't be invited).
+  `invites.test.ts` (10 tests: single-use, expiry, duplicate email, role-from-invite).  ⇢ 3.1
+  ⚠ The Better Auth *config* is unverified at runtime — the package wouldn't install in the
+  sandbox, so `auth.ts`/`session.ts` are written to the current docs but need your local run.
 - [x] **3.3 Role middleware** — ✅ `src/roles.ts`: ordered ladder + `requireRole(min)`
   (401/403/200), hand-rolled. `role-boundary.test.ts` (7 tests).  ⇢ 3.1
-- [ ] **3.4 Bind `local_id` → account** on first sign-in; stamp remote rows with `author_id`.  ⇢ 1.1, 3.2  *(next step)*
-  *AC:* invite → sign-in → session survives offline; role gate enforced and tested ✅; local work
-  authored before sign-in adopts the bound account.
+- [x] **3.4 Bind `local_id` → account** — ✅ `users.local_id`, bound at redemption
+  (`redeemInvite({ localId })`) or later via `POST /me/local-id` (`bindLocalId`); reported by
+  `GET /me`. Tested both paths.  ⇢ 1.1, 3.2
+  *AC:* invite → sign-in → session survives offline (year-long session ✅, sign-in flow pending
+  your local run); role gate enforced and tested ✅; local work authored before sign-in adopts the
+  bound account ✅.
 
 ---
 

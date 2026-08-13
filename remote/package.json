@@ -9,11 +9,13 @@
     "dev": "cross-env NODE_NO_WARNINGS=1 tsx watch src/server.ts",
     "start": "cross-env NODE_NO_WARNINGS=1 tsx src/server.ts",
     "migrate": "cross-env NODE_NO_WARNINGS=1 tsx src/migrate-cli.ts",
+    "bootstrap": "cross-env NODE_NO_WARNINGS=1 tsx src/bootstrap-cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "cross-env NODE_NO_WARNINGS=1 vitest run"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
+    "better-auth": "^1.4.0",
     "hono": "^4.6.14",
     "pg": "^8.13.1"
   },

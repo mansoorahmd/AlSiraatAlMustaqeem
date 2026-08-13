@@ -8,41 +8,94 @@ Backed by **Postgres** (where a structured, multi-writer, transactional store ea
 `SHARED_RESEARCH.md` §3). The corpus is *not* here; corrections ship as signed patch files
 (`CORPUS.md`).
 
-## Status — foundation (Phase 3, in progress)
-
-Built and tested:
+## What's built (Phase 3)
 
 - **Schema** — `migrations/0001_init.sql`: the full research-channel schema from
   `SHARED_RESEARCH_SCHEMA.md` §3 (users, invites, claims, claim_versions, global_forms, dissents,
   submissions, submission_items, reviews, redactions, sync_cursors), with role/kind CHECKs, `seq`
-  cursors, and referential integrity. Validated against real Postgres via PGlite.
+  cursors, and referential integrity. `0002_auth.sql` adds Better Auth's `session` / `account` /
+  `verification` tables and the identity columns on `users`. Validated against real Postgres.
 - **Migration runner** — `src/migrate.ts` (forward-only, tracked in `_migrations`, idempotent),
   CLI `src/migrate-cli.ts`.
 - **Role ladder + guard** — `src/roles.ts`: `reader < researcher < moderator < maintainer`,
   `requireRole(min)` Hono middleware (401 unauthenticated, 403 below the rung). Hand-rolled, not a
-  permissions library. Tested in `test/role-boundary.test.ts`.
-- **Service skeleton** — `src/app.ts` / `src/server.ts` (health for now).
+  permissions library.
+- **Authentication** — `src/auth.ts`: Better Auth with the **magic-link** plugin, mapped onto our
+  snake_case `users` table, year-long sessions (sign in once, then work offline).
+- **Invite-only registration** — `src/invites.ts`: issue / redeem / bind, single-use, expiring.
+- **Routes** — `src/app.ts` (below).
 
-Next (same phase): **Better Auth** — magic-link sign-in, the invite gate, and binding an account
-to the local `local_id` (so pre-account work stays attributed). See `SHARED_RESEARCH.md` §4 (Auth
-stack) and §11.
+### The division of labour
+
+Better Auth owns **authentication** — identity, sessions, magic-link tokens. Our own code owns
+**authorization** (`users.role`) and the domain link (`users.local_id`); those are never declared
+to Better Auth, and the session middleware reads the role straight from the `users` table. This is
+the "buy authentication, build authorization" decision (`SHARED_RESEARCH.md` §4).
+
+### How invite-only is enforced
+
+Two independent locks:
+
+1. `disableSignUp: true` — Better Auth will **never** create a user.
+2. The only code path that creates one is `redeemInvite()`, which requires a valid, unexpired,
+   unredeemed code and grants **the role carried by the invite** (never a role from the request).
+
+So the flow is: maintainer issues a code → invitee redeems it (account created) → invitee signs in
+by magic link. An uninvited email can request a link but no account will ever exist for it.
+
+## Routes
+
+| Route | Who |
+|---|---|
+| `/api/auth/*` | Better Auth (magic-link sign-in, session) |
+| `GET /health` | public |
+| `POST /invites` | maintainer |
+| `POST /invites/redeem` | public — the code *is* the credential |
+| `GET /me` | any signed-in user (id, role, bound localId) |
+| `POST /me/local-id` | any signed-in user (bind this device) |
 
 ## Configuration
 
-`DATABASE_URL` (default `postgres://postgres:researchgate@localhost:5432/researchgate`),
-`REMOTE_PORT` (default 8100).
+| Env | Default |
+|---|---|
+| `DATABASE_URL` | `postgres://postgres:researchgate@localhost:5432/researchgate` |
+| `REMOTE_PORT` / `REMOTE_BASE_URL` | `8100` / `http://localhost:8100` |
+| `AUTH_SECRET` | a dev placeholder — **set a real secret in any deployment** |
+| `TRUSTED_ORIGINS` | `http://localhost:5173,http://localhost:8000` |
+| `EMAIL_TRANSPORT` | `console` — magic links are printed to the server log (no SMTP in dev) |
 
 ## Running it
 
 ```bash
-# one-time: create the database (matches the default DATABASE_URL)
+# NOTE: install with --legacy-peer-deps. better-auth declares an optional peer on
+# @tanstack/react-start (which wants vite >=7) while the app pins vite ^5.4; we don't use
+# that integration, but npm fails the workspace install over it.
+npm install --legacy-peer-deps
+
 createdb researchgate            # or: psql -U postgres -c 'CREATE DATABASE researchgate'
+npm run remote:migrate           # → applied: 0001_init.sql, 0002_auth.sql
 
-# apply migrations
-npm run remote:migrate           # → applied: 0001_init.sql
+# the first maintainer can't be invited — create one out of band:
+npm run bootstrap -w @alsiraat/remote -- you@example.org "Your Name"
 
-# start the service
 npm run remote:dev               # http://localhost:8100/health
+```
+
+Then, to exercise the flow end to end:
+
+```bash
+# 1. sign in as the maintainer — the link is printed in the server log; open it
+curl -X POST localhost:8100/api/auth/sign-in/magic-link \
+  -H 'content-type: application/json' -d '{"email":"you@example.org"}'
+
+# 2. with the session cookie, issue an invite
+curl -X POST localhost:8100/invites -b cookies.txt \
+  -H 'content-type: application/json' -d '{"role":"researcher"}'
+
+# 3. the invitee redeems it (no auth needed — the code is the credential)
+curl -X POST localhost:8100/invites/redeem \
+  -H 'content-type: application/json' \
+  -d '{"code":"<code>","email":"them@example.org","localId":"<their local_id>"}'
 ```
 
 Tests use **PGlite** (Postgres compiled to WASM, in-process) — no server needed:
