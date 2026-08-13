@@ -20,6 +20,23 @@ export interface Me {
 export type Role = "reader" | "researcher" | "moderator" | "maintainer";
 export interface InviteOut { code: string; role: Role; expires_at: string | null }
 
+/** Kinds that can't conflict with anyone else's work — all that's submittable so far. */
+export type AdditiveKind = "note" | "question" | "evidence";
+export interface SubmissionItem {
+  kind: AdditiveKind;
+  subjectKind?: string | null;
+  subjectValue?: string | null;
+  payload: unknown;
+}
+export interface Submission {
+  id: string;
+  status: "submitted" | "approved" | "objected" | "withdrawn";
+  targetKind: string;
+  createdAt: string;
+  supersedes: string | null;
+  items: number;
+}
+
 export class RemoteError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
 }
@@ -128,6 +145,23 @@ export const remote = {
   /** Set your own display name — what other researchers see on your work. */
   setName(displayName: string): Promise<unknown> {
     return call("/me/name", { method: "POST", body: JSON.stringify({ displayName }) });
+  },
+
+  /**
+   * Offer work upstream for review. The payload is frozen at submit time, so editing the local
+   * record afterwards doesn't change what was submitted. Submitting the identical bundle twice
+   * is idempotent — it returns the same submission rather than creating a duplicate.
+   */
+  submit(items: SubmissionItem[], supersedes?: string): Promise<Submission> {
+    return call<Submission>("/submissions", {
+      method: "POST",
+      body: JSON.stringify({ items, supersedes: supersedes ?? null }),
+    });
+  },
+
+  /** Your outbox — everything you've sent and where it stands. */
+  submissions(): Promise<Submission[]> {
+    return call<Submission[]>("/submissions");
   },
 };
 

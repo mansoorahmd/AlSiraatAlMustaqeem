@@ -59,6 +59,20 @@ by magic link. An uninvited email can request a link but no account will ever ex
 If the remote isn't running the panel says so and everything else keeps working — the remote is
 optional by design.
 
+### Sharing your work (Phase 4)
+
+Home → *Open questions* → the **↑** button beside a question offers it to the community. It only
+appears if you're signed in as a researcher or above; a reader (or anyone signed out) never sees
+an action they can't use.
+
+Only **additive** kinds can be submitted so far — notes, questions, evidence āyāt — because they
+can't conflict with anyone else's work, so no review machinery is needed to accept them. Competing
+claims (form indications, root verdicts) are refused until Phase 5.
+
+What's sent is a **frozen snapshot**: editing the note afterwards doesn't change what you
+submitted. Submissions are content-addressed, so sending the identical thing twice returns the
+same submission rather than duplicating it. Items over 1 MB are rejected — split them.
+
 ### Why passwords, not magic links
 
 Magic link is still configured and works, but it needs an email transport to be useful, and on
@@ -90,6 +104,10 @@ a real reset email before the group grows.
 | `POST /invites/redeem` | public — the code *is* the credential |
 | `GET /me` | any signed-in user (id, role, bound localId) |
 | `POST /me/local-id` | any signed-in user (bind this device) |
+| `POST /me/name` | any signed-in user (display name) |
+| `POST /submissions` | researcher+ — offer work upstream |
+| `GET /submissions` | researcher+ — your outbox |
+| `GET /submissions/:id` | researcher+ |
 
 ## Configuration
 

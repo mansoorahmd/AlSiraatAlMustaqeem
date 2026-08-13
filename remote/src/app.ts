@@ -19,6 +19,9 @@ import {
   createInvite, bindLocalId, loadPrincipal, setDisplayName,
   validateInvite, emailTaken, finishRedeem, InviteError,
 } from "./invites.js";
+import {
+  createSubmission, listMine, getSubmission, SubmissionError, type SubmissionItemInput,
+} from "./submissions.js";
 
 export function createApp(): Hono<Env> {
   const app = new Hono<Env>();
@@ -77,6 +80,33 @@ export function createApp(): Hono<Env> {
     if (!localId) return c.json({ detail: "localId is required" }, 422);
     await bindLocalId(pgRunner, c.get("user")!.id, localId);
     return c.json({ ok: true });
+  });
+
+  // --- submissions: local research offered upstream (Phase 4, additive kinds only) ---
+  // Guarded at `researcher`: a reader may pull the group's work but not publish into it.
+  app.post("/submissions", requireRole("researcher"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as
+      { items?: SubmissionItemInput[]; supersedes?: string | null };
+    try {
+      const out = await createSubmission(pgRunner, {
+        authorId: c.get("user")!.id,
+        items: body.items ?? [],
+        supersedes: body.supersedes ?? null,
+      });
+      return c.json(out, 201);
+    } catch (e) {
+      if (e instanceof SubmissionError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+
+  app.get("/submissions", requireRole("researcher"), async (c) =>
+    c.json(await listMine(pgRunner, c.get("user")!.id)));
+
+  app.get("/submissions/:id", requireRole("researcher"), async (c) => {
+    const found = await getSubmission(pgRunner, c.req.param("id"));
+    if (!found) return c.json({ detail: "submission not found" }, 404);
+    return c.json(found);
   });
 
   app.post("/invites", requireRole("maintainer"), async (c) => {

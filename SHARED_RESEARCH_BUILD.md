@@ -121,12 +121,18 @@ invite flow via node-postgres, `local_id` binding, cleanup).
 
 Smallest end-to-end loop; cannot conflict, so no claim machinery yet.
 
-- [ ] **4.1 Submission snapshot model** — payload frozen at submit time, `supersedes` pointer,
-  `expect_version` on the write (so a moving local case can't corrupt a submission).  ⇢ 0.2, 3.4
-- [ ] **4.2 Submit additive kinds** — notes, published open questions, evidence āyāt; they land
-  upstream as new **attributed** rows.  ⇢ 4.1
-- [ ] **4.3 Size cap** — reject > **1 MB per item** with "split this submission."  ⇢ 4.1
-  *AC:* create a note → submit → it appears as an attributed remote row; over-cap is rejected.
+- [x] **4.1 Submission snapshot model** — ✅ `remote/src/submissions.ts`: payload frozen at submit
+  time, `supersedes` pointer (own submissions only), and the id is **content-addressed**
+  (`sub_` + base32 sha256 of author + items, `remote/src/ids.ts`) so re-submitting the identical
+  bundle is idempotent instead of duplicating — a stronger guarantee than `expect_version`, which
+  isn't needed while items are frozen snapshots rather than live reads.  ⇢ 0.2, 3.4
+- [x] **4.2 Submit additive kinds** — ✅ note / question / evidence land as attributed rows;
+  competing kinds are refused until Phase 5. Routes `POST|GET /submissions`, `GET /submissions/:id`,
+  guarded at **researcher** (a reader may pull but not publish). `ShareButton` on Home's open
+  questions — renders nothing unless you're signed in with permission.  ⇢ 4.1
+- [x] **4.3 Size cap** — ✅ >1 MB per item rejected with "split this submission" (413).  ⇢ 4.1
+  *AC:* create a note → submit → it appears as an attributed remote row ✅; over-cap rejected ✅.
+  `submissions.test.ts` (14 tests). 45/45 remote.
 
 ---
 

@@ -3259,3 +3259,10 @@ a { color: var(--lapis); }
   .searchbar-text, .searchbar-kbd { display: none; }
   .searchbar { border-radius: 6px; padding: 0.4rem 0.5rem; }
 }
+
+/* share-to-community affordance on a list row (Phase 4) */
+.home-row-wrap { display: flex; align-items: center; gap: 0.25rem; }
+.home-row-wrap .home-row { flex: 1; min-width: 0; }
+.share-btn { flex: 0 0 auto; }
+.share-done { flex: 0 0 auto; font-size: var(--fs-label); color: var(--ok);
+  padding-inline: 0.35rem; white-space: nowrap; }

@@ -13,6 +13,7 @@ import {
 import type { SubjectType } from "../persistence/types";
 import { useAppState, useAppDispatch } from "../state/store";
 import { Preferences } from "../components/Preferences";
+import { ShareButton } from "../components/ShareButton";
 
 const spaced = (r: string) => r.split("").join(" ");
 const vsort = (k: string) => {
@@ -227,7 +228,7 @@ export function Home() {
           ) : (
             <ul className="home-list">
               {openQuestions.slice(0, 6).map((n) => (
-                <li key={n.id}>
+                <li key={n.id} className="home-row-wrap">
                   <button
                     className="home-row"
                     onClick={() => dispatch({ type: "jumpToVerse", verseKey: n.verseKey, wordPosition: n.wordPosition })}
@@ -236,6 +237,13 @@ export function Home() {
                     <span className="home-row-main home-q-text">{n.text}</span>
                     <span className="home-row-meta">{n.verseKey}</span>
                   </button>
+                  <ShareButton
+                    kind="question"
+                    subjectKind="ayah"
+                    subjectValue={n.verseKey}
+                    payload={{ id: n.id, verseKey: n.verseKey, wordPosition: n.wordPosition, text: n.text }}
+                    label="Ask the community this question"
+                  />
                 </li>
               ))}
             </ul>

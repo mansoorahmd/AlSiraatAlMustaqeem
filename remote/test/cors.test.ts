@@ -29,7 +29,9 @@ const allow = async (path: string, origin = ORIGIN) =>
 
 describe.skipIf(!ready)("CORS covers the app-facing routes", () => {
   it("allows the app origin on /me, /invites and the auth endpoints", async () => {
-    for (const path of ["/me", "/invites", "/invites/redeem", "/api/auth/session", "/health"]) {
+    for (const path of [
+      "/me", "/invites", "/invites/redeem", "/submissions", "/api/auth/session", "/health",
+    ]) {
       expect(await allow(path), `missing CORS on ${path}`).toBe(ORIGIN);
     }
   });
