@@ -12,6 +12,7 @@ import {
 } from "../cases/ops";
 import type { SubjectType } from "../persistence/types";
 import { useAppState, useAppDispatch } from "../state/store";
+import { Preferences } from "../components/Preferences";
 
 const spaced = (r: string) => r.split("").join(" ");
 const vsort = (k: string) => {
@@ -59,6 +60,14 @@ export function Home() {
   const notes = useAsync(() => archive.notes.all(), []);
   const forms = useAsync(() => fetchFormStatus(), []);
   const identity = useAsync(() => fetchIdentity(), []);
+  // archive (local API) status — moved out of the top bar, kept quietly with Preferences
+  const health = useAsync(() => api.health(), []);
+  const archiveDot = health.loading ? "" : health.error ? "error" : "ok";
+  const archiveText = health.loading
+    ? "reaching the archive…"
+    : health.error
+      ? "archive unreachable"
+      : `archive open · v${health.data?.version ?? "?"}`;
 
   const openCases = (cases.data ?? [])
     .map(normalizeCase)
@@ -297,6 +306,16 @@ export function Home() {
         </section>
 
       </div>
+
+      {/* Reading preferences live here rather than in the top bar: they're set once in a while,
+          not per-action, so the chrome stays free for navigation. */}
+      <section className="home-card home-prefs">
+        <h2 className="home-card-title">Preferences</h2>
+        <Preferences />
+        <p className="home-status" title="local API status">
+          <span className={`dot ${archiveDot}`} /> {archiveText}
+        </p>
+      </section>
     </div>
   );
 }

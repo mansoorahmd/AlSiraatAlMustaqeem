@@ -3171,3 +3171,13 @@ a { color: var(--lapis); }
 .account-ic { width: 1.1rem; text-align: center; flex: 0 0 auto; color: var(--ink-soft); }
 .account-btn.signed-in .account-ic { color: var(--gold, #a8862f); }
 .account-label { max-width: 9ch; overflow: hidden; text-overflow: ellipsis; }
+
+/* Preferences card on Home — full width beneath the workbench grid. The rows reuse the
+   .settings-row layout from the old top-bar popover, so labels and controls stay aligned. */
+.home-prefs { margin-top: 1rem; }
+.home-prefs .prefs { display: flex; flex-direction: column; gap: 0.5rem; }
+.home-prefs .settings-row { display: flex; align-items: center; gap: 0.6rem; }
+.home-prefs .settings-label { flex: 0 0 7rem; font-size: var(--fs-small); color: var(--ink-soft); }
+.home-status { display: flex; align-items: center; gap: 0.4rem; margin: 0.9rem 0 0;
+  padding-top: 0.7rem; border-top: 1px solid var(--paper-edge);
+  font-size: var(--fs-small); color: var(--ink-soft); }
