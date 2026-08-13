@@ -22,6 +22,7 @@ export function AccountSheet() {
   const [email, setEmail] = useState("");
   const [linkSent, setLinkSent] = useState(false);
   const [pasteUrl, setPasteUrl] = useState("");
+  const [nameDraft, setNameDraft] = useState("");
   const isDesktop = !!desktop()?.openSignIn;
   // invite redemption
   const [showRedeem, setShowRedeem] = useState(false);
@@ -36,6 +37,7 @@ export function AccountSheet() {
     try {
       const who = await remote.me();
       setMe(who);
+      if (who) setNameDraft(who.displayName);
       setStatus(who ? "signed-in" : "signed-out");
     } catch (e) {
       if (e instanceof RemoteOffline) {
@@ -199,8 +201,24 @@ export function AccountSheet() {
       {status === "signed-in" && me && (
         <>
           <p className="home-lex">
-            Signed in · <strong>{me.role}</strong>
+            <strong>{me.displayName || me.email}</strong> · {me.role}
           </p>
+          {me.displayName && <p className="home-empty">{me.email}</p>}
+
+          <label className="acct-label" htmlFor="acct-name">
+            Display name — what other researchers see on your work
+          </label>
+          <div className="acct-acts">
+            <input
+              id="acct-name" className="board-input" placeholder="your name"
+              value={nameDraft} onChange={(e) => setNameDraft(e.target.value)}
+            />
+            <button
+              className="ctl"
+              disabled={busy || !nameDraft.trim() || nameDraft.trim() === me.displayName}
+              onClick={() => guard(async () => { await remote.setName(nameDraft); await refresh(); })}
+            >Save</button>
+          </div>
           <p className="home-empty">
             This device: {me.localId
               ? <>linked (<code>{me.localId.slice(0, 8)}…</code>)</>

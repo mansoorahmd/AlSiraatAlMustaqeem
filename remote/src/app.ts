@@ -15,7 +15,7 @@ import { config } from "./config.js";
 import { pgRunner } from "./db.js";
 import { sessionMiddleware } from "./session.js";
 import { requireRole, type Env } from "./roles.js";
-import { createInvite, redeemInvite, bindLocalId, loadPrincipal, InviteError } from "./invites.js";
+import { createInvite, redeemInvite, bindLocalId, loadPrincipal, setDisplayName, InviteError } from "./invites.js";
 
 export function createApp(): Hono<Env> {
   const app = new Hono<Env>();
@@ -48,7 +48,18 @@ export function createApp(): Hono<Env> {
   app.get("/me", requireRole("reader"), async (c) => {
     const me = c.get("user")!;
     const p = await loadPrincipal(pgRunner, me.id);
-    return c.json({ id: me.id, role: me.role, localId: p?.localId ?? null });
+    return c.json({
+      id: me.id, role: me.role,
+      email: p?.email ?? "", displayName: p?.displayName ?? "",
+      localId: p?.localId ?? null,
+    });
+  });
+
+  app.post("/me/name", requireRole("reader"), async (c) => {
+    const { displayName } = (await c.req.json().catch(() => ({}))) as { displayName?: string };
+    if (!displayName?.trim()) return c.json({ detail: "displayName is required" }, 422);
+    await setDisplayName(pgRunner, c.get("user")!.id, displayName);
+    return c.json({ ok: true });
   });
 
   app.post("/me/local-id", requireRole("reader"), async (c) => {

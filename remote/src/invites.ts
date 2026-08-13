@@ -95,13 +95,24 @@ export async function bindLocalId(r: SqlRunner, userId: string, localId: string)
   await r.query("UPDATE users SET local_id = $1, updated_at = now() WHERE id = $2", [localId, userId]);
 }
 
-/** The authorization facts for a user: their role, and the local_id they've bound. */
+/** The authorization facts for a user, plus who they are (for the account panel). */
 export async function loadPrincipal(
   r: SqlRunner,
   userId: string,
-): Promise<{ id: string; role: Role; localId: string | null } | null> {
-  const rows = await r.query("SELECT id, role, local_id FROM users WHERE id = $1", [userId]);
-  const u = rows[0] as { id: string; role: string; local_id: string | null } | undefined;
+): Promise<{ id: string; role: Role; localId: string | null; email: string; displayName: string } | null> {
+  const rows = await r.query(
+    "SELECT id, role, local_id, email, display_name FROM users WHERE id = $1", [userId]);
+  const u = rows[0] as
+    { id: string; role: string; local_id: string | null; email: string; display_name: string | null } | undefined;
   if (!u || !isRole(u.role)) return null;
-  return { id: u.id, role: u.role, localId: u.local_id };
+  return {
+    id: u.id, role: u.role, localId: u.local_id,
+    email: u.email, displayName: u.display_name ?? "",
+  };
+}
+
+/** Let a signed-in reader set their own display name. */
+export async function setDisplayName(r: SqlRunner, userId: string, name: string): Promise<void> {
+  await r.query("UPDATE users SET display_name = $1, updated_at = now() WHERE id = $2",
+    [name.trim().slice(0, 120), userId]);
 }

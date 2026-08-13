@@ -10,7 +10,13 @@
 
 const REMOTE = import.meta.env.VITE_REMOTE_URL ?? "http://localhost:8100";
 
-export interface Me { id: string; role: Role; localId: string | null }
+export interface Me {
+  id: string;
+  role: Role;
+  email: string;
+  displayName: string;
+  localId: string | null;
+}
 export type Role = "reader" | "researcher" | "moderator" | "maintainer";
 export interface InviteOut { code: string; role: Role; expires_at: string | null }
 
@@ -96,6 +102,11 @@ export const remote = {
   /** Link this device's research (its local_id) to the signed-in account. */
   bindLocalId(localId: string): Promise<unknown> {
     return call("/me/local-id", { method: "POST", body: JSON.stringify({ localId }) });
+  },
+
+  /** Set your own display name — what other researchers see on your work. */
+  setName(displayName: string): Promise<unknown> {
+    return call("/me/name", { method: "POST", body: JSON.stringify({ displayName }) });
   },
 };
 

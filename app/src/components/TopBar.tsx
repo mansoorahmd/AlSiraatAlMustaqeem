@@ -4,6 +4,7 @@ import { useAsync } from "../hooks/useAsync";
 import { useAppState, useAppDispatch, type Tab } from "../state/store";
 import type { Script } from "../api/types";
 import { ActivityBell } from "./ActivityBell";
+import { AccountButton } from "./AccountButton";
 import { archive } from "../persistence/db";
 
 // the rooms the reader inhabits — always visible
@@ -147,6 +148,9 @@ export function TopBar() {
 
       {/* one place for everything awaiting the reader */}
       <ActivityBell />
+
+      {/* who you are in the research community — conventional top-right placement */}
+      <AccountButton />
 
       {/* reading settings — always available in the top toolbar */}
       <div className="settings-wrap" ref={settingsRef}>
