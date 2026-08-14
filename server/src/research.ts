@@ -2,6 +2,7 @@
 // Port of quran_api/research.py: cases (+ form_research/revisions), trails, notes.
 
 import { randomUUID } from "node:crypto";
+import { ownerIdFor, normalizeEmail } from "./identity.js";
 import type { Db } from "./db.js";
 
 // User-authored top-level records get an author + origin stamp (Phase 1). `author_id`
@@ -105,6 +106,18 @@ CREATE TABLE IF NOT EXISTS compare_items (
 );
 CREATE INDEX IF NOT EXISTS idx_compare_items_set ON compare_items(set_id);
 
+-- Who this database belongs to. Kept INSIDE the file, so the file is self-describing: copy it
+-- to another machine, rename it, or hand it to a colleague and it still knows whose research it
+-- is. uuid is derived from the email (uuidv5), so the same person always gets the same id — it
+-- is what a remote account binds to. Exactly one row.
+CREATE TABLE IF NOT EXISTS owner (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    email TEXT NOT NULL,
+    uuid TEXT NOT NULL,
+    claimed_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
 -- Outbound submission ledger (SHARED_RESEARCH_SCHEMA.md section 2, derived_submissions): what
 -- this reader has offered upstream, so the app can tell "already shared" from "changed since I
 -- shared it" and chain a re-submission via supersedes instead of orphaning a duplicate.
@@ -134,8 +147,8 @@ const now = () => Date.now();
 type Doc = Record<string, any>;
 
 export class ResearchStore {
-  /** The account-independent local identity every row this reader creates is stamped with. */
-  readonly localId: string;
+  /** The identity every row this reader creates is stamped with (the owner's uuid once claimed). */
+  localId: string;
 
   constructor(private db: Db) {
     db.exec("PRAGMA journal_mode = WAL");
@@ -165,13 +178,50 @@ export class ResearchStore {
     for (const table of STAMPED_TABLES) this.stampTable(table);
   }
 
-  /** One stable UUID for this reader, kept in settings (survives updates, needs no network). */
+  /**
+   * The id this database's work is attributed to. Once an owner is set it is their derived
+   * uuid — stable for that person on any machine. Before that (or in tests) a random one is
+   * minted so nothing is ever un-attributed.
+   */
   private ensureLocalId(): string {
+    const owner = this.getOwner();
+    if (owner) return owner.uuid as string;
     const cur = this.getSetting("local_id");
     if (typeof cur === "string" && cur) return cur;
     const id = randomUUID();
     this.setSetting("local_id", id);
     return id;
+  }
+
+  // ---- owner: whose research this file is ---------------------------------------
+  /** Who this database belongs to, or undefined if nobody has claimed it yet. */
+  getOwner(): Doc | undefined {
+    try {
+      const r = this.db.one<{ email: string; uuid: string; claimed_at: number; updated_at: number }>(
+        "SELECT email, uuid, claimed_at, updated_at FROM owner WHERE id = 1");
+      return r ? { email: r.email, uuid: r.uuid, claimedAt: r.claimed_at, updatedAt: r.updated_at } : undefined;
+    } catch { return undefined; } // table not present on a very old file
+  }
+
+  /**
+   * Claim this database for `email`, or re-assign it (you hold the file, so you may correct a
+   * typo or hand it on). The uuid is re-derived, and local_id follows it so newly authored rows
+   * carry the right author.
+   */
+  setOwner(email: string): Doc {
+    const clean = normalizeEmail(email);
+    if (!clean.includes("@")) throw new Error("a valid email is required");
+    const uuid = ownerIdFor(clean);
+    const t = now();
+    this.db.run(
+      `INSERT INTO owner (id, email, uuid, claimed_at, updated_at) VALUES (1, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET email = excluded.email, uuid = excluded.uuid,
+         updated_at = excluded.updated_at`,
+      [clean, uuid, t, t],
+    );
+    this.setSetting("local_id", uuid);
+    this.localId = uuid;
+    return this.getOwner()!;
   }
 
   /** Add author_id + origin to `table` if missing, and stamp any rows that predate them. */

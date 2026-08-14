@@ -41,7 +41,8 @@ backups/
 corpus/*.priv.pem
 corpus/maintainer-key*.pem
 
-# research profile index (points at local database files — personal, per-machine)
+# which database files this machine has opened — personal, per-machine
+databases.json
 profiles.json
 research-*.db
 research-*.db-*

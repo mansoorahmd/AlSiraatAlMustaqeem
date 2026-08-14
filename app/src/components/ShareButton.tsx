@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { remote, type AdditiveKind } from "../api/remote";
-import { submissionLog, contentHash, type SubmissionRecord } from "../persistence/db";
+import { submissionLog, contentHash, fetchIdentity, type SubmissionRecord } from "../persistence/db";
 
 interface Props {
   /** The local record's id — what the ledger keys on. */
@@ -33,6 +33,7 @@ type State = "idle" | "sending" | "error";
 
 export function ShareButton({ localRef, kind, payload, subjectKind, subjectValue, label }: Props) {
   const [allowed, setAllowed] = useState(false);
+  const [mismatch, setMismatch] = useState<string | null>(null);
   const [prior, setPrior] = useState<SubmissionRecord | null>(null);
   const [state, setState] = useState<State>("idle");
   const [detail, setDetail] = useState("");
@@ -40,9 +41,20 @@ export function ShareButton({ localRef, kind, payload, subjectKind, subjectValue
   const hash = contentHash(payload);
 
   useEffect(() => {
-    // only researchers and above may publish; readers (and the signed-out) see nothing
-    remote.me()
-      .then((me) => setAllowed(!!me && me.role !== "reader"))
+    // Two conditions to publish. First the role: only researchers and above, so readers and the
+    // signed-out see nothing. Second — and this is the important one — the signed-in account
+    // must match the OWNER of the open database. Otherwise you'd be publishing someone else's
+    // research (a colleague's file, or a backup you opened) under your own name.
+    Promise.all([remote.me().catch(() => null), fetchIdentity().catch(() => null)])
+      .then(([me, id]) => {
+        if (!me || me.role === "reader") return setAllowed(false);
+        const ownerEmail = id?.owner?.email;
+        if (ownerEmail && ownerEmail !== me.email) {
+          setMismatch(`This database belongs to ${ownerEmail}, but you're signed in as ${me.email}.`);
+          return setAllowed(false);
+        }
+        setAllowed(true);
+      })
       .catch(() => setAllowed(false));
   }, []);
 
@@ -66,6 +78,8 @@ export function ShareButton({ localRef, kind, payload, subjectKind, subjectValue
     }
   }, [kind, payload, subjectKind, subjectValue, prior, localRef, hash]);
 
+  // The database isn't yours: say so quietly rather than vanishing, so the reason is visible.
+  if (mismatch) return <span className="share-blocked" title={mismatch}>not yours</span>;
   if (!allowed) return null;
 
   const shared = prior !== null;

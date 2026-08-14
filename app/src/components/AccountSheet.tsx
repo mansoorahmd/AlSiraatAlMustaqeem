@@ -10,15 +10,20 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { remote, RemoteOffline, type Me, type Role, type InviteOut } from "../api/remote";
-import { fetchIdentity, profiles } from "../persistence/db";
+import { fetchIdentity, owner as ownerApi } from "../persistence/db";
 
 /**
- * Bind the local research database to this account. Best-effort: a failure here must never
- * block signing in — you'd still be signed in, just working in the unclaimed database, and the
- * profile panel on Home can sort it out.
+ * Tie the open database to this account. If the file has no owner yet, claim it for this email;
+ * if it already belongs to someone else we leave it alone — that's a real situation (you opened
+ * a colleague's file) and the share controls will refuse to publish it as yours.
+ *
+ * Best-effort: this must never block signing in.
  */
 async function claimProfile(email: string): Promise<void> {
-  try { await profiles.claim(email); } catch { /* keep working in the current database */ }
+  try {
+    const id = await fetchIdentity();
+    if (!id.owner) await ownerApi.set(email);
+  } catch { /* keep working in the current database */ }
 }
 
 type Status = "loading" | "offline" | "blocked" | "signed-out" | "signed-in";

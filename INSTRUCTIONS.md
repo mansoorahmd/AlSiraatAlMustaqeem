@@ -152,24 +152,31 @@ pulled by a future sync. `source` says *who the agent was* (me/ai); `origin` say
 from* (local/remote). When accounts arrive, the account binds to this `local_id`, so work done
 before signing in stays correctly attributed. See `SHARED_RESEARCH_BUILD.md` (Phase 1).
 
-#### Which research.db? (profiles)
+#### Whose research is it? (the `owner` record)
 
-Your work follows **who you are**, not how you launched the app. `server/src/profiles.ts` keeps
-a `profiles.json` index beside the database:
+**The database says who it belongs to, from inside itself.** `research.db` has a one-row `owner`
+table holding an email and a uuid **derived from that email** (`uuidv5`, `server/src/identity.ts`).
+That makes the file self-describing and portable: copy it to another machine, rename it, or hand
+it to a colleague, and it still knows whose research it is.
 
-- **Signed out** you work in the *default* profile — local study never requires an account, so
-  there is always somewhere to work.
-- **Signing in claims it.** An unclaimed profile is adopted in place: the file is renamed to
-  `research-<uuidv5(email)>.db` and the research already in it becomes yours. Nothing is
-  orphaned. The id is derived from the email, so the same person always resolves to the same
-  filename on any machine.
-- **A second researcher** signing in on the same machine gets their own file; switching back
-  reopens the first.
-- **Home → Your data** shows which database is open and lets you switch, or open any `.db`
-  explicitly (a backup, a colleague's file) — the desktop uses a native file dialog.
+- **Day 0** the app asks for an email before anything else (`OwnerGate`) and stamps it, so
+  nothing is ever written un-attributed.
+- **The uuid is the `local_id`** that remote work binds to — same person, same id, any machine.
+- **It can be re-assigned.** You hold the file, so you may fix a typo or hand it on
+  (`PUT /research/owner`). The research in the file is untouched.
+- **Moving machines is deliberately manual**: back the file up, carry it, open it there. There
+  is no magic sync of local files.
+- **Home → Your data** shows the owner and the file, lets you change either, and can open any
+  `.db` (a backup, a colleague's) — the desktop uses a native file dialog.
+- **Publishing requires a match.** The share controls refuse when the signed-in account isn't
+  the database's owner, so you can't publish someone else's research under your name.
 
-Switching reopens the server's handle (`reopenResearch`) rather than restarting, so the routes
-read `state.research` per request — never capture it.
+`server/src/databases.ts` is deliberately dumb: it only remembers which files this *machine* has
+opened (`databases.json`) so the app knows what to open at startup. It is never the source of
+truth about identity — deleting it costs nothing but the recent-files list.
+
+Opening a different file reopens the server's handle (`reopenResearch`) rather than restarting,
+so the routes read `state.research` per request — never capture it.
 
 #### Backing it up
 

@@ -49,40 +49,40 @@ async function srvDelete(path: string): Promise<void> {
 
 export interface BackupResult { path: string; bytes: number; at: number }
 
-export interface Profile {
-  id: string;
-  label: string;
-  email: string | null;
-  path: string;
-  createdAt: number;
-  lastOpenedAt: number;
+export interface Owner {
+  email: string;
+  uuid: string;
+  claimedAt: number;
+  updatedAt: number;
 }
+export interface RecentDb { path: string; label: string; lastOpenedAt: number }
 
-/** The reader's local identity, which research.db is open, and whose profile it is. */
+/** The open database: its path, and whose research it is (read from inside the file). */
 export async function fetchIdentity(): Promise<{
-  localId: string; databasePath?: string; profile?: Profile;
+  localId: string; databasePath?: string; owner: Owner | null;
 }> {
   return srvGet("/identity");
 }
 
 /**
- * Research profiles — one database per person. Which file holds your work depends on WHO you
- * are, not how you launched the app. Switching reopens the server's handle; no restart.
+ * Whose research this database is. The answer lives INSIDE the file, so it travels with it —
+ * copy the file to another machine and it is still yours. The uuid is derived from the email,
+ * and is what a remote account binds to.
  */
-export const profiles = {
-  list(): Promise<{ active: Profile; profiles: Profile[] }> {
-    return srvGet("/profiles");
+export const owner = {
+  /** Claim this database, or re-assign it (you hold the file, so you may correct it). */
+  set(email: string): Promise<Owner> {
+    return srvPut<Owner>("/owner", { email });
   },
-  switchTo(id: string): Promise<{ active: Profile; databasePath: string }> {
-    return srvPost("/profiles/switch", { id });
+};
+
+/** Which database file is open. Identity lives in each file; this is just the choosing. */
+export const databases = {
+  list(): Promise<{ current: { path: string; owner: Owner | null }; recent: RecentDb[] }> {
+    return srvGet("/databases");
   },
-  /** Open an arbitrary .db file (desktop picks the path with a native dialog). */
-  openFile(path: string): Promise<{ active: Profile; databasePath: string }> {
-    return srvPost("/profiles/switch", { path });
-  },
-  /** Attach an email to the current work — claims an unclaimed profile in place. */
-  claim(email: string, label?: string): Promise<{ active: Profile; databasePath: string }> {
-    return srvPost("/profiles/claim", { email, label });
+  open(path: string): Promise<{ path: string; owner: Owner | null }> {
+    return srvPost("/databases/open", { path });
   },
 };
 

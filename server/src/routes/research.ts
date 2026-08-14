@@ -16,43 +16,45 @@ export function researchRoutes(state: AppState): Hono {
     localId: s().localId,
     // which research.db this server is actually using — never leave this a mystery
     databasePath: state.researchDb.path,
-    profile: state.profiles.active(),
+    // whose research this file is, read from inside the file itself. null until claimed —
+    // the app asks for an email on first run and stamps it here.
+    owner: s().getOwner() ?? null,
   }));
 
-  // --- research profiles: one database per person, explicitly selectable ---
-  r.get("/research/profiles", (c) => c.json({
-    active: state.profiles.active(),
-    profiles: state.profiles.list(),
-  }));
-
-  /** Switch to a known profile, or open a .db file directly. Reopens without a restart. */
-  r.post("/research/profiles/switch", async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { id?: string; path?: string };
+  /**
+   * Claim this database, or re-assign it. You hold the file, so you may correct a typo or hand
+   * it on; the uuid is re-derived from the email and becomes the id remote work binds to.
+   */
+  r.put("/research/owner", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { email?: string };
     try {
-      const p = body.path ? state.profiles.openFile(body.path) : state.profiles.switchTo(body.id ?? "");
-      reopenResearch(state, p.path);
-      return c.json({ active: p, databasePath: state.researchDb.path });
+      const owner = s().setOwner(body.email ?? "");
+      state.databases.label(state.researchDb.path, owner.email as string);
+      return c.json(owner);
     } catch (e) {
-      return c.json({ detail: (e as Error).message }, 400);
+      return c.json({ detail: (e as Error).message }, 422);
     }
   });
 
-  /**
-   * Attach an email to the current work. If this profile is unclaimed, it's claimed in place —
-   * the file is renamed and the research in it stays yours. Signing in as someone else opens
-   * their profile instead. The db must be closed before the rename, hence the dance below.
-   */
-  r.post("/research/profiles/claim", async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { email?: string; label?: string };
-    if (!body.email?.includes("@")) return c.json({ detail: "a valid email is required" }, 422);
+  // --- which database file is open (identity lives inside each file, not here) ---
+  r.get("/research/databases", (c) => c.json({
+    current: { path: state.researchDb.path, owner: s().getOwner() ?? null },
+    recent: state.databases.recent(),
+  }));
+
+  /** Open another .db — a backup, a colleague's file, your own from another machine. */
+  r.post("/research/databases/open", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { path?: string };
+    if (!body.path) return c.json({ detail: "path is required" }, 422);
+    const previous = state.researchDb.path;
     try {
-      state.researchDb.close();                    // release the file so it can be renamed
-      const p = state.profiles.claim(body.email, body.label);
-      reopenResearch(state, p.path);
-      return c.json({ active: p, databasePath: state.researchDb.path });
+      const full = state.databases.use(body.path);
+      reopenResearch(state, full);
+      const owner = s().getOwner();
+      if (owner) state.databases.label(full, owner.email as string);
+      return c.json({ path: state.researchDb.path, owner: owner ?? null });
     } catch (e) {
-      // whatever happened, make sure the server still has a usable database open
-      try { reopenResearch(state, state.profiles.activePath()); } catch { /* nothing more to do */ }
+      try { reopenResearch(state, previous); } catch { /* nothing more to do */ }
       return c.json({ detail: (e as Error).message }, 400);
     }
   });

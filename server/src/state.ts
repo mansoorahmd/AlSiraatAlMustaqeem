@@ -3,7 +3,7 @@
 
 import { resolve } from "node:path";
 import { Db } from "./db.js";
-import { Profiles } from "./profiles.js";
+import { Databases } from "./databases.js";
 import { QuranContent } from "./content.js";
 import { RootExplorer } from "./roots.js";
 import { RootLinkages } from "./linkages.js";
@@ -22,7 +22,7 @@ export interface AppState {
   quran: Db;
   /** Swappable at runtime — see `reopenResearch`. Routes must read it per request. */
   researchDb: Db;
-  profiles: Profiles;
+  databases: Databases;
   content: QuranContent;
   roots: RootExplorer;
   linkages: RootLinkages;
@@ -36,12 +36,13 @@ export interface AppState {
 
 export function createState(): AppState {
   const quran = new Db(QURAN_DB, { readOnly: true });
-  // Which research.db is "yours" is a profile decision, not a launch-method one.
-  const profiles = new Profiles(RESEARCH_DB);
-  const researchDb = new Db(profiles.activePath()); // read-write
+  // Which file to open is remembered per machine; WHO it belongs to lives inside the file.
+  const databases = new Databases(RESEARCH_DB);
+  const researchDb = new Db(databases.currentPath()); // read-write
+  databases.use(researchDb.path); // remember it, so it appears in "recently opened"
   return {
     quran,
-    profiles,
+    databases,
     researchDb,
     content: new QuranContent(quran),
     roots: new RootExplorer(quran),
