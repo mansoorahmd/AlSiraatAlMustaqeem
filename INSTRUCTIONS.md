@@ -152,6 +152,25 @@ pulled by a future sync. `source` says *who the agent was* (me/ai); `origin` say
 from* (local/remote). When accounts arrive, the account binds to this `local_id`, so work done
 before signing in stays correctly attributed. See `SHARED_RESEARCH_BUILD.md` (Phase 1).
 
+#### Which research.db? (profiles)
+
+Your work follows **who you are**, not how you launched the app. `server/src/profiles.ts` keeps
+a `profiles.json` index beside the database:
+
+- **Signed out** you work in the *default* profile — local study never requires an account, so
+  there is always somewhere to work.
+- **Signing in claims it.** An unclaimed profile is adopted in place: the file is renamed to
+  `research-<uuidv5(email)>.db` and the research already in it becomes yours. Nothing is
+  orphaned. The id is derived from the email, so the same person always resolves to the same
+  filename on any machine.
+- **A second researcher** signing in on the same machine gets their own file; switching back
+  reopens the first.
+- **Home → Your data** shows which database is open and lets you switch, or open any `.db`
+  explicitly (a backup, a colleague's file) — the desktop uses a native file dialog.
+
+Switching reopens the server's handle (`reopenResearch`) rather than restarting, so the routes
+read `state.research` per request — never capture it.
+
 #### Backing it up
 
 `research.db` is **not** tracked in git — it's your personal data, so keep your own backups. Any

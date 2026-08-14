@@ -14,6 +14,7 @@ import type { SubjectType } from "../persistence/types";
 import { useAppState, useAppDispatch } from "../state/store";
 import { Preferences } from "../components/Preferences";
 import { ShareButton } from "../components/ShareButton";
+import { ProfilePicker } from "../components/ProfilePicker";
 
 const spaced = (r: string) => r.split("").join(" ");
 const vsort = (k: string) => {
@@ -307,17 +308,13 @@ export function Home() {
             </p>
           )}
           {backupErr && <p className="home-empty">Couldn’t back up: {backupErr}</p>}
+          {/* which research database is open, and how to change it */}
+          <ProfilePicker onChanged={() => window.location.reload()} />
+
           {identity.data && (
-            <>
-              <p className="home-empty" title={identity.data.localId}>
-                Local identity: <code>{identity.data.localId.slice(0, 8)}…</code>
-              </p>
-              {identity.data.databasePath && (
-                <p className="home-empty" title={identity.data.databasePath}>
-                  File: <code>{identity.data.databasePath}</code>
-                </p>
-              )}
-            </>
+            <p className="home-empty" title={identity.data.localId}>
+              Local identity: <code>{identity.data.localId.slice(0, 8)}…</code>
+            </p>
           )}
         </section>
 

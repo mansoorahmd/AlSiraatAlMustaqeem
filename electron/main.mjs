@@ -183,6 +183,18 @@ ipcMain.handle("auth:open-sign-in", async (_e, url) => {
   });
 });
 
+// Choose an existing research database to open (a backup, or another researcher's file).
+// The renderer then asks the server to switch to it; only the picking needs to be native.
+ipcMain.handle("research:pick-db", async () => {
+  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    title: "Open a research database",
+    properties: ["openFile"],
+    filters: [{ name: "Research database", extensions: ["db"] }],
+  });
+  return canceled || !filePaths[0] ? null : filePaths[0];
+});
+
 // Renderer asks to back up research.db → pick a location natively, then have the
 // running server write the copy there (the server owns the live db connection, so its
 // VACUUM INTO captures uncheckpointed WAL). Returns { path, bytes, at } or { canceled }.

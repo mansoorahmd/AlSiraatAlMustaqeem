@@ -3266,3 +3266,13 @@ a { color: var(--lapis); }
 .share-btn { flex: 0 0 auto; }
 .share-done { flex: 0 0 auto; font-size: var(--fs-label); color: var(--ok);
   padding-inline: 0.35rem; white-space: nowrap; }
+
+/* research profile picker (Home → Your data) */
+.profile-picker { display: flex; flex-direction: column; gap: 0.6rem; margin: 0.6rem 0 0.9rem; }
+.acct-row { display: flex; align-items: baseline; gap: 0.75rem; font-size: var(--fs-small); }
+.acct-row-label { flex: 0 0 5.5rem; color: var(--ink-soft); }
+.acct-row-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.profile-picker select { width: 100%; padding: 0.4rem 0.55rem; font: inherit;
+  font-size: var(--fs-small); color: var(--ink); background: var(--paper);
+  border: 1px solid var(--paper-edge); border-radius: 6px; }

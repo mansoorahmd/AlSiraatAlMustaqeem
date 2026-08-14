@@ -11,4 +11,6 @@ contextBridge.exposeInMainWorld("desktop", {
   // Open the remote's sign-in page in an IN-APP window, so the Better Auth session cookie
   // is stored in this app's session rather than the system browser's.
   openSignIn: (url) => ipcRenderer.invoke("auth:open-sign-in", url),
+  // Choose a research database to open → absolute path, or null if cancelled.
+  pickResearchDb: () => ipcRenderer.invoke("research:pick-db"),
 });

@@ -28,6 +28,18 @@ async function srvPut<T>(path: string, body: unknown): Promise<T> {
   if (!res.ok) throw new Error(`PUT ${path} → ${res.status}`);
   return res.json() as Promise<T>;
 }
+async function srvPost<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.json().then((b) => (b as { detail?: string }).detail).catch(() => undefined);
+    throw new Error(detail ?? `POST ${path} → ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
 async function srvDelete(path: string): Promise<void> {
   const res = await fetch(`${API}${path}`, { method: "DELETE" });
   if (!res.ok && res.status !== 404) throw new Error(`DELETE ${path} → ${res.status}`);
@@ -37,10 +49,42 @@ async function srvDelete(path: string): Promise<void> {
 
 export interface BackupResult { path: string; bytes: number; at: number }
 
-/** The reader's local identity, and which research.db is actually open. */
-export async function fetchIdentity(): Promise<{ localId: string; databasePath?: string }> {
-  return srvGet<{ localId: string; databasePath?: string }>("/identity");
+export interface Profile {
+  id: string;
+  label: string;
+  email: string | null;
+  path: string;
+  createdAt: number;
+  lastOpenedAt: number;
 }
+
+/** The reader's local identity, which research.db is open, and whose profile it is. */
+export async function fetchIdentity(): Promise<{
+  localId: string; databasePath?: string; profile?: Profile;
+}> {
+  return srvGet("/identity");
+}
+
+/**
+ * Research profiles — one database per person. Which file holds your work depends on WHO you
+ * are, not how you launched the app. Switching reopens the server's handle; no restart.
+ */
+export const profiles = {
+  list(): Promise<{ active: Profile; profiles: Profile[] }> {
+    return srvGet("/profiles");
+  },
+  switchTo(id: string): Promise<{ active: Profile; databasePath: string }> {
+    return srvPost("/profiles/switch", { id });
+  },
+  /** Open an arbitrary .db file (desktop picks the path with a native dialog). */
+  openFile(path: string): Promise<{ active: Profile; databasePath: string }> {
+    return srvPost("/profiles/switch", { path });
+  },
+  /** Attach an email to the current work — claims an unclaimed profile in place. */
+  claim(email: string, label?: string): Promise<{ active: Profile; databasePath: string }> {
+    return srvPost("/profiles/claim", { email, label });
+  },
+};
 
 // ---- outbound submission ledger ------------------------------------------------
 

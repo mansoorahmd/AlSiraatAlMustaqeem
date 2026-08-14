@@ -10,7 +10,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { remote, RemoteOffline, type Me, type Role, type InviteOut } from "../api/remote";
-import { fetchIdentity } from "../persistence/db";
+import { fetchIdentity, profiles } from "../persistence/db";
+
+/**
+ * Bind the local research database to this account. Best-effort: a failure here must never
+ * block signing in — you'd still be signed in, just working in the unclaimed database, and the
+ * profile panel on Home can sort it out.
+ */
+async function claimProfile(email: string): Promise<void> {
+  try { await profiles.claim(email); } catch { /* keep working in the current database */ }
+}
 
 type Status = "loading" | "offline" | "blocked" | "signed-out" | "signed-in";
 
@@ -77,6 +86,10 @@ export function AccountSheet() {
   const doSignIn = () => guard(async () => {
     await remote.signIn(email.trim(), password);
     setPassword("");
+    // Your research follows YOU: claim the local database for this account. If it was
+    // unclaimed, the work you've already done is adopted in place; if this account already
+    // has a database on this machine, that one is opened instead.
+    await claimProfile(email.trim());
     await refresh();
   });
 
@@ -85,6 +98,7 @@ export function AccountSheet() {
       code: code.trim(), email: email.trim(), password, localId: localId ?? undefined,
     });
     await remote.signIn(email.trim(), password);
+    await claimProfile(email.trim());
     setShowRedeem(false); setCode(""); setPassword("");
     await refresh();
   });

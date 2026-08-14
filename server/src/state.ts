@@ -3,6 +3,7 @@
 
 import { resolve } from "node:path";
 import { Db } from "./db.js";
+import { Profiles } from "./profiles.js";
 import { QuranContent } from "./content.js";
 import { RootExplorer } from "./roots.js";
 import { RootLinkages } from "./linkages.js";
@@ -19,7 +20,9 @@ const RESEARCH_DB = process.env.QF_RESEARCH_DB ?? resolve(ROOT, "research.db");
 
 export interface AppState {
   quran: Db;
+  /** Swappable at runtime — see `reopenResearch`. Routes must read it per request. */
   researchDb: Db;
+  profiles: Profiles;
   content: QuranContent;
   roots: RootExplorer;
   linkages: RootLinkages;
@@ -33,9 +36,12 @@ export interface AppState {
 
 export function createState(): AppState {
   const quran = new Db(QURAN_DB, { readOnly: true });
-  const researchDb = new Db(RESEARCH_DB); // read-write
+  // Which research.db is "yours" is a profile decision, not a launch-method one.
+  const profiles = new Profiles(RESEARCH_DB);
+  const researchDb = new Db(profiles.activePath()); // read-write
   return {
     quran,
+    profiles,
     researchDb,
     content: new QuranContent(quran),
     roots: new RootExplorer(quran),
@@ -47,6 +53,19 @@ export function createState(): AppState {
     spellings: new SpellingIndex(quran),
     wordForms: new WordFormIndex(quran),
   };
+}
+
+/**
+ * Point the running server at a different research.db — no restart. Used when the reader
+ * switches profile, signs in (claiming their file), or opens a database explicitly.
+ * The old handle is closed so its WAL is checkpointed before anything else touches the file.
+ */
+export function reopenResearch(state: AppState, path: string): void {
+  const previous = state.researchDb;
+  const next = new Db(path);
+  state.researchDb = next;
+  state.research = new ResearchStore(next);
+  try { previous.close(); } catch { /* already gone */ }
 }
 
 export const VERSION = "0.1.0";
