@@ -37,9 +37,9 @@ async function srvDelete(path: string): Promise<void> {
 
 export interface BackupResult { path: string; bytes: number; at: number }
 
-/** The reader's account-independent local identity (minted on first run). */
-export async function fetchIdentity(): Promise<{ localId: string }> {
-  return srvGet<{ localId: string }>("/identity");
+/** The reader's local identity, and which research.db is actually open. */
+export async function fetchIdentity(): Promise<{ localId: string; databasePath?: string }> {
+  return srvGet<{ localId: string; databasePath?: string }>("/identity");
 }
 
 // ---- outbound submission ledger ------------------------------------------------

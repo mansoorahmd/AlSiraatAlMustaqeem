@@ -61,13 +61,29 @@ async function startServer() {
   const port = await stablePort();
   serverPort = port;
 
-  // read-only corpus from the bundle; research db in userData
+  // read-only corpus from the bundle
   const quranDb = isDev ? join(here, "..", "quran.db") : join(RES, "quran.db");
-  const dataDir = app.getPath("userData");
-  mkdirSync(dataDir, { recursive: true });
-  const researchDb = join(dataDir, "research.db");
-  const seed = isDev ? join(here, "..", "research.db") : join(RES, "research.db");
-  if (!existsSync(researchDb) && existsSync(seed)) copyFileSync(seed, researchDb);
+
+  // Where the reader's work lives.
+  //
+  //   packaged → the OS user-data dir. A shipped app must never write into a source checkout,
+  //              and this survives app updates.
+  //   dev      → the repo's ./research.db — the SAME file `npm run dev` (web) uses.
+  //              Otherwise the two ways of starting the app silently fork your research: you
+  //              share a question in the browser, then open Electron and it's not there.
+  //
+  // QF_RESEARCH_DB overrides either, so you can point a dev run at any file.
+  let researchDb;
+  if (isDev) {
+    researchDb = process.env.QF_RESEARCH_DB ?? join(here, "..", "research.db");
+  } else {
+    const dataDir = app.getPath("userData");
+    mkdirSync(dataDir, { recursive: true });
+    researchDb = join(dataDir, "research.db");
+    const seed = join(RES, "research.db");
+    if (!existsSync(researchDb) && existsSync(seed)) copyFileSync(seed, researchDb);
+  }
+  console.log(`[mqrg] research.db → ${researchDb}`);
 
   const staticRoot = isDev ? join(here, "..", "app", "dist") : join(RES, "app", "dist");
   // the bundle is asarUnpack'd, so run it from the unpacked path, not inside the asar

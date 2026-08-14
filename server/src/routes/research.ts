@@ -10,7 +10,12 @@ export function researchRoutes(state: AppState): Hono {
 
   // the reader's account-independent local identity (minted on first run). Phase 3's
   // sign-in binds an account to this id, so pre-account work stays correctly attributed.
-  r.get("/research/identity", (c) => c.json({ localId: s.localId }));
+  r.get("/research/identity", (c) => c.json({
+    localId: s.localId,
+    // which research.db this server is actually using — the desktop shell and the web dev
+    // server can be pointed at different files, and that must never be a mystery
+    databasePath: state.researchDb.path,
+  }));
 
   // one-click backup: a clean, complete copy of research.db (WAL folded in).
   // `dest` (absolute, ending .db) is optional; the default sits in a sibling

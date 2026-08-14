@@ -308,9 +308,16 @@ export function Home() {
           )}
           {backupErr && <p className="home-empty">Couldn’t back up: {backupErr}</p>}
           {identity.data && (
-            <p className="home-empty" title={identity.data.localId}>
-              Local identity: <code>{identity.data.localId.slice(0, 8)}…</code>
-            </p>
+            <>
+              <p className="home-empty" title={identity.data.localId}>
+                Local identity: <code>{identity.data.localId.slice(0, 8)}…</code>
+              </p>
+              {identity.data.databasePath && (
+                <p className="home-empty" title={identity.data.databasePath}>
+                  File: <code>{identity.data.databasePath}</code>
+                </p>
+              )}
+            </>
           )}
         </section>
 
