@@ -10,8 +10,11 @@ import { Preferences } from "./Preferences";
 import { ProfilePicker } from "./ProfilePicker";
 import { backupResearch, fetchIdentity, type BackupResult } from "../persistence/db";
 
-const fileName = (p: string) => p.replace(/^.*[/\\]/, "");
 const kb = (n: number) => `${(n / 1024).toFixed(0)} KB`;
+
+/** Desktop can open the containing folder; the web build can only show the path. */
+const desktopReveal = (): ((p: string) => Promise<void>) | undefined =>
+  (window as unknown as { desktop?: { revealPath?(p: string): Promise<void> } }).desktop?.revealPath;
 
 export function SettingsSheet() {
   const identity = useAsync(() => fetchIdentity(), []);
@@ -20,12 +23,14 @@ export function SettingsSheet() {
   const [busy, setBusy] = useState(false);
   const [last, setLast] = useState<BackupResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const reveal = desktopReveal();
 
   const backup = async () => {
     setBusy(true); setErr(null);
     try {
       const res = await backupResearch();
-      if (!("canceled" in res)) setLast(res);
+      if (!("canceled" in res)) { setLast(res); setCopied(false); }
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   };
 
@@ -52,10 +57,22 @@ export function SettingsSheet() {
             {busy ? "Backing up…" : "Back up research"}
           </button>
         </div>
+        {/* Show WHERE it went. A filename alone is useless — on the web build the copy lands in
+            a backups/ folder beside the database, which nobody can be expected to guess. */}
         {last && (
-          <p className="acct-hint" title={last.path}>
-            Saved <strong>{fileName(last.path)}</strong> · {kb(last.bytes)}
-          </p>
+          <div className="backup-result">
+            <span className="backup-result-head">Saved · {kb(last.bytes)}</span>
+            <code className="backup-path">{last.path}</code>
+            <div className="acct-actions">
+              <button
+                className="ctl"
+                onClick={() => { void navigator.clipboard?.writeText(last.path); setCopied(true); }}
+              >{copied ? "Copied" : "Copy path"}</button>
+              {reveal && (
+                <button className="ctl" onClick={() => void reveal(last.path)}>Show in folder</button>
+              )}
+            </div>
+          </div>
         )}
         {err && <p className="acct-error" role="alert">{err}</p>}
       </section>

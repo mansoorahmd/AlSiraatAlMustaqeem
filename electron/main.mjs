@@ -183,6 +183,9 @@ ipcMain.handle("auth:open-sign-in", async (_e, url) => {
   });
 });
 
+// Show a file in the OS file manager — after a backup, "where did it go?" should be one click.
+ipcMain.handle("shell:reveal", (_e, p) => { shell.showItemInFolder(String(p)); });
+
 // Choose an existing research database to open (a backup, or another researcher's file).
 // The renderer then asks the server to switch to it; only the picking needs to be native.
 ipcMain.handle("research:pick-db", async () => {

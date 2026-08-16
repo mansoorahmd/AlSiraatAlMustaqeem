@@ -13,4 +13,6 @@ contextBridge.exposeInMainWorld("desktop", {
   openSignIn: (url) => ipcRenderer.invoke("auth:open-sign-in", url),
   // Choose a research database to open → absolute path, or null if cancelled.
   pickResearchDb: () => ipcRenderer.invoke("research:pick-db"),
+  // Reveal a file in the OS file manager (used after a backup, so "where did it go?" is one click).
+  revealPath: (p) => ipcRenderer.invoke("shell:reveal", p),
 });

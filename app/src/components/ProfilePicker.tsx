@@ -20,6 +20,8 @@ export function ProfilePicker({ onChanged }: { onChanged?: () => void }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [nameDraft, setNameDraft] = useState("");
+  const [opening, setOpening] = useState(false);
+  const [pathDraft, setPathDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const pick = desktopPickDb();
@@ -125,7 +127,10 @@ export function ProfilePicker({ onChanged }: { onChanged?: () => void }) {
         </div>
       )}
 
-      {pick && (
+      {/* Desktop gets a native file dialog. The web build can't open one, so it asks for the
+          path instead — the server can open any file, and without this the browser had no way
+          to reach a backup or a colleague's database at all. */}
+      {pick ? (
         <div className="acct-actions">
           <button
             className="ctl" disabled={busy}
@@ -134,6 +139,33 @@ export function ProfilePicker({ onChanged }: { onChanged?: () => void }) {
               if (path) await databases.open(path);
             }, true)}
           >
+            Open a database file…
+          </button>
+        </div>
+      ) : opening ? (
+        <div className="acct-field">
+          <label htmlFor="db-path">Path to the database file</label>
+          <input
+            id="db-path" autoFocus placeholder="C:\path\to\research.db"
+            value={pathDraft} onChange={(e) => setPathDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && pathDraft.trim()) {
+                act(() => databases.open(pathDraft.trim()), true).then(() => setOpening(false));
+              }
+              if (e.key === "Escape") setOpening(false);
+            }}
+          />
+          <div className="acct-actions">
+            <button
+              className="ctl primary" disabled={busy || !pathDraft.trim()}
+              onClick={() => act(() => databases.open(pathDraft.trim()), true).then(() => setOpening(false))}
+            >Open</button>
+            <button className="ctl" onClick={() => { setOpening(false); setPathDraft(""); }}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <div className="acct-actions">
+          <button className="ctl" disabled={busy} onClick={() => setOpening(true)}>
             Open a database file…
           </button>
         </div>

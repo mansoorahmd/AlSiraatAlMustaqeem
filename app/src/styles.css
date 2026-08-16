@@ -3332,3 +3332,11 @@ a { color: var(--lapis); }
 .home-row-main.quran { font-size: 1.05rem; line-height: 2.05; }
 /* the row itself must not cap the line box it contains */
 .home-row { min-height: 2.6rem; }
+
+/* where a backup went — the path is the point, so it's visible and selectable, not a tooltip */
+.backup-result { display: flex; flex-direction: column; gap: 0.4rem;
+  padding: 0.6rem 0.7rem; border-radius: 8px;
+  background: var(--paper-warm); border: 1px solid var(--paper-edge); }
+.backup-result-head { font-size: var(--fs-small); color: var(--ink); font-weight: 500; }
+.backup-path { font-family: ui-monospace, monospace; font-size: var(--fs-small);
+  color: var(--ink-soft); word-break: break-all; user-select: all; line-height: 1.6; }
