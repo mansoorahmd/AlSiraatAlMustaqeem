@@ -20,6 +20,7 @@ const STUDY: { id: Tab; label: string; desc: string }[] = [
   { id: "motifs", label: "Motifs", desc: "Recurring root groupings (بيوت)" },
   { id: "compare", label: "Compare", desc: "Set forms or roots side by side" },
   { id: "vault", label: "Vault", desc: "Roots you have established" },
+  { id: "diverge", label: "Where I stand apart", desc: "Forms where your reading and the group's differ" },
 ];
 
 

@@ -134,6 +134,45 @@ CREATE TABLE IF NOT EXISTS derived_submissions (
     submitted_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_derived_submissions_sub ON derived_submissions(submission_id);
+
+-- The group's established readings, pulled from the remote (SHARED_RESEARCH_SCHEMA.md section 2).
+-- DERIVED: sync writes only these, they are drop-safe, and a full resync rebuilds them. Your own
+-- established meanings live in form_research and are never touched by a pull — the two coexist,
+-- and where they differ is exactly what the reader is shown.
+CREATE TABLE IF NOT EXISTS derived_global_forms (
+    subject_kind TEXT NOT NULL,          -- 'form' (lemma) | 'root'
+    subject_value TEXT NOT NULL,
+    claim_id TEXT NOT NULL,
+    version INTEGER NOT NULL,
+    meaning TEXT NOT NULL DEFAULT '',    -- pulled out of the payload for a fast gloss
+    author_id TEXT NOT NULL,
+    established_at INTEGER NOT NULL,
+    payload TEXT NOT NULL,               -- the whole thing, unknown fields preserved verbatim
+    schema_version INTEGER NOT NULL,
+    seq INTEGER NOT NULL,
+    PRIMARY KEY (subject_kind, subject_value)
+);
+
+-- The ledger of disagreement against those readings. Carries its own payload, so it stands
+-- alone even if what it objected to is later redacted.
+CREATE TABLE IF NOT EXISTS derived_dissents (
+    id TEXT PRIMARY KEY,
+    claim_id TEXT NOT NULL,
+    claim_version INTEGER NOT NULL,
+    author_id TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    schema_version INTEGER NOT NULL,
+    seq INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_derived_dissents_claim ON derived_dissents(claim_id, claim_version);
+
+-- How far each pull has got. Reset to 0 for a full resync — always safe.
+CREATE TABLE IF NOT EXISTS derived_sync_state (
+    stream TEXT PRIMARY KEY,
+    position INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+);
 `;
 
 const NOTE_MIGRATIONS: [string, string][] = [
@@ -750,6 +789,121 @@ export class ResearchStore {
        doc.status ?? "submitted", t],
     );
     return this.getSubmissionFor(doc.localRef)!;
+  }
+
+  // ---- the group's readings, pulled from the remote (Phase 6) -------------------
+  //
+  // Everything here writes ONLY derived_* tables. Nothing in this section may touch cases,
+  // form_research, notes, indications, trails or motifs — that is the write boundary
+  // (SHARED_RESEARCH.md §8), and sync-boundary.test.ts checks it holds.
+
+  syncPosition(stream: string): number {
+    const row = this.db.one<{ position: number }>(
+      "SELECT position FROM derived_sync_state WHERE stream = ?", [stream]);
+    return row?.position ?? 0;
+  }
+
+  setSyncPosition(stream: string, position: number): void {
+    this.db.run(
+      `INSERT INTO derived_sync_state (stream, position, updated_at) VALUES (?,?,?)
+       ON CONFLICT(stream) DO UPDATE SET position = excluded.position, updated_at = excluded.updated_at`,
+      [stream, position, now()],
+    );
+  }
+
+  /**
+   * Apply a pulled page. Idempotent: rows upsert by primary key, so re-delivering a row (which
+   * the cursor deliberately allows) changes nothing. Unknown payload fields are kept verbatim —
+   * an old client must not silently drop what a newer one wrote.
+   */
+  applyPull(page: { globalForms?: Doc[]; dissents?: Doc[]; cursor?: number }): Doc {
+    let forms = 0, dissents = 0;
+    for (const g of page.globalForms ?? []) {
+      this.db.run(
+        `INSERT INTO derived_global_forms
+           (subject_kind, subject_value, claim_id, version, meaning, author_id,
+            established_at, payload, schema_version, seq)
+         VALUES (?,?,?,?,?,?,?,?,?,?)
+         ON CONFLICT(subject_kind, subject_value) DO UPDATE SET
+           claim_id=excluded.claim_id, version=excluded.version, meaning=excluded.meaning,
+           author_id=excluded.author_id, established_at=excluded.established_at,
+           payload=excluded.payload, schema_version=excluded.schema_version, seq=excluded.seq`,
+        [g.subjectKind, g.subjectValue, g.claimId, g.version, g.meaning ?? "", g.authorId,
+         Date.parse(g.establishedAt) || now(), JSON.stringify(g.payload ?? null),
+         g.schemaVersion ?? 1, g.seq ?? 0],
+      );
+      forms++;
+    }
+    for (const d of page.dissents ?? []) {
+      this.db.run(
+        `INSERT INTO derived_dissents
+           (id, claim_id, claim_version, author_id, payload, created_at, schema_version, seq)
+         VALUES (?,?,?,?,?,?,?,?)
+         ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, seq=excluded.seq`,
+        [d.id, d.claimId, d.claimVersion, d.authorId, JSON.stringify(d.payload ?? null),
+         Date.parse(d.createdAt) || now(), d.schemaVersion ?? 1, d.seq ?? 0],
+      );
+      dissents++;
+    }
+    if (typeof page.cursor === "number") this.setSyncPosition("main", page.cursor);
+    return { globalForms: forms, dissents, cursor: this.syncPosition("main") };
+  }
+
+  /** The group's reading of a form or root, if they have one. */
+  groupReading(subjectKind: string, subjectValue: string): Doc | undefined {
+    const r = this.db.one<Doc>(
+      "SELECT * FROM derived_global_forms WHERE subject_kind = ? AND subject_value = ?",
+      [subjectKind, subjectValue]);
+    return r ? {
+      subjectKind: r.subject_kind, subjectValue: r.subject_value,
+      claimId: r.claim_id, version: r.version, meaning: r.meaning, authorId: r.author_id,
+      establishedAt: r.established_at,
+      dissents: this.db.scalar<number>(
+        "SELECT COUNT(*) FROM derived_dissents WHERE claim_id = ? AND claim_version = ?",
+        [r.claim_id, r.version]) ?? 0,
+    } : undefined;
+  }
+
+  /** Every group reading, for the gloss layer. */
+  groupGloss(): Doc[] {
+    return this.db
+      .query<Doc>("SELECT subject_kind, subject_value, meaning FROM derived_global_forms WHERE meaning != ''")
+      .map((r) => ({ subjectKind: r.subject_kind, subjectValue: r.subject_value, meaning: r.meaning }));
+  }
+
+  /**
+   * **Where I stand apart** — forms I have established whose meaning differs from the group's.
+   *
+   * This is the most valuable list in the app: not a conflict to resolve, but the record of
+   * where your reading and theirs genuinely part company. Neither side is changed by it.
+   */
+  divergences(): Doc[] {
+    return this.db
+      .query<Doc>(
+        `SELECT fr.lemma, fr.root, fr.meaning AS mine, fr.case_id,
+                g.meaning AS theirs, g.claim_id, g.version, g.author_id
+           FROM form_research fr
+           JOIN derived_global_forms g
+             ON g.subject_kind = 'form' AND g.subject_value = fr.lemma
+          WHERE fr.status = 'established'
+            AND TRIM(LOWER(fr.meaning)) != TRIM(LOWER(g.meaning))
+          ORDER BY fr.lemma`,
+      )
+      .map((r) => ({
+        lemma: r.lemma, root: r.root, caseId: r.case_id,
+        mine: r.mine, theirs: r.theirs,
+        claimId: r.claim_id, version: r.version, authorId: r.author_id,
+        dissents: this.db.scalar<number>(
+          "SELECT COUNT(*) FROM derived_dissents WHERE claim_id = ? AND claim_version = ?",
+          [r.claim_id, r.version]) ?? 0,
+      }));
+  }
+
+  /** Drop everything pulled. Always safe — a resync rebuilds it, and no research is lost. */
+  resetPulled(): void {
+    this.db.exec("DELETE FROM derived_global_forms");
+    this.db.exec("DELETE FROM derived_dissents");
+    this.db.exec("DELETE FROM derived_sync_state");
   }
 
   // ---- settings: device-independent key -> JSON value --------------------------

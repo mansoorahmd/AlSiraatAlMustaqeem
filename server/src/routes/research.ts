@@ -261,6 +261,42 @@ export function researchRoutes(state: AppState): Hono {
     return c.json(s().recordSubmission({ localRef: c.req.param("localRef"), ...body }));
   });
 
+  // --- the group's readings, pulled from the remote (Phase 6) ---
+  //
+  // The app fetches pages from the remote itself (it holds the session cookie) and posts them
+  // here to be applied. Everything lands in derived_* tables; a pull can never touch the
+  // reader's own work.
+
+  r.get("/research/pull/state", (c) => c.json({
+    cursor: s().syncPosition("main"),
+    groupReadings: s().groupGloss().length,
+  }));
+
+  r.post("/research/pull/apply", async (c) => {
+    const page = (await c.req.json().catch(() => ({}))) as
+      { globalForms?: never[]; dissents?: never[]; cursor?: number };
+    return c.json(s().applyPull(page));
+  });
+
+  /** Drop everything pulled and start again — always safe, no research is lost. */
+  r.post("/research/pull/reset", (c) => {
+    s().resetPulled();
+    return c.json({ ok: true, cursor: 0 });
+  });
+
+  /** The group's reading of one form/root, with how many dissents are filed against it. */
+  r.get("/research/group-reading", (c) =>
+    c.json(s().groupReading(c.req.query("subjectKind") ?? "form", c.req.query("subjectValue") ?? "") ?? null));
+
+  /** Every group reading — the "group" gloss layer. */
+  r.get("/research/group-gloss", (c) => c.json(s().groupGloss()));
+
+  /**
+   * Where I stand apart: forms I have established whose meaning differs from the group's.
+   * Not a conflict to resolve — the record of where the readings genuinely part company.
+   */
+  r.get("/research/divergences", (c) => c.json(s().divergences()));
+
   // settings — device-independent key/value UI prefs (reading prefs, active comparison)
   r.get("/research/settings/:key", (c) => c.json({ value: s().getSetting(c.req.param("key")) ?? null }));
   r.put("/research/settings/:key", async (c) => {

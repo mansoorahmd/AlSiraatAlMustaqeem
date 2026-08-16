@@ -92,6 +92,45 @@ export const databases = {
   },
 };
 
+// ---- the group's readings, pulled from the remote (Phase 6) --------------------
+
+export interface GroupReading {
+  subjectKind: string; subjectValue: string; claimId: string; version: number;
+  meaning: string; authorId: string; establishedAt: number; dissents: number;
+}
+export interface Divergence {
+  lemma: string; root: string; caseId: string;
+  mine: string; theirs: string;
+  claimId: string; version: number; authorId: string; dissents: number;
+}
+
+/**
+ * The group's established readings, kept in DERIVED tables so they can be dropped and re-pulled
+ * at any time. Your own established meanings are never touched — where the two differ is shown,
+ * not resolved.
+ */
+export const group = {
+  state(): Promise<{ cursor: number; groupReadings: number }> {
+    return srvGet("/pull/state");
+  },
+  apply(page: unknown): Promise<{ globalForms: number; dissents: number; cursor: number }> {
+    return srvPost("/pull/apply", page);
+  },
+  reset(): Promise<{ ok: boolean; cursor: number }> {
+    return srvPost("/pull/reset", {});
+  },
+  reading(subjectValue: string, subjectKind = "form"): Promise<GroupReading | null> {
+    return srvGet(`/group-reading?subjectKind=${subjectKind}&subjectValue=${encodeURIComponent(subjectValue)}`);
+  },
+  gloss(): Promise<{ subjectKind: string; subjectValue: string; meaning: string }[]> {
+    return srvGet("/group-gloss");
+  },
+  /** Forms I established whose meaning differs from the group's. */
+  divergences(): Promise<Divergence[]> {
+    return srvGet("/divergences");
+  },
+};
+
 // ---- outbound submission ledger ------------------------------------------------
 
 export interface SubmissionRecord {

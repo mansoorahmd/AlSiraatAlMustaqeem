@@ -26,6 +26,7 @@ import {
   proposeClaim, review, claimsFor, globalReading, dissentsFor, establishAsMaintainer,
   ClaimError, type SubjectKind, type Decision,
 } from "./claims.js";
+import { pullSince } from "./pull.js";
 
 export function createApp(): Hono<Env> {
   const app = new Hono<Env>();
@@ -144,6 +145,18 @@ export function createApp(): Hono<Env> {
 
   app.get("/claims/:id/dissents", requireRole("reader"), async (c) =>
     c.json(await dissentsFor(pgRunner, c.req.param("id"))));
+
+  /**
+   * The pull (Phase 6). A cursor walk over append-only streams: give me everything with
+   * `seq` greater than what I already have. Replayable, so a client offline for months just
+   * asks again, and a full resync is `since=0` — which is safe precisely because everything
+   * here lands in the client's DERIVED tables.
+   */
+  app.get("/pull", requireRole("reader"), async (c) => {
+    const since = Number(c.req.query("since") ?? 0);
+    const limit = Math.min(Number(c.req.query("limit") ?? 500), 2000);
+    return c.json(await pullSince(pgRunner, since, limit));
+  });
 
   /**
    * Approve or object. Establishment is decided here: approvals ≥ requiredApprovals AND

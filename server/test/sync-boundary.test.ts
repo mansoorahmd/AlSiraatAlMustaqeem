@@ -20,7 +20,12 @@ let db: Db;
 let store: ResearchStore;
 
 /** Every table a pull is allowed to write. Adding one here is a deliberate decision. */
-const WRITABLE_BY_SYNC = ["derived_submissions"];
+const WRITABLE_BY_SYNC = [
+  "derived_submissions",     // my outbox: what I have offered upstream
+  "derived_global_forms",    // the group's established readings
+  "derived_dissents",        // the ledger of disagreement against them
+  "derived_sync_state",      // how far each pull has got
+];
 
 /** Tables holding the reader's OWN scholarship. Sync must never write these. */
 const MINE = [
@@ -76,10 +81,35 @@ describe("what sync may never do", () => {
     }
   });
 
-  it("the only sync-facing writer is the submission ledger", () => {
+  it("every sync-facing method is one we deliberately allowed", () => {
+    // Adding a method whose name touches sync/pull/remote should be a conscious act, not
+    // something that slips in. If you add one, add it here and be sure it writes derived_* only.
+    const allowed = ["applyPull", "syncPosition", "setSyncPosition", "resetPulled"];
     const api = Object.getOwnPropertyNames(Object.getPrototypeOf(store));
-    const remoteWriters = api.filter((m) => /remote|sync|pull/i.test(m));
-    expect(remoteWriters).toEqual([]); // nothing yet: Phase 6 adds pulls, and they go to derived_*
+    const syncFacing = api.filter((m) => /remote|sync|pull/i.test(m));
+    expect(syncFacing.sort()).toEqual(allowed.sort());
+  });
+
+  it("applying a pull writes derived_* ONLY — proven by row counts, not by naming", () => {
+    const counts = () => Object.fromEntries(MINE.map((t) =>
+      [t, db.scalar<number>(`SELECT COUNT(*) FROM ${t}`) ?? 0]));
+
+    const before = counts();
+    store.applyPull({
+      cursor: 5,
+      globalForms: [{
+        subjectKind: "form", subjectValue: "هُدًى", claimId: "clm_x", version: 1,
+        meaning: "guidance", authorId: "them", establishedAt: new Date().toISOString(),
+        payload: { meaning: "guidance" }, schemaVersion: 1, seq: 4,
+      }],
+      dissents: [{
+        id: "dsn_x", claimId: "clm_x", claimVersion: 1, authorId: "other",
+        payload: {}, createdAt: new Date().toISOString(), schemaVersion: 1, seq: 5,
+      }],
+    });
+
+    expect(counts()).toEqual(before);                                  // not one row of mine moved
+    expect(db.scalar<number>("SELECT COUNT(*) FROM derived_global_forms")).toBe(1);
   });
 });
 

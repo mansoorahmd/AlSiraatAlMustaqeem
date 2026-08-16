@@ -3340,3 +3340,24 @@ a { color: var(--lapis); }
 .backup-result-head { font-size: var(--fs-small); color: var(--ink); font-weight: 500; }
 .backup-path { font-family: ui-monospace, monospace; font-size: var(--fs-small);
   color: var(--ink-soft); word-break: break-all; user-select: all; line-height: 1.6; }
+
+/* ⚖ where I stand apart — two readings side by side, neither privileged */
+.diverge { display: flex; align-items: flex-start; gap: 0.9rem; padding: 0.7rem 0.6rem;
+  border-radius: 8px; }
+.diverge + .diverge { border-top: 1px solid var(--paper-edge); }
+.diverge:hover { background: var(--paper-warm); }
+.diverge-word { flex: 0 0 9rem; display: flex; flex-direction: column; gap: 0.15rem;
+  align-items: flex-start; background: none; border: none; padding: 0; cursor: pointer;
+  font: inherit; color: var(--ink); font-size: 1.05rem; line-height: 2.05; }
+.diverge-root { font-size: var(--fs-label); color: var(--ink-faint); letter-spacing: 0.12em;
+  line-height: 1.9; }
+.diverge-readings { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.diverge-mine, .diverge-theirs { margin: 0; font-size: var(--fs-small); line-height: 1.9;
+  display: flex; align-items: baseline; gap: 0.5rem; }
+.diverge-tag { flex: 0 0 3rem; font-size: var(--fs-label); color: var(--ink-faint);
+  text-transform: uppercase; letter-spacing: 0.04em; }
+.diverge-mine { color: var(--ink); }
+.diverge-theirs { color: var(--ink-soft); }
+.diverge-dissent { font-size: var(--fs-label); color: var(--gold);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 999px; padding: 0.05rem 0.4rem; white-space: nowrap; }

@@ -170,15 +170,22 @@ The convergence-free heart. Build after the pipe is proven but from the Phase 0 
 
 ## Phase 6 — Inbound pull + reader integration
 
-- [ ] **6.1 Pull** globally established readings + dissents into `derived` tables — a cursor walk
-  over append-only streams, replayable, drop-safe (full resync is always a safe recovery).  ⇢ 5.1
-- [ ] **6.2 Gloss layer toggle** — mine / group / both (extends the translation-underlay
-  mechanism).  ⇢ 6.1
-- [ ] **6.3 Divergence surfacing** — the **⚖ margin mark**, the form dossier showing both readings
-  + attached dissents, and the *"where I stand apart"* working queue.  ⇢ 6.1
-  *AC:* resync is idempotent and can't damage local work; divergence shows in all three places.
-
----
+- [x] **6.1 Pull** — ✅ `remote/src/pull.ts`: `GET /pull?since=N`, a cursor walk over
+  append-only rows. Replayable, resumable, and `since=0` is a full resync. The cursor errs
+  toward RE-DELIVERING a row rather than skipping one, because applying is idempotent but a
+  gap is not recoverable. Locally `derived_global_forms` / `derived_dissents` /
+  `derived_sync_state` + `applyPull` (upsert by key, unknown payload fields kept verbatim).
+  `POST /research/pull/{apply,reset}`; reset is always safe.  ⇢ 5.1
+- [x] **6.3 Divergence surfacing** — ✅ the **⚖ "Where I stand apart"** screen (Study menu):
+  every form you established whose meaning differs from the group's, both readings side by side,
+  with a count of dissents filed against theirs, and a jump to the case where you established
+  yours. It changes NEITHER reading — that is the point.  ⇢ 6.1
+- [ ] **6.2 Gloss layer toggle** (mine / group / both) — the data is there (`/research/group-gloss`);
+  wiring it into the reader's interlinear gloss is the remaining piece.
+  *AC:* resync is idempotent and can't damage local work ✅ (`pull.test.ts` 11 tests,
+  `sync-boundary.test.ts` 9 — including that applying a pull leaves every one of the reader's
+  tables byte-for-byte unchanged); divergence shows in the dedicated screen ✅, dossier + margin
+  mark still to come.
 
 ## Phase 7 — Redaction, tombstones, citations
 

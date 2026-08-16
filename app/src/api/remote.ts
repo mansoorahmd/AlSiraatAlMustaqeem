@@ -163,6 +163,18 @@ export const remote = {
   submissions(): Promise<Submission[]> {
     return call<Submission[]>("/submissions");
   },
+
+  /**
+   * Ask the remote for everything established or dissented since `since`. A cursor walk:
+   * replayable, resumable, and `since=0` is a full resync — safe because it only ever lands in
+   * the app's derived tables.
+   */
+  pull(since: number): Promise<{
+    cursor: number; more: boolean; schemaVersion: number;
+    globalForms: unknown[]; dissents: unknown[];
+  }> {
+    return call(`/pull?since=${since}`);
+  },
 };
 
 /** Desktop bridge, when running inside Electron. */

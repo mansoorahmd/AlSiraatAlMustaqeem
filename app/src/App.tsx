@@ -7,6 +7,7 @@ import { RootsExplorer } from "./screens/RootsExplorer";
 import { Search } from "./screens/Search";
 import { Motifs } from "./screens/Motifs";
 import { Compare } from "./screens/Compare";
+import { Divergences } from "./screens/Divergences";
 import { Shortcuts } from "./components/Shortcuts";
 import { CommandPalette } from "./components/CommandPalette";
 import { ExpressionBar } from "./components/ExpressionBar";
@@ -25,6 +26,7 @@ function Screen() {
   if (tab === "roots") return <RootsExplorer />;
   if (tab === "motifs") return <Motifs />;
   if (tab === "compare") return <Compare />;
+  if (tab === "diverge") return <Divergences />;
   return <ReadingRoom />;
 }
 
