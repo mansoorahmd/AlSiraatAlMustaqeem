@@ -43,17 +43,31 @@ export function researchRoutes(state: AppState): Hono {
     recent: state.databases.recent(),
   }));
 
-  /** Open another .db — a backup, a colleague's file, your own from another machine. */
+  /**
+   * Open another .db — a backup, a colleague's file, your own from another machine.
+   *
+   * By default the file is COPIED to the working location and you edit the copy: opening a
+   * backup in place would turn it into a live database (WAL sidecars appear beside it) and it
+   * would stop being the untouched copy you took. Any existing working database is moved aside,
+   * never overwritten, and its new path is reported. `inPlace: true` opts out.
+   */
   r.post("/research/databases/open", async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { path?: string };
+    const body = (await c.req.json().catch(() => ({}))) as { path?: string; inPlace?: boolean };
     if (!body.path) return c.json({ detail: "path is required" }, 422);
     const previous = state.researchDb.path;
     try {
-      const full = state.databases.use(body.path);
+      let full: string;
+      let replaced: string | null = null;
+      if (body.inPlace) {
+        full = state.databases.use(body.path);
+      } else {
+        state.researchDb.close();          // release the working file before replacing it
+        ({ path: full, replaced } = state.databases.adopt(body.path));
+      }
       reopenResearch(state, full);
       const owner = s().getOwner();
-      if (owner) state.databases.label(full, owner.email as string);
-      return c.json({ path: state.researchDb.path, owner: owner ?? null });
+      if (owner) state.databases.label(full, (owner.name as string) || (owner.email as string));
+      return c.json({ path: state.researchDb.path, owner: owner ?? null, replaced });
     } catch (e) {
       try { reopenResearch(state, previous); } catch { /* nothing more to do */ }
       return c.json({ detail: (e as Error).message }, 400);

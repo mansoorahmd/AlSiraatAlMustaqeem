@@ -191,6 +191,11 @@ machine, rename it, or hand it to a colleague, and it still knows whose research
   the email re-derives the uuid. Omitting the name keeps the existing one.
 - **Moving machines is deliberately manual**: back the file up, carry it, open it there. There
   is no magic sync of local files.
+- **Opening a database COPIES it in.** Working on a backup in place turns that backup into a
+  live database (WAL sidecars appear beside it), so it stops being the untouched copy you took.
+  `Databases.adopt()` copies the file to the working path and you edit the copy; any database
+  already there is moved aside to `research-replaced-<timestamp>.db` — never overwritten — and
+  the UI says where it went. `inPlace: true` opts out.
 - **Home → Your data** shows the owner and the file, lets you change either, and can open any
   `.db` (a backup, a colleague's) — the desktop uses a native file dialog.
 - **Publishing requires a match.** The share controls refuse when the signed-in account isn't

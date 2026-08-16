@@ -8,7 +8,7 @@
 // Deliberately dumb: a path list. It is never the source of truth about identity, and deleting
 // it costs nothing but the recent-files menu.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 export interface RecentDb {
@@ -71,6 +71,49 @@ export class Databases {
     ix.currentPath = full;
     this.write(ix);
     return full;
+  }
+
+  /**
+   * Bring an outside database IN: copy it to the working location and return that path.
+   *
+   * Opening a backup in place turns it into a live database — the app starts writing WAL
+   * sidecars next to it and it is no longer the untouched copy you took. So restoring means
+   * *adopting*: the file is copied to the standard working path and you edit the copy.
+   *
+   * Never destroys anything. If a working database already exists it is moved aside to
+   * research-replaced-<timestamp>.db (sidecars included) and the path is returned, so the
+   * caller can tell the reader exactly where their previous work went.
+   *
+   * The caller MUST close its handle on the working database first.
+   */
+  adopt(sourcePath: string): { path: string; replaced: string | null } {
+    const source = resolve(sourcePath);
+    if (!source.endsWith(".db")) throw new Error("a research database must be a .db file");
+    if (!existsSync(source)) throw new Error(`no such file: ${source}`);
+
+    const target = resolve(this.defaultDbPath);
+    if (source === target) return { path: this.use(target), replaced: null }; // already the one
+
+    let replaced: string | null = null;
+    if (existsSync(target)) {
+      const p = (n: number) => String(n).padStart(2, "0");
+      const d = new Date();
+      const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}` +
+        `-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+      replaced = join(this.dir, `research-replaced-${stamp}.db`);
+      renameSync(target, replaced);
+      for (const side of ["-wal", "-shm"]) {
+        if (existsSync(target + side)) renameSync(target + side, replaced + side);
+      }
+    }
+
+    // copy the sidecars too: the source may carry un-checkpointed pages in its WAL, and
+    // leaving them behind would silently lose the newest work in that file
+    copyFileSync(source, target);
+    for (const side of ["-wal", "-shm"]) {
+      if (existsSync(source + side)) copyFileSync(source + side, target + side);
+    }
+    return { path: this.use(target), replaced };
   }
 
   /** Update the cached label (called once a database is open and its owner is known). */

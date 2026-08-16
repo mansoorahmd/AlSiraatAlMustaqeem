@@ -82,8 +82,13 @@ export const databases = {
   list(): Promise<{ current: { path: string; owner: Owner | null }; recent: RecentDb[] }> {
     return srvGet("/databases");
   },
-  open(path: string): Promise<{ path: string; owner: Owner | null }> {
-    return srvPost("/databases/open", { path });
+  /**
+   * Open another database. It is COPIED to the working location and you edit the copy, so a
+   * backup stays an untouched backup; any database already open is moved aside (never
+   * overwritten) and reported as `replaced`.
+   */
+  open(path: string, inPlace = false): Promise<{ path: string; owner: Owner | null; replaced: string | null }> {
+    return srvPost("/databases/open", { path, inPlace });
   },
 };
 

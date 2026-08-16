@@ -24,6 +24,7 @@ export function ProfilePicker({ onChanged }: { onChanged?: () => void }) {
   const [pathDraft, setPathDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [replaced, setReplaced] = useState<string | null>(null);
   const pick = desktopPickDb();
 
   const refresh = useCallback(async () => {
@@ -39,7 +40,8 @@ export function ProfilePicker({ onChanged }: { onChanged?: () => void }) {
   const act = async (fn: () => Promise<unknown>, reload = false) => {
     setBusy(true); setErr(null);
     try {
-      await fn();
+      const out = await fn() as { replaced?: string | null } | undefined;
+      if (out && "replaced" in out) setReplaced(out.replaced ?? null);
       await refresh();
       if (reload) onChanged?.();     // everything on screen came from the old file
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
@@ -172,7 +174,16 @@ export function ProfilePicker({ onChanged }: { onChanged?: () => void }) {
       )}
 
       {err && <p className="acct-error" role="alert">{err}</p>}
+
+      {/* say what just happened to the file that was open — it was moved, not deleted */}
+      {replaced && (
+        <p className="acct-hint">
+          Your previous database was kept as <code>{fileName(replaced)}</code>.
+        </p>
+      )}
+
       <p className="acct-hint">
+        Opening a database copies it here and works on the copy, so a backup stays a backup.
         To work on another machine, back this file up and open it there.
       </p>
     </div>
