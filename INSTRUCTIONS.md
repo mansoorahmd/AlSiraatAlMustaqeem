@@ -29,6 +29,24 @@ requirement, not a per-task nicety.
 - Paper aesthetic (warm paper, ink, gold) and the CSS variables in `app/src/styles.css`
   are the source of truth for colour/spacing — reuse them, don't hardcode.
 
+### Arabic needs vertical room (this keeps getting broken)
+
+Vocalised Arabic stacks marks **above and below** the baseline — fatḥa/ḍamma above, kasra and
+shadda stacks below — so the glyphs are taller than a Latin line. A normal UI `line-height` of
+1.2–1.5 produces a line box shorter than the text, and the moment that element also has
+`overflow: hidden` (for `text-overflow: ellipsis`) or a fixed height, **the marks are sheared
+off**. It looks like a font bug; it's a layout bug.
+
+Whenever you add anything that can contain Arabic — a list row, chip, badge, tooltip,
+truncated label, table cell, popover — do all of:
+
+- `line-height: 1.9` minimum for UI text with inline Arabic; **2.0–2.25** for Qur'anic text
+  (`.quran` already does this — don't override it downward).
+- Never put a fixed `height` on it. Use `min-height` so it can grow.
+- If you truncate with `overflow: hidden`, make sure the line box has already been given the
+  height above — clipping happens at the padding box, so padding does *not* rescue it.
+- Check it with a vocalised word that has marks both ways, e.g. `ٱلضَّآلِّينَ` or `مَعْلُومِ`.
+
 ### Build what people already know
 
 This app is for the general public, not for us. For anything that exists in ordinary web

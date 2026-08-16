@@ -398,44 +398,10 @@ a { color: var(--lapis); }
 /* --- research home / dashboard --- */
 .home-head { text-align: center; margin-bottom: 1.2rem; }
 .home-title { font-size: 2rem; color: var(--ink); margin: 0; }
-.home-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: 1rem;
-}
-.home-card {
-  border: 1px solid var(--paper-edge);
-  border-radius: 14px;
-  background: var(--paper);
-  padding: 0.9rem 1rem;
-}
-.home-card-title { font-size: 0.95rem; margin: 0 0 0.6rem; color: var(--ink); }
-.home-empty { font-size: var(--fs-small); color: var(--ink-soft); margin: 0.3rem 0; }
-.home-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
-.home-row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.5rem;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: var(--wash, rgba(37, 99, 235, 0.04));
-  cursor: pointer;
-  text-align: start;
-}
-.home-row:hover { border-color: var(--paper-edge); background: rgba(37, 99, 235, 0.09); }
-.home-row-main { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
 .home-row-main.quran { font-size: 1.15rem; }
 .home-q-text { font-size: var(--fs-small); }
 .home-row-meta { flex: none; font-size: var(--fs-label); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .home-q, .home-trail { flex: none; font-size: 0.85rem; }
-.home-lex { font-size: var(--fs-small); color: var(--ink); margin: 0 0 0.4rem; }
-.home-lex-n {
-  border: none; background: none; cursor: pointer;
-  font-size: 1.3rem; font-weight: 700; color: var(--lapis);
-  font-variant-numeric: tabular-nums; padding: 0;
-}
 
 /* --- roots explorer --- */
 .roots-toolbar {
@@ -3274,46 +3240,58 @@ a { color: var(--lapis); }
 /* ============ home: workbench ============
    One clear next action, three numbers, three equal cards. Nothing about configuration —
    that lives in Settings (see INSTRUCTIONS.md → UI conventions). */
-/* Home is a dashboard of cards, not prose: it should use the width it has. The 60rem measure
-   on .sheet is right for reading, wrong here — it left big empty gutters on a wide screen. */
-.sheet.home { max-width: 84rem; }
+/* ============ home ============
+   Feed conventions, because that's what people are fluent in: one calm resume bar, counts as
+   quiet text, then cards whose ROWS are the interface — generous padding, a clear left-aligned
+   title, muted metadata, and plenty of line-height. Colour is used once, for the one action. */
+.sheet.home { max-width: 76rem; }
 
-.home-hero {
-  display: grid; gap: 0.75rem; margin-bottom: 1.25rem;
-  /* the continue tile is wider, the three stats equal — ONE grid, so every tile is
-     exactly the same height and their edges line up */
-  grid-template-columns: 1.6fr repeat(3, minmax(0, 1fr));
+.home-hero { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem; }
+
+/* the single accent on the page */
+.resume {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  width: 100%; padding: 0.85rem 1.1rem; cursor: pointer; text-align: start;
+  background: var(--paper); border: 1px solid var(--paper-edge); border-radius: 12px;
+  border-inline-start: 3px solid var(--lapis); font: inherit; color: var(--ink);
+  transition: border-color var(--t-fast) var(--ease-paper);
 }
-@media (max-width: 900px) { .home-hero { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .home-hero { grid-template-columns: 1fr; } }
+.resume:hover { border-color: var(--lapis); }
+.resume-body { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.resume-label { font-size: var(--fs-small); color: var(--ink-soft); }
+.resume-ref { font-size: 1.05rem; font-weight: 600; }
+.resume-ayah { color: var(--ink-soft); font-weight: 500; }
+.resume-go { color: var(--lapis); font-size: 1.1rem; flex: 0 0 auto; }
 
-/* every tile in the hero shares one shape: same padding, radius and vertical rhythm */
-.home-continue, .home-hero .stat {
-  display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;
-  align-items: flex-start; text-align: start; cursor: pointer;
-  min-height: 4.75rem; padding: 0.85rem 1rem;
-  border-radius: 10px; border: 1px solid var(--paper-edge); font: inherit;
-}
-.home-continue { background: var(--lapis); border-color: var(--lapis); color: #fff; }
-.home-continue:hover { filter: brightness(1.06); }
-.home-continue-label { font-size: var(--fs-small); opacity: 0.85; }
-.home-continue-ref { font-size: 1.15rem; font-weight: 600; }
-.home-continue-ayah { opacity: 0.8; font-weight: 500; }
+/* counts read as a sentence, not as four competing boxes */
+.home-counts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+  padding-inline-start: 0.15rem; }
+.count { background: none; border: none; padding: 0; font: inherit;
+  font-size: var(--fs-small); color: var(--ink-soft); cursor: pointer; }
+.count strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.count:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.count-sep { color: var(--ink-faint); }
 
-.home-hero .stat { background: var(--paper); color: var(--ink); }
-.home-hero .stat:hover { border-color: var(--ink-faint); }
-.home-hero .stat-n { font-size: 1.4rem; font-weight: 600; line-height: 1.1;
-  color: var(--ink); font-variant-numeric: tabular-nums; }
-.home-hero .stat-l { font-size: var(--fs-small); color: var(--ink-soft);
-  text-transform: none; letter-spacing: 0; }
-
-/* three cards of equal weight */
-.home-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); }
-.home-card { display: flex; flex-direction: column; padding: 1rem 1.1rem;
-  background: var(--paper); border: 1px solid var(--paper-edge); border-radius: 10px; }
+/* three columns of equal weight; each card is a quiet container for its rows */
+.home-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.home-card { display: flex; flex-direction: column; padding: 0.35rem 0.5rem 0.5rem;
+  background: var(--paper); border: 1px solid var(--paper-edge); border-radius: 12px; }
 .home-card-title { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
-  margin: 0 0 0.6rem; font-size: var(--fs-small); font-weight: 600; color: var(--ink);
-  letter-spacing: 0.01em; }
+  margin: 0; padding: 0.7rem 0.6rem 0.5rem; font-size: 0.95rem; font-weight: 600;
+  color: var(--ink); }
+
+/* rows: comfortable targets, no inner boxes-within-boxes */
+.home-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.home-row { display: flex; align-items: center; gap: 0.6rem; width: 100%;
+  padding: 0.6rem; border: none; border-radius: 8px; background: none; cursor: pointer;
+  font: inherit; color: var(--ink); text-align: start; }
+.home-row:hover { background: var(--paper-warm); }
+.home-row-main { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; line-height: 1.5; }
+.home-row-meta { flex: 0 0 auto; font-size: var(--fs-small); color: var(--ink-faint);
+  font-variant-numeric: tabular-nums; }
+.home-empty { font-size: var(--fs-small); color: var(--ink-soft); line-height: 1.6;
+  margin: 0; padding: 0.4rem 0.6rem 0.7rem; }
 
 /* settings sheet sections */
 .settings-group { display: flex; flex-direction: column; gap: 0.6rem; }
@@ -3333,3 +3311,24 @@ a { color: var(--lapis); }
   border-color: var(--ink-faint); background: var(--paper-warm);
 }
 .acct .ctl.primary { padding: 0.45rem 0.8rem; }
+
+/* Row metadata is supporting, not competing. Several saturated colours in one list (a red
+   marker, green "Shared", a coloured stamp) is what makes a feed feel busy — one accent per
+   screen, everything else muted. */
+.home-row .home-q, .home-row .home-trail { color: var(--ink-faint); font-size: 0.8rem; }
+.home-q-text { font-size: var(--fs-ui); }
+.home-row .stamp { background: var(--paper-warm); border: 1px solid var(--paper-edge);
+  color: var(--ink-soft); font-size: var(--fs-label); font-weight: 500;
+  padding: 0.1rem 0.4rem; border-radius: 999px; letter-spacing: 0; text-transform: none; }
+.share-done { color: var(--ink-faint); font-weight: 400; }
+.home-row-main.quran { font-size: 1.05rem; }
+
+/* ---- Arabic needs vertical room -------------------------------------------------
+   Vocalised Arabic stacks marks ABOVE and BELOW the baseline (fatḥa/ḍamma up, kasra and
+   the shadda stack down), so a UI line-height of 1.2–1.5 makes a line box shorter than the
+   glyphs. Combined with overflow:hidden for ellipsis truncation, that shears the marks off.
+   Any row, chip or truncated label that can hold Arabic gets room. See INSTRUCTIONS.md. */
+.home-row, .home-row-main, .home-q-text { line-height: 1.9; }
+.home-row-main.quran { font-size: 1.05rem; line-height: 2.05; }
+/* the row itself must not cap the line box it contains */
+.home-row { min-height: 2.6rem; }

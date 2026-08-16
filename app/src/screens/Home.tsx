@@ -68,31 +68,33 @@ export function Home() {
 
   return (
     <div className="sheet home">
-      {/* One clear next action, then the numbers. Continuing to read was previously dressed
-          up as a statistic, which buried the thing you most often want. */}
+      {/* A calm resume bar, then the counts as quiet text — the shape people know from a feed
+          header. A big saturated block shouted at the reader and pushed the actual work down. */}
       <header className="home-hero">
         <button
-          className="home-continue"
+          className="resume"
           onClick={() => dispatch({ type: "jumpToVerse", verseKey: contKey })}
         >
-          <span className="home-continue-label">Continue reading</span>
-          <span className="home-continue-ref">
-            {chapter.data?.name_simple ?? "Sūrah"} <span className="home-continue-ayah">{contKey}</span>
+          <span className="resume-body">
+            <span className="resume-label">Continue reading</span>
+            <span className="resume-ref">
+              {chapter.data?.name_simple ?? "Sūrah"} <span className="resume-ayah">{contKey}</span>
+            </span>
           </span>
+          <span className="resume-go" aria-hidden>→</span>
         </button>
 
-        <div className="home-stats">
-          <button className="stat" onClick={() => dispatch({ type: "setTab", tab: "investigate" })}>
-            <span className="stat-n">{openCases.length}</span>
-            <span className="stat-l">open case{openCases.length === 1 ? "" : "s"}</span>
+        <div className="home-counts">
+          <button className="count" onClick={() => dispatch({ type: "setTab", tab: "investigate" })}>
+            <strong>{openCases.length}</strong> open case{openCases.length === 1 ? "" : "s"}
           </button>
-          <button className="stat" onClick={() => dispatch({ type: "setTab", tab: "read" })}>
-            <span className="stat-n">{openQuestions.length}</span>
-            <span className="stat-l">open question{openQuestions.length === 1 ? "" : "s"}</span>
+          <span className="count-sep" aria-hidden>·</span>
+          <button className="count" onClick={() => dispatch({ type: "setTab", tab: "read" })}>
+            <strong>{openQuestions.length}</strong> open question{openQuestions.length === 1 ? "" : "s"}
           </button>
-          <button className="stat" onClick={() => dispatch({ type: "setTab", tab: "vault" })}>
-            <span className="stat-n">{established}</span>
-            <span className="stat-l">established meaning{established === 1 ? "" : "s"}</span>
+          <span className="count-sep" aria-hidden>·</span>
+          <button className="count" onClick={() => dispatch({ type: "setTab", tab: "vault" })}>
+            <strong>{established}</strong> established
           </button>
         </div>
       </header>
