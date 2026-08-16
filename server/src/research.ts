@@ -697,19 +697,45 @@ export class ResearchStore {
           ORDER BY CASE status WHEN 'established' THEN 0 WHEN 'proposed' THEN 1 ELSE 2 END,
                    created_at DESC`,
         [subjectKind, subjectValue])
-      .map((r) => ({
-        id: `peer:${r.claim_id}@${r.version}`,
-        claimId: r.claim_id, version: r.version, authorId: r.author_id,
-        scope: r.subject_kind === "root" ? "root" : "lemma",
-        root: r.subject_kind === "root" ? r.subject_value : null,
-        lemma: r.subject_kind === "form" ? r.subject_value : null,
-        status: r.status, label: r.label, meaning: r.meaning,
-        createdAt: r.created_at,
-        origin: "remote", source: "community",
-        dissents: this.db.scalar<number>(
-          "SELECT COUNT(*) FROM derived_dissents WHERE claim_id = ? AND claim_version = ?",
-          [r.claim_id, r.version]) ?? 0,
-      }));
+      .map((r) => this.peerRow(r));
+  }
+
+  /**
+   * The community's FORM readings for a set of lemmas, keyed by lemma.
+   *
+   * A community root reading has no refinements of its own — the group states form-level
+   * readings as separate form claims. So the per-form view of a community root reading is
+   * assembled here: each form of the root, matched to whatever the community has said about
+   * that exact form. Best reading per lemma (established first).
+   */
+  peerFormReadings(lemmas: string[]): Record<string, Doc> {
+    const out: Record<string, Doc> = {};
+    if (lemmas.length === 0) return out;
+    const marks = lemmas.map(() => "?").join(",");
+    for (const r of this.db.query<Doc>(
+      `SELECT * FROM derived_peer_indications
+        WHERE subject_kind = 'form' AND subject_value IN (${marks})
+        ORDER BY CASE status WHEN 'established' THEN 0 WHEN 'proposed' THEN 1 ELSE 2 END,
+                 created_at DESC`, lemmas)) {
+      if (!out[r.subject_value]) out[r.subject_value] = this.peerRow(r); // first = best
+    }
+    return out;
+  }
+
+  private peerRow(r: Doc): Doc {
+    return {
+      id: `peer:${r.claim_id}@${r.version}`,
+      claimId: r.claim_id, version: r.version, authorId: r.author_id,
+      scope: r.subject_kind === "root" ? "root" : "lemma",
+      root: r.subject_kind === "root" ? r.subject_value : null,
+      lemma: r.subject_kind === "form" ? r.subject_value : null,
+      status: r.status, label: r.label, meaning: r.meaning,
+      createdAt: r.created_at,
+      origin: "remote", source: "community",
+      dissents: this.db.scalar<number>(
+        "SELECT COUNT(*) FROM derived_dissents WHERE claim_id = ? AND claim_version = ?",
+        [r.claim_id, r.version]) ?? 0,
+    };
   }
 
   private clearRootPrimary(root: string, exceptId?: string): void {

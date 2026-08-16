@@ -171,9 +171,41 @@ describe("what sync may never do", () => {
     expect(peers[0]!.status).toBe("established");
   });
 
+  it("peerFormReadings gives a community root reading its per-form view", () => {
+    store.applyPull({
+      peerIndications: [
+        { claimId: "f1", version: 1, authorId: "a", subjectKind: "form", subjectValue: "هَدَى",
+          status: "established", label: "he guided", meaning: "verb reading",
+          payload: {}, createdAt: new Date().toISOString(), schemaVersion: 1, seq: 20 },
+        { claimId: "f2", version: 1, authorId: "a", subjectKind: "form", subjectValue: "هُدًى",
+          status: "proposed", label: "guidance", meaning: "noun reading",
+          payload: {}, createdAt: new Date().toISOString(), schemaVersion: 1, seq: 21 },
+      ],
+    });
+    const map = store.peerFormReadings(["هَدَى", "هُدًى", "ٱهْتَدَىٰ"]);
+    expect(Object.keys(map).sort()).toEqual(["هَدَى", "هُدًى"].sort());  // only forms with a reading
+    expect(map["هُدًى"]!.label).toBe("guidance");
+    expect(map["ٱهْتَدَىٰ"]).toBeUndefined();                            // no reading → absent
+  });
+
+  it("peerFormReadings keeps the best reading per form (established over proposed)", () => {
+    store.applyPull({
+      peerIndications: [
+        { claimId: "g1", version: 1, authorId: "a", subjectKind: "form", subjectValue: "شَهِيد",
+          status: "proposed", label: "witness (argued)", meaning: "p",
+          payload: {}, createdAt: new Date(1).toISOString(), schemaVersion: 1, seq: 30 },
+        { claimId: "g2", version: 1, authorId: "b", subjectKind: "form", subjectValue: "شَهِيد",
+          status: "established", label: "witness (carried)", meaning: "e",
+          payload: {}, createdAt: new Date(2).toISOString(), schemaVersion: 1, seq: 31 },
+      ],
+    });
+    expect(store.peerFormReadings(["شَهِيد"])["شَهِيد"]!.status).toBe("established");
+  });
+
   it("dropping every derived table loses the community's readings and none of mine", () => {
     db.exec("DELETE FROM derived_peer_indications");
     expect(store.peerIndications("root", "هدي")).toHaveLength(0);
+    expect(store.peerFormReadings(["هُدًى"])).toEqual({});
     expect(store.rootIndications("هدي")).toHaveLength(1);   // untouched
   });
 });

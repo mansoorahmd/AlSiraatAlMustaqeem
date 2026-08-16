@@ -6,11 +6,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
-import { archive, newId } from "../../persistence/db";
+import { archive, group, newId } from "../../persistence/db";
 import { useAsync } from "../../hooks/useAsync";
-import type { RootIndicationWithRefinement, WordIndication } from "../../api/types";
+import type { RootIndicationWithRefinement, WordIndication, PeerIndication } from "../../api/types";
 import { IndicationPromptPanel } from "./IndicationPromptPanel";
-import { CommunityIndications } from "./IndicationsPanel";
 
 const spaced = (r: string) => r.split("").join(" ");
 
@@ -34,10 +33,15 @@ export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props
   const communityRoot = data.data?.communityRoot ?? [];
   const communityLemma = data.data?.communityLemma ?? [];
 
+  // A selection is either one of your indications or a community reading. The peer id space
+  // is disjoint ("peer:…"), so one piece of state serves both.
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // keep a valid selection: chosen → primary → first
-  const selected =
-    indications.find((s) => s.id === selectedId) ?? indications.find((s) => s.primary) ?? indications[0] ?? null;
+  const community = [...communityRoot, ...communityLemma];
+  const selectedPeer = community.find((p) => p.id === selectedId) ?? null;
+  // keep a valid selection among YOUR indications: chosen → primary → first (unless a peer is picked)
+  const selected = selectedPeer
+    ? null
+    : indications.find((s) => s.id === selectedId) ?? indications.find((s) => s.primary) ?? indications[0] ?? null;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -106,14 +110,25 @@ export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props
               <button className="ctl establish-btn" disabled={!newLabel.trim()} onClick={addIndication}>＋ Add indication</button>
             </div>
 
-            {/* what others hold for this root, and for the form you tapped */}
-            <CommunityIndications items={communityRoot} subject="this root" />
-            {focusLemma && <CommunityIndications items={communityLemma} subject="this form" />}
+            {/* what others hold — selectable, so their per-form reading shows on the right */}
+            <CommunityChips
+              root={communityRoot}
+              lemma={focusLemma ? communityLemma : []}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
           </aside>
 
-          {/* the selected indication: its text + every form's own meaning */}
+          {/* the selection: your indication (editable) or a community reading (read-only) */}
           <main className="ie-forms-wrap">
-            {selected ? (
+            {selectedPeer ? (
+              <CommunityForms
+                key={selectedPeer.id}
+                reading={selectedPeer}
+                forms={rootInfo.data?.forms ?? []}
+                focusLemma={focusLemma ?? null}
+              />
+            ) : selected ? (
               <IndicationForms
                 key={selected.id}
                 indication={selected}
@@ -152,6 +167,112 @@ export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props
             onClose={() => setPromptOpen(false)}
           />
         )}
+      </div>
+    </div>
+  );
+}
+
+const STATUS_HINT: Record<PeerIndication["status"], string> = {
+  established: "the group's current reading — a majority of reviewers carried it",
+  proposed: "argued and on record, but it has not carried a majority",
+  superseded: "its author has since written a later version; this one stays citable",
+};
+
+/**
+ * The community's readings, as selectable chips beneath your own. Picking one shows its
+ * per-form view on the right, exactly as your own indications do — but read-only. No star and
+ * no delete: you cannot promote or edit someone else's reading, only weigh it.
+ */
+function CommunityChips({
+  root, lemma, selectedId, onSelect,
+}: {
+  root: PeerIndication[]; lemma: PeerIndication[];
+  selectedId: string | null; onSelect: (id: string) => void;
+}) {
+  if (root.length === 0 && lemma.length === 0) return null;
+  const chip = (p: PeerIndication) => (
+    <button
+      key={p.id}
+      className={`ie-chip community${selectedId === p.id ? " active" : ""}`}
+      onClick={() => onSelect(p.id)}
+    >
+      <span className="ie-chip-name">
+        <span className="community-mark" aria-hidden>◈</span>{" "}
+        {p.label || p.meaning || "(unlabelled)"}
+      </span>
+      <span className="ie-chip-meta">
+        <span className={`community-status ${p.status}`} title={STATUS_HINT[p.status]}>{p.status}</span>
+        {p.dissents > 0 && <span className="community-dissent">{p.dissents} dissent{p.dissents === 1 ? "" : "s"}</span>}
+      </span>
+    </button>
+  );
+  return (
+    <div className="community-block">
+      <p className="community-head"><span className="community-mark" aria-hidden>◈</span> From the community</p>
+      {root.map(chip)}
+      {lemma.map(chip)}
+    </div>
+  );
+}
+
+/**
+ * A community reading's per-form view: the reading's own text, then every form of the root
+ * paired with whatever the community has said about that exact form. Read-only throughout —
+ * this is someone else's work, shown so you can weigh it against your own.
+ */
+function CommunityForms({
+  reading, forms, focusLemma,
+}: {
+  reading: PeerIndication;
+  forms: { lemma_arabic: string | null }[];
+  focusLemma: string | null;
+}) {
+  const lemmas = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const f of forms) {
+      const l = f.lemma_arabic;
+      if (l && !seen.has(l)) { seen.add(l); out.push(l); }
+    }
+    out.sort((a, b) => (a === focusLemma ? -1 : b === focusLemma ? 1 : 0));
+    return out;
+  }, [forms, focusLemma]);
+
+  // the community's form-level readings across every form of the root, keyed by lemma
+  const byForm = useAsync(() => group.peerFormReadings(lemmas), [lemmas.join(",")]);
+  const map: Record<string, PeerIndication> = byForm.data ?? {};
+
+  return (
+    <div className="ie-forms">
+      <div className="ie-indication-edit community-reading">
+        <div className="community-reading-head">
+          <span className="community-mark" aria-hidden>◈</span>
+          <span className="ie-chip-name">{reading.label || "(unlabelled)"}</span>
+          <span className={`community-status ${reading.status}`} title={STATUS_HINT[reading.status]}>{reading.status}</span>
+        </div>
+        {reading.meaning && <p className="indication-meaning">{reading.meaning}</p>}
+        <p className="acct-hint">A reading held by the community. You can weigh it, not edit it — to hold it yourself, write your own indication.</p>
+      </div>
+
+      <p className="ie-section">Each form, as the community reads it</p>
+      <div className="ie-form-rows">
+        {lemmas.map((lemma) => {
+          const r = map[lemma];
+          return (
+            <div key={lemma} className={`ie-form-row community${lemma === focusLemma ? " focused" : ""}${r ? " filled" : ""}`}>
+              <div className="ie-form-head">
+                <span className="ie-form-ar quran">{spaced(lemma)}</span>
+                {lemma === focusLemma && <span className="ie-form-tag">tapped</span>}
+                {!r && <span className="ie-form-todo">no community reading</span>}
+              </div>
+              {r && (
+                <p className="indication-meaning">
+                  {r.label && <strong>{r.label}{r.meaning ? " — " : ""}</strong>}{r.meaning}
+                </p>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

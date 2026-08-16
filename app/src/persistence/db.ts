@@ -4,7 +4,7 @@
 // The client is a thin fetch wrapper; there is no browser-side storage.
 
 import type { CaseRecord, TrailRecord, NoteRecord, UserRootMeaning, Motif } from "./types";
-import type { CompareSet, CompareItemRow, WordIndication, IndicationsForWord, IndicationGloss, Proposed } from "../api/types";
+import type { CompareSet, CompareItemRow, WordIndication, IndicationsForWord, IndicationGloss, Proposed, PeerIndication } from "../api/types";
 
 const API = "/api/v1/research";
 
@@ -148,6 +148,12 @@ export const group = {
   /** Forms I established whose meaning differs from the group's. */
   divergences(): Promise<Divergence[]> {
     return srvGet("/divergences");
+  },
+  /** The community's FORM readings for these lemmas, keyed by lemma — the per-form view
+   *  of a community root reading. */
+  peerFormReadings(lemmas: string[]): Promise<Record<string, PeerIndication>> {
+    if (lemmas.length === 0) return Promise.resolve({});
+    return srvGet(`/peer-form-readings?lemmas=${encodeURIComponent(lemmas.join(","))}`);
   },
 };
 

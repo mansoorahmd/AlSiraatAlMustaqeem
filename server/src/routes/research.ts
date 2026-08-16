@@ -293,6 +293,13 @@ export function researchRoutes(state: AppState): Hono {
   /** Every group reading — the "group" gloss layer. */
   r.get("/research/group-gloss", (c) => c.json(s().groupGloss()));
 
+  /** The community's FORM readings for a comma-separated list of lemmas, keyed by lemma.
+   *  Used to give a community root reading a per-form view, mirroring your own. */
+  r.get("/research/peer-form-readings", (c) => {
+    const lemmas = (c.req.query("lemmas") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    return c.json(s().peerFormReadings(lemmas));
+  });
+
   /**
    * Where I stand apart: forms I have established whose meaning differs from the group's.
    * Not a conflict to resolve — the record of where the readings genuinely part company.
