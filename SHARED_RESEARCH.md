@@ -39,6 +39,9 @@ The word *canon* is deliberately not used anywhere in this document.
 | Establishment | **Two parallel records that coexist** — locally established (yours) and globally established. They may differ permanently. |
 | Submission unit | Anything: one indication, one note, a whole case, or a mixture. |
 | Review outcome | Moderators may split. Majority reading merges; the minority objection is **filed as dissent**, not argued to a conclusion. |
+| What "majority" means | *(locked — it was undefined)* **Of the votes actually cast**, with a minimum: a claim is established when `approvals ≥ requiredApprovals` **and** `approvals > objections`. Not a majority of all moderators — waiting on people who never look would stall forever. `requiredApprovals` is config (**1** while the group is small; raise it as it grows), so the rule needs no redesign later. No time windows, no quorum. |
+| Who may approve | A moderator may **not** approve their own submission — establishment must not be self-service. A **maintainer** may establish or un-establish directly regardless of counts (§4 already grants veto); it is recorded as their act, so the single-maintainer case works without pretending a vote happened. |
+| Objections | Never block. They are recorded, and once the claim is established an objection becomes a **dissent** attached to it. Disagreement is preserved, not resolved. |
 | Removal of history | Maintainer may redact. **Tombstone with the reason shown publicly** — the ID always resolves. |
 | Redacted item on your disk | **Marked redacted, your copy preserved.** What you actually read stays checkable. |
 | Reader gloss | **Switchable layer** — my meanings / globally established / both. |

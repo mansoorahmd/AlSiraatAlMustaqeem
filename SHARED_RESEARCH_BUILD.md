@@ -147,19 +147,26 @@ Smallest end-to-end loop; cannot conflict, so no claim machinery yet.
 
 The convergence-free heart. Build after the pipe is proven but from the Phase 0 design.
 
-- [ ] **5.1 Claims tables** — `claims`, `claim_versions`, `dissents` (from 0.2).
-- [ ] **5.2 Content-addressed claim IDs** — hash(author + subject + canonical payload) → URL-safe
-  `id`; a revision is a new `id@v` that pins exactly what was cited.  ⇢ 5.1
-- [ ] **5.3 Competing submissions must carry their argument** — an indication/verdict attaches a
-  linked case or minimal evidence bundle; additive stays argument-free.  ⇢ 4.2, 5.1
-- [ ] **5.4 Review flow** — moderator approve/object; majority reading merges to *globally
-  established*; a minority objection is **filed as dissent**, never argued to a conclusion.  ⇢ 5.3
-- [ ] **5.5 `sync-boundary.test.ts`** — sync writes `derived` only; never marks a local form
-  established, never sets an indication `primary`, never edits/deletes your notes/indications/
-  cases/trails/motifs.  ⇢ 5.1
-  *AC:* a competing claim can be globally established; a split files a dissent; boundary test green.
-
----
+- [x] **5.1 Claims tables** — ✅ used as frozen (`claims`, `claim_versions`, `dissents`,
+  `global_forms`); `0003_claim_reviews.sql` lets a review attach to a CLAIM VERSION rather than
+  only a submission, with one verdict per moderator per version.
+- [x] **5.2 Content-addressed claim IDs** — ✅ `clm_` = hash(author + subject), so a claim is ONE
+  AUTHOR'S reading and successive readings are versions of it: `id@v` pins exactly what was cited.
+- [x] **5.3 Competing submissions must carry their argument** — ✅ `proposeClaim` refuses a bare
+  assertion; it needs a linked case, evidence āyāt, or reasoning (§12.1).
+- [x] **5.4 Review flow** — ✅ **majority of the votes cast** (the term was undefined; now locked
+  in §2): established when `approvals ≥ requiredApprovals` **and** `approvals > objections`.
+  Not a majority of all moderators — waiting on people who never look would stall forever.
+  `REQUIRED_APPROVALS` is config (1 today). You may not approve your own claim; a maintainer may
+  establish directly, recorded as their act. An objection never blocks, and against an
+  established reading it becomes a **dissent** carrying its own payload (§12.4).
+  `claims.test.ts` (13 tests).
+- [x] **5.5 `sync-boundary.test.ts`** — ✅ the `derived_` prefix genuinely partitions the schema:
+  every table is classified as sync-writable or the reader's own, an unclassified table fails the
+  test, and the ledger is proven drop-safe. Caught a misleading `syncFormResearch` name (it
+  reconciles the reader's own case board, nothing remote) — renamed.
+  *AC:* a competing claim can be globally established ✅; a split files a dissent ✅; boundary
+  test green ✅. Remote 58/58, server 49/49 on the affected suites.
 
 ## Phase 6 — Inbound pull + reader integration
 

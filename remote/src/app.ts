@@ -22,6 +22,10 @@ import {
 import {
   createSubmission, listMine, getSubmission, SubmissionError, type SubmissionItemInput,
 } from "./submissions.js";
+import {
+  proposeClaim, review, claimsFor, globalReading, dissentsFor, establishAsMaintainer,
+  ClaimError, type SubjectKind, type Decision,
+} from "./claims.js";
 
 export function createApp(): Hono<Env> {
   const app = new Hono<Env>();
@@ -107,6 +111,77 @@ export function createApp(): Hono<Env> {
     const found = await getSubmission(pgRunner, c.req.param("id"));
     if (!found) return c.json({ detail: "submission not found" }, 404);
     return c.json(found);
+  });
+
+  // --- claims: contending readings, review, establishment, dissent (Phase 5) ---
+
+  /** Offer your reading of a form or root. Must carry its argument (§12.1). */
+  app.post("/claims", requireRole("researcher"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as
+      { subjectKind?: SubjectKind; subjectValue?: string; payload?: never };
+    try {
+      return c.json(await proposeClaim(pgRunner, {
+        authorId: c.get("user")!.id,
+        subjectKind: body.subjectKind ?? "form",
+        subjectValue: body.subjectValue ?? "",
+        payload: body.payload ?? {},
+      }), 201);
+    } catch (e) {
+      if (e instanceof ClaimError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+
+  /** Every reading of a subject, and the group's current one — what a reader compares. */
+  app.get("/claims", requireRole("reader"), async (c) => {
+    const kind = (c.req.query("subjectKind") ?? "form") as SubjectKind;
+    const value = c.req.query("subjectValue") ?? "";
+    return c.json({
+      claims: await claimsFor(pgRunner, kind, value),
+      global: await globalReading(pgRunner, kind, value),
+    });
+  });
+
+  app.get("/claims/:id/dissents", requireRole("reader"), async (c) =>
+    c.json(await dissentsFor(pgRunner, c.req.param("id"))));
+
+  /**
+   * Approve or object. Establishment is decided here: approvals ≥ requiredApprovals AND
+   * approvals > objections — a majority of the votes cast. An objection never blocks; against
+   * an established reading it becomes a dissent.
+   */
+  app.post("/claims/:id/versions/:version/review", requireRole("moderator"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as
+      { decision?: Decision; comment?: string; payload?: unknown };
+    if (body.decision !== "approve" && body.decision !== "object") {
+      return c.json({ detail: "decision must be approve or object" }, 422);
+    }
+    const me = c.get("user")!;
+    try {
+      return c.json(await review(pgRunner, {
+        claimId: c.req.param("id"), version: Number(c.req.param("version")),
+        moderatorId: me.id, moderatorRole: me.role,
+        decision: body.decision, comment: body.comment, payload: body.payload,
+      }));
+    } catch (e) {
+      if (e instanceof ClaimError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+
+  /** A maintainer establishing directly — §4 grants the authority; it's recorded as their act. */
+  app.post("/claims/:id/versions/:version/establish", requireRole("maintainer"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { comment?: string };
+    try {
+      await establishAsMaintainer(pgRunner, {
+        claimId: c.req.param("id"), version: Number(c.req.param("version")),
+        maintainerId: c.get("user")!.id, comment: body.comment,
+      });
+      return c.json({ ok: true });
+    } catch (e) {
+      if (e instanceof ClaimError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
   });
 
   app.post("/invites", requireRole("maintainer"), async (c) => {

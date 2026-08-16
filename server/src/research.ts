@@ -269,7 +269,7 @@ export class ResearchStore {
        doc.verdict ?? "", subject.sparkVerseKey ?? null, JSON.stringify(doc), doc.createdAt, t,
        doc.authorId ?? this.localId, doc.origin ?? "local"],
     );
-    this.syncFormResearch(doc);
+    this.reconcileFormResearch(doc);
     return doc;
   }
   deleteCase(id: string): boolean {
@@ -278,7 +278,12 @@ export class ResearchStore {
     return Number(cur.changes) > 0;
   }
 
-  private syncFormResearch(doc: Doc): void {
+  /**
+   * Keep form_research in step with the case document. NOTHING to do with remote sync — the
+   * case board is the source, and this is the reader's own act. (Named "sync…" once, which
+   * tripped the write-boundary test; the boundary is about what a PULL may write.)
+   */
+  private reconcileFormResearch(doc: Doc): void {
     const caseId = doc.id;
     const root = (doc.subject ?? {}).value ?? "";
     const forms: Record<string, any> = doc.formResearch ?? {};
