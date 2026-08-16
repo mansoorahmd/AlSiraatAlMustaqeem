@@ -157,6 +157,40 @@ export const group = {
   },
 };
 
+/** A reading's per-form shade, as it travels in a proposal payload and back in a peer reading. */
+export interface Refinement { lemma: string; label: string; meaning: string }
+
+/**
+ * A stable fingerprint of a whole reading (root meaning + every form's shade), so the app can
+ * tell "not proposed" from "proposed" from "changed since I proposed it". Order-independent:
+ * refinements are sorted by lemma, so re-saving in a different order doesn't look like a change.
+ */
+export function readingHash(meaning: string, refinements: Refinement[]): string {
+  const norm = {
+    meaning: meaning.trim(),
+    refinements: [...refinements]
+      .map((r) => ({ lemma: r.lemma, label: r.label.trim(), meaning: r.meaning.trim() }))
+      .filter((r) => r.label || r.meaning)
+      .sort((a, b) => a.lemma.localeCompare(b.lemma)),
+  };
+  const json = JSON.stringify(norm);
+  // small, dependency-free string hash — this is a change-detector, not a security digest
+  let h = 5381;
+  for (let i = 0; i < json.length; i++) h = ((h << 5) + h + json.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+/** Whether the reader has proposed a subject's reading upstream, and if it still matches. */
+export const proposals = {
+  get(subjectKind: "form" | "root", subjectValue: string): Promise<{ contentHash: string; proposedAt: number } | null> {
+    const q = new URLSearchParams({ subjectKind, subjectValue });
+    return srvGet(`/proposals?${q.toString()}`);
+  },
+  record(subjectKind: "form" | "root", subjectValue: string, contentHash: string): Promise<unknown> {
+    return srvPost("/proposals", { subjectKind, subjectValue, contentHash });
+  },
+};
+
 // ---- outbound submission ledger ------------------------------------------------
 
 export interface SubmissionRecord {

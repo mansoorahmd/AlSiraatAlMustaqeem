@@ -261,6 +261,21 @@ export function researchRoutes(state: AppState): Hono {
     return c.json(s().recordSubmission({ localRef: c.req.param("localRef"), ...body }));
   });
 
+  // proposed-claims ledger: which readings this reader has offered to the community, so the
+  // Propose button can show "proposed" vs "changed since proposed". The claim lives on the remote.
+  r.get("/research/proposals", (c) =>
+    c.json(s().getProposal(c.req.query("subjectKind") ?? "form", c.req.query("subjectValue") ?? "") ?? null));
+  r.post("/research/proposals", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as
+      { subjectKind?: string; subjectValue?: string; contentHash?: string };
+    if (!body.subjectValue || !body.contentHash) {
+      return c.json({ detail: "subjectValue and contentHash are required" }, 422);
+    }
+    return c.json(s().recordProposal({
+      subjectKind: body.subjectKind ?? "form", subjectValue: body.subjectValue, contentHash: body.contentHash,
+    }));
+  });
+
   // --- the group's readings, pulled from the remote (Phase 6) ---
   //
   // The app fetches pages from the remote itself (it holds the session cookie) and posts them

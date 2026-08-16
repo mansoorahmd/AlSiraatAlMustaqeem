@@ -121,6 +121,8 @@ export interface PeerIndication {
    *  superseded = its author has since written a later version */
   status: "proposed" | "established" | "superseded";
   label: string; meaning: string;
+  /** the reading's own per-form shades, as proposed (root readings carry these) */
+  refinements: { lemma: string; label: string; meaning: string }[];
   /** moderators who approved this exact version */
   approvers: string[];
   /** objections filed against this exact version */

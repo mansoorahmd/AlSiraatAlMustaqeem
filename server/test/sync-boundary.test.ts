@@ -25,6 +25,7 @@ const WRITABLE_BY_SYNC = [
   "derived_global_forms",    // the group's established readings
   "derived_dissents",        // the ledger of disagreement against them
   "derived_peer_indications", // the community's readings, shown beside my own
+  "derived_proposed_claims", // my outbox: readings I have proposed upstream
   "derived_sync_state",      // how far each pull has got
 ];
 
@@ -200,6 +201,35 @@ describe("what sync may never do", () => {
       ],
     });
     expect(store.peerFormReadings(["شَهِيد"])["شَهِيد"]!.status).toBe("established");
+  });
+
+  it("a peer reading exposes the per-form shades carried in its payload", () => {
+    store.applyPull({
+      peerIndications: [{
+        claimId: "clm_r", version: 1, authorId: "amina", subjectKind: "root",
+        subjectValue: "رشد", status: "established", label: "right-guidance", meaning: "the root",
+        payload: { meaning: "the root", refinements: [
+          { lemma: "رَشَد", label: "maturity", meaning: "sound judgement" },
+          { lemma: "رَاشِد", label: "rightly-guided", meaning: "one on the right way" },
+        ] },
+        createdAt: new Date().toISOString(), schemaVersion: 1, seq: 40,
+      }],
+    });
+    const [p] = store.peerIndications("root", "رشد");
+    expect(p!.refinements).toHaveLength(2);
+    expect(p!.refinements[0].lemma).toBe("رَشَد");
+  });
+
+  it("the proposed-claims ledger records and is drop-safe", () => {
+    store.recordProposal({ subjectKind: "root", subjectValue: "هدي", contentHash: "abc" });
+    expect(store.getProposal("root", "هدي")!.contentHash).toBe("abc");
+    // re-proposing an updated reading replaces the hash, never stacks
+    store.recordProposal({ subjectKind: "root", subjectValue: "هدي", contentHash: "def" });
+    expect(store.getProposal("root", "هدي")!.contentHash).toBe("def");
+
+    db.exec("DELETE FROM derived_proposed_claims");           // dropping loses only the record
+    expect(store.getProposal("root", "هدي")).toBeUndefined();
+    expect(store.rootIndications("هدي")).toHaveLength(1);     // the reading itself is untouched
   });
 
   it("dropping every derived table loses the community's readings and none of mine", () => {

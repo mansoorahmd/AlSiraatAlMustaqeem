@@ -135,6 +135,19 @@ CREATE TABLE IF NOT EXISTS derived_submissions (
 );
 CREATE INDEX IF NOT EXISTS idx_derived_submissions_sub ON derived_submissions(submission_id);
 
+-- Which readings this reader has PROPOSED to the community (the claim spine's outbox). Like
+-- derived_submissions, it exists only so the UI can tell "not proposed" from "proposed" from
+-- "changed since I proposed it" — the claim itself lives on the remote. content_hash covers
+-- the whole reading (root meaning + every form refinement), so editing any part shows as a
+-- pending update. Drop-safe: losing it costs a re-propose, never research.
+CREATE TABLE IF NOT EXISTS derived_proposed_claims (
+    subject_kind TEXT NOT NULL,          -- 'form' | 'root'
+    subject_value TEXT NOT NULL,
+    content_hash TEXT NOT NULL,          -- hash of the reading as proposed
+    proposed_at INTEGER NOT NULL,
+    PRIMARY KEY (subject_kind, subject_value)
+);
+
 -- The group's established readings, pulled from the remote (SHARED_RESEARCH_SCHEMA.md section 2).
 -- DERIVED: sync writes only these, they are drop-safe, and a full resync rebuilds them. Your own
 -- established meanings live in form_research and are never touched by a pull — the two coexist,
@@ -738,6 +751,13 @@ export class ResearchStore {
   private peerRow(r: Doc): Doc {
     let approvers: string[] = [];
     try { approvers = JSON.parse(r.approvers ?? "[]"); } catch { approvers = []; }
+    // the reading's own per-form shades travel inside its payload (see propose), so a community
+    // root reading shows ITS forms — not a mix of other people's form claims
+    let refinements: Doc[] = [];
+    try {
+      const p = JSON.parse(r.payload ?? "null");
+      if (p && Array.isArray(p.refinements)) refinements = p.refinements;
+    } catch { refinements = []; }
     return {
       id: `peer:${r.claim_id}@${r.version}`,
       claimId: r.claim_id, version: r.version,
@@ -746,7 +766,7 @@ export class ResearchStore {
       root: r.subject_kind === "root" ? r.subject_value : null,
       lemma: r.subject_kind === "form" ? r.subject_value : null,
       status: r.status, label: r.label, meaning: r.meaning,
-      approvers,
+      approvers, refinements,
       createdAt: r.created_at,
       origin: "remote", source: "community",
       dissents: this.db.scalar<number>(
@@ -892,6 +912,26 @@ export class ResearchStore {
        doc.status ?? "submitted", t],
     );
     return this.getSubmissionFor(doc.localRef)!;
+  }
+
+  /** Has this reader proposed a reading of this subject, and does it still match? */
+  getProposal(subjectKind: string, subjectValue: string): Doc | undefined {
+    const r = this.db.one<{ content_hash: string; proposed_at: number }>(
+      "SELECT content_hash, proposed_at FROM derived_proposed_claims WHERE subject_kind = ? AND subject_value = ?",
+      [subjectKind, subjectValue]);
+    return r ? { contentHash: r.content_hash, proposedAt: r.proposed_at } : undefined;
+  }
+
+  /** Record that a reading was proposed upstream (drop-safe outbox, mirrors recordSubmission). */
+  recordProposal(doc: Doc): Doc {
+    this.db.run(
+      `INSERT INTO derived_proposed_claims (subject_kind, subject_value, content_hash, proposed_at)
+       VALUES (?,?,?,?)
+       ON CONFLICT(subject_kind, subject_value)
+         DO UPDATE SET content_hash=excluded.content_hash, proposed_at=excluded.proposed_at`,
+      [doc.subjectKind, doc.subjectValue, doc.contentHash, now()],
+    );
+    return this.getProposal(doc.subjectKind, doc.subjectValue)!;
   }
 
   // ---- the group's readings, pulled from the remote (Phase 6) -------------------

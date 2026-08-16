@@ -190,7 +190,10 @@ export const remote = {
   // evidence āyah, or reasoning — or reviewers have nothing to weigh.
   propose(opts: {
     subjectKind: "form" | "root"; subjectValue: string;
-    payload: { meaning: string; argument?: string; caseId?: string; evidence?: unknown[] };
+    payload: {
+      meaning: string; argument?: string; caseId?: string; evidence?: unknown[];
+      refinements?: { lemma: string; label: string; meaning: string }[];
+    };
   }): Promise<ClaimVersion> {
     return call<ClaimVersion>("/claims", { method: "POST", body: JSON.stringify(opts) });
   },

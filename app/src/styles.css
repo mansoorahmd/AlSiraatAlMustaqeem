@@ -1718,7 +1718,16 @@ a { color: var(--lapis); }
 /* review controls on a community reading (moderator / maintainer) */
 .review { margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px dashed var(--paper-edge); }
 .review-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.ie-propose-row { margin-top: 0.5rem; }
+.ie-propose-row { margin-top: 0.5rem; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+/* a reading already proposed and unchanged: settled, not a call to action */
+.ie-propose-row .ctl.proposed { color: var(--lapis); border-color: rgba(38, 97, 156, 0.3); background: rgba(38, 97, 156, 0.05); opacity: 1; }
+/* the completeness gate — why the button is disabled, in a tinted block */
+.propose-gate {
+  margin: 0; padding: 0.5rem 0.6rem; border-radius: 8px; line-height: 1.9;
+  font-size: var(--fs-small); color: var(--ink-soft);
+  background: rgba(180, 83, 9, 0.06); border: 1px solid rgba(180, 83, 9, 0.25);
+}
+.propose-gate .quran { color: var(--gold); }
 
 /* A bare .ctl is transparent (correct in a toolbar, invisible in a panel). Any .ctl acting as
    a standalone panel action needs an outline or it reads as absent — the propose/review/reset

@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { remote, RemoteOffline, RemoteError } from "../../api/remote";
 import { useMe } from "../../hooks/useMe";
+import { proposals, readingHash, type Refinement } from "../../persistence/db";
 
 const spaced = (r: string) => r.split("").join(" ");
 
@@ -19,12 +20,18 @@ interface Props {
   subjectValue: string;
   /** prefill from the reader's own indication, so proposing is one edit away */
   defaultMeaning?: string;
+  /** the reading's per-form shades — a proposal carries the WHOLE reading, not just the root */
+  refinements?: Refinement[];
+  /** forms of the root still without a meaning — a reading may only be proposed once complete */
+  missingForms?: string[];
   /** if this reading came from a case, cite it — that satisfies "carry your argument" on its own */
   caseId?: string;
   onClose: () => void;
 }
 
-export function ProposeReading({ subjectKind, subjectValue, defaultMeaning, caseId, onClose }: Props) {
+export function ProposeReading({
+  subjectKind, subjectValue, defaultMeaning, refinements = [], missingForms = [], caseId, onClose,
+}: Props) {
   const { me, loading } = useMe();
   const [meaning, setMeaning] = useState(defaultMeaning ?? "");
   const [argument, setArgument] = useState("");
@@ -32,16 +39,18 @@ export function ProposeReading({ subjectKind, subjectValue, defaultMeaning, case
   const [done, setDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  const incomplete = missingForms.length > 0;
   const hasArgument = !!caseId || !!argument.trim();
-  const canSubmit = !!meaning.trim() && hasArgument && !busy;
+  const canSubmit = !!meaning.trim() && hasArgument && !incomplete && !busy;
 
   const submit = async () => {
     setBusy(true); setErr(null);
     try {
       await remote.propose({
         subjectKind, subjectValue,
-        payload: { meaning: meaning.trim(), argument: argument.trim() || undefined, caseId },
+        payload: { meaning: meaning.trim(), argument: argument.trim() || undefined, caseId, refinements },
       });
+      await proposals.record(subjectKind, subjectValue, readingHash(meaning, refinements)).catch(() => {});
       setDone(true);
     } catch (e) {
       setErr(
@@ -105,6 +114,21 @@ export function ProposeReading({ subjectKind, subjectValue, defaultMeaning, case
               </label>
             )}
 
+            {subjectKind === "root" && (
+              incomplete ? (
+                <p className="propose-gate">
+                  A whole reading is proposed at once — the root and every form's shade.{" "}
+                  <strong>{missingForms.length} form{missingForms.length === 1 ? "" : "s"}</strong>{" "}
+                  still {missingForms.length === 1 ? "needs" : "need"} a meaning:{" "}
+                  <span className="quran">{missingForms.map(spaced).join("، ")}</span>
+                </p>
+              ) : refinements.length > 0 && (
+                <p className="acct-hint">
+                  All {refinements.length} forms carry a meaning — the whole reading travels with this proposal.
+                </p>
+              )
+            )}
+
             {err && <p className="acct-error" role="alert">{err}</p>}
             <div className="propose-actions">
               <button className="ctl" onClick={onClose}>Cancel</button>
@@ -112,7 +136,7 @@ export function ProposeReading({ subjectKind, subjectValue, defaultMeaning, case
                 {busy ? "Proposing…" : "Propose"}
               </button>
             </div>
-            {!hasArgument && meaning.trim() && (
+            {!hasArgument && meaning.trim() && !incomplete && (
               <p className="acct-hint">A reading needs its argument before it can be proposed.</p>
             )}
           </div>

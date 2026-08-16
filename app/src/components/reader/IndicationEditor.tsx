@@ -6,13 +6,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
-import { archive, group, newId } from "../../persistence/db";
+import { archive, newId } from "../../persistence/db";
 import { useAsync } from "../../hooks/useAsync";
 import type { RootIndicationWithRefinement, WordIndication, PeerIndication } from "../../api/types";
 import { IndicationPromptPanel } from "./IndicationPromptPanel";
 import { ProposeReading } from "./ProposeReading";
 import { remote } from "../../api/remote";
 import { useMe } from "../../hooks/useMe";
+import { proposals, readingHash, type Refinement } from "../../persistence/db";
 
 const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 
@@ -320,9 +321,10 @@ function CommunityForms({
     return out;
   }, [forms, focusLemma]);
 
-  // the community's form-level readings across every form of the root, keyed by lemma
-  const byForm = useAsync(() => group.peerFormReadings(lemmas), [lemmas.join(",")]);
-  const map: Record<string, PeerIndication> = byForm.data ?? {};
+  // this reading's OWN per-form shades, as its author proposed them — not a mix of other
+  // people's form claims. Keyed by lemma for the per-form view below.
+  const map: Record<string, { label: string; meaning: string }> = {};
+  for (const rf of reading.refinements ?? []) if (rf.lemma) map[rf.lemma] = rf;
 
   return (
     <div className="ie-forms">
@@ -421,7 +423,31 @@ function IndicationForms({
     return out;
   }, [forms, focusLemma]);
 
+  // A proposal carries the WHOLE reading: the root meaning + every form's shade. So we gather
+  // the refinements, and the forms still missing one — a reading may only be proposed complete.
+  const refinements: Refinement[] = uniqueForms
+    .map((f) => refByLemma.get(f.lemma))
+    .filter((r): r is WordIndication => !!r && !!(r.label || r.meaning))
+    .map((r) => ({ lemma: r.lemma!, label: r.label, meaning: r.meaning }));
+  const missingForms = uniqueForms
+    .filter((f) => { const r = refByLemma.get(f.lemma); return !r || !(r.label || r.meaning); })
+    .map((f) => f.lemma);
+
   const [proposing, setProposing] = useState(false);
+
+  // "not proposed" vs "proposed" vs "changed since I proposed it" — from the local outbox
+  const [propTick, setPropTick] = useState(0);
+  const proposal = useAsync(
+    () => (indication.root ? proposals.get("root", indication.root) : Promise.resolve(null)),
+    [indication.root, propTick]);
+  const currentHash = readingHash([label.trim(), meaning.trim()].filter(Boolean).join(" — "), refinements);
+  const proposedState: "none" | "current" | "changed" =
+    !proposal.data ? "none" : proposal.data.contentHash === currentHash ? "current" : "changed";
+
+  const proposeLabel =
+    proposedState === "current" ? "◈ Proposed ✓"
+    : proposedState === "changed" ? "◈ Propose the update"
+    : "◈ Propose to community";
 
   return (
     <div className="ie-forms">
@@ -430,9 +456,17 @@ function IndicationForms({
         <textarea className="board-input" rows={2} placeholder="the root's meaning in this indication, in your words…" value={meaning} onChange={(e) => setMeaning(e.target.value)} onBlur={saveIndication} />
         {indication.root && (label.trim() || meaning.trim()) && (
           <div className="ie-propose-row">
-            <button className="ctl" title="Offer this reading of the root to the community" onClick={() => setProposing(true)}>
-              ◈ Propose to community
-            </button>
+            <button
+              className={`ctl${proposedState === "current" ? " proposed" : ""}`}
+              disabled={proposedState === "current"}
+              title={proposedState === "current"
+                ? "Already proposed. Change the reading to propose an update."
+                : "Offer this reading of the root to the community"}
+              onClick={() => setProposing(true)}
+            >{proposeLabel}</button>
+            {proposedState === "current" && (
+              <span className="acct-hint">Sync to see it in the community list.</span>
+            )}
           </div>
         )}
       </div>
@@ -442,7 +476,9 @@ function IndicationForms({
           subjectKind="root"
           subjectValue={indication.root}
           defaultMeaning={[label.trim(), meaning.trim()].filter(Boolean).join(" — ")}
-          onClose={() => setProposing(false)}
+          refinements={refinements}
+          missingForms={missingForms}
+          onClose={() => { setProposing(false); setPropTick((t) => t + 1); }}
         />
       )}
 
