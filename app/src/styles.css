@@ -1693,6 +1693,11 @@ a { color: var(--lapis); }
 .community-reading-head { display: flex; align-items: center; gap: 0.4rem; }
 .ie-form-row.community.filled { border-color: rgba(38, 97, 156, 0.3); background: rgba(38, 97, 156, 0.04); }
 
+/* attribution: who submitted a community reading and who approved it */
+.community-attrib { font-size: var(--fs-label); color: var(--ink-soft); margin: 0.3rem 0 0; line-height: 1.9; }
+.community-attrib strong { color: var(--ink); font-weight: 600; }
+.community-attrib-by { color: var(--lapis); }
+
 /* ---- Indication Editor modal ---- */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 80;

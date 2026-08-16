@@ -178,6 +178,25 @@ const STATUS_HINT: Record<PeerIndication["status"], string> = {
   superseded: "its author has since written a later version; this one stays citable",
 };
 
+/** Who submitted a community reading, and who approved it — attribution is the point (§1). */
+function Attribution({ reading }: { reading: PeerIndication }) {
+  return (
+    <p className="community-attrib">
+      <span className="community-attrib-by">
+        submitted by <strong>{reading.authorName || "unknown"}</strong>
+      </span>
+      {reading.approvers.length > 0 && (
+        <span className="community-attrib-approvers">
+          {" "}· approved by {reading.approvers.join(", ")}
+        </span>
+      )}
+      {reading.status === "established" && reading.approvers.length === 0 && (
+        <span className="community-attrib-approvers"> · established by a maintainer</span>
+      )}
+    </p>
+  );
+}
+
 /**
  * The community's readings, as selectable chips beneath your own. Picking one shows its
  * per-form view on the right, exactly as your own indications do — but read-only. No star and
@@ -201,6 +220,7 @@ function CommunityChips({
         {p.label || p.meaning || "(unlabelled)"}
       </span>
       <span className="ie-chip-meta">
+        {p.authorName && <span className="community-attrib-by">{p.authorName}</span>}
         <span className={`community-status ${p.status}`} title={STATUS_HINT[p.status]}>{p.status}</span>
         {p.dissents > 0 && <span className="community-dissent">{p.dissents} dissent{p.dissents === 1 ? "" : "s"}</span>}
       </span>
@@ -251,6 +271,7 @@ function CommunityForms({
           <span className={`community-status ${reading.status}`} title={STATUS_HINT[reading.status]}>{reading.status}</span>
         </div>
         {reading.label && reading.meaning && <p className="indication-meaning">{reading.meaning}</p>}
+        <Attribution reading={reading} />
         <p className="acct-hint">A reading held by the community. You can weigh it, not edit it — to hold it yourself, write your own indication.</p>
       </div>
 

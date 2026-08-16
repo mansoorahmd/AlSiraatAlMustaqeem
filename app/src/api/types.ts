@@ -113,12 +113,16 @@ export interface IndicationsForWord {
 export interface PeerIndication {
   id: string;                  // peer:<claimId>@<version> — stable, but not a local record
   claimId: string; version: number; authorId: string;
+  /** who submitted it — display name, else email */
+  authorName: string;
   scope: "root" | "lemma";
   root: string | null; lemma: string | null;
   /** established = the group's current reading; proposed = argued but not carried;
    *  superseded = its author has since written a later version */
   status: "proposed" | "established" | "superseded";
   label: string; meaning: string;
+  /** moderators who approved this exact version */
+  approvers: string[];
   /** objections filed against this exact version */
   dissents: number;
   createdAt: number;

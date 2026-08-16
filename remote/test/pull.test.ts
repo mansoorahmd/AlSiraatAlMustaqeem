@@ -27,7 +27,8 @@ const arg = (meaning: string) => ({ meaning, argument: "read together", evidence
 
 async function person(name: string, role = "researcher"): Promise<string> {
   const rows = await r.query(
-    "INSERT INTO users (email, role) VALUES ($1,$2) RETURNING id", [`${name}@t.invalid`, role]);
+    "INSERT INTO users (email, display_name, role) VALUES ($1,$2,$3) RETURNING id",
+    [`${name}@t.invalid`, name, role]);
   return (rows[0] as { id: string }).id;
 }
 
@@ -95,6 +96,23 @@ describe("what a pull carries", () => {
     expect(all).toHaveLength(2);                                  // v1 is NOT dropped
     expect(all.find((p) => p.version === 1)!.status).toBe("superseded");
     expect(all.find((p) => p.version === 2)!.status).toBe("proposed");
+  });
+
+  it("carries who submitted a reading, and who approved it", async () => {
+    const a = await proposeClaim(r, { authorId: amina, subjectKind: "form", subjectValue: SUBJECT, payload: arg("guidance") });
+    await review(r, { claimId: a.claimId, version: 1, moderatorId: mod, moderatorRole: "moderator", decision: "approve" });
+
+    const found = peers(await pullSince(r, ZERO_CURSORS)).find((x) => x.meaning === "guidance");
+    const p = found as unknown as { authorName: string; approvers: string[] };
+    // person() sets display_name = the name passed in
+    expect(p.authorName).toBe("amina");
+    expect(p.approvers).toEqual(["mod"]);
+  });
+
+  it("a proposed reading has no approvers", async () => {
+    await proposeClaim(r, { authorId: amina, subjectKind: "form", subjectValue: SUBJECT, payload: arg("guidance") });
+    const p = peers(await pullSince(r, ZERO_CURSORS))[0] as unknown as { approvers: string[] };
+    expect(p.approvers).toEqual([]);
   });
 
   it("carries root readings as well as form readings", async () => {

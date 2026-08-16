@@ -176,11 +176,13 @@ CREATE TABLE IF NOT EXISTS derived_peer_indications (
     claim_id TEXT NOT NULL,
     version INTEGER NOT NULL,
     author_id TEXT NOT NULL,
+    author_name TEXT NOT NULL DEFAULT '',   -- who submitted it (display name, else email)
     subject_kind TEXT NOT NULL,          -- 'form' (lemma) | 'root'
     subject_value TEXT NOT NULL,
     status TEXT NOT NULL,                -- 'proposed' | 'established' | 'superseded'
     label TEXT NOT NULL DEFAULT '',
     meaning TEXT NOT NULL DEFAULT '',
+    approvers TEXT NOT NULL DEFAULT '[]',    -- JSON [{name}] of moderators who approved it
     payload TEXT NOT NULL,               -- unknown fields preserved verbatim
     created_at INTEGER NOT NULL,
     schema_version INTEGER NOT NULL,
@@ -239,6 +241,17 @@ export class ResearchStore {
     }
     db.exec("CREATE INDEX IF NOT EXISTS idx_notes_source ON notes(source)");
     db.exec("CREATE INDEX IF NOT EXISTS idx_word_indications_source ON word_indications(source)");
+
+    // attribution came to peer readings after the table shipped. Derived + drop-safe, so a
+    // plain ADD COLUMN with a default is enough — a resync fills the values.
+    const peerCols = new Set(
+      db.query<{ name: string }>("PRAGMA table_info(derived_peer_indications)").map((r) => r.name));
+    if (peerCols.size && !peerCols.has("author_name")) {
+      db.exec("ALTER TABLE derived_peer_indications ADD COLUMN author_name TEXT NOT NULL DEFAULT ''");
+    }
+    if (peerCols.size && !peerCols.has("approvers")) {
+      db.exec("ALTER TABLE derived_peer_indications ADD COLUMN approvers TEXT NOT NULL DEFAULT '[]'");
+    }
 
     // Phase 1 — local identity. Mint a stable local_id, add author_id/origin columns to the
     // user-authored tables, and backfill pre-existing rows so nothing is left un-attributed.
@@ -723,13 +736,17 @@ export class ResearchStore {
   }
 
   private peerRow(r: Doc): Doc {
+    let approvers: string[] = [];
+    try { approvers = JSON.parse(r.approvers ?? "[]"); } catch { approvers = []; }
     return {
       id: `peer:${r.claim_id}@${r.version}`,
-      claimId: r.claim_id, version: r.version, authorId: r.author_id,
+      claimId: r.claim_id, version: r.version,
+      authorId: r.author_id, authorName: r.author_name ?? "",
       scope: r.subject_kind === "root" ? "root" : "lemma",
       root: r.subject_kind === "root" ? r.subject_value : null,
       lemma: r.subject_kind === "form" ? r.subject_value : null,
       status: r.status, label: r.label, meaning: r.meaning,
+      approvers,
       createdAt: r.created_at,
       origin: "remote", source: "community",
       dissents: this.db.scalar<number>(
@@ -954,16 +971,17 @@ export class ResearchStore {
     for (const p of page.peerIndications ?? []) {
       this.db.run(
         `INSERT INTO derived_peer_indications
-           (claim_id, version, author_id, subject_kind, subject_value, status,
-            label, meaning, payload, created_at, schema_version, seq)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+           (claim_id, version, author_id, author_name, subject_kind, subject_value, status,
+            label, meaning, approvers, payload, created_at, schema_version, seq)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(claim_id, version) DO UPDATE SET
-           status=excluded.status, label=excluded.label, meaning=excluded.meaning,
+           author_name=excluded.author_name, status=excluded.status, label=excluded.label,
+           meaning=excluded.meaning, approvers=excluded.approvers,
            payload=excluded.payload, schema_version=excluded.schema_version, seq=excluded.seq`,
-        [p.claimId, p.version, p.authorId, p.subjectKind, p.subjectValue,
+        [p.claimId, p.version, p.authorId, p.authorName ?? "", p.subjectKind, p.subjectValue,
          p.status ?? "proposed", p.label ?? "", p.meaning ?? "",
-         JSON.stringify(p.payload ?? null), Date.parse(p.createdAt) || now(),
-         p.schemaVersion ?? 1, p.seq ?? 0],
+         JSON.stringify(p.approvers ?? []), JSON.stringify(p.payload ?? null),
+         Date.parse(p.createdAt) || now(), p.schemaVersion ?? 1, p.seq ?? 0],
       );
       peerIndications++;
     }

@@ -45,6 +45,11 @@ export function CommunityIndications({ items, subject }: { items: PeerIndication
             )}
           </div>
           {p.label && p.meaning && <p className="indication-meaning">{p.meaning}</p>}
+          <p className="community-attrib">
+            submitted by <strong>{p.authorName || "unknown"}</strong>
+            {p.approvers.length > 0 && <> · approved by {p.approvers.join(", ")}</>}
+            {p.status === "established" && p.approvers.length === 0 && <> · established by a maintainer</>}
+          </p>
         </div>
       ))}
     </div>

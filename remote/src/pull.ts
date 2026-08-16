@@ -79,9 +79,20 @@ export async function pullSince(
   const peers = await r.query(
     `SELECT cv.claim_id, cv.version, cv.payload_json, cv.created_at, cv.schema_version, cv.seq,
             c.author_id, c.subject_kind, c.subject_value, c.current_version,
-            (g.claim_id IS NOT NULL) AS is_global
+            (g.claim_id IS NOT NULL) AS is_global,
+            -- who submitted it: display name if set, else the email
+            COALESCE(NULLIF(au.display_name, ''), au.email) AS author_name,
+            -- who approved this exact version (moderators only object or approve)
+            COALESCE((
+              SELECT json_agg(COALESCE(NULLIF(mu.display_name, ''), mu.email) ORDER BY rv.created_at)
+                FROM reviews rv
+                JOIN users mu ON mu.id = rv.moderator_id
+               WHERE rv.claim_id = cv.claim_id AND rv.claim_version = cv.version
+                 AND rv.decision = 'approve'
+            ), '[]'::json) AS approvers
        FROM claim_versions cv
        JOIN claims c ON c.id = cv.claim_id
+       JOIN users au ON au.id = c.author_id
        LEFT JOIN global_forms g
          ON g.claim_id = cv.claim_id AND g.version = cv.version
       WHERE cv.seq > $1
@@ -115,12 +126,14 @@ export async function pullSince(
       const payload = p.payload_json as { meaning?: string; label?: string } | null;
       return {
         claimId: p.claim_id, version: Number(p.version), authorId: p.author_id,
+        authorName: p.author_name ?? "",
         subjectKind: p.subject_kind, subjectValue: p.subject_value,
         status: p.is_global
           ? "established"
           : Number(p.current_version ?? 0) > Number(p.version) ? "superseded" : "proposed",
         label: payload?.label ?? "",
         meaning: payload?.meaning ?? "",
+        approvers: (p.approvers as string[] | null) ?? [],
         payload,
         createdAt: new Date(p.created_at as string).toISOString(),
         schemaVersion: Number(p.schema_version ?? SCHEMA_VERSION),
