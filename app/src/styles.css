@@ -3380,6 +3380,7 @@ a { color: var(--lapis); }
   color: var(--ink-soft); word-break: break-all; user-select: all; line-height: 1.6; }
 
 /* ⚖ where I stand apart — two readings side by side, neither privileged */
+.diverge-actions { display: flex; align-items: center; gap: 0.5rem; }
 .diverge { display: flex; align-items: flex-start; gap: 0.9rem; padding: 0.7rem 0.6rem;
   border-radius: 8px; }
 .diverge + .diverge { border-top: 1px solid var(--paper-edge); }

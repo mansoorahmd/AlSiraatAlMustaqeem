@@ -74,6 +74,26 @@ export function Divergences() {
     } finally { setBusy(false); }
   };
 
+  /**
+   * Drop everything pulled and walk from scratch.
+   *
+   * A pull only ever adds or updates — it cannot delete. So a reading that has vanished
+   * upstream (a redaction, or a demo you cleaned out) lingers locally until you reset. This is
+   * always safe: it touches only the derived_* tables, never your own work, and a resync
+   * rebuilds whatever the group still holds.
+   */
+  const resetAndResync = async () => {
+    setBusy(true); setErr(null); setNote(null);
+    try {
+      await group.reset();
+      await refresh();
+      await sync();   // rebuild from what the remote holds NOW
+    } catch (e) {
+      setErr((e as Error).message);
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="sheet home">
       <header className="home-hero">
@@ -87,9 +107,17 @@ export function Divergences() {
               </span>
             </span>
           </span>
-          <button className="ctl primary" disabled={busy} onClick={sync}>
-            {busy ? "Syncing…" : "Sync with the group"}
-          </button>
+          <div className="diverge-actions">
+            <button className="ctl primary" disabled={busy} onClick={sync}>
+              {busy ? "Syncing…" : "Sync with the group"}
+            </button>
+            <button
+              className="ctl"
+              disabled={busy}
+              title="Drop everything pulled and fetch again — use this after readings are removed upstream. Never touches your own work."
+              onClick={resetAndResync}
+            >Reset &amp; re-sync</button>
+          </div>
         </div>
         {note && <p className="acct-hint">{note}</p>}
         {err && <p className="acct-error" role="alert">{err}</p>}
