@@ -1,20 +1,20 @@
-// The research home — a workbench that ties together everything the reader is
-// in the middle of: where they were reading, open cases, unanswered questions,
-// recent trails, and how much meaning they've established. Read-only over the
-// existing stores; every item is a one-click jump back in.
+// The research home — a workbench, and ONLY a workbench: where you were reading, and the three
+// things you have in flight (cases, questions, trails). Every item is a one-click jump back in.
+//
+// Configuration deliberately doesn't live here. Reading preferences, the research database and
+// backups moved to Settings (the gear in the top bar) — mixing "what am I working on" with
+// "how is the app set up" is what made this page feel like a dumping ground.
 
 import { useState } from "react";
 import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
-import { archive, fetchFormStatus, backupResearch, fetchIdentity, type BackupResult } from "../persistence/db";
+import { archive, fetchFormStatus } from "../persistence/db";
 import {
   normalizeCase, createSubjectCase, openOrCreateRootCase, openOrCreateAyahCase,
 } from "../cases/ops";
 import type { SubjectType } from "../persistence/types";
 import { useAppState, useAppDispatch } from "../state/store";
-import { Preferences } from "../components/Preferences";
 import { ShareButton } from "../components/ShareButton";
-import { ProfilePicker } from "../components/ProfilePicker";
 
 const spaced = (r: string) => r.split("").join(" ");
 const vsort = (k: string) => {
@@ -38,39 +38,10 @@ export function Home() {
   const [newDesc, setNewDesc] = useState("");
   const [casesRev, setCasesRev] = useState(0); // bump to re-read after creating
 
-  // backup of research.db — the reader's one irreplaceable file
-  const [backupState, setBackupState] = useState<"idle" | "working">("idle");
-  const [lastBackup, setLastBackup] = useState<BackupResult | null>(null);
-  const [backupErr, setBackupErr] = useState<string | null>(null);
-  const runBackup = async () => {
-    setBackupState("working");
-    setBackupErr(null);
-    try {
-      const res = await backupResearch();
-      if (!("canceled" in res)) setLastBackup(res);
-    } catch (e) {
-      setBackupErr((e as Error).message);
-    } finally {
-      setBackupState("idle");
-    }
-  };
-  const shortPath = (p: string) => p.replace(/^.*[/\\]/, "");
-  const kb = (n: number) => `${(n / 1024).toFixed(0)} KB`;
-
   const cases = useAsync(() => archive.cases.all(), [casesRev]);
   const trails = useAsync(() => archive.trails.all(), []);
   const notes = useAsync(() => archive.notes.all(), []);
   const forms = useAsync(() => fetchFormStatus(), []);
-  const identity = useAsync(() => fetchIdentity(), []);
-  // archive (local API) status — moved out of the top bar, kept quietly with Preferences
-  const health = useAsync(() => api.health(), []);
-  const archiveDot = health.loading ? "" : health.error ? "error" : "ok";
-  const archiveText = health.loading
-    ? "reaching the archive…"
-    : health.error
-      ? "archive unreachable"
-      : `archive open · v${health.data?.version ?? "?"}`;
-
   const openCases = (cases.data ?? [])
     .map(normalizeCase)
     .filter((c) => c.status !== "closed")
@@ -85,9 +56,6 @@ export function Home() {
   const established = new Set(
     (forms.data ?? []).filter((f) => f.status === "established").map((f) => f.lemma),
   ).size;
-  const openForms = new Set(
-    (forms.data ?? []).filter((f) => f.status !== "established").map((f) => f.lemma),
-  ).size;
 
   const openCase = (id: string) => {
     dispatch({ type: "setActiveCase", caseId: id });
@@ -100,32 +68,34 @@ export function Home() {
 
   return (
     <div className="sheet home">
-      <header className="home-head">
-        <h1 className="home-title">MQ Research Gate</h1>
-        <p className="subtitle">Your workbench — pick up where you left off.</p>
-      </header>
-
-      <div className="home-stats">
+      {/* One clear next action, then the numbers. Continuing to read was previously dressed
+          up as a statistic, which buried the thing you most often want. */}
+      <header className="home-hero">
         <button
-          className="stat"
+          className="home-continue"
           onClick={() => dispatch({ type: "jumpToVerse", verseKey: contKey })}
         >
-          <span className="stat-n">{contKey}</span>
-          <span className="stat-l">continue reading{chapter.data ? ` · ${chapter.data.name_simple}` : ""}</span>
+          <span className="home-continue-label">Continue reading</span>
+          <span className="home-continue-ref">
+            {chapter.data?.name_simple ?? "Sūrah"} <span className="home-continue-ayah">{contKey}</span>
+          </span>
         </button>
-        <button className="stat" onClick={() => dispatch({ type: "setTab", tab: "investigate" })}>
-          <span className="stat-n">{openCases.length}</span>
-          <span className="stat-l">open case{openCases.length === 1 ? "" : "s"}</span>
-        </button>
-        <button className="stat" onClick={() => dispatch({ type: "setTab", tab: "read" })}>
-          <span className="stat-n">{openQuestions.length}</span>
-          <span className="stat-l">open question{openQuestions.length === 1 ? "" : "s"}</span>
-        </button>
-        <button className="stat" onClick={() => dispatch({ type: "setTab", tab: "vault" })}>
-          <span className="stat-n">{established}</span>
-          <span className="stat-l">established meaning{established === 1 ? "" : "s"}</span>
-        </button>
-      </div>
+
+        <div className="home-stats">
+          <button className="stat" onClick={() => dispatch({ type: "setTab", tab: "investigate" })}>
+            <span className="stat-n">{openCases.length}</span>
+            <span className="stat-l">open case{openCases.length === 1 ? "" : "s"}</span>
+          </button>
+          <button className="stat" onClick={() => dispatch({ type: "setTab", tab: "read" })}>
+            <span className="stat-n">{openQuestions.length}</span>
+            <span className="stat-l">open question{openQuestions.length === 1 ? "" : "s"}</span>
+          </button>
+          <button className="stat" onClick={() => dispatch({ type: "setTab", tab: "vault" })}>
+            <span className="stat-n">{established}</span>
+            <span className="stat-l">established meaning{established === 1 ? "" : "s"}</span>
+          </button>
+        </div>
+      </header>
 
       <div className="home-grid">
         <section className="home-card">
@@ -271,64 +241,7 @@ export function Home() {
           )}
         </section>
 
-        <section className="home-card">
-          <h2 className="home-card-title">Your lexicon</h2>
-          <p className="home-lex">
-            <button className="home-lex-n" onClick={() => dispatch({ type: "setTab", tab: "vault" })}>
-              {established}
-            </button>{" "}
-            form{established === 1 ? "" : "s"} established
-            {openForms > 0 ? `, ${openForms} still open` : ""}.
-          </p>
-          <p className="home-empty">Meanings you settle in cases build your own lexicon in the Vault.</p>
-        </section>
-
-        <section className="home-card">
-          <h2 className="home-card-title">Explore the roots</h2>
-          <p className="home-empty">
-            Every root in the Book, from the rarest to the most common — a place to wander and discover.
-          </p>
-          <button className="ctl" onClick={() => dispatch({ type: "setTab", tab: "roots" })}>
-            ⌘ Open the Roots
-          </button>
-        </section>
-
-        <section className="home-card">
-          <h2 className="home-card-title">Your data</h2>
-          <p className="home-empty">
-            All your research lives in one file. Back it up somewhere safe — a copy is
-            complete and can be taken any time, even while you work.
-          </p>
-          <button className="ctl" onClick={runBackup} disabled={backupState === "working"}>
-            {backupState === "working" ? "Backing up…" : "⤓ Back up research"}
-          </button>
-          {lastBackup && (
-            <p className="home-lex" title={lastBackup.path}>
-              Saved <strong>{shortPath(lastBackup.path)}</strong> · {kb(lastBackup.bytes)}
-            </p>
-          )}
-          {backupErr && <p className="home-empty">Couldn’t back up: {backupErr}</p>}
-          {/* which research database is open, and how to change it */}
-          <ProfilePicker onChanged={() => window.location.reload()} />
-
-          {identity.data && (
-            <p className="home-empty" title={identity.data.localId}>
-              Local identity: <code>{identity.data.localId.slice(0, 8)}…</code>
-            </p>
-          )}
-        </section>
-
       </div>
-
-      {/* Reading preferences live here rather than in the top bar: they're set once in a while,
-          not per-action, so the chrome stays free for navigation. */}
-      <section className="home-card home-prefs">
-        <h2 className="home-card-title">Preferences</h2>
-        <Preferences />
-        <p className="home-status" title="local API status">
-          <span className={`dot ${archiveDot}`} /> {archiveText}
-        </p>
-      </section>
     </div>
   );
 }

@@ -48,6 +48,11 @@ plumbing. A reader should never have to *learn* how to sign in.
 - **Icon-only buttons need `title` + `aria-label`**, and a visible hover state.
 - Errors appear in a tinted block near the top of the panel with `role="alert"` — not as a
   bare red sentence wherever the failure happened.
+- **A screen does one job.** Home is a workbench: what you were reading and what you have in
+  flight. Configuration (reading preferences, the research database, backups) lives in
+  **Settings**, behind the gear in the top bar. Mixing "what am I working on" with "how is the
+  app set up" is what turns a page into a dumping ground — if a card doesn't answer the
+  screen's question, it belongs somewhere else.
 
 ## Architecture
 

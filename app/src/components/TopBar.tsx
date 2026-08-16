@@ -3,6 +3,8 @@ import { useAsync } from "../hooks/useAsync";
 import { useAppState, useAppDispatch, type Tab } from "../state/store";
 import { ActivityBell } from "./ActivityBell";
 import { AccountButton } from "./AccountButton";
+import { SideSheet } from "./SideSheet";
+import { SettingsSheet } from "./SettingsSheet";
 import { archive } from "../persistence/db";
 
 // the rooms the reader inhabits — always visible
@@ -32,6 +34,7 @@ export function TopBar() {
   }, [activeCompareSetId, compareTick]);
 
   const [studyOpen, setStudyOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const studyRef = useRef<HTMLDivElement>(null);
   const studyActive = STUDY.some((s) => s.id === tab);
 
@@ -125,8 +128,20 @@ export function TopBar() {
       {/* one place for everything awaiting the reader */}
       <ActivityBell />
 
+      {/* how the app behaves and where the work is kept — not on the workbench */}
+      <button
+        className="icon-btn topbar-icon"
+        title="Settings"
+        aria-label="Settings"
+        onClick={() => setSettingsOpen(true)}
+      >⚙</button>
+
       {/* who you are in the research community — conventional top-right placement */}
       <AccountButton />
+
+      <SideSheet open={settingsOpen} title="Settings" onClose={() => setSettingsOpen(false)}>
+        <SettingsSheet />
+      </SideSheet>
 
     </header>
   );
