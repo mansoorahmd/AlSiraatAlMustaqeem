@@ -1720,6 +1720,21 @@ a { color: var(--lapis); }
 .review-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .ie-propose-row { margin-top: 0.5rem; }
 
+/* A bare .ctl is transparent (correct in a toolbar, invisible in a panel). Any .ctl acting as
+   a standalone panel action needs an outline or it reads as absent — the propose/review/reset
+   buttons all live in panels, so give them a visible edge. */
+.ie-propose-row .ctl,
+.review-actions .ctl,
+.diverge-actions .ctl:not(.primary),
+.propose-actions .ctl:not(.primary) {
+  border-color: var(--paper-edge);
+  color: var(--ink);
+}
+.ie-propose-row .ctl:hover:not(:disabled),
+.review-actions .ctl:hover:not(:disabled),
+.diverge-actions .ctl:not(.primary):hover:not(:disabled),
+.propose-actions .ctl:not(.primary):hover:not(:disabled) { background: #f4f4f5; }
+
 /* attribution: who submitted a community reading and who approved it — quiet metadata,
    not an accent. Dimmed and small; the reading is what matters, not whose it is. */
 .community-attrib { font-size: var(--fs-label); color: var(--ink-faint); margin: 0.3rem 0 0; line-height: 1.9; }

@@ -71,6 +71,12 @@ plumbing. A reader should never have to *learn* how to sign in.
   Don't hang a label to the left of an input in a narrow sheet.
 - **One primary action per section** (`.ctl.primary`, filled), everything else secondary.
   Alternative paths ("Have an invite code?") read as a sentence with a link, not a rival button.
+- **A bare `.ctl` is invisible in a panel (this keeps getting broken).** `.ctl` defaults to a
+  transparent background *and* a transparent border — deliberately, so it disappears into a
+  toolbar. Drop one into a panel or a content area as a standalone action and it reads as absent:
+  the user reports "no button is visible." A secondary action outside a toolbar must be given an
+  edge (`border-color: var(--paper-edge); color: var(--ink)`), the way `.acct`, `.review-actions`,
+  `.propose-actions` and `.diverge-actions` do. Only genuine toolbar buttons stay borderless.
 - **Icon-only buttons need `title` + `aria-label`**, and a visible hover state.
 - Errors appear in a tinted block near the top of the panel with `role="alert"` — not as a
   bare red sentence wherever the failure happened.
