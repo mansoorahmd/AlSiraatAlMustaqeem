@@ -50,6 +50,7 @@ async function srvDelete(path: string): Promise<void> {
 export interface BackupResult { path: string; bytes: number; at: number }
 
 export interface Owner {
+  name: string;
   email: string;
   uuid: string;
   claimedAt: number;
@@ -71,8 +72,8 @@ export async function fetchIdentity(): Promise<{
  */
 export const owner = {
   /** Claim this database, or re-assign it (you hold the file, so you may correct it). */
-  set(email: string): Promise<Owner> {
-    return srvPut<Owner>("/owner", { email });
+  set(email: string, name?: string): Promise<Owner> {
+    return srvPut<Owner>("/owner", { email, name });
   },
 };
 

@@ -19,6 +19,7 @@ export function ProfilePicker({ onChanged }: { onChanged?: () => void }) {
   const [recent, setRecent] = useState<RecentDb[]>([]);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [nameDraft, setNameDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const pick = desktopPickDb();
@@ -26,7 +27,8 @@ export function ProfilePicker({ onChanged }: { onChanged?: () => void }) {
   const refresh = useCallback(async () => {
     try {
       const { current: cur, recent: rec } = await databases.list();
-      setCurrent(cur); setRecent(rec); setDraft(cur.owner?.email ?? "");
+      setCurrent(cur); setRecent(rec);
+      setDraft(cur.owner?.email ?? ""); setNameDraft(cur.owner?.name ?? "");
     } catch (e) { setErr((e as Error).message); }
   }, []);
 
@@ -47,41 +49,61 @@ export function ProfilePicker({ onChanged }: { onChanged?: () => void }) {
 
   return (
     <div className="profile-picker">
-      <div className="acct-row">
-        <span className="acct-row-label">Belongs to</span>
-        <span className="acct-row-value">
-          {editing ? (
-            <span className="acct-name-edit">
-              <input
-                aria-label="Owner email" type="email" autoFocus value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && draft.includes("@")) {
-                    act(() => ownerApi.set(draft), true).then(() => setEditing(false));
-                  }
-                  if (e.key === "Escape") { setEditing(false); setDraft(current.owner?.email ?? ""); }
-                }}
-              />
-              <button
-                className="ctl primary" disabled={busy || !draft.includes("@")}
-                onClick={() => act(() => ownerApi.set(draft), true).then(() => setEditing(false))}
-              >Save</button>
-              <button className="ctl" onClick={() => { setEditing(false); setDraft(current.owner?.email ?? ""); }}>
-                Cancel
-              </button>
+      {editing ? (
+        <>
+          <div className="acct-field">
+            <label htmlFor="owner-name">Name</label>
+            <input
+              id="owner-name" autoFocus value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+            />
+          </div>
+          <div className="acct-field">
+            <label htmlFor="owner-email">Email</label>
+            <input
+              id="owner-email" type="email" value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && draft.includes("@")) {
+                  act(() => ownerApi.set(draft, nameDraft), true).then(() => setEditing(false));
+                }
+                if (e.key === "Escape") setEditing(false);
+              }}
+            />
+            <span className="acct-hint">
+              Changing the email re-derives the id this research is attributed to.
             </span>
-          ) : (
-            <>
-              <strong>{current.owner?.email ?? "nobody yet"}</strong>
-              <button
-                className="icon-btn" title="Change who this database belongs to"
-                aria-label="Change who this database belongs to"
-                onClick={() => setEditing(true)}
-              >✎</button>
-            </>
-          )}
-        </span>
-      </div>
+          </div>
+          <div className="acct-actions">
+            <button
+              className="ctl primary" disabled={busy || !draft.includes("@")}
+              onClick={() => act(() => ownerApi.set(draft, nameDraft), true).then(() => setEditing(false))}
+            >Save</button>
+            <button
+              className="ctl"
+              onClick={() => {
+                setEditing(false);
+                setDraft(current.owner?.email ?? ""); setNameDraft(current.owner?.name ?? "");
+              }}
+            >Cancel</button>
+          </div>
+        </>
+      ) : (
+        <div className="acct-row">
+          <span className="acct-row-label">Belongs to</span>
+          <span className="acct-row-value">
+            <strong>{current.owner?.name || current.owner?.email || "nobody yet"}</strong>
+            {current.owner?.name && (
+              <span className="acct-muted"> · {current.owner.email}</span>
+            )}
+            <button
+              className="icon-btn" title="Change who this database belongs to"
+              aria-label="Change who this database belongs to"
+              onClick={() => setEditing(true)}
+            >✎</button>
+          </span>
+        </div>
+      )}
 
       <div className="acct-row">
         <span className="acct-row-label">File</span>

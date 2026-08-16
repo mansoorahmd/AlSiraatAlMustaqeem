@@ -26,10 +26,11 @@ export function researchRoutes(state: AppState): Hono {
    * it on; the uuid is re-derived from the email and becomes the id remote work binds to.
    */
   r.put("/research/owner", async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { email?: string };
+    const body = (await c.req.json().catch(() => ({}))) as { email?: string; name?: string };
     try {
-      const owner = s().setOwner(body.email ?? "");
-      state.databases.label(state.researchDb.path, owner.email as string);
+      const owner = s().setOwner(body.email ?? "", body.name);
+      // label the recent-files entry with the person, not the filename
+      state.databases.label(state.researchDb.path, (owner.name as string) || (owner.email as string));
       return c.json(owner);
     } catch (e) {
       return c.json({ detail: (e as Error).message }, 422);

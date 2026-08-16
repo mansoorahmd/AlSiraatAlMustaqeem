@@ -19,10 +19,10 @@ import { fetchIdentity, owner as ownerApi } from "../persistence/db";
  *
  * Best-effort: this must never block signing in.
  */
-async function claimProfile(email: string): Promise<void> {
+async function claimProfile(email: string, name?: string): Promise<void> {
   try {
     const id = await fetchIdentity();
-    if (!id.owner) await ownerApi.set(email);
+    if (!id.owner) await ownerApi.set(email, name);
   } catch { /* keep working in the current database */ }
 }
 

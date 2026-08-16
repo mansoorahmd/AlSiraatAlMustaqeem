@@ -112,6 +112,7 @@ CREATE INDEX IF NOT EXISTS idx_compare_items_set ON compare_items(set_id);
 -- is what a remote account binds to. Exactly one row.
 CREATE TABLE IF NOT EXISTS owner (
     id INTEGER PRIMARY KEY CHECK (id = 1),
+    name TEXT NOT NULL DEFAULT '',
     email TEXT NOT NULL,
     uuid TEXT NOT NULL,
     claimed_at INTEGER NOT NULL,
@@ -165,6 +166,11 @@ export class ResearchStore {
     db.exec("DROP TABLE IF EXISTS sense_assignments");
     // provenance: records proposed by an AI through the MCP server are tagged,
     // so the reader can always tell them apart and review them
+    // the owner record gained a name after it shipped with just an email
+    const ownerCols = new Set(db.query<{ name: string }>("PRAGMA table_info(owner)").map((r) => r.name));
+    if (ownerCols.size && !ownerCols.has("name")) {
+      db.exec("ALTER TABLE owner ADD COLUMN name TEXT NOT NULL DEFAULT ''");
+    }
     const indCols = new Set(db.query<{ name: string }>("PRAGMA table_info(word_indications)").map((r) => r.name));
     if (indCols.size && !indCols.has("source")) {
       db.exec("ALTER TABLE word_indications ADD COLUMN source TEXT NOT NULL DEFAULT 'me'");
@@ -197,9 +203,11 @@ export class ResearchStore {
   /** Who this database belongs to, or undefined if nobody has claimed it yet. */
   getOwner(): Doc | undefined {
     try {
-      const r = this.db.one<{ email: string; uuid: string; claimed_at: number; updated_at: number }>(
-        "SELECT email, uuid, claimed_at, updated_at FROM owner WHERE id = 1");
-      return r ? { email: r.email, uuid: r.uuid, claimedAt: r.claimed_at, updatedAt: r.updated_at } : undefined;
+      const r = this.db.one<{ name: string; email: string; uuid: string; claimed_at: number; updated_at: number }>(
+        "SELECT name, email, uuid, claimed_at, updated_at FROM owner WHERE id = 1");
+      return r
+        ? { name: r.name ?? "", email: r.email, uuid: r.uuid, claimedAt: r.claimed_at, updatedAt: r.updated_at }
+        : undefined;
     } catch { return undefined; } // table not present on a very old file
   }
 
@@ -208,16 +216,18 @@ export class ResearchStore {
    * typo or hand it on). The uuid is re-derived, and local_id follows it so newly authored rows
    * carry the right author.
    */
-  setOwner(email: string): Doc {
+  setOwner(email: string, name?: string): Doc {
     const clean = normalizeEmail(email);
     if (!clean.includes("@")) throw new Error("a valid email is required");
     const uuid = ownerIdFor(clean);
     const t = now();
+    // keep the existing name when one isn't supplied (e.g. correcting only the email)
+    const label = (name ?? (this.getOwner()?.name as string | undefined) ?? "").trim().slice(0, 120);
     this.db.run(
-      `INSERT INTO owner (id, email, uuid, claimed_at, updated_at) VALUES (1, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET email = excluded.email, uuid = excluded.uuid,
-         updated_at = excluded.updated_at`,
-      [clean, uuid, t, t],
+      `INSERT INTO owner (id, name, email, uuid, claimed_at, updated_at) VALUES (1, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET name = excluded.name, email = excluded.email,
+         uuid = excluded.uuid, updated_at = excluded.updated_at`,
+      [label, clean, uuid, t, t],
     );
     this.setSetting("local_id", uuid);
     this.localId = uuid;

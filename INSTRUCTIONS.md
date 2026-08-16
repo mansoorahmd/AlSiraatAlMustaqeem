@@ -155,15 +155,17 @@ before signing in stays correctly attributed. See `SHARED_RESEARCH_BUILD.md` (Ph
 #### Whose research is it? (the `owner` record)
 
 **The database says who it belongs to, from inside itself.** `research.db` has a one-row `owner`
-table holding an email and a uuid **derived from that email** (`uuidv5`, `server/src/identity.ts`).
-That makes the file self-describing and portable: copy it to another machine, rename it, or hand
-it to a colleague, and it still knows whose research it is.
+table holding a **name**, an email, and a uuid **derived from the email** (`uuidv5`,
+`server/src/identity.ts`). That makes the file self-describing and portable: copy it to another
+machine, rename it, or hand it to a colleague, and it still knows whose research it is.
 
-- **Day 0** the app asks for an email before anything else (`OwnerGate`) and stamps it, so
+- **Day 0 is whenever there's no usable database** — no file, or a file nobody has claimed. The
+  app asks for a **name and email** (`OwnerGate`) before anything else and stamps them, so
   nothing is ever written un-attributed.
 - **The uuid is the `local_id`** that remote work binds to — same person, same id, any machine.
 - **It can be re-assigned.** You hold the file, so you may fix a typo or hand it on
-  (`PUT /research/owner`). The research in the file is untouched.
+  (`PUT /research/owner`, name and/or email). The research in the file is untouched; changing
+  the email re-derives the uuid. Omitting the name keeps the existing one.
 - **Moving machines is deliberately manual**: back the file up, carry it, open it there. There
   is no magic sync of local files.
 - **Home → Your data** shows the owner and the file, lets you change either, and can open any

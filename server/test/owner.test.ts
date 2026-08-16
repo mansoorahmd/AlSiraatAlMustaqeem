@@ -59,16 +59,25 @@ describe("an unclaimed database", () => {
 });
 
 describe("claiming it", () => {
-  it("stamps the email and a uuid DERIVED from it", async () => {
-    const owner = await j(await put(`${B}/owner`, { email: " Mansoor@Example.org " }));
+  it("stamps the name, the email, and a uuid DERIVED from the email", async () => {
+    const owner = await j(await put(`${B}/owner`, {
+      email: " Mansoor@Example.org ", name: "Mansoor Ahmad",
+    }));
+    expect(owner.name).toBe("Mansoor Ahmad");
     expect(owner.email).toBe(ME);                 // trimmed + lowercased
     expect(owner.uuid).toBe(ownerIdFor(ME));      // same email → same id, on any machine
     expect(owner.claimedAt).toBeGreaterThan(0);
   });
 
+  it("keeps the name when only the email is corrected", async () => {
+    const owner = await j(await put(`${B}/owner`, { email: ME }));
+    expect(owner.name).toBe("Mansoor Ahmad");
+  });
+
   it("is reported by /identity, and becomes the id work is attributed to", async () => {
     const id = await j(await app.request(`${B}/identity`));
     expect(id.owner.email).toBe(ME);
+    expect(id.owner.name).toBe("Mansoor Ahmad");
     expect(id.localId).toBe(ownerIdFor(ME));      // what the remote account binds to
   });
 
@@ -83,6 +92,7 @@ describe("claiming it", () => {
     const { ResearchStore } = await import("../src/research.js");
     const reopened = new ResearchStore(new Db(RESEARCH));
     expect(reopened.getOwner()!.email).toBe(ME);
+    expect(reopened.getOwner()!.name).toBe("Mansoor Ahmad");
     expect(reopened.localId).toBe(ownerIdFor(ME));
   });
 });
