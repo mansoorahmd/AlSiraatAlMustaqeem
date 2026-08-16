@@ -6,7 +6,7 @@ import { useAppState, useAppDispatch } from "../state/store";
 import { CaseDesk } from "../components/case/CaseDesk";
 
 function spaced(root: string): string {
-  return root.split("").join(" ");
+  return root.split("").join("\u00A0"); // nbsp: root letters must not wrap
 }
 
 export function Investigate() {

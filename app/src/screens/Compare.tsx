@@ -15,7 +15,7 @@ import type { CompareItemRow, Word } from "../api/types";
 import { VerseText } from "../components/VerseText";
 import { NotesPanel } from "../components/reader/NotesPanel";
 
-const spaced = (r: string) => r.split("").join(" ");
+const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 const cnum = (k: string) => parseInt(k.split(":")[0] ?? "", 10);
 
 export function Compare() {

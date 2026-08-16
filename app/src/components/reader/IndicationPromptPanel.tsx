@@ -9,7 +9,7 @@ import { useAsync } from "../../hooks/useAsync";
 import type { RootDetail } from "../../api/types";
 import { buildIndicationPrompt, uniqueForms } from "./indicationPrompt";
 
-const spaced = (r: string) => r.split("").join(" ");
+const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 
 interface Props {
   root: string;

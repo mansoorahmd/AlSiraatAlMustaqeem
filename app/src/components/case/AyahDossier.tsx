@@ -90,7 +90,7 @@ export function AyahDossier({ caseRec, mutate }: Props) {
                     title="Open this root's case"
                     onClick={() => void openRoot(w.root!)}
                   >
-                    {w.root.split("").join(" ")}
+                    {w.root.split("").join("\u00A0")}
                   </button>
                 ) : (
                   <span className="aw-particle">particle</span>

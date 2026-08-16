@@ -12,7 +12,7 @@ import { VerseText } from "../components/VerseText";
 import { phraseSpans } from "../lib/arabic";
 
 type Mode = "phrase" | "related";
-const spaced = (r: string) => r.split("").join(" ");
+const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 
 export function Search() {
   const { reading, searchQuery } = useAppState();

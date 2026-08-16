@@ -18,7 +18,7 @@ interface Item {
   run: () => void;
 }
 
-const spaced = (r: string) => r.split("").join(" ");
+const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 const DESTINATIONS: { tab: Tab; label: string }[] = [
   { tab: "read", label: "Read" },
   { tab: "investigate", label: "Investigate" },

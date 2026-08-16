@@ -16,7 +16,7 @@ import {
 } from "../../cases/ops";
 
 function spaced(root: string): string {
-  return root.split("").join(" ");
+  return root.split("").join("\u00A0"); // nbsp: root letters must not wrap
 }
 
 interface Props {

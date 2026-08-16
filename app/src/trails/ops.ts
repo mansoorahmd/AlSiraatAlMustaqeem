@@ -10,7 +10,7 @@ import { archive, newId } from "../persistence/db";
 import type { TrailRecord } from "../persistence/types";
 
 function spacedRoot(root: string): string {
-  return root.split("").join(" ");
+  return root.split("").join("\u00A0"); // nbsp: root letters must not wrap
 }
 
 /** Begin a trail on the root family of the word that sparked it. */

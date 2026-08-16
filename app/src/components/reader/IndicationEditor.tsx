@@ -11,7 +11,7 @@ import { useAsync } from "../../hooks/useAsync";
 import type { RootIndicationWithRefinement, WordIndication, PeerIndication } from "../../api/types";
 import { IndicationPromptPanel } from "./IndicationPromptPanel";
 
-const spaced = (r: string) => r.split("").join(" ");
+const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 
 interface Props {
   root: string;
@@ -247,10 +247,10 @@ function CommunityForms({
       <div className="ie-indication-edit community-reading">
         <div className="community-reading-head">
           <span className="community-mark" aria-hidden>◈</span>
-          <span className="ie-chip-name">{reading.label || "(unlabelled)"}</span>
+          <span className="ie-chip-name">{reading.label || reading.meaning || "(unlabelled)"}</span>
           <span className={`community-status ${reading.status}`} title={STATUS_HINT[reading.status]}>{reading.status}</span>
         </div>
-        {reading.meaning && <p className="indication-meaning">{reading.meaning}</p>}
+        {reading.label && reading.meaning && <p className="indication-meaning">{reading.meaning}</p>}
         <p className="acct-hint">A reading held by the community. You can weigh it, not edit it — to hold it yourself, write your own indication.</p>
       </div>
 

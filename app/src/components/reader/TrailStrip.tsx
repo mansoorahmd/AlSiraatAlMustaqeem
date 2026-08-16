@@ -129,7 +129,7 @@ export function TrailStrip({ trailId }: { trailId: string }) {
         )}
         {trail.subject && (
           <span className="trail-subject quran" title={isWordThread ? "following this exact written word" : "following the whole root family"}>
-            {isWordThread ? trail.subject : trail.subject.split("").join(" ")}
+            {isWordThread ? trail.subject : trail.subject.split("").join("\u00A0")}
             <span className="trail-kind">{isWordThread ? "word" : "root"}</span>
           </span>
         )}

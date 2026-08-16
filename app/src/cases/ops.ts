@@ -9,7 +9,7 @@ import type {
 import type { RootOccurrence } from "../api/types";
 
 function spacedRoot(root: string): string {
-  return root.split("").join(" ");
+  return root.split("").join("\u00A0"); // nbsp: root letters must not wrap
 }
 
 /** Find an existing case for a root subject, or create and persist a new one. */

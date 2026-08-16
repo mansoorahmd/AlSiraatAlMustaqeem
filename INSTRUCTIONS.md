@@ -47,6 +47,14 @@ truncated label, table cell, popover — do all of:
   height above — clipping happens at the padding box, so padding does *not* rescue it.
 - Check it with a vocalised word that has marks both ways, e.g. `ٱلضَّآلِّينَ` or `مَعْلُومِ`.
 
+**Spaced roots must not break across lines.** We display a root letter-spaced (ه د ي). A
+normal space between the letters is a line-break opportunity, so in any narrow or flex-squeezed
+container the root wraps mid-word (`ه د` / `ي`). The display helper `spaced()` therefore joins
+with a **non-breaking space** (` `), not a plain one — every render copy of it does this.
+The two exceptions are deliberate: `indicationPrompt.ts` (AI-prompt text) and `exportCase.ts`
+(copied-out HTML/markdown) keep a plain space so exported text stays clean. If you add another
+`spaced` helper, use ` ` for anything shown on screen.
+
 ### Build what people already know
 
 This app is for the general public, not for us. For anything that exists in ordinary web

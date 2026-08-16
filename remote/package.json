@@ -14,6 +14,7 @@
     "smoke": "cross-env NODE_NO_WARNINGS=1 tsx src/smoke-cli.ts",
     "demo:claims": "cross-env NODE_NO_WARNINGS=1 tsx src/demo-claims-cli.ts",
     "diagnose:pull": "cross-env NODE_NO_WARNINGS=1 tsx src/diagnose-pull-cli.ts",
+    "demo:clean": "cross-env NODE_NO_WARNINGS=1 tsx src/demo-clean-cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "cross-env NODE_NO_WARNINGS=1 vitest run"
   },

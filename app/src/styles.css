@@ -1707,7 +1707,8 @@ a { color: var(--lapis); }
 }
 .ie-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 1.1rem; border-bottom: 1px solid var(--paper-edge); }
 .ie-title { display: flex; align-items: baseline; gap: 0.8rem; min-width: 0; }
-.ie-root { font-size: 1.9rem; color: var(--gold); }
+/* the spaced root letters must never break across lines (ه د ي, not ه د / ي) */
+.ie-root { font-size: 1.9rem; color: var(--gold); white-space: nowrap; flex-shrink: 0; }
 .ie-core { font-size: var(--fs-small); color: var(--ink-soft); font-style: italic; }
 .ie-close { border: none; background: none; cursor: pointer; font-size: 1.1rem; color: var(--ink-faint); }
 .ie-close:hover { color: var(--ink); }

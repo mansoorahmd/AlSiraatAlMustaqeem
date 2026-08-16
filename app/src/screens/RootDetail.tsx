@@ -9,7 +9,7 @@ import { archive, newId } from "../persistence/db";
 import { useAppState, useAppDispatch } from "../state/store";
 import { useAddToCompare } from "../compare/useAddToCompare";
 
-const spaced = (r: string) => r.split("").join(" ");
+const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 const vsort = (k: string) => {
   const [c, v] = k.split(":").map((n) => parseInt(n, 10) || 0);
   return (c ?? 0) * 1000 + (v ?? 0);

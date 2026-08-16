@@ -8,7 +8,7 @@ import { useAsync } from "../hooks/useAsync";
 import { archive, newId } from "../persistence/db";
 import { useAppDispatch } from "../state/store";
 
-const spaced = (r: string) => r.split("").join(" ");
+const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 
 export function Motifs() {
   const dispatch = useAppDispatch();

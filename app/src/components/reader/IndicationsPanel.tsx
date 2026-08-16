@@ -11,7 +11,7 @@ import { archive, newId } from "../../persistence/db";
 import { useAsync } from "../../hooks/useAsync";
 import type { RootIndicationWithRefinement, PeerIndication } from "../../api/types";
 
-const spaced = (r: string) => r.split("").join(" ");
+const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 
 /**
  * The community's readings, in the same list as the reader's own.

@@ -10,7 +10,7 @@ import { useAppState, useAppDispatch } from "../state/store";
 import { RootDetail } from "./RootDetail";
 import { ArabicKeyboard } from "../components/ArabicKeyboard";
 
-const spaced = (r: string) => r.split("").join(" ");
+const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 const MAX_SHOWN = 200;
 
 export function RootsExplorer() {

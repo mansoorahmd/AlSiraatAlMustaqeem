@@ -11,7 +11,7 @@ export function arabicIndic(n: number): string {
 
 /** Root letters spaced out for display: كتب → ك ت ب */
 export function spacedRoot(root: string): string {
-  return root.split(" ").join("").split("").join(" ");
+  return root.split(" ").join("").split("").join("\u00A0"); // nbsp: root letters must not wrap
 }
 
 /**

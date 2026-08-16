@@ -9,7 +9,7 @@ import { useAppDispatch } from "../state/store";
 import { archive } from "../persistence/db";
 import type { NoteRecord } from "../persistence/types";
 
-const spaced = (r: string) => r.split("").join(" ");
+const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 const vsort = (k: string) => {
   const [c, v] = k.split(":").map((n) => parseInt(n, 10) || 0);
   return c * 1000 + v;

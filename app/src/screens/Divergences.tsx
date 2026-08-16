@@ -10,7 +10,7 @@ import { group, type Divergence, type GroupState } from "../persistence/db";
 import { remote, RemoteOffline } from "../api/remote";
 import { useAppDispatch } from "../state/store";
 
-const spaced = (r: string) => r.split("").join(" ");
+const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 
 /**
  * An empty list has four quite different causes, and saying only "nothing" reads as breakage.
