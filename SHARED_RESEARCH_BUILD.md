@@ -167,6 +167,14 @@ The convergence-free heart. Build after the pipe is proven but from the Phase 0 
   reconciles the reader's own case board, nothing remote) — renamed.
   *AC:* a competing claim can be globally established ✅; a split files a dissent ✅; boundary
   test green ✅. Remote 58/58, server 49/49 on the affected suites.
+- [x] **5.6 Propose / review from the app** — ✅ the spine was CLI-only; now the UI drives it.
+  Client methods `remote.propose` / `remote.claims` / `remote.review` / `remote.establish` over
+  the existing routes. In the indication editor: **◈ Propose to community** on your own reading
+  (root scope) opens a panel that enforces §12.1 — a meaning alone can't be sent, it needs an
+  argument (or a cited case). Selecting a community reading shows role-gated **✓ Approve / ✕
+  Object / ★ Establish** (moderator+/maintainer), refusing your own reading exactly as the
+  server does. All of it writes upstream, so each success says *"Sync to see it"* rather than
+  faking a local change. Signed-in role comes from a shared `useMe()` hook.
 
 ## Phase 6 — Inbound pull + reader integration
 

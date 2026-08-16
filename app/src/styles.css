@@ -1698,6 +1698,28 @@ a { color: var(--lapis); }
 .community-reading-head { display: flex; align-items: center; gap: 0.4rem; }
 .ie-form-row.community.filled { border-color: rgba(38, 97, 156, 0.3); background: rgba(38, 97, 156, 0.04); }
 
+/* propose a reading (the app-side of the claim spine) */
+.propose {
+  width: min(34rem, 92vw); background: var(--paper);
+  border: 1px solid var(--paper-edge); border-radius: var(--radius-card);
+  box-shadow: 0 12px 40px rgba(24, 24, 27, 0.25); overflow: hidden;
+}
+.propose-head { display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1rem; padding: 0.9rem 1.1rem; border-bottom: 1px solid var(--paper-edge); }
+.propose-title { margin: 0; font-weight: 600; color: var(--ink); }
+.propose-sub { margin: 0.15rem 0 0; font-size: var(--fs-small); color: var(--ink-soft); line-height: 1.9; }
+.propose-body { padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.8rem; }
+.propose-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.propose-label { font-size: var(--fs-label); color: var(--ink-soft); }
+.propose-req { color: var(--wax-dark); }
+.propose-actions { display: flex; justify-content: flex-end; gap: 0.6rem; }
+.propose-ok { color: var(--lapis); font-weight: 600; margin: 0; }
+
+/* review controls on a community reading (moderator / maintainer) */
+.review { margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px dashed var(--paper-edge); }
+.review-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.ie-propose-row { margin-top: 0.5rem; }
+
 /* attribution: who submitted a community reading and who approved it — quiet metadata,
    not an accent. Dimmed and small; the reading is what matters, not whose it is. */
 .community-attrib { font-size: var(--fs-label); color: var(--ink-faint); margin: 0.3rem 0 0; line-height: 1.9; }

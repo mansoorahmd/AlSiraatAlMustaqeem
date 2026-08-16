@@ -182,7 +182,54 @@ export const remote = {
     for (const [stream, at] of Object.entries(since)) q.set(stream, String(at));
     return call(`/pull?${q.toString()}`);
   },
+
+  // --- the claim spine, from the app (Phase 5 was CLI-only) ---------------------
+  //
+  // Propose YOUR reading of a form or root. It contends for the global slot; it never
+  // overwrites anyone else's. A competing claim must carry its argument (§12.1) — a case, an
+  // evidence āyah, or reasoning — or reviewers have nothing to weigh.
+  propose(opts: {
+    subjectKind: "form" | "root"; subjectValue: string;
+    payload: { meaning: string; argument?: string; caseId?: string; evidence?: unknown[] };
+  }): Promise<ClaimVersion> {
+    return call<ClaimVersion>("/claims", { method: "POST", body: JSON.stringify(opts) });
+  },
+
+  /** Every reading of a subject, and the group's current one — the review surface. */
+  claims(subjectKind: "form" | "root", subjectValue: string): Promise<{
+    claims: ClaimVersion[]; global: ClaimVersion | null;
+  }> {
+    const q = new URLSearchParams({ subjectKind, subjectValue });
+    return call(`/claims?${q.toString()}`);
+  },
+
+  /** Approve or object to one version (moderator+). An objection never blocks; against an
+   *  already-established reading it is filed as a dissent, kept permanently. */
+  review(claimId: string, version: number, opts: {
+    decision: "approve" | "object"; comment?: string; payload?: unknown;
+  }): Promise<{ approvals: number; objections: number; established: boolean }> {
+    return call(`/claims/${encodeURIComponent(claimId)}/versions/${version}/review`, {
+      method: "POST", body: JSON.stringify(opts),
+    });
+  },
+
+  /** Establish directly (maintainer only) — recorded as the maintainer's act. */
+  establish(claimId: string, version: number, comment?: string): Promise<{ ok: boolean }> {
+    return call(`/claims/${encodeURIComponent(claimId)}/versions/${version}/establish`, {
+      method: "POST", body: JSON.stringify({ comment }),
+    });
+  },
 };
+
+export interface ClaimVersion {
+  claimId: string;
+  version: number;
+  authorId: string;
+  subjectKind: "form" | "root";
+  subjectValue: string;
+  payload: { meaning?: string; argument?: string; caseId?: string; evidence?: unknown[] } | null;
+  establishedAt: string | null;
+}
 
 /** Desktop bridge, when running inside Electron. */
 interface DesktopBridge {

@@ -10,6 +10,9 @@ import { archive, group, newId } from "../../persistence/db";
 import { useAsync } from "../../hooks/useAsync";
 import type { RootIndicationWithRefinement, WordIndication, PeerIndication } from "../../api/types";
 import { IndicationPromptPanel } from "./IndicationPromptPanel";
+import { ProposeReading } from "./ProposeReading";
+import { remote } from "../../api/remote";
+import { useMe } from "../../hooks/useMe";
 
 const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 
@@ -178,6 +181,65 @@ const STATUS_HINT: Record<PeerIndication["status"], string> = {
   superseded: "its author has since written a later version; this one stays citable",
 };
 
+/**
+ * Approve / object / establish — only for moderators and maintainers, and never on your own
+ * reading (you can't approve yourself). An objection to something already established becomes a
+ * dissent rather than removing it. All of this writes upstream, so we say "Sync to see it"
+ * rather than mutating the local list.
+ */
+function ReviewControls({ reading }: { reading: PeerIndication }) {
+  const { me, canReview, canEstablish } = useMe();
+  const [busy, setBusy] = useState<null | "approve" | "object" | "establish">(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  if (!canReview) return null;
+  // the claim's author_id is the remote user id (§ server self-approval guard uses the same)
+  const mine = !!me && me.id === reading.authorId;
+
+  const act = async (kind: "approve" | "object" | "establish") => {
+    setBusy(kind); setErr(null); setNote(null);
+    try {
+      if (kind === "establish") {
+        await remote.establish(reading.claimId, reading.version);
+        setNote("Established. Sync to see it as the group's reading.");
+      } else {
+        const t = await remote.review(reading.claimId, reading.version, { decision: kind });
+        setNote(kind === "approve"
+          ? (t.established ? "Approved — it carried a majority and is now established. Sync to see it."
+                           : `Approved. ${t.approvals} approval${t.approvals === 1 ? "" : "s"} · ${t.objections} objection${t.objections === 1 ? "" : "s"}.`)
+          : "Objection recorded. If the reading is established, it's kept as a dissent.");
+      }
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally { setBusy(null); }
+  };
+
+  return (
+    <div className="review">
+      {mine ? (
+        <p className="acct-hint">This is your own reading — you can't approve it yourself.</p>
+      ) : (
+        <div className="review-actions">
+          <button className="ctl" disabled={!!busy} onClick={() => act("approve")}>
+            {busy === "approve" ? "…" : "✓ Approve"}
+          </button>
+          <button className="ctl" disabled={!!busy} onClick={() => act("object")}>
+            {busy === "object" ? "…" : "✕ Object"}
+          </button>
+          {canEstablish && reading.status !== "established" && (
+            <button className="ctl" disabled={!!busy} title="Establish directly (maintainer)" onClick={() => act("establish")}>
+              {busy === "establish" ? "…" : "★ Establish"}
+            </button>
+          )}
+        </div>
+      )}
+      {note && <p className="acct-hint">{note}</p>}
+      {err && <p className="acct-error" role="alert">{err}</p>}
+    </div>
+  );
+}
+
 /** Who submitted a community reading, and who approved it — attribution is the point (§1). */
 function Attribution({ reading }: { reading: PeerIndication }) {
   return (
@@ -273,6 +335,7 @@ function CommunityForms({
         {reading.label && reading.meaning && <p className="indication-meaning">{reading.meaning}</p>}
         <Attribution reading={reading} />
         <p className="acct-hint">A reading held by the community. You can weigh it, not edit it — to hold it yourself, write your own indication.</p>
+        <ReviewControls reading={reading} />
       </div>
 
       <p className="ie-section">Each form, as the community reads it</p>
@@ -358,12 +421,30 @@ function IndicationForms({
     return out;
   }, [forms, focusLemma]);
 
+  const [proposing, setProposing] = useState(false);
+
   return (
     <div className="ie-forms">
       <div className="ie-indication-edit">
         <input className="board-input ie-indication-label" placeholder="indication label" value={label} onChange={(e) => setLabel(e.target.value)} onBlur={saveIndication} />
         <textarea className="board-input" rows={2} placeholder="the root's meaning in this indication, in your words…" value={meaning} onChange={(e) => setMeaning(e.target.value)} onBlur={saveIndication} />
+        {indication.root && (label.trim() || meaning.trim()) && (
+          <div className="ie-propose-row">
+            <button className="ctl" title="Offer this reading of the root to the community" onClick={() => setProposing(true)}>
+              ◈ Propose to community
+            </button>
+          </div>
+        )}
       </div>
+
+      {proposing && indication.root && (
+        <ProposeReading
+          subjectKind="root"
+          subjectValue={indication.root}
+          defaultMeaning={[label.trim(), meaning.trim()].filter(Boolean).join(" — ")}
+          onClose={() => setProposing(false)}
+        />
+      )}
 
       <p className="ie-section">Each form’s meaning in this indication</p>
       <div className="ie-form-rows">
