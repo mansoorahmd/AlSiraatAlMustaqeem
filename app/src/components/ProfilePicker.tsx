@@ -126,15 +126,17 @@ export function ProfilePicker({ onChanged }: { onChanged?: () => void }) {
       )}
 
       {pick && (
-        <button
-          className="ctl" disabled={busy}
-          onClick={() => act(async () => {
-            const path = await pick();
-            if (path) await databases.open(path);
-          }, true)}
-        >
-          Open a database file…
-        </button>
+        <div className="acct-actions">
+          <button
+            className="ctl" disabled={busy}
+            onClick={() => act(async () => {
+              const path = await pick();
+              if (path) await databases.open(path);
+            }, true)}
+          >
+            Open a database file…
+          </button>
+        </div>
       )}
 
       {err && <p className="acct-error" role="alert">{err}</p>}

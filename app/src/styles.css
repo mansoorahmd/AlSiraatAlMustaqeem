@@ -398,27 +398,6 @@ a { color: var(--lapis); }
 /* --- research home / dashboard --- */
 .home-head { text-align: center; margin-bottom: 1.2rem; }
 .home-title { font-size: 2rem; color: var(--ink); margin: 0; }
-.home-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  gap: 0.7rem;
-  margin-bottom: 1.4rem;
-}
-.stat {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
-  padding: 0.7rem 0.9rem;
-  border: 1px solid var(--paper-edge);
-  border-radius: 12px;
-  background: var(--paper);
-  cursor: pointer;
-  transition: box-shadow 0.15s ease, transform 0.1s ease;
-}
-.stat:hover { box-shadow: var(--shadow-lift); transform: translateY(-1px); }
-.stat-n { font-size: 1.6rem; font-weight: 700; color: var(--lapis); font-variant-numeric: tabular-nums; }
-.stat-l { font-size: var(--fs-label); color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; }
 .home-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
@@ -3295,28 +3274,38 @@ a { color: var(--lapis); }
 /* ============ home: workbench ============
    One clear next action, three numbers, three equal cards. Nothing about configuration —
    that lives in Settings (see INSTRUCTIONS.md → UI conventions). */
-.home-hero { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.75rem;
-  margin-bottom: 1.25rem; }
+/* Home is a dashboard of cards, not prose: it should use the width it has. The 60rem measure
+   on .sheet is right for reading, wrong here — it left big empty gutters on a wide screen. */
+.sheet.home { max-width: 84rem; }
 
-.home-continue { flex: 1 1 18rem; display: flex; flex-direction: column; gap: 0.15rem;
+.home-hero {
+  display: grid; gap: 0.75rem; margin-bottom: 1.25rem;
+  /* the continue tile is wider, the three stats equal — ONE grid, so every tile is
+     exactly the same height and their edges line up */
+  grid-template-columns: 1.6fr repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 900px) { .home-hero { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .home-hero { grid-template-columns: 1fr; } }
+
+/* every tile in the hero shares one shape: same padding, radius and vertical rhythm */
+.home-continue, .home-hero .stat {
+  display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;
   align-items: flex-start; text-align: start; cursor: pointer;
-  padding: 0.9rem 1.1rem; border-radius: 10px;
-  background: var(--lapis); border: 1px solid var(--lapis); color: #fff; font: inherit; }
+  min-height: 4.75rem; padding: 0.85rem 1rem;
+  border-radius: 10px; border: 1px solid var(--paper-edge); font: inherit;
+}
+.home-continue { background: var(--lapis); border-color: var(--lapis); color: #fff; }
 .home-continue:hover { filter: brightness(1.06); }
 .home-continue-label { font-size: var(--fs-small); opacity: 0.85; }
 .home-continue-ref { font-size: 1.15rem; font-weight: 600; }
 .home-continue-ayah { opacity: 0.8; font-weight: 500; }
 
-/* equal-width stats on one grid, so the numbers line up */
-.home-stats { flex: 2 1 24rem; display: grid; gap: 0.75rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.home-stats .stat { display: flex; flex-direction: column; gap: 0.1rem; align-items: flex-start;
-  justify-content: center; padding: 0.9rem 1rem; cursor: pointer; text-align: start;
-  background: var(--paper); border: 1px solid var(--paper-edge); border-radius: 10px;
-  font: inherit; color: var(--ink); }
-.home-stats .stat:hover { border-color: var(--ink-faint); }
-.home-stats .stat-n { font-size: 1.4rem; font-weight: 600; line-height: 1.1; }
-.home-stats .stat-l { font-size: var(--fs-small); color: var(--ink-soft); }
+.home-hero .stat { background: var(--paper); color: var(--ink); }
+.home-hero .stat:hover { border-color: var(--ink-faint); }
+.home-hero .stat-n { font-size: 1.4rem; font-weight: 600; line-height: 1.1;
+  color: var(--ink); font-variant-numeric: tabular-nums; }
+.home-hero .stat-l { font-size: var(--fs-small); color: var(--ink-soft);
+  text-transform: none; letter-spacing: 0; }
 
 /* three cards of equal weight */
 .home-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); }
@@ -3332,3 +3321,15 @@ a { color: var(--lapis); }
   border-top: 1px solid var(--paper-edge); }
 .settings-group > h3 { margin: 0; font-size: var(--fs-small); font-weight: 600; color: var(--ink); }
 .topbar-icon { font-size: 1rem; }
+
+/* Buttons inside a panel are visible controls, not bare text: `.ctl` defaults to transparent,
+   which reads as broken outside a toolbar. One primary per section (.ctl.primary), everything
+   else outlined. */
+.acct .ctl:not(.primary):not(.icon-btn) {
+  background: var(--paper); border-color: var(--paper-edge); color: var(--ink);
+  padding: 0.45rem 0.8rem;
+}
+.acct .ctl:not(.primary):not(.icon-btn):hover:not(:disabled) {
+  border-color: var(--ink-faint); background: var(--paper-warm);
+}
+.acct .ctl.primary { padding: 0.45rem 0.8rem; }
