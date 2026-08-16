@@ -24,6 +24,7 @@ const WRITABLE_BY_SYNC = [
   "derived_submissions",     // my outbox: what I have offered upstream
   "derived_global_forms",    // the group's established readings
   "derived_dissents",        // the ledger of disagreement against them
+  "derived_peer_indications", // the community's readings, shown beside my own
   "derived_sync_state",      // how far each pull has got
 ];
 
@@ -110,6 +111,68 @@ describe("what sync may never do", () => {
 
     expect(counts()).toEqual(before);                                  // not one row of mine moved
     expect(db.scalar<number>("SELECT COUNT(*) FROM derived_global_forms")).toBe(1);
+  });
+
+  it("pulled community indications never become the reader's own indications", () => {
+    // The riskiest change in the whole design: peer readings are SHOWN in the same list as
+    // yours, so the temptation is to store them in the same table. They must not be — or a
+    // pull could silently author, edit, or re-prioritise your work.
+    store.saveIndication({ id: "ind_mine", root: "هدي", label: "guidance", meaning: "mine" });
+    const mineBefore = store.rootIndications("هدي");
+    expect(mineBefore).toHaveLength(1);
+    expect(mineBefore[0]!.primary).toBe(true);
+
+    store.applyPull({
+      cursor: 9,
+      peerIndications: [
+        {
+          claimId: "clm_a", version: 1, authorId: "amina", subjectKind: "root",
+          subjectValue: "هدي", status: "established", label: "a giving of direction",
+          meaning: "theirs", payload: {}, createdAt: new Date().toISOString(),
+          schemaVersion: 1, seq: 7,
+        },
+        {
+          claimId: "clm_b", version: 1, authorId: "bilal", subjectKind: "form",
+          subjectValue: "هُدًى", status: "proposed", label: "guidance", meaning: "also theirs",
+          payload: {}, createdAt: new Date().toISOString(), schemaVersion: 1, seq: 8,
+        },
+      ],
+    });
+
+    // my indication list is byte-identical, still mine, still primary
+    expect(store.rootIndications("هدي")).toEqual(mineBefore);
+    expect(db.scalar<number>("SELECT COUNT(*) FROM word_indications")).toBe(1);
+
+    // and theirs are visible, separately, under both scopes
+    expect(store.peerIndications("root", "هدي")).toHaveLength(1);
+    expect(store.peerIndications("form", "هُدًى")).toHaveLength(1);
+
+    const forWord = store.indicationsForWord("هُدًى", "هدي");
+    expect(forWord.rootIndications).toHaveLength(1);      // only mine in my array
+    expect(forWord.communityRoot).toHaveLength(1);
+    expect(forWord.communityLemma).toHaveLength(1);
+    expect(forWord.communityRoot[0].status).toBe("established");
+  });
+
+  it("re-pulling the same reading updates it in place rather than duplicating it", () => {
+    const one = {
+      claimId: "clm_c", version: 1, authorId: "amina", subjectKind: "root",
+      subjectValue: "نذر", status: "proposed", label: "warning", meaning: "v1",
+      payload: {}, createdAt: new Date().toISOString(), schemaVersion: 1, seq: 10,
+    };
+    store.applyPull({ peerIndications: [one] });
+    // the group later carries it — the SAME claim version, now established
+    store.applyPull({ peerIndications: [{ ...one, status: "established", seq: 11 }] });
+
+    const peers = store.peerIndications("root", "نذر");
+    expect(peers).toHaveLength(1);
+    expect(peers[0]!.status).toBe("established");
+  });
+
+  it("dropping every derived table loses the community's readings and none of mine", () => {
+    db.exec("DELETE FROM derived_peer_indications");
+    expect(store.peerIndications("root", "هدي")).toHaveLength(0);
+    expect(store.rootIndications("هدي")).toHaveLength(1);   // untouched
   });
 });
 

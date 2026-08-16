@@ -167,6 +167,29 @@ CREATE TABLE IF NOT EXISTS derived_dissents (
 );
 CREATE INDEX IF NOT EXISTS idx_derived_dissents_claim ON derived_dissents(claim_id, claim_version);
 
+-- The community's indications: every reading anyone holds for a form or a root, whether or not
+-- it won the global slot. These sit ALONGSIDE the reader's own word_indications rather than
+-- against them — you keep as many readings as you find useful, and the group's are simply more
+-- of them, marked as theirs. Being derived, they are read-only here and drop-safe: sync may
+-- never write word_indications, so nothing pulled can ever masquerade as your own work.
+CREATE TABLE IF NOT EXISTS derived_peer_indications (
+    claim_id TEXT NOT NULL,
+    version INTEGER NOT NULL,
+    author_id TEXT NOT NULL,
+    subject_kind TEXT NOT NULL,          -- 'form' (lemma) | 'root'
+    subject_value TEXT NOT NULL,
+    status TEXT NOT NULL,                -- 'proposed' | 'established' | 'superseded'
+    label TEXT NOT NULL DEFAULT '',
+    meaning TEXT NOT NULL DEFAULT '',
+    payload TEXT NOT NULL,               -- unknown fields preserved verbatim
+    created_at INTEGER NOT NULL,
+    schema_version INTEGER NOT NULL,
+    seq INTEGER NOT NULL,
+    PRIMARY KEY (claim_id, version)
+);
+CREATE INDEX IF NOT EXISTS idx_derived_peer_ind_subject
+    ON derived_peer_indications(subject_kind, subject_value);
+
 -- How far each pull has got. Reset to 0 for a full resync — always safe.
 CREATE TABLE IF NOT EXISTS derived_sync_state (
     stream TEXT PRIMARY KEY,
@@ -649,7 +672,44 @@ export class ResearchStore {
         }))
       : [];
     const lemmaIndications = (!root && lemma) ? this.lemmaIndications(lemma) : [];
-    return { root, lemma, rootIndications, lemmaIndications };
+    return {
+      root, lemma, rootIndications, lemmaIndications,
+      // The community's readings ride in SEPARATE arrays, never merged into the two above.
+      // The UI shows them in the same list, but the boundary stays visible in the data: these
+      // came from derived_peer_indications and cannot be edited or made primary.
+      communityRoot: root ? this.peerIndications("root", root) : [],
+      communityLemma: lemma ? this.peerIndications("form", lemma) : [],
+    };
+  }
+
+  /**
+   * The community's readings of one subject, best first.
+   *
+   * Ordered established → proposed → superseded, because that is the order a reader wants to
+   * meet them in: what the group settled on, what is still being argued, what someone has
+   * since moved on from. None of them is deleted — a superseded reading is still a reading.
+   */
+  peerIndications(subjectKind: string, subjectValue: string): Doc[] {
+    return this.db
+      .query<Doc>(
+        `SELECT * FROM derived_peer_indications
+          WHERE subject_kind = ? AND subject_value = ?
+          ORDER BY CASE status WHEN 'established' THEN 0 WHEN 'proposed' THEN 1 ELSE 2 END,
+                   created_at DESC`,
+        [subjectKind, subjectValue])
+      .map((r) => ({
+        id: `peer:${r.claim_id}@${r.version}`,
+        claimId: r.claim_id, version: r.version, authorId: r.author_id,
+        scope: r.subject_kind === "root" ? "root" : "lemma",
+        root: r.subject_kind === "root" ? r.subject_value : null,
+        lemma: r.subject_kind === "form" ? r.subject_value : null,
+        status: r.status, label: r.label, meaning: r.meaning,
+        createdAt: r.created_at,
+        origin: "remote", source: "community",
+        dissents: this.db.scalar<number>(
+          "SELECT COUNT(*) FROM derived_dissents WHERE claim_id = ? AND claim_version = ?",
+          [r.claim_id, r.version]) ?? 0,
+      }));
   }
 
   private clearRootPrimary(root: string, exceptId?: string): void {
@@ -816,8 +876,10 @@ export class ResearchStore {
    * the cursor deliberately allows) changes nothing. Unknown payload fields are kept verbatim —
    * an old client must not silently drop what a newer one wrote.
    */
-  applyPull(page: { globalForms?: Doc[]; dissents?: Doc[]; cursor?: number }): Doc {
-    let forms = 0, dissents = 0;
+  applyPull(page: {
+    globalForms?: Doc[]; dissents?: Doc[]; peerIndications?: Doc[]; cursor?: number;
+  }): Doc {
+    let forms = 0, dissents = 0, peerIndications = 0;
     for (const g of page.globalForms ?? []) {
       this.db.run(
         `INSERT INTO derived_global_forms
@@ -845,8 +907,28 @@ export class ResearchStore {
       );
       dissents++;
     }
+    // Status is re-sent on every pull rather than being computed here: a reading that loses
+    // the global slot must stop calling itself established, and only the remote knows that.
+    for (const p of page.peerIndications ?? []) {
+      this.db.run(
+        `INSERT INTO derived_peer_indications
+           (claim_id, version, author_id, subject_kind, subject_value, status,
+            label, meaning, payload, created_at, schema_version, seq)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+         ON CONFLICT(claim_id, version) DO UPDATE SET
+           status=excluded.status, label=excluded.label, meaning=excluded.meaning,
+           payload=excluded.payload, schema_version=excluded.schema_version, seq=excluded.seq`,
+        [p.claimId, p.version, p.authorId, p.subjectKind, p.subjectValue,
+         p.status ?? "proposed", p.label ?? "", p.meaning ?? "",
+         JSON.stringify(p.payload ?? null), Date.parse(p.createdAt) || now(),
+         p.schemaVersion ?? 1, p.seq ?? 0],
+      );
+      peerIndications++;
+    }
     if (typeof page.cursor === "number") this.setSyncPosition("main", page.cursor);
-    return { globalForms: forms, dissents, cursor: this.syncPosition("main") };
+    return {
+      globalForms: forms, dissents, peerIndications, cursor: this.syncPosition("main"),
+    };
   }
 
   /** The group's reading of a form or root, if they have one. */
@@ -923,6 +1005,7 @@ export class ResearchStore {
   resetPulled(): void {
     this.db.exec("DELETE FROM derived_global_forms");
     this.db.exec("DELETE FROM derived_dissents");
+    this.db.exec("DELETE FROM derived_peer_indications");
     this.db.exec("DELETE FROM derived_sync_state");
   }
 

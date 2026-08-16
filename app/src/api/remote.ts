@@ -171,7 +171,7 @@ export const remote = {
    */
   pull(since: number): Promise<{
     cursor: number; more: boolean; schemaVersion: number;
-    globalForms: unknown[]; dissents: unknown[];
+    globalForms: unknown[]; dissents: unknown[]; peerIndications: unknown[];
   }> {
     return call(`/pull?since=${since}`);
   },

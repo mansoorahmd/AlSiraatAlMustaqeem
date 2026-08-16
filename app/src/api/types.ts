@@ -98,6 +98,30 @@ export interface IndicationsForWord {
   root: string | null; lemma: string | null;
   rootIndications: RootIndicationWithRefinement[];
   lemmaIndications: WordIndication[];
+  /** the community's readings of this root — pulled, read-only, never primary */
+  communityRoot: PeerIndication[];
+  /** the community's readings of this exact form */
+  communityLemma: PeerIndication[];
+}
+/**
+ * Someone else's reading, pulled from the research server.
+ *
+ * Deliberately NOT a WordIndication: it has no `primary` and no id you can save against,
+ * because it is not yours to promote or edit. It sits in the same list as your own so you
+ * can weigh it, and that is all.
+ */
+export interface PeerIndication {
+  id: string;                  // peer:<claimId>@<version> — stable, but not a local record
+  claimId: string; version: number; authorId: string;
+  scope: "root" | "lemma";
+  root: string | null; lemma: string | null;
+  /** established = the group's current reading; proposed = argued but not carried;
+   *  superseded = its author has since written a later version */
+  status: "proposed" | "established" | "superseded";
+  label: string; meaning: string;
+  /** objections filed against this exact version */
+  dissents: number;
+  createdAt: number;
 }
 /** What an AI proposed through the MCP server, awaiting the reader's review. */
 export interface Proposed {

@@ -1656,6 +1656,34 @@ a { color: var(--lapis); }
 .indication-refine-actions { display: flex; gap: 0.6rem; }
 .ctl.subtle { color: var(--ink-soft); }
 
+/* ---- the community's indications: same list, unmistakably not yours ----
+   Lapis (the app's "elsewhere" colour) against the gold of your own work, and a ◈ mark.
+   Read-only by construction: these rows carry no star and no ✕, so there is nothing to
+   press that would blur whose reading it is. */
+.community-block { display: flex; flex-direction: column; gap: 0.4rem; padding-top: 0.5rem; margin-top: 0.2rem; border-top: 1px dashed var(--paper-edge); }
+.community-head { display: flex; align-items: center; gap: 0.35rem; margin: 0; font-size: var(--fs-label); color: var(--lapis); letter-spacing: 0.02em; }
+.community-mark { color: var(--lapis); font-size: 0.8rem; line-height: 1; }
+
+.indication-row.community {
+  border-color: rgba(38, 97, 156, 0.3);
+  background: rgba(38, 97, 156, 0.045);
+}
+.indication-row.community .indication-label { color: var(--lapis-ink, var(--ink)); font-weight: 600; }
+.indication-row.community .indication-meaning { color: var(--ink-soft); }
+/* a reading its own author has moved past is still on record — present, but receded */
+.indication-row.community.st-superseded { opacity: 0.72; }
+
+.community-status {
+  font-size: var(--fs-label); border-radius: 999px; padding: 0 0.4rem; white-space: nowrap;
+  border: 1px solid rgba(38, 97, 156, 0.3); color: var(--lapis);
+}
+.community-status.established { background: var(--lapis); border-color: var(--lapis); color: #fff; }
+.community-status.superseded { color: var(--ink-faint); border-color: var(--paper-edge); }
+.community-dissent {
+  font-size: var(--fs-label); color: var(--wax-dark); white-space: nowrap;
+  border: 1px solid rgba(159, 18, 57, 0.25); border-radius: 999px; padding: 0 0.4rem;
+}
+
 /* ---- Indication Editor modal ---- */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 80;

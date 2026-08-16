@@ -9,9 +9,53 @@ import { useState } from "react";
 import { api } from "../../api/client";
 import { archive, newId } from "../../persistence/db";
 import { useAsync } from "../../hooks/useAsync";
-import type { RootIndicationWithRefinement } from "../../api/types";
+import type { RootIndicationWithRefinement, PeerIndication } from "../../api/types";
 
 const spaced = (r: string) => r.split("").join(" ");
+
+/**
+ * The community's readings, in the same list as the reader's own.
+ *
+ * They are shown, never merged: no star (you cannot make someone else's reading your default
+ * gloss), no delete, no edit. If you want to hold what they hold, you write it yourself — which
+ * keeps every indication in your database something you actually chose.
+ */
+function CommunityIndications({ items, subject }: { items: PeerIndication[]; subject: string }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="community-block">
+      <p className="community-head">
+        <span className="community-mark" aria-hidden>◈</span>
+        From the community · {subject}
+      </p>
+      {items.map((p) => (
+        <div key={p.id} className={`indication-row community st-${p.status}`}>
+          <div className="indication-row-head">
+            <span className="community-mark" aria-hidden title="a reading from the research community">◈</span>
+            <span className="indication-label">
+              {p.label || p.meaning || <em className="indication-unlabelled">(unlabelled)</em>}
+            </span>
+            <span className={`community-status ${p.status}`} title={STATUS_HINT[p.status]}>
+              {p.status === "established" ? "established" : p.status}
+            </span>
+            {p.dissents > 0 && (
+              <span className="community-dissent" title="objections filed against this reading">
+                {p.dissents} dissent{p.dissents === 1 ? "" : "s"}
+              </span>
+            )}
+          </div>
+          {p.label && p.meaning && <p className="indication-meaning">{p.meaning}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const STATUS_HINT: Record<PeerIndication["status"], string> = {
+  established: "the group's current reading — a majority of reviewers carried it",
+  proposed: "argued and on record, but it has not carried a majority",
+  superseded: "its author has since written a later version; this one stays citable",
+};
 
 interface Props {
   lemma: string | null;
@@ -30,6 +74,8 @@ export function IndicationsPanel({ lemma, root, onChanged }: Props) {
 
   const rootIndications = data.data?.rootIndications ?? [];
   const lemmaIndications = data.data?.lemmaIndications ?? [];
+  const communityRoot = data.data?.communityRoot ?? [];
+  const communityLemma = data.data?.communityLemma ?? [];
 
   const [label, setLabel] = useState("");
   const [meaning, setMeaning] = useState("");
@@ -47,8 +93,9 @@ export function IndicationsPanel({ lemma, root, onChanged }: Props) {
         <>
           {rootIndications.length === 0 && !data.loading && (
             <p className="indications-empty">
-              No indications yet for the root <span className="quran">{spaced(root)}</span>. Add one below — then give
-              each form its own shade of that meaning.
+              {communityRoot.length + communityLemma.length > 0
+                ? <>None of your own yet for the root <span className="quran">{spaced(root)}</span> — the community's are below. Add yours, then give each form its own shade of that meaning.</>
+                : <>No indications yet for the root <span className="quran">{spaced(root)}</span>. Add one below — then give each form its own shade of that meaning.</>}
             </p>
           )}
 
@@ -62,6 +109,10 @@ export function IndicationsPanel({ lemma, root, onChanged }: Props) {
             />
           ))}
 
+          {/* others' readings of the same root, and of this exact form */}
+          <CommunityIndications items={communityRoot} subject="this root" />
+          {lemma && <CommunityIndications items={communityLemma} subject="this form" />}
+
           <div className="indication-add">
             <p className="indication-add-head">Add an indication of the root <span className="quran">{spaced(root)}</span></p>
             <input className="board-input indication-label-input" placeholder="short label (e.g. attain / triumph)" value={label} onChange={(e) => setLabel(e.target.value)} />
@@ -71,7 +122,13 @@ export function IndicationsPanel({ lemma, root, onChanged }: Props) {
         </>
       ) : (
         // rootless word (particle, name): plain standalone indications
-        <StandaloneLemma lemma={lemma} indications={lemmaIndications} loading={data.loading} onChanged={bump} />
+        <StandaloneLemma
+          lemma={lemma}
+          indications={lemmaIndications}
+          community={communityLemma}
+          loading={data.loading}
+          onChanged={bump}
+        />
       )}
     </div>
   );
@@ -141,9 +198,10 @@ function RootIndicationRow({
 }
 
 function StandaloneLemma({
-  lemma, indications, loading, onChanged,
+  lemma, indications, community, loading, onChanged,
 }: {
-  lemma: string | null; indications: import("../../api/types").WordIndication[]; loading: boolean; onChanged: () => void;
+  lemma: string | null; indications: import("../../api/types").WordIndication[];
+  community: PeerIndication[]; loading: boolean; onChanged: () => void;
 }) {
   const [label, setLabel] = useState("");
   const [meaning, setMeaning] = useState("");
@@ -171,6 +229,7 @@ function StandaloneLemma({
           {s.meaning && <p className="indication-meaning">{s.meaning}</p>}
         </div>
       ))}
+      <CommunityIndications items={community} subject="this word" />
       <div className="indication-add">
         <input className="board-input indication-label-input" placeholder="short label" value={label} onChange={(e) => setLabel(e.target.value)} />
         <textarea className="board-input indication-meaning-input" rows={2} placeholder="the meaning, in your words…" value={meaning} onChange={(e) => setMeaning(e.target.value)} />

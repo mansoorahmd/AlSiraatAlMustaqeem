@@ -124,7 +124,9 @@ export const group = {
   state(): Promise<GroupState> {
     return srvGet("/pull/state");
   },
-  apply(page: unknown): Promise<{ globalForms: number; dissents: number; cursor: number }> {
+  apply(page: unknown): Promise<{
+    globalForms: number; dissents: number; peerIndications: number; cursor: number;
+  }> {
     return srvPost("/pull/apply", page);
   },
   reset(): Promise<{ ok: boolean; cursor: number }> {

@@ -53,15 +53,18 @@ export function Divergences() {
     setBusy(true); setErr(null); setNote(null);
     try {
       let { cursor } = await group.state();
-      let forms = 0, dissents = 0, pages = 0;
+      let forms = 0, dissents = 0, peers = 0, pages = 0;
       for (;;) {
         const page = await remote.pull(cursor);
         const applied = await group.apply(page);
         forms += applied.globalForms; dissents += applied.dissents;
+        peers += applied.peerIndications;
         cursor = applied.cursor; pages++;
         if (!page.more || pages > 50) break;      // guard against a runaway loop
       }
-      setNote(`Received ${forms} reading${forms === 1 ? "" : "s"} and ${dissents} dissent${dissents === 1 ? "" : "s"}.`);
+      const n = (c: number, one: string) => `${c} ${one}${c === 1 ? "" : "s"}`;
+      setNote(
+        `Received ${n(forms, "established reading")}, ${n(peers, "community indication")} and ${n(dissents, "dissent")}.`);
       await refresh();
     } catch (e) {
       setErr(e instanceof RemoteOffline

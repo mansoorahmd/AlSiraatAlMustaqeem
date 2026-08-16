@@ -19,6 +19,15 @@ export interface PullPage {
   schemaVersion: number;
   globalForms: unknown[];
   dissents: unknown[];
+  /**
+   * EVERY reading on record, not only the established one — the community's indications.
+   *
+   * A reader holds several indications for a word and switches between them; the group's
+   * readings join that same list rather than standing over against it. So the losing claim
+   * is as much a part of the pull as the winning one: it is someone's reading, argued and
+   * attributed, and the design never treats "not established" as "not worth seeing".
+   */
+  peerIndications: unknown[];
 }
 
 /**
@@ -47,14 +56,30 @@ export async function pullSince(r: SqlRunner, since: number, limit = 500): Promi
       ORDER BY seq
       LIMIT $2`, [since, limit]);
 
+  // Every version of every claim. `status` is derived rather than stored: established when the
+  // global slot still points at this exact version, superseded once a later version exists,
+  // proposed otherwise. Deriving it here means a claim that loses the slot later is corrected
+  // on the next pull without needing a rewrite of history upstream.
+  const peers = await r.query(
+    `SELECT cv.claim_id, cv.version, cv.payload_json, cv.created_at, cv.schema_version, cv.seq,
+            c.author_id, c.subject_kind, c.subject_value, c.current_version,
+            (g.claim_id IS NOT NULL) AS is_global
+       FROM claim_versions cv
+       JOIN claims c ON c.id = cv.claim_id
+       LEFT JOIN global_forms g
+         ON g.claim_id = cv.claim_id AND g.version = cv.version
+      WHERE cv.seq > $1
+      ORDER BY cv.seq
+      LIMIT $2`, [since, limit]);
+
   const maxSeq = (rows: Record<string, unknown>[]) =>
     rows.reduce((m, row) => Math.max(m, Number(row.seq ?? 0)), 0);
 
-  const cursor = Math.max(since, maxSeq(globalForms), maxSeq(dissents));
+  const cursor = Math.max(since, maxSeq(globalForms), maxSeq(dissents), maxSeq(peers));
 
   return {
     cursor,
-    more: globalForms.length === limit || dissents.length === limit,
+    more: globalForms.length === limit || dissents.length === limit || peers.length === limit,
     schemaVersion: SCHEMA_VERSION,
     globalForms: globalForms.map((g) => ({
       subjectKind: g.subject_kind, subjectValue: g.subject_value,
@@ -67,6 +92,22 @@ export async function pullSince(r: SqlRunner, since: number, limit = 500): Promi
       schemaVersion: Number(g.schema_version ?? SCHEMA_VERSION),
       seq: Number(g.seq),
     })),
+    peerIndications: peers.map((p) => {
+      const payload = p.payload_json as { meaning?: string; label?: string } | null;
+      return {
+        claimId: p.claim_id, version: Number(p.version), authorId: p.author_id,
+        subjectKind: p.subject_kind, subjectValue: p.subject_value,
+        status: p.is_global
+          ? "established"
+          : Number(p.current_version ?? 0) > Number(p.version) ? "superseded" : "proposed",
+        label: payload?.label ?? "",
+        meaning: payload?.meaning ?? "",
+        payload,
+        createdAt: new Date(p.created_at as string).toISOString(),
+        schemaVersion: Number(p.schema_version ?? SCHEMA_VERSION),
+        seq: Number(p.seq),
+      };
+    }),
     dissents: dissents.map((d) => ({
       id: d.id, claimId: d.claim_id, claimVersion: Number(d.claim_version),
       authorId: d.author_id, payload: d.payload_json,

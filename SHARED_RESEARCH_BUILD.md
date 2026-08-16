@@ -180,12 +180,36 @@ The convergence-free heart. Build after the pipe is proven but from the Phase 0 
   every form you established whose meaning differs from the group's, both readings side by side,
   with a count of dissents filed against theirs, and a jump to the case where you established
   yours. It changes NEITHER reading — that is the point.  ⇢ 6.1
-- [ ] **6.2 Gloss layer toggle** (mine / group / both) — the data is there (`/research/group-gloss`);
-  wiring it into the reader's interlinear gloss is the remaining piece.
-  *AC:* resync is idempotent and can't damage local work ✅ (`pull.test.ts` 11 tests,
-  `sync-boundary.test.ts` 9 — including that applying a pull leaves every one of the reader's
-  tables byte-for-byte unchanged); divergence shows in the dedicated screen ✅, dossier + margin
-  mark still to come.
+- [x] **6.2 Community indications** — ✅ *(replaces the planned "gloss layer toggle")*.
+
+  **Why the change.** 6.3 compares one established reading of yours against one of theirs. But
+  a reader doesn't hold one reading — they hold several indications per root and switch between
+  them. `form_research` (case establishment) was empty in real use while `word_indications` held
+  all the actual research, so the comparison screen had nothing to say. The design already named
+  the right unit: §"Competing" says *form indications, root verdicts*.
+
+  So the group's readings now arrive as **more indications**, shown in the same list as your
+  own and marked as theirs — not as a verdict standing over against yours.
+
+  - `pullSince` sends **every** claim version, not only established ones: a losing claim is
+    still someone's argued reading. `status` (`established` | `proposed` | `superseded`) is
+    **derived per pull**, so a claim that gains or loses the global slot corrects itself on the
+    next walk with no upstream rewrite.
+  - Migration `0004` adds `claim_versions.created_at`: `established_at` is NULL while merely
+    proposed, and a re-pulled row must carry a **stable** date or an idempotent upsert would
+    keep rewriting it.
+  - Local `derived_peer_indications` (per `SHARED_RESEARCH_SCHEMA.md` §2), returned by
+    `indicationsForWord` in **separate** `communityRoot` / `communityLemma` arrays — never
+    merged into the reader's own, and covering both root and form scope.
+  - UI: lapis + ◈ against the gold of your own work, with status and dissent count. No star and
+    no ✕ — you cannot promote or edit someone else's reading. To hold what they hold, you write
+    it yourself, which keeps every indication in your database one you actually chose.
+
+  *AC:* resync is idempotent and can't damage local work ✅ — `remote/test/pull.test.ts` (9, new:
+  `pullSince` had no test of its own before) and `server/test/sync-boundary.test.ts` (12,
+  including that a peer-indication pull leaves `word_indications` byte-identical and that
+  re-pulling updates in place rather than duplicating). Divergence screen ✅; **still to come:**
+  dissents in the form dossier, and the ⚖ margin mark in the reader.
 
 ## Phase 7 — Redaction, tombstones, citations
 
