@@ -10,6 +10,7 @@ import { archive, newId } from "../../persistence/db";
 import { useAsync } from "../../hooks/useAsync";
 import type { RootIndicationWithRefinement, WordIndication } from "../../api/types";
 import { IndicationPromptPanel } from "./IndicationPromptPanel";
+import { CommunityIndications } from "./IndicationsPanel";
 
 const spaced = (r: string) => r.split("").join(" ");
 
@@ -26,8 +27,12 @@ export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props
   const bump = () => { setVersion((v) => v + 1); onChanged?.(); };
 
   const rootInfo = useAsync(() => api.root(root), [root]);
-  const data = useAsync(() => archive.indications.forWord(null, root), [root, version]);
+  // pass the tapped form, so the community's readings of THIS form come back too
+  const data = useAsync(
+    () => archive.indications.forWord(focusLemma ?? null, root), [root, focusLemma, version]);
   const indications = data.data?.rootIndications ?? [];
+  const communityRoot = data.data?.communityRoot ?? [];
+  const communityLemma = data.data?.communityLemma ?? [];
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // keep a valid selection: chosen → primary → first
@@ -100,6 +105,10 @@ export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props
               />
               <button className="ctl establish-btn" disabled={!newLabel.trim()} onClick={addIndication}>＋ Add indication</button>
             </div>
+
+            {/* what others hold for this root, and for the form you tapped */}
+            <CommunityIndications items={communityRoot} subject="this root" />
+            {focusLemma && <CommunityIndications items={communityLemma} subject="this form" />}
           </aside>
 
           {/* the selected indication: its text + every form's own meaning */}

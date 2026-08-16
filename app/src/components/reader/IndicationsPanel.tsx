@@ -20,7 +20,7 @@ const spaced = (r: string) => r.split("").join(" ");
  * gloss), no delete, no edit. If you want to hold what they hold, you write it yourself — which
  * keeps every indication in your database something you actually chose.
  */
-function CommunityIndications({ items, subject }: { items: PeerIndication[]; subject: string }) {
+export function CommunityIndications({ items, subject }: { items: PeerIndication[]; subject: string }) {
   if (items.length === 0) return null;
   return (
     <div className="community-block">

@@ -1626,6 +1626,8 @@ a { color: var(--lapis); }
 .wm-act:disabled { opacity: 0.5; cursor: default; }
 .wm-panel { border-top: 1px solid var(--paper-edge); padding-top: 0.45rem; }
 .wm-verdict.indication { color: var(--gold); }
+/* the community's reading: lapis against the gold of your own, so the two never blur */
+.wm-verdict.community { color: var(--lapis); }
 
 /* word indications (the reader's own meanings, several allowed) */
 .indications-panel { display: flex; flex-direction: column; gap: 0.5rem; }

@@ -135,6 +135,12 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
   );
   const rootIndications = indications.data?.rootIndications ?? [];
   const lemmaIndications = indications.data?.lemmaIndications ?? [];
+  // the community's readings of this root / this form — theirs, shown but never counted as mine
+  const community = [
+    ...(indications.data?.communityRoot ?? []),
+    ...(indications.data?.communityLemma ?? []),
+  ];
+  const communityEstablished = community.find((p) => p.status === "established") ?? null;
   const indicationCount = rootIndications.length + lemmaIndications.length;
   const primaryRoot = rootIndications.find((s) => s.primary) ?? null;
   const primaryLemma = lemmaIndications.find((s) => s.primary) ?? null;
@@ -273,6 +279,23 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
             — {activeIsRefined ? "this form" : primaryRoot ? "root indication" : "your meaning"}
             {rootIndications.length > 1 ? ` · 1 of ${rootIndications.length} indications` : ""}
           </span>
+        </div>
+      )}
+
+      {/* what the community holds — visible while reading, without opening the editor.
+          Never replaces your gloss above it; it sits beneath, plainly marked as theirs. */}
+      {community.length > 0 && (
+        <div className="wm-verdict community">
+          <span className="community-mark" aria-hidden>◈</span>{" "}
+          {communityEstablished
+            ? <><em>“{communityEstablished.label || communityEstablished.meaning}”</em>
+                <span className="wm-verdict-note"> — the group's reading</span></>
+            : <span className="wm-verdict-note">no group reading yet</span>}
+          {community.length > 1 && (
+            <span className="wm-verdict-note">
+              {" "}· {community.length} community indication{community.length === 1 ? "" : "s"}
+            </span>
+          )}
         </div>
       )}
 
