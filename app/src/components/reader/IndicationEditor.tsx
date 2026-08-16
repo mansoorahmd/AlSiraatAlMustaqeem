@@ -220,9 +220,9 @@ function CommunityChips({
         {p.label || p.meaning || "(unlabelled)"}
       </span>
       <span className="ie-chip-meta">
-        {p.authorName && <span className="community-attrib-by">{p.authorName}</span>}
         <span className={`community-status ${p.status}`} title={STATUS_HINT[p.status]}>{p.status}</span>
         {p.dissents > 0 && <span className="community-dissent">{p.dissents} dissent{p.dissents === 1 ? "" : "s"}</span>}
+        {p.authorName && <span className="community-attrib-by">{p.authorName}</span>}
       </span>
     </button>
   );

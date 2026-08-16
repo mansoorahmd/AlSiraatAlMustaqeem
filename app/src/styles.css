@@ -1690,8 +1690,9 @@ a { color: var(--lapis); }
 .ie-chip.community { flex-direction: column; align-items: stretch; gap: 0.15rem; }
 .ie-chip.community.active { border-color: var(--lapis); background: rgba(38, 97, 156, 0.06); }
 .ie-chip.community .community-status { font-size: var(--fs-label); }
-/* second line: author · status · dissents, quiet and out of the way of the reading */
-.ie-chip.community .ie-chip-meta { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+/* second line: status (left) and the submitter's name (right), quiet metadata */
+.ie-chip.community .ie-chip-meta { display: flex; align-items: center; gap: 0.4rem; }
+.ie-chip.community .community-attrib-by { margin-inline-start: auto; }
 .community-reading { border-left: 3px solid var(--lapis); padding-left: 0.6rem; }
 .community-reading-head { display: flex; align-items: center; gap: 0.4rem; }
 .ie-form-row.community.filled { border-color: rgba(38, 97, 156, 0.3); background: rgba(38, 97, 156, 0.04); }
