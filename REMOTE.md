@@ -139,6 +139,11 @@ npm run remote:migrate           # → applied: 0001_init.sql, 0002_auth.sql
 # verify against YOUR server (the unit tests run on PGlite, not real Postgres):
 npm run smoke -w @alsiraat/remote
 
+# watch the claim spine work end to end — propose, review, establish, dissent.
+# It creates temporary people (the majority rule needs several moderators) and cleans
+# up after itself; --keep leaves the rows so you can inspect them.
+npm run remote:demo
+
 # the first maintainer can't be invited — create one out of band:
 npm run bootstrap -w @alsiraat/remote -- you@example.org "Your Name"
 
