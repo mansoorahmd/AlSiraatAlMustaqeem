@@ -78,17 +78,26 @@ export function ShareButton({ localRef, kind, payload, subjectKind, subjectValue
     }
   }, [kind, payload, subjectKind, subjectValue, prior, localRef, hash]);
 
-  // The database isn't yours: say so quietly rather than vanishing, so the reason is visible.
-  if (mismatch) return <span className="share-blocked" title={mismatch}>not yours</span>;
-  if (!allowed) return null;
-
   const shared = prior !== null;
   const changed = shared && prior.contentHash !== hash;
 
+  // "Shared" is a FACT about this record, recorded locally — not a permission. It must show
+  // whether or not you can currently publish: signed out, remote down, or looking at someone
+  // else's database, it's still true that this was sent. Only the ACTION below needs a role.
   if (shared && !changed && state !== "error") {
     return (
       <span className="share-done" title={`Sent for review · ${prior.submissionId}`}>Shared</span>
     );
+  }
+
+  // The database isn't yours: say so quietly rather than vanishing, so the reason is visible.
+  if (mismatch) return <span className="share-blocked" title={mismatch}>not yours</span>;
+
+  // Edited since it was shared, but you can't publish right now — still worth saying.
+  if (!allowed) {
+    return shared
+      ? <span className="share-blocked" title="Edited since you shared it">edited</span>
+      : null;
   }
 
   return (
