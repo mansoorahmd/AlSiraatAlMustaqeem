@@ -107,7 +107,10 @@ try {
     await r.query("DELETE FROM claim_versions WHERE claim_id IN (SELECT id FROM claims WHERE author_id IN (SELECT id FROM users WHERE email LIKE $1))", [`%${TAG}%`]);
     await r.query("DELETE FROM claims WHERE author_id IN (SELECT id FROM users WHERE email LIKE $1)", [`%${TAG}%`]);
     await r.query("DELETE FROM users WHERE email LIKE $1", [`%${TAG}%`]);
-    console.log("Cleaned up. Pass --keep to leave the rows in place and inspect them.\n");
+    console.log("Cleaned up — nothing is left for a client to pull.");
+    console.log("To KEEP the established reading so the app can sync it:\n");
+    console.log("  npm run remote:demo:keep\n");
+    console.log("(`npm run remote:demo --keep` does NOT work: npm eats the flag itself.)\n");
   }
 } catch (e) {
   console.error(`\ndemo: ${(e as Error).message}`);

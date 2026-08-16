@@ -270,6 +270,8 @@ export function researchRoutes(state: AppState): Hono {
   r.get("/research/pull/state", (c) => c.json({
     cursor: s().syncPosition("main"),
     groupReadings: s().groupGloss().length,
+    // so an empty list can say WHY it is empty rather than just "nothing"
+    ...s().divergenceContext(),
   }));
 
   r.post("/research/pull/apply", async (c) => {

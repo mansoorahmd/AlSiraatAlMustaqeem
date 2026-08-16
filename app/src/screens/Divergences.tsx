@@ -6,16 +6,35 @@
 // last one is a legitimate, permanent outcome.
 
 import { useCallback, useEffect, useState } from "react";
-import { group, type Divergence } from "../persistence/db";
+import { group, type Divergence, type GroupState } from "../persistence/db";
 import { remote, RemoteOffline } from "../api/remote";
 import { useAppDispatch } from "../state/store";
 
 const spaced = (r: string) => r.split("").join(" ");
 
+/**
+ * An empty list has four quite different causes, and saying only "nothing" reads as breakage.
+ * Each branch names the ONE thing missing, so the reader knows whether to act or to be content.
+ */
+function explainEmpty(st: GroupState | null): string {
+  if (!st) return "Loading…";
+  if (st.cursor === 0) return "Nothing pulled yet. Sync to see what the group has established.";
+  if (st.theirs === 0) {
+    return "Synced — the group hasn't established any readings yet, so there is nothing to compare against.";
+  }
+  if (st.mine === 0) {
+    return `Synced. The group holds ${st.theirs} reading${st.theirs === 1 ? "" : "s"}, but you haven't established any form meanings of your own yet — establish one in a case and it will be compared here.`;
+  }
+  if (st.overlap === 0) {
+    return `Synced. You and the group have both settled meanings, but not for any of the same forms yet — no overlap, so nothing to compare.`;
+  }
+  return `Your established meanings agree with the group's on all ${st.overlap} form${st.overlap === 1 ? "" : "s"} you have both settled.`;
+}
+
 export function Divergences() {
   const dispatch = useAppDispatch();
   const [rows, setRows] = useState<Divergence[]>([]);
-  const [count, setCount] = useState(0);
+  const [st, setSt] = useState<GroupState | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -23,7 +42,7 @@ export function Divergences() {
   const refresh = useCallback(async () => {
     try {
       const [d, s] = await Promise.all([group.divergences(), group.state()]);
-      setRows(d); setCount(s.groupReadings);
+      setRows(d); setSt(s);
     } catch (e) { setErr((e as Error).message); }
   }, []);
 
@@ -59,7 +78,9 @@ export function Divergences() {
             <span className="resume-label">Where I stand apart</span>
             <span className="resume-ref">
               {rows.length} form{rows.length === 1 ? "" : "s"}
-              <span className="resume-ayah"> · {count} group reading{count === 1 ? "" : "s"} held</span>
+              <span className="resume-ayah">
+                {" "}· {st?.groupReadings ?? 0} group reading{st?.groupReadings === 1 ? "" : "s"} held
+              </span>
             </span>
           </span>
           <button className="ctl primary" disabled={busy} onClick={sync}>
@@ -72,11 +93,7 @@ export function Divergences() {
 
       {rows.length === 0 ? (
         <section className="home-card">
-          <p className="home-empty">
-            {count === 0
-              ? "Nothing pulled yet. Sync to see what the group has established."
-              : "Your established meanings agree with the group's, everywhere they overlap."}
-          </p>
+          <p className="home-empty">{explainEmpty(st)}</p>
         </section>
       ) : (
         <section className="home-card">

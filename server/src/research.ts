@@ -899,6 +899,26 @@ export class ResearchStore {
       }));
   }
 
+  /**
+   * The three numbers that explain an empty divergence list.
+   *
+   * "Nothing here" has three quite different causes and the reader deserves to know which:
+   * you have never pulled, the group holds nothing on words you've settled, or you genuinely
+   * agree. Without these counts the screen can only say "nothing", which reads as breakage.
+   */
+  divergenceContext(): { mine: number; theirs: number; overlap: number } {
+    const one = (sql: string) => this.db.scalar<number>(sql) ?? 0;
+    return {
+      mine: one("SELECT COUNT(*) FROM form_research WHERE status = 'established'"),
+      theirs: one("SELECT COUNT(*) FROM derived_global_forms"),
+      overlap: one(
+        `SELECT COUNT(*) FROM form_research fr
+           JOIN derived_global_forms g
+             ON g.subject_kind = 'form' AND g.subject_value = fr.lemma
+          WHERE fr.status = 'established'`),
+    };
+  }
+
   /** Drop everything pulled. Always safe — a resync rebuilds it, and no research is lost. */
   resetPulled(): void {
     this.db.exec("DELETE FROM derived_global_forms");

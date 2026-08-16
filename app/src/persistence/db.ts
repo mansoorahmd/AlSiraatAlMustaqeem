@@ -109,8 +109,19 @@ export interface Divergence {
  * at any time. Your own established meanings are never touched — where the two differ is shown,
  * not resolved.
  */
+export interface GroupState {
+  cursor: number;
+  groupReadings: number;
+  /** forms I have established */
+  mine: number;
+  /** readings the group has established */
+  theirs: number;
+  /** forms we have both settled — the only ones that CAN diverge */
+  overlap: number;
+}
+
 export const group = {
-  state(): Promise<{ cursor: number; groupReadings: number }> {
+  state(): Promise<GroupState> {
     return srvGet("/pull/state");
   },
   apply(page: unknown): Promise<{ globalForms: number; dissents: number; cursor: number }> {
