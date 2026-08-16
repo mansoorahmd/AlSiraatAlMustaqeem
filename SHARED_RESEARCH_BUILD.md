@@ -170,12 +170,20 @@ The convergence-free heart. Build after the pipe is proven but from the Phase 0 
 
 ## Phase 6 — Inbound pull + reader integration
 
-- [x] **6.1 Pull** — ✅ `remote/src/pull.ts`: `GET /pull?since=N`, a cursor walk over
-  append-only rows. Replayable, resumable, and `since=0` is a full resync. The cursor errs
-  toward RE-DELIVERING a row rather than skipping one, because applying is idempotent but a
-  gap is not recoverable. Locally `derived_global_forms` / `derived_dissents` /
+- [x] **6.1 Pull** — ✅ `remote/src/pull.ts`: `GET /pull`, a cursor walk over append-only rows.
+  Replayable, resumable, and all-zero cursors are a full resync. Locally
+  `derived_global_forms` / `derived_dissents` / `derived_peer_indications` /
   `derived_sync_state` + `applyPull` (upsert by key, unknown payload fields kept verbatim).
   `POST /research/pull/{apply,reset}`; reset is always safe.  ⇢ 5.1
+
+  **ONE CURSOR PER STREAM.** The first version shared a single `since` across all streams by
+  taking the max, which reads as conservative but was a data-loss bug. Each table's `seq` is
+  its own `bigserial`, so the counters run in parallel: once one stream reached seq 5, rows in
+  another still at seq 3 were never delivered. Nothing errored — they simply never arrived,
+  which is the worst failure mode a sync protocol can have. Found when pulled community
+  indications didn't show: the shared cursor was already past them. `derived_sync_state` was
+  keyed by `stream` from the start (schema §2) for exactly this reason, and the pull now uses
+  it. Guarded by *"one stream running ahead never skips rows in another"*.
 - [x] **6.3 Divergence surfacing** — ✅ the **⚖ "Where I stand apart"** screen (Study menu):
   every form you established whose meaning differs from the group's, both readings side by side,
   with a count of dissents filed against theirs, and a jump to the case where you established

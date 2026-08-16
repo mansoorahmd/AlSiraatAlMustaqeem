@@ -109,8 +109,15 @@ export interface Divergence {
  * at any time. Your own established meanings are never touched — where the two differ is shown,
  * not resolved.
  */
+/** One position per stream — each remote table has its own sequence. */
+export interface SyncCursors {
+  globalForms: number;
+  dissents: number;
+  peerIndications: number;
+}
+
 export interface GroupState {
-  cursor: number;
+  cursors: SyncCursors;
   groupReadings: number;
   /** forms I have established */
   mine: number;
@@ -125,11 +132,11 @@ export const group = {
     return srvGet("/pull/state");
   },
   apply(page: unknown): Promise<{
-    globalForms: number; dissents: number; peerIndications: number; cursor: number;
+    globalForms: number; dissents: number; peerIndications: number; cursors: SyncCursors;
   }> {
     return srvPost("/pull/apply", page);
   },
-  reset(): Promise<{ ok: boolean; cursor: number }> {
+  reset(): Promise<{ ok: boolean; cursors: SyncCursors }> {
     return srvPost("/pull/reset", {});
   },
   reading(subjectValue: string, subjectKind = "form"): Promise<GroupReading | null> {

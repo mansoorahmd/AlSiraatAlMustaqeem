@@ -8,6 +8,8 @@
 // The remote is OPTIONAL: local study never needs it. Every function here can fail with the
 // service simply not running, and callers must treat that as "not connected", not an error.
 
+import type { SyncCursors } from "../persistence/db";
+
 const REMOTE = import.meta.env.VITE_REMOTE_URL ?? "http://localhost:8100";
 
 export interface Me {
@@ -165,15 +167,20 @@ export const remote = {
   },
 
   /**
-   * Ask the remote for everything established or dissented since `since`. A cursor walk:
-   * replayable, resumable, and `since=0` is a full resync — safe because it only ever lands in
-   * the app's derived tables.
+   * Ask the remote for everything new in each stream. A cursor walk: replayable, resumable,
+   * and all-zeroes is a full resync — safe because it only ever lands in the app's derived
+   * tables.
+   *
+   * One position PER STREAM: each remote table's `seq` is its own sequence, so a single shared
+   * cursor would run one stream's counter ahead of another's and skip rows without erroring.
    */
-  pull(since: number): Promise<{
-    cursor: number; more: boolean; schemaVersion: number;
+  pull(since: SyncCursors): Promise<{
+    cursors: SyncCursors; more: boolean; schemaVersion: number;
     globalForms: unknown[]; dissents: unknown[]; peerIndications: unknown[];
   }> {
-    return call(`/pull?since=${since}`);
+    const q = new URLSearchParams();
+    for (const [stream, at] of Object.entries(since)) q.set(stream, String(at));
+    return call(`/pull?${q.toString()}`);
   },
 };
 

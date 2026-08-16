@@ -11,10 +11,17 @@
 import type { SqlRunner } from "./migrate.js";
 import { SCHEMA_VERSION } from "./submissions.js";
 
+/** The streams a client walks. Each has its OWN sequence and so its own cursor. */
+export const STREAMS = ["globalForms", "dissents", "peerIndications"] as const;
+export type Stream = (typeof STREAMS)[number];
+export type Cursors = Record<Stream, number>;
+
+export const ZERO_CURSORS: Cursors = { globalForms: 0, dissents: 0, peerIndications: 0 };
+
 export interface PullPage {
-  /** Feed this back as `since` next time. */
-  cursor: number;
-  /** True when more rows remain beyond this page. */
+  /** Feed these back as `since` next time — one position per stream. */
+  cursors: Cursors;
+  /** True when more rows remain beyond this page, in any stream. */
   more: boolean;
   schemaVersion: number;
   globalForms: unknown[];
@@ -31,14 +38,23 @@ export interface PullPage {
 }
 
 /**
- * Everything established or dissented after `since`, oldest first.
+ * Everything new in each stream, oldest first.
  *
- * The two streams share one cursor: `seq` is a bigserial on each table, so we take the max
- * across what we returned. That can re-deliver a row on the next call if the tables interleave
- * — deliberately. Re-delivering is harmless (the client upserts by primary key) whereas
- * skipping is not, so the cursor errs toward repetition.
+ * ONE CURSOR PER STREAM — this matters, and an earlier version of this file got it wrong.
+ * `seq` is a `bigserial` on each table, which means each table has its own INDEPENDENT
+ * sequence: global_forms 1,2,3… and dissents 1,2,3… count in parallel, not together. Taking
+ * the max across them looked conservative but silently skipped rows — a dissent at seq 3
+ * would never be delivered once global_forms had reached seq 5, because the shared cursor was
+ * already past it. Nothing errors; the row simply never arrives.
+ *
+ * Within a single stream the cursor is exact, and re-delivery on a tie is harmless anyway
+ * because the client upserts by primary key.
  */
-export async function pullSince(r: SqlRunner, since: number, limit = 500): Promise<PullPage> {
+export async function pullSince(
+  r: SqlRunner, since: Partial<Cursors> = {}, limit = 500,
+): Promise<PullPage> {
+  const from: Cursors = { ...ZERO_CURSORS, ...since };
+
   const globalForms = await r.query(
     `SELECT g.subject_kind, g.subject_value, g.claim_id, g.version, g.established_at, g.seq,
             cv.payload_json, c.author_id, cv.schema_version
@@ -47,14 +63,14 @@ export async function pullSince(r: SqlRunner, since: number, limit = 500): Promi
        JOIN claims c ON c.id = g.claim_id
       WHERE g.seq > $1
       ORDER BY g.seq
-      LIMIT $2`, [since, limit]);
+      LIMIT $2`, [from.globalForms, limit]);
 
   const dissents = await r.query(
     `SELECT id, claim_id, claim_version, author_id, payload_json, created_at, seq
        FROM dissents
       WHERE seq > $1
       ORDER BY seq
-      LIMIT $2`, [since, limit]);
+      LIMIT $2`, [from.dissents, limit]);
 
   // Every version of every claim. `status` is derived rather than stored: established when the
   // global slot still points at this exact version, superseded once a later version exists,
@@ -70,15 +86,18 @@ export async function pullSince(r: SqlRunner, since: number, limit = 500): Promi
          ON g.claim_id = cv.claim_id AND g.version = cv.version
       WHERE cv.seq > $1
       ORDER BY cv.seq
-      LIMIT $2`, [since, limit]);
+      LIMIT $2`, [from.peerIndications, limit]);
 
-  const maxSeq = (rows: Record<string, unknown>[]) =>
-    rows.reduce((m, row) => Math.max(m, Number(row.seq ?? 0)), 0);
-
-  const cursor = Math.max(since, maxSeq(globalForms), maxSeq(dissents), maxSeq(peers));
+  // each stream advances only past its own rows; an empty stream keeps the position it had
+  const advance = (rows: Record<string, unknown>[], was: number) =>
+    rows.reduce((m, row) => Math.max(m, Number(row.seq ?? 0)), was);
 
   return {
-    cursor,
+    cursors: {
+      globalForms: advance(globalForms, from.globalForms),
+      dissents: advance(dissents, from.dissents),
+      peerIndications: advance(peers, from.peerIndications),
+    },
     more: globalForms.length === limit || dissents.length === limit || peers.length === limit,
     schemaVersion: SCHEMA_VERSION,
     globalForms: globalForms.map((g) => ({

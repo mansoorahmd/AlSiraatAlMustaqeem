@@ -18,7 +18,7 @@ let db: Db;
 let store: ResearchStore;
 
 const page = (over: Record<string, unknown> = {}) => ({
-  cursor: 12,
+  cursors: { globalForms: 11, dissents: 12, peerIndications: 0 },
   globalForms: [{
     subjectKind: "form", subjectValue: "هُدًى", claimId: "clm_a", version: 1,
     meaning: "guidance", authorId: "them", establishedAt: new Date().toISOString(),
@@ -39,14 +39,18 @@ beforeEach(() => {
 });
 
 describe("applying a pull", () => {
-  it("stores the group's reading and advances the cursor", () => {
+  it("stores the group's reading and advances each stream's cursor", () => {
     const out = store.applyPull(page());
-    expect(out).toMatchObject({ globalForms: 1, dissents: 1, cursor: 12 });
+    expect(out).toMatchObject({ globalForms: 1, dissents: 1 });
+    expect((out as { cursors: Record<string, number> }).cursors)
+      .toEqual({ globalForms: 11, dissents: 12, peerIndications: 0 });
 
     const g = store.groupReading("form", "هُدًى")!;
     expect(g.meaning).toBe("guidance");
     expect(g.dissents).toBe(1);
-    expect(store.syncPosition("main")).toBe(12);
+    // each stream keeps its OWN position — a shared one would skip rows (see remote/test/pull.test.ts)
+    expect(store.syncPosition("globalForms")).toBe(11);
+    expect(store.syncPosition("dissents")).toBe(12);
   });
 
   it("is idempotent — the same page twice changes nothing", () => {
@@ -65,7 +69,7 @@ describe("applying a pull", () => {
   it("a later page replaces the reading when the group changes its mind", () => {
     store.applyPull(page());
     store.applyPull(page({
-      cursor: 20,
+      cursors: { globalForms: 19, dissents: 12, peerIndications: 0 },
       globalForms: [{
         subjectKind: "form", subjectValue: "هُدًى", claimId: "clm_b", version: 1,
         meaning: "a giving of direction", authorId: "other",

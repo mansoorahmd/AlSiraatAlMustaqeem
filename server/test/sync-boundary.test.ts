@@ -85,7 +85,9 @@ describe("what sync may never do", () => {
   it("every sync-facing method is one we deliberately allowed", () => {
     // Adding a method whose name touches sync/pull/remote should be a conscious act, not
     // something that slips in. If you add one, add it here and be sure it writes derived_* only.
-    const allowed = ["applyPull", "syncPosition", "setSyncPosition", "resetPulled"];
+    const allowed = [
+      "applyPull", "syncPosition", "syncCursors", "setSyncPosition", "resetPulled",
+    ];
     const api = Object.getOwnPropertyNames(Object.getPrototypeOf(store));
     const syncFacing = api.filter((m) => /remote|sync|pull/i.test(m));
     expect(syncFacing.sort()).toEqual(allowed.sort());
@@ -97,7 +99,7 @@ describe("what sync may never do", () => {
 
     const before = counts();
     store.applyPull({
-      cursor: 5,
+      cursors: { globalForms: 4, dissents: 5, peerIndications: 0 },
       globalForms: [{
         subjectKind: "form", subjectValue: "هُدًى", claimId: "clm_x", version: 1,
         meaning: "guidance", authorId: "them", establishedAt: new Date().toISOString(),
@@ -123,7 +125,7 @@ describe("what sync may never do", () => {
     expect(mineBefore[0]!.primary).toBe(true);
 
     store.applyPull({
-      cursor: 9,
+      cursors: { globalForms: 0, dissents: 0, peerIndications: 8 },
       peerIndications: [
         {
           claimId: "clm_a", version: 1, authorId: "amina", subjectKind: "root",

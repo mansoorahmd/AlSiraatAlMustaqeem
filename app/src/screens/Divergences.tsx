@@ -18,7 +18,8 @@ const spaced = (r: string) => r.split("").join(" ");
  */
 function explainEmpty(st: GroupState | null): string {
   if (!st) return "Loading…";
-  if (st.cursor === 0) return "Nothing pulled yet. Sync to see what the group has established.";
+  const pulled = Object.values(st.cursors ?? {}).some((n) => n > 0);
+  if (!pulled) return "Nothing pulled yet. Sync to see what the group has established.";
   if (st.theirs === 0) {
     return "Synced — the group hasn't established any readings yet, so there is nothing to compare against.";
   }
@@ -52,14 +53,14 @@ export function Divergences() {
   const sync = async () => {
     setBusy(true); setErr(null); setNote(null);
     try {
-      let { cursor } = await group.state();
+      let { cursors } = await group.state();
       let forms = 0, dissents = 0, peers = 0, pages = 0;
       for (;;) {
-        const page = await remote.pull(cursor);
+        const page = await remote.pull(cursors);
         const applied = await group.apply(page);
         forms += applied.globalForms; dissents += applied.dissents;
         peers += applied.peerIndications;
-        cursor = applied.cursor; pages++;
+        cursors = applied.cursors; pages++;
         if (!page.more || pages > 50) break;      // guard against a runaway loop
       }
       const n = (c: number, one: string) => `${c} ${one}${c === 1 ? "" : "s"}`;

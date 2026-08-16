@@ -26,7 +26,7 @@ import {
   proposeClaim, review, claimsFor, globalReading, dissentsFor, establishAsMaintainer,
   ClaimError, type SubjectKind, type Decision,
 } from "./claims.js";
-import { pullSince } from "./pull.js";
+import { pullSince, STREAMS, type Cursors } from "./pull.js";
 
 export function createApp(): Hono<Env> {
   const app = new Hono<Env>();
@@ -153,8 +153,13 @@ export function createApp(): Hono<Env> {
    * here lands in the client's DERIVED tables.
    */
   app.get("/pull", requireRole("reader"), async (c) => {
-    const since = Number(c.req.query("since") ?? 0);
     const limit = Math.min(Number(c.req.query("limit") ?? 500), 2000);
+    // One position per stream — each table's `seq` is its own sequence, so a single shared
+    // cursor would run one stream's counter ahead of another's and skip rows. An omitted
+    // stream starts at 0, which is a full resync of that stream and always safe.
+    const since = Object.fromEntries(
+      STREAMS.map((s) => [s, Number(c.req.query(s) ?? 0) || 0]),
+    ) as Cursors;
     return c.json(await pullSince(pgRunner, since, limit));
   });
 

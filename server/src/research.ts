@@ -863,6 +863,21 @@ export class ResearchStore {
     return row?.position ?? 0;
   }
 
+  /**
+   * Where each stream has got to, as the remote expects it back.
+   *
+   * Streams are listed explicitly rather than read from the table, so a stream that has never
+   * been pulled reports 0 (a full resync of that stream) instead of being absent — the remote
+   * would then default it to 0 anyway, but a caller reading this shouldn't have to know that.
+   */
+  syncCursors(): Record<string, number> {
+    return {
+      globalForms: this.syncPosition("globalForms"),
+      dissents: this.syncPosition("dissents"),
+      peerIndications: this.syncPosition("peerIndications"),
+    };
+  }
+
   setSyncPosition(stream: string, position: number): void {
     this.db.run(
       `INSERT INTO derived_sync_state (stream, position, updated_at) VALUES (?,?,?)
@@ -877,7 +892,8 @@ export class ResearchStore {
    * an old client must not silently drop what a newer one wrote.
    */
   applyPull(page: {
-    globalForms?: Doc[]; dissents?: Doc[]; peerIndications?: Doc[]; cursor?: number;
+    globalForms?: Doc[]; dissents?: Doc[]; peerIndications?: Doc[];
+    cursors?: Record<string, number>;
   }): Doc {
     let forms = 0, dissents = 0, peerIndications = 0;
     for (const g of page.globalForms ?? []) {
@@ -925,10 +941,12 @@ export class ResearchStore {
       );
       peerIndications++;
     }
-    if (typeof page.cursor === "number") this.setSyncPosition("main", page.cursor);
-    return {
-      globalForms: forms, dissents, peerIndications, cursor: this.syncPosition("main"),
-    };
+    // One position per stream. The remote's tables each have their own sequence, so a single
+    // shared cursor runs one stream ahead of another and silently skips rows.
+    for (const [stream, at] of Object.entries(page.cursors ?? {})) {
+      if (typeof at === "number") this.setSyncPosition(stream, at);
+    }
+    return { globalForms: forms, dissents, peerIndications, cursors: this.syncCursors() };
   }
 
   /** The group's reading of a form or root, if they have one. */

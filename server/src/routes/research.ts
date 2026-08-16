@@ -268,7 +268,7 @@ export function researchRoutes(state: AppState): Hono {
   // reader's own work.
 
   r.get("/research/pull/state", (c) => c.json({
-    cursor: s().syncPosition("main"),
+    cursors: s().syncCursors(),
     groupReadings: s().groupGloss().length,
     // so an empty list can say WHY it is empty rather than just "nothing"
     ...s().divergenceContext(),
@@ -283,7 +283,7 @@ export function researchRoutes(state: AppState): Hono {
   /** Drop everything pulled and start again — always safe, no research is lost. */
   r.post("/research/pull/reset", (c) => {
     s().resetPulled();
-    return c.json({ ok: true, cursor: 0 });
+    return c.json({ ok: true, cursors: s().syncCursors() });
   });
 
   /** The group's reading of one form/root, with how many dissents are filed against it. */
