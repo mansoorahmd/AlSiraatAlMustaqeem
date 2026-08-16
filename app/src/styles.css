@@ -1687,7 +1687,8 @@ a { color: var(--lapis); }
 }
 
 /* a community reading selected in the editor: chip + read-only per-form view */
-.ie-chip.community { flex-direction: column; align-items: stretch; gap: 0.15rem; }
+/* it's a <button>, which centres text by default — force start alignment */
+.ie-chip.community { flex-direction: column; align-items: stretch; gap: 0.15rem; text-align: start; cursor: pointer; }
 .ie-chip.community.active { border-color: var(--lapis); background: rgba(38, 97, 156, 0.06); }
 .ie-chip.community .community-status { font-size: var(--fs-label); }
 /* second line: status (left) and the submitter's name (right), quiet metadata */
