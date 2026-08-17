@@ -11,7 +11,7 @@ import { z } from "zod";
 import type { AppState } from "../../server/src/state.js";
 import { waznForWord } from "../../server/src/wazn.js";
 import { expressionSearch } from "../../server/src/expressions.js";
-import { foldArabic } from "../../server/src/text/normalize.js";
+import { foldArabic, buckToArabic } from "../../server/src/text/normalize.js";
 import { AI_SOURCE, guard, proposalId, WriteRefused } from "./core.js";
 import {
   caseSummary, expectVersion, findOwnItem, mustGetCase, placeItem, saveGuarded,
@@ -34,6 +34,12 @@ export type FormMatch =
   | { unknown: true };
 
 export function makeFormResolver(forms: FormRef[]): (input: string) => FormMatch {
+  // The input may be Arabic OR Buckwalter, voweled or bare. buckToArabic maps Buckwalter to
+  // Arabic and passes Arabic through untouched, so one conversion normalises both scripts;
+  // everything downstream then works in Arabic exactly as before. This is what lets an AI
+  // submit `hdY`/`Slb`-style Buckwalter — folded to the same skeleton as هُدًى/صلب — instead of
+  // having to reproduce the exact harakat, which Buckwalter encodes just as strictly as Arabic.
+  const toArabic = (s: string) => buckToArabic((s ?? "").normalize("NFC")).normalize("NFC");
   const exact = new Map(forms.map((f) => [f.form.normalize("NFC"), f]));
   const byFold = new Map<string, FormRef[]>();
   for (const f of forms) {
@@ -41,7 +47,7 @@ export function makeFormResolver(forms: FormRef[]): (input: string) => FormMatch
     (byFold.get(k) ?? byFold.set(k, []).get(k)!).push(f);
   }
   return (input: string): FormMatch => {
-    const nfc = (input ?? "").normalize("NFC");
+    const nfc = toArabic(input);
     const hit = exact.get(nfc);
     if (hit) return { form: hit.form };
     const cands = byFold.get(foldArabic(nfc)) ?? [];
@@ -541,9 +547,10 @@ const propose_indication: Tool = {
     refinements: z
       .array(z.object({
         form: z.string().describe(
-          "The derived form (lemma) in Arabic. Copy it verbatim from study_root/compare_forms — " +
-          "harakat and all. Minor vowel differences are tolerated when only one form fits, but " +
-          "forms that share a skeleton (e.g. the verb نَذَرْ vs the noun نَّذْر) must be given exactly.",
+          "The derived form (lemma), in Arabic (هُدًى) or Buckwalter (hudFY, or the bare hdY). " +
+          "Copy it from study_root/compare_forms. Harakat need not match — the form is folded to " +
+          "its skeleton — but forms that share a skeleton (the verb نَذَرْ vs the noun نَّذْر) must " +
+          "be distinguished by giving the vowels, in either script.",
         ),
         label: z.string(),
         meaning: z.string().default(""),

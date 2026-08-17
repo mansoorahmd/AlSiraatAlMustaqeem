@@ -50,6 +50,20 @@ describe("form resolver for refinements", () => {
     expect(resolve("كتاب")).toEqual({ unknown: true });
   });
 
+  it("accepts Buckwalter too — the same folding, either script", () => {
+    // bare (vowel-less) Buckwalter → skeleton match, exactly like bare Arabic
+    expect(resolve("mn*r")).toEqual({ form: "مُنذِر" });   // منذر
+    expect(resolve("n*wr")).toEqual({ form: "نُذُور" });   // نذور
+    // voweled Buckwalter that maps to an exact stored spelling
+    expect(resolve("na*iyr")).toEqual({ form: "نَذِير" });
+    // a Buckwalter skeleton shared by several forms is still refused, not guessed
+    const m = resolve("n*r") as { ambiguous: FormRef[] };
+    expect("ambiguous" in m).toBe(true);
+    expect(m.ambiguous.map((c) => c.form).sort()).toEqual(["نَذَرْ", "نَّذْر", "نُذْر"].sort());
+    // genuinely unknown in Buckwalter, too
+    expect(resolve("ktAb")).toEqual({ unknown: true });
+  });
+
   it("accepts a POS-homograph: one spelling analysed as two forms is not ambiguous", () => {
     // رَّحِيم is both Adjective and Noun in the corpus — same spelling, two rows.
     // A refinement keys to the spelling, so this must resolve, not bounce.
