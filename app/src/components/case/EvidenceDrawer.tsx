@@ -1,5 +1,6 @@
 // The evidence drawer: every occurrence of the subject as a pullable card.
-// Filter by word form (lemma), sort by mushaf or revelation order.
+// Filter by the word's SURFACE FORM (the word as written — أَصْلَٰب separate from صُّلْب, not
+// collapsed under a shared lemma), sort by mushaf or revelation order.
 
 import { useMemo, useState } from "react";
 import { api } from "../../api/client";
@@ -34,11 +35,15 @@ export function EvidenceDrawer({ root, caseRec, chapters, onToggle }: Props) {
     return m;
   }, [chapters]);
 
+  // one chip per distinct SURFACE FORM (as written), not per lemma — so a plural like أَصْلَٰب
+  // is filterable apart from its singular صُّلْب, which share a dictionary form but not a sense.
+  const formOf = (o: RootOccurrence) => o.form_arabic ?? o.lemma_arabic ?? "?";
+
   const forms = useMemo(() => {
     if (!occs.data) return [];
     const counts = new Map<string, number>();
     for (const o of occs.data) {
-      const f = o.lemma_arabic ?? "?";
+      const f = formOf(o);
       counts.set(f, (counts.get(f) ?? 0) + 1);
     }
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
@@ -47,7 +52,7 @@ export function EvidenceDrawer({ root, caseRec, chapters, onToggle }: Props) {
   const shown = useMemo(() => {
     if (!occs.data) return [];
     let list = form
-      ? occs.data.filter((o) => (o.lemma_arabic ?? "?") === form)
+      ? occs.data.filter((o) => formOf(o) === form)
       : occs.data.slice();
     if (sort === "revelation") {
       list.sort(
