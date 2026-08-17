@@ -15,6 +15,20 @@ import { remote } from "../../api/remote";
 import { useMe } from "../../hooks/useMe";
 import { proposals, readingHash, type Refinement } from "../../persistence/db";
 
+/**
+ * A SURFACE form is a word, so it renders CONNECTED (cursive joins intact) — spacing its letters
+ * (as we do for a root's citation) would disjoint the word. The disjointed letters are still
+ * useful, so they trail in parentheses, quiet and small.
+ */
+function FormWord({ form }: { form: string }) {
+  return (
+    <span className="ie-form-ar">
+      <span className="quran ie-form-word">{form}</span>
+      <span className="quran ie-form-letters">({spaced(form)})</span>
+    </span>
+  );
+}
+
 const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 
 interface Props {
@@ -370,7 +384,7 @@ function CommunityForms({
           return (
             <div key={surface} className={`ie-form-row community${surface === focusLemma ? " focused" : ""}${r ? " filled" : ""}`}>
               <div className="ie-form-head">
-                <span className="ie-form-ar quran">{spaced(surface)}</span>
+                <FormWord form={surface} />
                 {surface === focusLemma && <span className="ie-form-tag">tapped</span>}
                 {!r && <span className="ie-form-todo">no community reading</span>}
               </div>
@@ -582,7 +596,7 @@ function FormRow({
   return (
     <div className={`ie-form-row${focused ? " focused" : ""}${filled ? " filled" : ""}`}>
       <div className="ie-form-head">
-        <span className="ie-form-ar quran">{spaced(lemma)}</span>
+        <FormWord form={lemma} />
         <span className="ie-form-meta">{pos ?? ""}{pos ? " · " : ""}{count}×</span>
         {focused && <span className="ie-form-tag">tapped</span>}
         {!filled && <span className="ie-form-todo">needs meaning</span>}

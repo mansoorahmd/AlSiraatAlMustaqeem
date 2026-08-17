@@ -1808,7 +1808,11 @@ a { color: var(--lapis); }
 .ie-form-row.focused { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-soft, rgba(180,83,9,0.3)); }
 .ie-form-row.filled { background: rgba(22, 163, 74, 0.04); }
 .ie-form-head { display: flex; align-items: baseline; gap: 0.6rem; }
-.ie-form-ar { font-size: 1.3rem; color: var(--ink); }
+.ie-form-ar { font-size: 1.3rem; color: var(--ink); display: inline-flex; align-items: baseline; gap: 0.45rem; flex-wrap: wrap; }
+/* the surface form as a connected word */
+.ie-form-word { }
+/* the same letters, disjointed, in parentheses — quiet reference, not the headline */
+.ie-form-letters { font-size: 0.72em; color: var(--ink-faint); }
 .ie-form-meta { font-size: var(--fs-label); color: var(--ink-soft); }
 .ie-form-tag { font-size: var(--fs-label); color: var(--gold); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
 .ie-form-todo { margin-inline-start: auto; font-size: var(--fs-label); color: var(--warn); font-style: italic; }
