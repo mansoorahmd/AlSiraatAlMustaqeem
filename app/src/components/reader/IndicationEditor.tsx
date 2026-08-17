@@ -15,17 +15,51 @@ import { remote } from "../../api/remote";
 import { useMe } from "../../hooks/useMe";
 import { proposals, readingHash, type Refinement } from "../../persistence/db";
 
+/** the first occurrence of a form, for the click-to-peek */
+interface Occ { ref: string | null; text: string | null; pos: number | null }
+
+/** An āyah with the peeked word marked. Best-effort by word position (1-based). */
+function PeekText({ text, pos }: { text: string; pos: number | null }) {
+  const words = text.split(" ");
+  return (
+    <>
+      {words.map((w, i) => (
+        <span key={i}>
+          {i > 0 ? " " : ""}
+          <span className={pos != null && i === pos - 1 ? "peek-hit" : undefined}>{w}</span>
+        </span>
+      ))}
+    </>
+  );
+}
+
 /**
  * A SURFACE form is a word, so it renders CONNECTED (cursive joins intact) — spacing its letters
- * (as we do for a root's citation) would disjoint the word. The disjointed letters are still
- * useful, so they trail in parentheses, quiet and small.
+ * (as we do for a root's citation) would disjoint the word. The disjointed letters trail in
+ * parentheses, quiet and small. Clicking peeks the form's first occurrence in the corpus.
  */
-function FormWord({ form }: { form: string }) {
+function FormWord({ form, occ }: { form: string; occ?: Occ }) {
+  const [open, setOpen] = useState(false);
+  const canPeek = !!(occ?.ref && occ?.text);
   return (
-    <span className="ie-form-ar">
-      <span className="quran ie-form-word">{form}</span>
-      <span className="quran ie-form-letters">({spaced(form)})</span>
-    </span>
+    <>
+      <button
+        type="button"
+        className="ie-form-ar ie-form-peektoggle"
+        disabled={!canPeek}
+        title={canPeek ? `Peek first occurrence · ${occ!.ref}` : undefined}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="quran ie-form-word">{form}</span>
+        <span className="quran ie-form-letters">({spaced(form)})</span>
+      </button>
+      {open && canPeek && (
+        <div className="ie-form-peek">
+          <span className="ie-form-peek-ref">{occ!.ref}</span>
+          <p className="ie-form-peek-text quran" dir="rtl"><PeekText text={occ!.text!} pos={occ!.pos} /></p>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -46,6 +80,10 @@ interface SurfaceForm {
   lemma: string | null;
   pos: string | null;
   count: number;
+  /** the form's FIRST occurrence in the corpus (mushaf order) — for the click-to-peek */
+  firstRef: string | null;
+  firstText: string | null;
+  firstPos: number | null;
 }
 
 export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props) {
@@ -58,12 +96,17 @@ export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props
   const occs = useAsync(() => api.rootOccurrences(root, "uthmani"), [root]);
   const surfaceForms = useMemo<SurfaceForm[]>(() => {
     const seen = new Map<string, SurfaceForm>();
+    // occurrences arrive in mushaf order, so the FIRST time we meet a surface form is its
+    // first occurrence — captured here for the click-to-peek.
     for (const o of occs.data ?? []) {
       const surface = o.form_arabic;
       if (!surface) continue;
       const cur = seen.get(surface);
       if (cur) cur.count++;
-      else seen.set(surface, { surface, lemma: o.lemma_arabic, pos: o.pos_english, count: 1 });
+      else seen.set(surface, {
+        surface, lemma: o.lemma_arabic, pos: o.pos_english, count: 1,
+        firstRef: o.verse_key, firstText: o.verse_text, firstPos: o.word_position,
+      });
     }
     return [...seen.values()].sort((a, b) => b.count - a.count);
   }, [occs.data]);
@@ -350,11 +393,11 @@ function CommunityForms({
 }) {
   const surfaces = useMemo(() => {
     const seen = new Set<string>();
-    const out: string[] = [];
+    const out: SurfaceForm[] = [];
     for (const f of forms) {
-      if (f.surface && !seen.has(f.surface)) { seen.add(f.surface); out.push(f.surface); }
+      if (f.surface && !seen.has(f.surface)) { seen.add(f.surface); out.push(f); }
     }
-    out.sort((a, b) => (a === focusLemma ? -1 : b === focusLemma ? 1 : 0));
+    out.sort((a, b) => (a.surface === focusLemma ? -1 : b.surface === focusLemma ? 1 : 0));
     return out;
   }, [forms, focusLemma]);
 
@@ -379,12 +422,13 @@ function CommunityForms({
 
       <p className="ie-section">Each form, as the community reads it</p>
       <div className="ie-form-rows">
-        {surfaces.map((surface) => {
+        {surfaces.map((f) => {
+          const surface = f.surface;
           const r = map[surface];
           return (
             <div key={surface} className={`ie-form-row community${surface === focusLemma ? " focused" : ""}${r ? " filled" : ""}`}>
               <div className="ie-form-head">
-                <FormWord form={surface} />
+                <FormWord form={surface} occ={{ ref: f.firstRef, text: f.firstText, pos: f.firstPos }} />
                 {surface === focusLemma && <span className="ie-form-tag">tapped</span>}
                 {!r && <span className="ie-form-todo">no community reading</span>}
               </div>
@@ -556,6 +600,7 @@ function IndicationForms({
             formKey={f.surface}
             pos={f.pos}
             count={f.count}
+            occ={{ ref: f.firstRef, text: f.firstText, pos: f.firstPos }}
             focused={f.surface === focusLemma || f.lemma === focusLemma}
             refinement={refFor(f)}
             onChanged={() => { reloadRefs(); onChanged(); }}
@@ -567,9 +612,9 @@ function IndicationForms({
 }
 
 function FormRow({
-  indicationId, formKey, pos, count, focused, refinement, onChanged,
+  indicationId, formKey, pos, count, occ, focused, refinement, onChanged,
 }: {
-  indicationId: string; formKey: string; pos: string | null; count: number; focused: boolean;
+  indicationId: string; formKey: string; pos: string | null; count: number; occ?: Occ; focused: boolean;
   refinement: WordIndication | null; onChanged: () => void;
 }) {
   const lemma = formKey; // the refinement key = the surface form (the word as written)
@@ -596,7 +641,7 @@ function FormRow({
   return (
     <div className={`ie-form-row${focused ? " focused" : ""}${filled ? " filled" : ""}`}>
       <div className="ie-form-head">
-        <FormWord form={lemma} />
+        <FormWord form={lemma} occ={occ} />
         <span className="ie-form-meta">{pos ?? ""}{pos ? " · " : ""}{count}×</span>
         {focused && <span className="ie-form-tag">tapped</span>}
         {!filled && <span className="ie-form-todo">needs meaning</span>}

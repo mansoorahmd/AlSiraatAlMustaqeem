@@ -1807,12 +1807,21 @@ a { color: var(--lapis); }
 .ie-form-row { border: 1px solid var(--paper-edge); border-radius: var(--radius-card); padding: 0.6rem 0.7rem; display: flex; flex-direction: column; gap: 0.4rem; }
 .ie-form-row.focused { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-soft, rgba(180,83,9,0.3)); }
 .ie-form-row.filled { background: rgba(22, 163, 74, 0.04); }
-.ie-form-head { display: flex; align-items: baseline; gap: 0.6rem; }
+.ie-form-head { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
 .ie-form-ar { font-size: 1.3rem; color: var(--ink); display: inline-flex; align-items: baseline; gap: 0.45rem; flex-wrap: wrap; }
-/* the surface form as a connected word */
-.ie-form-word { }
 /* the same letters, disjointed, in parentheses — quiet reference, not the headline */
 .ie-form-letters { font-size: 0.72em; color: var(--ink-faint); }
+
+/* the form word is a button that peeks its first occurrence */
+.ie-form-peektoggle { border: none; background: none; cursor: pointer; padding: 0; text-align: start; }
+.ie-form-peektoggle:hover:not(:disabled) .ie-form-word { color: var(--lapis); }
+.ie-form-peektoggle:disabled { cursor: default; }
+/* the peek drops to its own line inside the flex head, and shows the first āyah */
+.ie-form-peek { flex-basis: 100%; margin-top: 0.4rem; padding: 0.5rem 0.6rem; border-radius: 8px;
+  background: var(--paper-warm); border: 1px solid var(--paper-edge); }
+.ie-form-peek-ref { font-size: var(--fs-label); color: var(--lapis); font-variant-numeric: tabular-nums; }
+.ie-form-peek-text { margin: 0.25rem 0 0; line-height: 2.1; font-size: 1.15rem; color: var(--ink); }
+.ie-form-peek-text .peek-hit { color: var(--gold); font-weight: 700; }
 .ie-form-meta { font-size: var(--fs-label); color: var(--ink-soft); }
 .ie-form-tag { font-size: var(--fs-label); color: var(--gold); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
 .ie-form-todo { margin-inline-start: auto; font-size: var(--fs-label); color: var(--warn); font-style: italic; }
