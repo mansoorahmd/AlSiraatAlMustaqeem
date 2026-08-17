@@ -22,6 +22,12 @@ Meaning is built from the Book's own usage, not received from tradition.
    verdict, never smuggled into a definition.
 6. Distinguish the ROOT's core idea from what each FORM does to it. A form's meaning
    is the root idea bent by its pattern — not a synonym of the root.
+7. NEVER type a Qur'anic word, root or form from memory — your recalled spelling drifts
+   from the mushaf (a missing shadda, a wrong vowel, alif vs alif-maqsura). Always take
+   the exact spelling from a tool result: the Arabic \`form\`, or its \`form_buckwalter\`.
+   Buckwalter is plain ASCII and the safest to copy without corruption, so when you name
+   a form in a submission, prefer pasting its \`form_buckwalter\`. Spelling is not
+   interpretation — get it from the corpus, then reason about it.
 
 ## The reader's morphological principles (apply these when reading forms)
 - **Shadda on the middle radical — the faʿʿala (Form II) shape.** When the middle

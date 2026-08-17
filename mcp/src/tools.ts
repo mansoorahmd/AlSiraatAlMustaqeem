@@ -77,7 +77,7 @@ interface RootRow {
   letters_arabic: string | null;
   meaning_en: string | null;
   total_occurrences: number;
-  forms: { lemma_arabic: string | null; pos_english: string | null; occurrence_count: number }[];
+  forms: { lemma_arabic: string | null; lemma_buckwalter: string | null; pos_english: string | null; occurrence_count: number }[];
   meanings: { source: string; language: string; meaning: string }[];
 }
 interface OccRow {
@@ -140,8 +140,11 @@ const study_root: Tool = {
       // one row per (spelling, part of speech) — do NOT dedupe by spelling alone:
       // a spelling can be two forms (e.g. رَّحِيم Adjective ×112 AND Noun ×4), and
       // collapsing them dropped one row's count entirely. Keep them attributable.
+      // form_buckwalter is a stable ASCII copy of the exact spelling — submit forms with it
+      // (or the Arabic) rather than typing the Arabic from memory, which drifts from the mushaf.
       forms: (d.forms ?? []).map((f) => ({
         form: f.lemma_arabic,
+        form_buckwalter: f.lemma_buckwalter,
         pos: f.pos_english,
         occurrences: f.occurrence_count,
       })),
@@ -379,10 +382,11 @@ const compare_forms: Tool = {
       groups.set(form, arr);
     }
     const pos = new Map((d.forms ?? []).map((f) => [f.lemma_arabic, f.pos_english]));
+    const bw = new Map((d.forms ?? []).map((f) => [f.lemma_arabic, f.lemma_buckwalter]));
     return {
       root: d.root_arabic,
       forms: [...groups.entries()].map(([form, ayat]) => ({
-        form, pos: pos.get(form) ?? null, samples: ayat,
+        form, form_buckwalter: bw.get(form) ?? null, pos: pos.get(form) ?? null, samples: ayat,
       })),
     };
   },
