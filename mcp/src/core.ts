@@ -38,11 +38,12 @@ export async function openState(): Promise<AppState> {
 
 // ---- the write boundary -------------------------------------------------------
 // Decided deliberately, and enforced here rather than trusted to the model:
-//   • may write ONLY notes/questions and indications (+ per-form refinements)
-//   • ADD only — never edit or delete anything that already exists
+//   • may write notes/questions, indications (+ per-form refinements), and motifs
+//   • ADD only — never edit or delete the reader's own work; the AI may revise a
+//     motif ONLY if it proposed it (source='ai')
 //   • every record is tagged source='ai' so the reader can review it
 //   • may NEVER set an indication as primary (the reader's default gloss)
-//   • cases, motifs, comparisons and root-meanings are untouchable
+//   • cases (except board proposals), comparisons and root-meanings are untouchable
 
 export class WriteRefused extends Error {}
 
@@ -88,5 +89,18 @@ export const guard = {
       throw new WriteRefused(`"${s}" is not a verse key — use chapter:verse, e.g. 2:255.`);
     }
     return s;
+  },
+
+  /** A motif the AI may edit — one it proposed. The reader's own motifs are their
+   *  curation and stay untouchable, mirroring the rule for notes/indications. */
+  ownMotif(state: AppState, id: string): { id: string; source?: string } {
+    const m = state.research.getMotif(id) as { id: string; source?: string } | undefined;
+    if (!m) throw new WriteRefused(`No such motif: ${id}.`);
+    if (m.source !== "ai") {
+      throw new WriteRefused(
+        `Motif ${id} is the reader's own — you may only change a motif you proposed.`,
+      );
+    }
+    return m;
   },
 };

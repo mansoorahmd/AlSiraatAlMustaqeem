@@ -56,6 +56,8 @@ export const WRITE_POLICY = `What this server lets an AI change:
 ALLOWED (tagged AI-authored, awaiting the reader's review)
   • add a note or an open question on an āyah or a word
   • propose an indication for a root, with per-form refinements
+  • propose a motif (a بيت: a themed grouping of roots), and add/remove roots on a
+    motif YOU proposed
   • open a case on the Investigate board, and add evidence āyāt, comment and
     reference slips, labelled threads and clusters to any case
   • reword or remove items YOU added to a board
@@ -63,10 +65,10 @@ ALLOWED (tagged AI-authored, awaiting the reader's review)
 
 NEVER
   • touch the Quran corpus — it is opened read-only
-  • edit or delete the reader's own notes, indications, or board items
+  • edit or delete the reader's own notes, indications, motifs, or board items
   • set which indication is primary (the reader's default gloss)
   • write a case's verdict or status, or mark a form established — proposals only
-  • touch motifs, comparisons, or the reader's root meanings
+  • touch comparisons, or the reader's root meanings
   • see translations
 
 A case is stored as one document and rewritten whole on save, so every board write

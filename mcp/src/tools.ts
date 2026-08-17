@@ -419,6 +419,7 @@ const my_research_on: Tool = {
       }));
       out.notes = state.research.listNotes({ root: ar });
       out.my_root_meaning = state.research.getRootMeaning(d?.root_buckwalter ?? root);
+      out.motifs = state.research.motifsForRoot(ar);  // the houses (بيوت) this root sits in
       out.cases = (state.research.listCases() as any[])
         .filter((c) => c.subject?.value === ar)
         .map((c) => caseSummary(c));
@@ -915,9 +916,96 @@ const propose_conclusion: Tool = {
   },
 };
 
+const list_motifs: Tool = {
+  name: "list_motifs",
+  title: "The reader's motifs (بيوت)",
+  description:
+    "The reader's motifs — named groupings of roots that share a theme (بيوت, 'houses'). Read " +
+    "these to build on the reader's thematic structure instead of re-deriving it. Each carries " +
+    "`source`: 'me' = the reader's own, 'ai' = proposed by an assistant and awaiting review.",
+  schema: {
+    root: z.string().optional().describe("Only motifs containing this root (Arabic or buckwalter)."),
+  },
+  run: (state, { root }) => {
+    if (root) {
+      const d = getRoot(state, root);
+      const ar = d?.root_arabic ?? root;
+      return { root: ar, motifs: state.research.motifsForRoot(ar) };
+    }
+    return { motifs: state.research.listMotifs() };
+  },
+};
+
+const propose_motif: Tool = {
+  name: "propose_motif",
+  title: "Propose a motif — a grouping of roots (proposal)",
+  description:
+    "Create a NEW motif (a بيت: roots that share a theme), tagged AI-authored for the reader to " +
+    "review. Additive only — it never edits the reader's own motifs. List the roots that belong " +
+    "together; give them in Arabic or buckwalter, copied from tool results.",
+  writes: true,
+  schema: {
+    name: z.string().describe("A short name for the grouping."),
+    note: z.string().default("").describe("Why these roots belong together — the shared theme."),
+    roots: z.array(z.string()).default([]).describe("Roots to include (Arabic or buckwalter)."),
+  },
+  run: (state, a) => {
+    const name = guard.requireText(a.name, "name");
+    const id = proposalId("motif");
+    state.research.saveMotif({ id, name, note: a.note ?? "", source: AI_SOURCE });
+    const added: string[] = [];
+    for (const r of a.roots ?? []) {
+      const d = getRoot(state, r);
+      const ar = d?.root_arabic ?? String(r);
+      state.research.addMotifRoot(id, ar);
+      added.push(ar);
+    }
+    return { proposed: true, id, name, roots: added, awaiting_review: true };
+  },
+};
+
+const add_root_to_motif: Tool = {
+  name: "add_root_to_motif",
+  title: "Add a root to a motif you proposed",
+  description:
+    "Tag a root into an AI-proposed motif. Refuses the reader's own motifs — those are their " +
+    "curation. Use propose_motif first to create one.",
+  writes: true,
+  schema: {
+    motif_id: z.string(),
+    root: z.string().describe("The root to add (Arabic or buckwalter)."),
+  },
+  run: (state, a) => {
+    const m = guard.ownMotif(state, a.motif_id);
+    const d = getRoot(state, a.root);
+    const ar = d?.root_arabic ?? String(a.root);
+    state.research.addMotifRoot(m.id, ar);
+    return { ok: true, motif_id: m.id, root: ar, roots: (state.research.getMotif(m.id) as any)?.roots ?? [] };
+  },
+};
+
+const remove_root_from_motif: Tool = {
+  name: "remove_root_from_motif",
+  title: "Remove a root from a motif you proposed",
+  description: "Untag a root from an AI-proposed motif. Refuses the reader's own motifs.",
+  writes: true,
+  schema: {
+    motif_id: z.string(),
+    root: z.string().describe("The root to remove (Arabic or buckwalter)."),
+  },
+  run: (state, a) => {
+    const m = guard.ownMotif(state, a.motif_id);
+    const d = getRoot(state, a.root);
+    const ar = d?.root_arabic ?? String(a.root);
+    state.research.removeMotifRoot(m.id, ar);
+    return { ok: true, motif_id: m.id, root: ar, roots: (state.research.getMotif(m.id) as any)?.roots ?? [] };
+  },
+};
+
 export const TOOLS: Tool[] = [
   study_root, read_ayah, find_where_roots_meet, trace_word, search_quran, compare_forms,
-  my_research_on, ...thin, add_note, propose_indication,
+  my_research_on, list_motifs, ...thin, add_note, propose_indication,
+  propose_motif, add_root_to_motif, remove_root_from_motif,
   // the Investigate board
   list_cases, read_case, open_case, add_evidence, add_slip, link_evidence, group_evidence,
   revise_own_item, propose_conclusion,

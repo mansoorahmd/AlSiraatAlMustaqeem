@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS user_root_meanings (
 -- motifs (بيوت): reader-defined collections that group roots by a linguistic motif
 CREATE TABLE IF NOT EXISTS motifs (
     id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT 'me',   -- 'me' = the reader; 'ai' = proposed via the MCP server
     created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS motif_roots (
@@ -251,6 +252,11 @@ export class ResearchStore {
     const indCols = new Set(db.query<{ name: string }>("PRAGMA table_info(word_indications)").map((r) => r.name));
     if (indCols.size && !indCols.has("source")) {
       db.exec("ALTER TABLE word_indications ADD COLUMN source TEXT NOT NULL DEFAULT 'me'");
+    }
+    // motifs gained a source flag so AI-proposed groupings are distinguishable from the reader's
+    const motifCols = new Set(db.query<{ name: string }>("PRAGMA table_info(motifs)").map((r) => r.name));
+    if (motifCols.size && !motifCols.has("source")) {
+      db.exec("ALTER TABLE motifs ADD COLUMN source TEXT NOT NULL DEFAULT 'me'");
     }
     db.exec("CREATE INDEX IF NOT EXISTS idx_notes_source ON notes(source)");
     db.exec("CREATE INDEX IF NOT EXISTS idx_word_indications_source ON word_indications(source)");
@@ -514,34 +520,44 @@ export class ResearchStore {
       .query<{ root: string }>("SELECT root FROM motif_roots WHERE motif_id = ? ORDER BY added_at", [id])
       .map((r) => r.root);
   }
+  private static motifRow(m: { id: string; name: string; note: string; source?: string; created_at: number; updated_at: number }, roots: string[]): Doc {
+    return {
+      id: m.id, name: m.name, note: m.note, source: m.source ?? "me",
+      roots, createdAt: m.created_at, updatedAt: m.updated_at,
+    };
+  }
   listMotifs(): Doc[] {
     return this.db
-      .query<{ id: string; name: string; note: string; created_at: number; updated_at: number }>(
+      .query<{ id: string; name: string; note: string; source: string; created_at: number; updated_at: number }>(
         "SELECT * FROM motifs ORDER BY updated_at DESC",
       )
-      .map((m) => ({
-        id: m.id, name: m.name, note: m.note,
-        roots: this.motifRoots(m.id), createdAt: m.created_at, updatedAt: m.updated_at,
-      }));
+      .map((m) => ResearchStore.motifRow(m, this.motifRoots(m.id)));
+  }
+  getMotif(id: string): Doc | undefined {
+    const m = this.db.one<{ id: string; name: string; note: string; source: string; created_at: number; updated_at: number }>(
+      "SELECT * FROM motifs WHERE id = ?", [id]);
+    return m ? ResearchStore.motifRow(m, this.motifRoots(m.id)) : undefined;
   }
   motifsForRoot(root: string): Doc[] {
     return this.db
-      .query<{ id: string; name: string; note: string; created_at: number; updated_at: number }>(
+      .query<{ id: string; name: string; note: string; source: string; created_at: number; updated_at: number }>(
         `SELECT m.* FROM motifs m JOIN motif_roots mr ON mr.motif_id = m.id
          WHERE mr.root = ? ORDER BY m.name`,
         [root],
       )
-      .map((m) => ({ id: m.id, name: m.name, note: m.note, roots: this.motifRoots(m.id), createdAt: m.created_at, updatedAt: m.updated_at }));
+      .map((m) => ResearchStore.motifRow(m, this.motifRoots(m.id)));
   }
   saveMotif(doc: Doc): Doc {
     const t = now();
     const id = doc.id;
+    const existing = this.getMotif(id);
     this.db.run(
-      `INSERT INTO motifs (id, name, note, created_at, updated_at, author_id, origin) VALUES (?,?,?,?,?,?,?)
+      `INSERT INTO motifs (id, name, note, source, created_at, updated_at, author_id, origin) VALUES (?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET name=excluded.name, note=excluded.note, updated_at=excluded.updated_at`,
-      [id, doc.name ?? "", doc.note ?? "", doc.createdAt ?? t, t, doc.authorId ?? this.localId, doc.origin ?? "local"],
+      [id, doc.name ?? "", doc.note ?? "", doc.source === "ai" ? "ai" : existing?.source ?? "me",
+       doc.createdAt ?? t, t, doc.authorId ?? this.localId, doc.origin ?? "local"],
     );
-    return { id, name: doc.name ?? "", note: doc.note ?? "", roots: this.motifRoots(id), updatedAt: t };
+    return { id, name: doc.name ?? "", note: doc.note ?? "", source: existing?.source ?? (doc.source === "ai" ? "ai" : "me"), roots: this.motifRoots(id), updatedAt: t };
   }
   deleteMotif(id: string): boolean {
     this.db.run("DELETE FROM motif_roots WHERE motif_id = ?", [id]);

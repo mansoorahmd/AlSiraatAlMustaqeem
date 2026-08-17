@@ -90,6 +90,18 @@ describe("research store round-trip", () => {
     expect(store.motifsForRoot("nwr")).toHaveLength(0);
   });
 
+  it("motifs carry a source; getMotif reads it back", () => {
+    store.saveMotif({ id: "mine", name: "Mine", note: "" });                 // default 'me'
+    store.saveMotif({ id: "ai", name: "Proposed", note: "", source: "ai" });
+    expect(store.getMotif("mine")!.source).toBe("me");
+    expect(store.getMotif("ai")!.source).toBe("ai");
+    // re-saving doesn't flip an existing motif's source
+    store.saveMotif({ id: "ai", name: "Renamed", note: "" });
+    expect(store.getMotif("ai")!.source).toBe("ai");
+    expect(store.getMotif("nope")).toBeUndefined();
+    store.deleteMotif("mine"); store.deleteMotif("ai");
+  });
+
   it("refinements match by SURFACE form, falling back to the lemma key", () => {
     // a root indication with two per-form refinements: one keyed by a surface form (new),
     // one keyed by a lemma (as written before the switch)
