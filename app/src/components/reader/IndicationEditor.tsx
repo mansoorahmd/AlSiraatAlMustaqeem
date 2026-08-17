@@ -331,7 +331,8 @@ function CommunityForms({
       <div className="ie-indication-edit community-reading">
         <div className="community-reading-head">
           <span className="community-mark" aria-hidden>◈</span>
-          <span className="ie-chip-name">{reading.label || reading.meaning || "(unlabelled)"}</span>
+          {/* the reading in full — wraps, never truncated like a chip */}
+          <span className="community-reading-title">{reading.label || reading.meaning || "(unlabelled)"}</span>
           <span className={`community-status ${reading.status}`} title={STATUS_HINT[reading.status]}>{reading.status}</span>
         </div>
         {reading.label && reading.meaning && <p className="indication-meaning">{reading.meaning}</p>}
