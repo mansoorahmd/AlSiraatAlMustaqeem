@@ -98,6 +98,19 @@ plumbing. A reader should never have to *learn* how to sign in.
   app set up" is what turns a page into a dumping ground — if a card doesn't answer the
   screen's question, it belongs somewhere else.
 
+## Word positions: always tokenize with `tokenizeVerse` (this keeps getting broken)
+
+Corpus `word_position` is 1-based over the **words** of an āyah — and an āyah's text contains
+standalone tokens that are **not** words: waqf/pause marks (ۛ ۖ ۗ), sajda (۩), rub‑el‑hizb (۞).
+Splitting the text on whitespace and using `index + 1` as the position counts those marks and
+shifts every highlight after the first one (a form's word lights up one or more slots to the
+left/right of where it should). Never map positions off a raw `split(" ")`.
+
+Use `tokenizeVerse(text)` from `components/reader/format.ts`: it returns tokens where only real
+words carry a `position` (marks get `position: null`), matching the morphology tables exactly.
+Match on `tok.position === word_position`. The reader (`VerseText`), the export, and the form
+peek all go through it — anything that highlights or maps a word by position must too.
+
 ## Lemma vs surface form
 
 The corpus indexes words two ways and they are NOT interchangeable: the **lemma** (dictionary

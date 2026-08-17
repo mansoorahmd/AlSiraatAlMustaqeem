@@ -14,19 +14,23 @@ import { ProposeReading } from "./ProposeReading";
 import { remote } from "../../api/remote";
 import { useMe } from "../../hooks/useMe";
 import { proposals, readingHash, type Refinement } from "../../persistence/db";
+import { tokenizeVerse } from "./format";
 
 /** the first occurrence of a form, for the click-to-peek */
 interface Occ { ref: string | null; text: string | null; pos: number | null }
 
-/** An āyah with the peeked word marked. Best-effort by word position (1-based). */
+/**
+ * An āyah with the peeked word marked. Uses tokenizeVerse so the mark lands on the right word:
+ * a plain split() counts waqf/annotation marks (ۛ ۖ ۗ ۩) as tokens and shifts the highlight —
+ * they are standalone tokens but NOT words, and the corpus word_position skips them.
+ */
 function PeekText({ text, pos }: { text: string; pos: number | null }) {
-  const words = text.split(" ");
   return (
     <>
-      {words.map((w, i) => (
+      {tokenizeVerse(text).map((tok, i) => (
         <span key={i}>
           {i > 0 ? " " : ""}
-          <span className={pos != null && i === pos - 1 ? "peek-hit" : undefined}>{w}</span>
+          <span className={pos != null && tok.position === pos ? "peek-hit" : undefined}>{tok.text}</span>
         </span>
       ))}
     </>
