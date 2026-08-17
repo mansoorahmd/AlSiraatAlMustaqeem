@@ -78,6 +78,18 @@ plumbing. A reader should never have to *learn* how to sign in.
   edge (`border-color: var(--paper-edge); color: var(--ink)`), the way `.acct`, `.review-actions`,
   `.propose-actions` and `.diverge-actions` do. Only genuine toolbar buttons stay borderless.
 - **Icon-only buttons need `title` + `aria-label`**, and a visible hover state.
+- **A modal must never grow past the viewport (this keeps getting broken).** A dialog centred on
+  the screen with no height cap will, the moment its content is long, push its own action buttons
+  below the bottom edge — the user sees a headless, footless slab and "the buttons are hidden."
+  Every modal must: cap at `max-height: 90vh`, be a `flex column`, give the content region
+  `overflow-y: auto; min-height: 0` so it scrolls, and keep the header and the actions **outside**
+  that scroll (actions pinned with `position: sticky; bottom: 0` and an opaque background). The
+  actions are the one thing that must always be reachable — never let them scroll away. See
+  `.propose`.
+- **Arabic inside a control is metadata, not display text.** A list of forms/roots shown inline in
+  a hint or badge must be sized down (≈1rem) and allowed to wrap; dropping full Qur'anic-size
+  `.quran` into a message box blows the box open. Display-size Arabic is only for the reading
+  surface itself.
 - Errors appear in a tinted block near the top of the panel with `role="alert"` — not as a
   bare red sentence wherever the failure happened.
 - **A screen does one job.** Home is a workbench: what you were reading and what you have in

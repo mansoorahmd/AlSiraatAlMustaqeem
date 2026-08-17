@@ -1700,19 +1700,27 @@ a { color: var(--lapis); }
 
 /* propose a reading (the app-side of the claim spine) */
 .propose {
-  width: min(34rem, 92vw); background: var(--paper);
+  width: min(34rem, 92vw);
+  /* NEVER taller than the screen — the body scrolls, the actions stay put */
+  max-height: 90vh; display: flex; flex-direction: column;
+  background: var(--paper);
   border: 1px solid var(--paper-edge); border-radius: var(--radius-card);
   box-shadow: 0 12px 40px rgba(24, 24, 27, 0.25); overflow: hidden;
 }
-.propose-head { display: flex; align-items: flex-start; justify-content: space-between;
+.propose-head { flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between;
   gap: 1rem; padding: 0.9rem 1.1rem; border-bottom: 1px solid var(--paper-edge); }
 .propose-title { margin: 0; font-weight: 600; color: var(--ink); }
 .propose-sub { margin: 0.15rem 0 0; font-size: var(--fs-small); color: var(--ink-soft); line-height: 1.9; }
-.propose-body { padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.8rem; }
+/* the scrolling region — everything between header and the pinned actions */
+.propose-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 1rem 1.1rem;
+  display: flex; flex-direction: column; gap: 0.8rem; }
 .propose-field { display: flex; flex-direction: column; gap: 0.3rem; }
 .propose-label { font-size: var(--fs-label); color: var(--ink-soft); }
 .propose-req { color: var(--wax-dark); }
-.propose-actions { display: flex; justify-content: flex-end; gap: 0.6rem; }
+/* actions pinned to the bottom of the modal, always visible even as the body scrolls */
+.propose-actions { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 0.6rem;
+  margin: 0.2rem -1.1rem -1rem; padding: 0.7rem 1.1rem;
+  background: var(--paper); border-top: 1px solid var(--paper-edge); }
 .propose-ok { color: var(--lapis); font-weight: 600; margin: 0; }
 
 /* review controls on a community reading (moderator / maintainer) */
@@ -1727,7 +1735,8 @@ a { color: var(--lapis); }
   font-size: var(--fs-small); color: var(--ink-soft);
   background: rgba(180, 83, 9, 0.06); border: 1px solid rgba(180, 83, 9, 0.25);
 }
-.propose-gate .quran { color: var(--gold); }
+/* the missing-forms list is inline metadata, not display text — keep it small and wrapping */
+.propose-gate .quran { color: var(--gold); font-size: 1rem; line-height: 2; }
 
 /* A bare .ctl is transparent (correct in a toolbar, invisible in a panel). Any .ctl acting as
    a standalone panel action needs an outline or it reads as absent — the propose/review/reset
