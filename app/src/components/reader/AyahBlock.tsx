@@ -214,13 +214,16 @@ export const AyahBlock = memo(function AyahBlock({
             if (w?.root) {
               const rootText = indicationRootText?.get(w.root);
               if (rootText !== undefined) {
-                // 1) this form's refinement of the root's primary indication. Try the
-                // key as-is, then NFC-normalised (Arabic can arrive composed or
-                // decomposed from different endpoints — only checked on a miss).
-                if (w.lemma) {
+                // 1) this form's refinement of the root's primary indication. Refinements are
+                // keyed by SURFACE FORM (the word as written) so a plural differs from its
+                // singular; we try the surface key first, then the lemma key so refinements
+                // written before the switch still match. Each is also tried NFC-normalised,
+                // since Arabic can arrive composed or decomposed from different endpoints.
+                for (const key of [w.arabic, w.lemma]) {
+                  if (!key) continue;
                   const r =
-                    indicationRefine?.get(`${w.root} ${w.lemma}`) ??
-                    indicationRefine?.get(`${w.root} ${w.lemma.normalize("NFC")}`);
+                    indicationRefine?.get(`${w.root} ${key}`) ??
+                    indicationRefine?.get(`${w.root} ${key.normalize("NFC")}`);
                   if (r) return r;
                 }
                 // 2) else the root's primary indication text

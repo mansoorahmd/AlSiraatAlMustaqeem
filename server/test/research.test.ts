@@ -89,4 +89,27 @@ describe("research store round-trip", () => {
     expect(store.deleteMotif("m1")).toBe(true);
     expect(store.motifsForRoot("nwr")).toHaveLength(0);
   });
+
+  it("refinements match by SURFACE form, falling back to the lemma key", () => {
+    // a root indication with two per-form refinements: one keyed by a surface form (new),
+    // one keyed by a lemma (as written before the switch)
+    const ind = store.saveIndication({ id: "ind_s", root: "صلب", label: "backbone/loins", meaning: "the core" });
+    store.saveRefinement({ id: "r_surface", parentId: ind.id, lemma: "أَصْلَٰبِ", label: "loins", meaning: "plural" });
+    store.saveRefinement({ id: "r_legacy", parentId: ind.id, lemma: "صُّلْب", label: "backbone", meaning: "singular" });
+
+    // surface given → the surface-keyed refinement wins
+    const bySurface = store.indicationsForWord("صُّلْب", "صلب", "أَصْلَٰبِ")
+      .rootIndications.find((s: { id: string }) => s.id === ind.id);
+    expect(bySurface.refinement.meaning).toBe("plural");
+
+    // surface with no own refinement → falls back to the lemma key
+    const byLemma = store.indicationsForWord("صُّلْب", "صلب", "صُّلْبِ")
+      .rootIndications.find((s: { id: string }) => s.id === ind.id);
+    expect(byLemma.refinement.meaning).toBe("singular");
+
+    // no surface at all → still matches by lemma (old callers keep working)
+    const legacy = store.indicationsForWord("صُّلْب", "صلب")
+      .rootIndications.find((s: { id: string }) => s.id === ind.id);
+    expect(legacy.refinement.meaning).toBe("singular");
+  });
 });

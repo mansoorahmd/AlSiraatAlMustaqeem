@@ -374,10 +374,13 @@ export const archive = {
    *  with per-form refinements. Rootless words keep standalone lemma indications. */
   indications: {
     /** The word's root indications (each with THIS form's refinement) + rootless indications. */
-    forWord: async (lemma: string | null, root: string | null): Promise<IndicationsForWord> => {
+    forWord: async (
+      lemma: string | null, root: string | null, surface?: string | null,
+    ): Promise<IndicationsForWord> => {
       const q = new URLSearchParams();
       if (lemma) q.set("lemma", lemma);
       if (root) q.set("root", root);
+      if (surface) q.set("surface", surface);   // the word as written — keys the per-form refinement
       return srvGet<IndicationsForWord>(`/indications/for-word?${q.toString()}`);
     },
     /** Reader gloss data (primary root-indication text + refinements + rootless primaries). */

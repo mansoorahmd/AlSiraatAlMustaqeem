@@ -98,6 +98,23 @@ plumbing. A reader should never have to *learn* how to sign in.
   app set up" is what turns a page into a dumping ground — if a card doesn't answer the
   screen's question, it belongs somewhere else.
 
+## Lemma vs surface form
+
+The corpus indexes words two ways and they are NOT interchangeable: the **lemma** (dictionary
+form, `lemma_arabic`) and the **surface form** (the word as written in the āyah, `form_arabic` /
+the reader's `Word.arabic`). One lemma covers several surface forms — e.g. lemma صُّلْب covers
+both صُّلْبِ (singular, 86:7) and أَصْلَٰبِ (plural, 4:23), which carry different senses.
+
+- The **evidence drawer** and the **indication editor's per-form list** enumerate **surface
+  forms**, so each word as written is its own row.
+- Per-form **refinements** are keyed by the **surface form**. The reader's gloss and the word
+  menu match surface-first, then fall back to the lemma key so refinements written before this
+  switch still resolve (`indicationsForWord(lemma, root, surface)`; `AyahBlock.glossFor` tries
+  `w.arabic` then `w.lemma`).
+- When you change what a "form" means anywhere, remember the surface string in the editor comes
+  from `word_occurrences.form_arabic` while the reader's comes from `Word.arabic`; they usually
+  match, and the lemma fallback covers the cases they don't. Don't assume they're byte-identical.
+
 ## Architecture
 
 A TypeScript app in three parts, run as one npm workspace:

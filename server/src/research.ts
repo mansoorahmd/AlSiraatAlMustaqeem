@@ -688,12 +688,19 @@ export class ResearchStore {
   }
 
   /** Everything the word menu needs: the word's root indications (each with THIS
-   *  form's refinement) and, for rootless words, standalone lemma indications. */
-  indicationsForWord(lemma: string | null, root: string | null): Doc {
+   *  form's refinement) and, for rootless words, standalone lemma indications.
+   *
+   *  `surface` is the word AS WRITTEN (form_arabic). Refinements are now keyed by surface form
+   *  so a plural (أَصْلَٰب) can differ from its singular (صُّلْب) — but we fall back to the lemma
+   *  key so refinements written before the switch keep matching. */
+  indicationsForWord(lemma: string | null, root: string | null, surface?: string | null): Doc {
+    const refine = (id: string) =>
+      (surface ? this.refinementFor(id, surface) : null) ??
+      (lemma ? this.refinementFor(id, lemma) : null);
     const rootIndications = root
       ? this.rootIndications(root).map((s) => ({
           ...s,
-          refinement: lemma ? this.refinementFor(s.id, lemma) : null,
+          refinement: refine(s.id),
           refinedCount: this.refinementsForParent(s.id).length, // how many forms are done
         }))
       : [];

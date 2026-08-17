@@ -187,7 +187,8 @@ export function researchRoutes(state: AppState): Hono {
   // per-form refinements; standalone lemma indications for rootless words
   r.get("/research/indications/gloss", (c) => c.json(s().glossData()));
   r.get("/research/indications/for-word", (c) =>
-    c.json(s().indicationsForWord(c.req.query("lemma") ?? null, c.req.query("root") ?? null)));
+    c.json(s().indicationsForWord(
+      c.req.query("lemma") ?? null, c.req.query("root") ?? null, c.req.query("surface") ?? null)));
   r.get("/research/indications/:id/refinements", (c) => c.json(s().refinementsForParent(c.req.param("id"))));
   r.put("/research/indications/:id", async (c) => {
     const doc = await c.req.json();

@@ -129,9 +129,10 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
   // refinement) + any rootless standalone indications. The active reading = this
   // form's refinement of the primary root indication, else that indication's own text.
   const [indicationVersion, setIndicationVersion] = useState(0);
+  const surface = target.word?.arabic ?? target.token ?? null;  // the word as written
   const indications = useAsync(
-    async () => ((lemma || root) ? archive.indications.forWord(lemma, root) : null),
-    [lemma, root, indicationVersion],
+    async () => ((lemma || root) ? archive.indications.forWord(lemma, root, surface) : null),
+    [lemma, root, surface, indicationVersion],
   );
   const rootIndications = indications.data?.rootIndications ?? [];
   const lemmaIndications = indications.data?.lemmaIndications ?? [];

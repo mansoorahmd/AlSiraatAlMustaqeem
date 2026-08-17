@@ -25,11 +25,35 @@ interface Props {
   onChanged?: () => void;
 }
 
+/** A distinct SURFACE form of the root (the word as written), with the lemma it inflects and
+ *  how often it occurs. Refinements are keyed by `surface`. */
+interface SurfaceForm {
+  surface: string;
+  lemma: string | null;
+  pos: string | null;
+  count: number;
+}
+
 export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props) {
   const [version, setVersion] = useState(0);
   const bump = () => { setVersion((v) => v + 1); onChanged?.(); };
 
   const rootInfo = useAsync(() => api.root(root), [root]);
+  // SURFACE forms (the words as written) — one row per distinct form_arabic, not per lemma, so
+  // a plural like أَصْلَٰب is listed and given its own meaning apart from its singular صُّلْب.
+  const occs = useAsync(() => api.rootOccurrences(root, "uthmani"), [root]);
+  const surfaceForms = useMemo<SurfaceForm[]>(() => {
+    const seen = new Map<string, SurfaceForm>();
+    for (const o of occs.data ?? []) {
+      const surface = o.form_arabic;
+      if (!surface) continue;
+      const cur = seen.get(surface);
+      if (cur) cur.count++;
+      else seen.set(surface, { surface, lemma: o.lemma_arabic, pos: o.pos_english, count: 1 });
+    }
+    return [...seen.values()].sort((a, b) => b.count - a.count);
+  }, [occs.data]);
+
   // pass the tapped form, so the community's readings of THIS form come back too
   const data = useAsync(
     () => archive.indications.forWord(focusLemma ?? null, root), [root, focusLemma, version]);
@@ -129,14 +153,14 @@ export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props
               <CommunityForms
                 key={selectedPeer.id}
                 reading={selectedPeer}
-                forms={rootInfo.data?.forms ?? []}
+                forms={surfaceForms}
                 focusLemma={focusLemma ?? null}
               />
             ) : selected ? (
               <IndicationForms
                 key={selected.id}
                 indication={selected}
-                forms={rootInfo.data?.forms ?? []}
+                forms={surfaceForms}
                 focusLemma={focusLemma ?? null}
                 onChanged={bump}
               />
@@ -307,22 +331,20 @@ function CommunityForms({
   reading, forms, focusLemma,
 }: {
   reading: PeerIndication;
-  forms: { lemma_arabic: string | null }[];
+  forms: SurfaceForm[];
   focusLemma: string | null;
 }) {
-  const lemmas = useMemo(() => {
+  const surfaces = useMemo(() => {
     const seen = new Set<string>();
     const out: string[] = [];
     for (const f of forms) {
-      const l = f.lemma_arabic;
-      if (l && !seen.has(l)) { seen.add(l); out.push(l); }
+      if (f.surface && !seen.has(f.surface)) { seen.add(f.surface); out.push(f.surface); }
     }
     out.sort((a, b) => (a === focusLemma ? -1 : b === focusLemma ? 1 : 0));
     return out;
   }, [forms, focusLemma]);
 
-  // this reading's OWN per-form shades, as its author proposed them — not a mix of other
-  // people's form claims. Keyed by lemma for the per-form view below.
+  // this reading's OWN per-form shades, as its author proposed them — keyed by surface form.
   const map: Record<string, { label: string; meaning: string }> = {};
   for (const rf of reading.refinements ?? []) if (rf.lemma) map[rf.lemma] = rf;
 
@@ -343,13 +365,13 @@ function CommunityForms({
 
       <p className="ie-section">Each form, as the community reads it</p>
       <div className="ie-form-rows">
-        {lemmas.map((lemma) => {
-          const r = map[lemma];
+        {surfaces.map((surface) => {
+          const r = map[surface];
           return (
-            <div key={lemma} className={`ie-form-row community${lemma === focusLemma ? " focused" : ""}${r ? " filled" : ""}`}>
+            <div key={surface} className={`ie-form-row community${surface === focusLemma ? " focused" : ""}${r ? " filled" : ""}`}>
               <div className="ie-form-head">
-                <span className="ie-form-ar quran">{spaced(lemma)}</span>
-                {lemma === focusLemma && <span className="ie-form-tag">tapped</span>}
+                <span className="ie-form-ar quran">{spaced(surface)}</span>
+                {surface === focusLemma && <span className="ie-form-tag">tapped</span>}
                 {!r && <span className="ie-form-todo">no community reading</span>}
               </div>
               {r && (
@@ -390,7 +412,7 @@ function IndicationChip({
 function IndicationForms({
   indication, forms, focusLemma, onChanged,
 }: {
-  indication: RootIndicationWithRefinement; forms: { lemma_arabic: string | null; pos_english: string | null; occurrence_count: number }[];
+  indication: RootIndicationWithRefinement; forms: SurfaceForm[];
   focusLemma: string | null; onChanged: () => void;
 }) {
   // the indication's own text (the root-level meaning)
@@ -402,37 +424,64 @@ function IndicationForms({
     onChanged();
   };
 
-  // this indication's per-form refinements, keyed by lemma
-  const refs = useAsync(() => archive.indications.refinements(indication.id), [indication.id]);
-  const refByLemma = useMemo(() => {
+  // this indication's per-form refinements. `lemma` may hold a SURFACE form (new) or, for
+  // refinements written before the switch, the lemma (legacy) — so we index by whatever it is.
+  const [refsTick, setRefsTick] = useState(0);
+  const refs = useAsync(() => archive.indications.refinements(indication.id), [indication.id, refsTick]);
+  const reloadRefs = () => setRefsTick((t) => t + 1);
+  const refByKey = useMemo(() => {
     const m = new Map<string, WordIndication>();
     for (const r of refs.data ?? []) if (r.lemma) m.set(r.lemma, r);
     return m;
   }, [refs.data]);
 
+  // the refinement for a surface form: its own (by surface), else the legacy one by lemma
+  const refFor = (f: SurfaceForm): WordIndication | null =>
+    refByKey.get(f.surface) ?? (f.lemma ? refByKey.get(f.lemma) ?? null : null);
+
   const uniqueForms = useMemo(() => {
     const seen = new Set<string>();
-    const out: { lemma: string; pos: string | null; count: number }[] = [];
+    const out: SurfaceForm[] = [];
     for (const f of forms) {
-      const l = f.lemma_arabic;
-      if (!l || seen.has(l)) continue;
-      seen.add(l);
-      out.push({ lemma: l, pos: f.pos_english, count: f.occurrence_count });
+      if (seen.has(f.surface)) continue;
+      seen.add(f.surface);
+      out.push(f);
     }
-    // the tapped form first
-    out.sort((a, b) => (a.lemma === focusLemma ? -1 : b.lemma === focusLemma ? 1 : 0));
+    // the tapped form first (focusLemma may be the surface or the lemma)
+    out.sort((a, b) =>
+      (a.surface === focusLemma || a.lemma === focusLemma ? -1 : b.surface === focusLemma || b.lemma === focusLemma ? 1 : 0));
     return out;
   }, [forms, focusLemma]);
+
+  // One-time migration (§ user chose "carry them onto each surface form"): copy any legacy
+  // lemma-keyed refinement onto each surface form of that lemma, so nothing written before the
+  // switch is lost. Idempotent — once a surface has its own refinement, it's skipped.
+  useEffect(() => {
+    if (!refs.data || uniqueForms.length === 0) return;
+    const have = new Set(refs.data.map((r) => r.lemma).filter(Boolean) as string[]);
+    const toCopy = uniqueForms.filter((f) =>
+      !have.has(f.surface) && f.lemma && refByKey.get(f.lemma) &&
+      !!(refByKey.get(f.lemma)!.label || refByKey.get(f.lemma)!.meaning));
+    if (toCopy.length === 0) return;
+    (async () => {
+      for (const f of toCopy) {
+        const src = refByKey.get(f.lemma!)!;
+        await archive.indications.saveRefinement({
+          id: newId("ref"), parentId: indication.id, lemma: f.surface, label: src.label, meaning: src.meaning,
+        });
+      }
+      reloadRefs();
+    })();
+  }, [refs.data, uniqueForms, indication.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A proposal carries the WHOLE reading: the root meaning + every form's shade. So we gather
   // the refinements, and the forms still missing one — a reading may only be proposed complete.
   const refinements: Refinement[] = uniqueForms
-    .map((f) => refByLemma.get(f.lemma))
-    .filter((r): r is WordIndication => !!r && !!(r.label || r.meaning))
-    .map((r) => ({ lemma: r.lemma!, label: r.label, meaning: r.meaning }));
+    .map((f) => { const r = refFor(f); return r && (r.label || r.meaning) ? { lemma: f.surface, label: r.label, meaning: r.meaning } : null; })
+    .filter((r): r is Refinement => !!r);
   const missingForms = uniqueForms
-    .filter((f) => { const r = refByLemma.get(f.lemma); return !r || !(r.label || r.meaning); })
-    .map((f) => f.lemma);
+    .filter((f) => { const r = refFor(f); return !r || !(r.label || r.meaning); })
+    .map((f) => f.surface);
 
   const [proposing, setProposing] = useState(false);
 
@@ -488,14 +537,14 @@ function IndicationForms({
       <div className="ie-form-rows">
         {uniqueForms.map((f) => (
           <FormRow
-            key={f.lemma}
+            key={f.surface}
             indicationId={indication.id}
-            lemma={f.lemma}
+            formKey={f.surface}
             pos={f.pos}
             count={f.count}
-            focused={f.lemma === focusLemma}
-            refinement={refByLemma.get(f.lemma) ?? null}
-            onChanged={onChanged}
+            focused={f.surface === focusLemma || f.lemma === focusLemma}
+            refinement={refFor(f)}
+            onChanged={() => { reloadRefs(); onChanged(); }}
           />
         ))}
       </div>
@@ -504,11 +553,12 @@ function IndicationForms({
 }
 
 function FormRow({
-  indicationId, lemma, pos, count, focused, refinement, onChanged,
+  indicationId, formKey, pos, count, focused, refinement, onChanged,
 }: {
-  indicationId: string; lemma: string; pos: string | null; count: number; focused: boolean;
+  indicationId: string; formKey: string; pos: string | null; count: number; focused: boolean;
   refinement: WordIndication | null; onChanged: () => void;
 }) {
+  const lemma = formKey; // the refinement key = the surface form (the word as written)
   const [label, setLabel] = useState(refinement?.label ?? "");
   const [meaning, setMeaning] = useState(refinement?.meaning ?? "");
   const [dirty, setDirty] = useState(false);
