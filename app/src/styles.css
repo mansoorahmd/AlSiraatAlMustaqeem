@@ -1721,6 +1721,7 @@ a { color: var(--lapis); }
 .propose-field { display: flex; flex-direction: column; gap: 0.3rem; }
 .propose-label { font-size: var(--fs-label); color: var(--ink-soft); }
 .propose-req { color: var(--wax-dark); }
+.propose-hint-inline { color: var(--ink-faint); font-weight: 400; }
 /* actions pinned to the bottom of the modal, always visible even as the body scrolls */
 .propose-actions { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 0.6rem;
   margin: 0.2rem -1.1rem -1rem; padding: 0.7rem 1.1rem;

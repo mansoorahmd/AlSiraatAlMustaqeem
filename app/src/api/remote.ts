@@ -191,7 +191,7 @@ export const remote = {
   propose(opts: {
     subjectKind: "form" | "root"; subjectValue: string;
     payload: {
-      meaning: string; argument?: string; caseId?: string; evidence?: unknown[];
+      label?: string; meaning: string; argument?: string; caseId?: string; evidence?: unknown[];
       refinements?: { lemma: string; label: string; meaning: string }[];
     };
   }): Promise<ClaimVersion> {

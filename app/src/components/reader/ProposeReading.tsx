@@ -18,7 +18,9 @@ const spaced = (r: string) => r.split("").join(" ");
 interface Props {
   subjectKind: "form" | "root";
   subjectValue: string;
-  /** prefill from the reader's own indication, so proposing is one edit away */
+  /** prefill from the reader's own indication — kept as TWO fields, a brief title and the
+   *  fuller reading, exactly as the editor holds them */
+  defaultLabel?: string;
   defaultMeaning?: string;
   /** the reading's per-form shades — a proposal carries the WHOLE reading, not just the root */
   refinements?: Refinement[];
@@ -30,9 +32,10 @@ interface Props {
 }
 
 export function ProposeReading({
-  subjectKind, subjectValue, defaultMeaning, refinements = [], missingForms = [], caseId, onClose,
+  subjectKind, subjectValue, defaultLabel, defaultMeaning, refinements = [], missingForms = [], caseId, onClose,
 }: Props) {
   const { me, loading } = useMe();
+  const [label, setLabel] = useState(defaultLabel ?? "");
   const [meaning, setMeaning] = useState(defaultMeaning ?? "");
   const [argument, setArgument] = useState("");
   const [busy, setBusy] = useState(false);
@@ -41,16 +44,20 @@ export function ProposeReading({
 
   const incomplete = missingForms.length > 0;
   const hasArgument = !!caseId || !!argument.trim();
-  const canSubmit = !!meaning.trim() && hasArgument && !incomplete && !busy;
+  // a reading needs at least a title or a fuller meaning
+  const canSubmit = !!(label.trim() || meaning.trim()) && hasArgument && !incomplete && !busy;
 
   const submit = async () => {
     setBusy(true); setErr(null);
     try {
       await remote.propose({
         subjectKind, subjectValue,
-        payload: { meaning: meaning.trim(), argument: argument.trim() || undefined, caseId, refinements },
+        payload: {
+          label: label.trim() || undefined, meaning: meaning.trim(),
+          argument: argument.trim() || undefined, caseId, refinements,
+        },
       });
-      await proposals.record(subjectKind, subjectValue, readingHash(meaning, refinements)).catch(() => {});
+      await proposals.record(subjectKind, subjectValue, readingHash(label, meaning, refinements)).catch(() => {});
       setDone(true);
     } catch (e) {
       setErr(
@@ -91,10 +98,18 @@ export function ProposeReading({
         ) : (
           <div className="propose-body">
             <label className="propose-field">
+              <span className="propose-label">Title <span className="propose-hint-inline">— a brief name for this reading</span></span>
+              <input
+                className="board-input"
+                placeholder="e.g. Conducting to arrival"
+                value={label} onChange={(e) => setLabel(e.target.value)}
+              />
+            </label>
+            <label className="propose-field">
               <span className="propose-label">Your reading</span>
               <textarea
-                className="board-input" rows={2}
-                placeholder="what this means, in your words…"
+                className="board-input" rows={3}
+                placeholder="the fuller meaning, in your words…"
                 value={meaning} onChange={(e) => setMeaning(e.target.value)}
               />
             </label>

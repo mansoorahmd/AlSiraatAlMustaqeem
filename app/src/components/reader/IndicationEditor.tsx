@@ -441,7 +441,7 @@ function IndicationForms({
   const proposal = useAsync(
     () => (indication.root ? proposals.get("root", indication.root) : Promise.resolve(null)),
     [indication.root, propTick]);
-  const currentHash = readingHash([label.trim(), meaning.trim()].filter(Boolean).join(" — "), refinements);
+  const currentHash = readingHash(label.trim(), meaning.trim(), refinements);
   const proposedState: "none" | "current" | "changed" =
     !proposal.data ? "none" : proposal.data.contentHash === currentHash ? "current" : "changed";
 
@@ -476,7 +476,8 @@ function IndicationForms({
         <ProposeReading
           subjectKind="root"
           subjectValue={indication.root}
-          defaultMeaning={[label.trim(), meaning.trim()].filter(Boolean).join(" — ")}
+          defaultLabel={label.trim()}
+          defaultMeaning={meaning.trim()}
           refinements={refinements}
           missingForms={missingForms}
           onClose={() => { setProposing(false); setPropTick((t) => t + 1); }}

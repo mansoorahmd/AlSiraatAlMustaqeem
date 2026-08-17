@@ -165,8 +165,9 @@ export interface Refinement { lemma: string; label: string; meaning: string }
  * tell "not proposed" from "proposed" from "changed since I proposed it". Order-independent:
  * refinements are sorted by lemma, so re-saving in a different order doesn't look like a change.
  */
-export function readingHash(meaning: string, refinements: Refinement[]): string {
+export function readingHash(label: string, meaning: string, refinements: Refinement[]): string {
   const norm = {
+    label: label.trim(),
     meaning: meaning.trim(),
     refinements: [...refinements]
       .map((r) => ({ lemma: r.lemma, label: r.label.trim(), meaning: r.meaning.trim() }))
