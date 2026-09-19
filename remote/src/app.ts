@@ -110,8 +110,10 @@ export function createApp(): Hono<Env> {
   });
 
   // --- submissions: local research offered upstream (Phase 4, additive kinds only) ---
-  // Guarded at `researcher`: a reader may pull the group's work but not publish into it.
-  app.post("/submissions", requireRole("researcher"), async (c) => {
+  // Guarded at `researcher` AND an active plan: publishing your work into the community is a paid
+  // action. (Moderation/establishment below stay role-only — the leader's staff run the community
+  // and must not be charged to do so; flip that by adding requirePlan there if the model changes.)
+  app.post("/submissions", requireRole("researcher"), requirePlan("pro"), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { items?: SubmissionItemInput[]; supersedes?: string | null };
     try {
@@ -138,8 +140,8 @@ export function createApp(): Hono<Env> {
 
   // --- claims: contending readings, review, establishment, dissent (Phase 5) ---
 
-  /** Offer your reading of a form or root. Must carry its argument (§12.1). */
-  app.post("/claims", requireRole("researcher"), async (c) => {
+  /** Offer your reading of a form or root. Must carry its argument (§12.1). Publishing → paid. */
+  app.post("/claims", requireRole("researcher"), requirePlan("pro"), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { subjectKind?: SubjectKind; subjectValue?: string; payload?: never };
     try {
