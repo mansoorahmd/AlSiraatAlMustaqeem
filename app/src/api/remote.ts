@@ -8,7 +8,7 @@
 // The remote is OPTIONAL: local study never needs it. Every function here can fail with the
 // service simply not running, and callers must treat that as "not connected", not an error.
 
-import type { SyncCursors } from "../persistence/db";
+import type { PeerIndication } from "./types";
 
 const REMOTE = import.meta.env.VITE_REMOTE_URL ?? "http://localhost:8100";
 
@@ -27,6 +27,19 @@ export interface Me {
 }
 export type Role = "reader" | "researcher" | "moderator" | "maintainer";
 export type Plan = "free" | "pro";
+
+/** ⚖ The remote's live divergence result: my established forms diffed against the group's. */
+export interface DivergenceOut {
+  divergences: {
+    subjectKind: "form" | "root"; subjectValue: string;
+    mine: string; theirs: string;
+    claimId: string; version: number; authorId: string; dissents: number;
+  }[];
+  /** how many of my forms the group has also settled (the comparable set) */
+  overlap: number;
+  /** how many readings the group holds in total */
+  globalTotal: number;
+}
 export interface InviteOut { code: string; role: Role; expires_at: string | null }
 
 /** Kinds that can't conflict with anyone else's work — all that's submittable so far. */
@@ -173,21 +186,28 @@ export const remote = {
     return call<Submission[]>("/submissions");
   },
 
-  /**
-   * Ask the remote for everything new in each stream. A cursor walk: replayable, resumable,
-   * and all-zeroes is a full resync — safe because it only ever lands in the app's derived
-   * tables.
-   *
-   * One position PER STREAM: each remote table's `seq` is its own sequence, so a single shared
-   * cursor would run one stream's counter ahead of another's and skip rows without erroring.
-   */
-  pull(since: SyncCursors): Promise<{
-    cursors: SyncCursors; more: boolean; schemaVersion: number;
-    globalForms: unknown[]; dissents: unknown[]; peerIndications: unknown[];
+  // --- the community layer, read LIVE and gated (monetization) ------------------
+  //
+  // The group's readings are a PAID, ONLINE layer: fetched from the remote on demand, never
+  // mirrored to the app's disk. Each of these throws RemoteOffline (not connected) or
+  // RemoteError with status 401 (signed out) / 402 (no active plan) — callers show a
+  // "connect / subscribe" state and fall back to the reader's own work, never a bare error.
+
+  /** The community's readings of a word — its root and its exact form — for the reader's chips. */
+  communityReadings(opts: { root?: string | null; lemma?: string | null }): Promise<{
+    communityRoot: PeerIndication[]; communityLemma: PeerIndication[];
   }> {
     const q = new URLSearchParams();
-    for (const [stream, at] of Object.entries(since)) q.set(stream, String(at));
-    return call(`/pull?${q.toString()}`);
+    if (opts.root) q.set("root", opts.root);
+    if (opts.lemma) q.set("lemma", opts.lemma);
+    return call(`/community/readings?${q.toString()}`);
+  },
+
+  /** ⚖ Diff my established forms against the group's current readings — computed on the remote. */
+  divergences(
+    forms: { subjectValue: string; meaning: string; subjectKind?: "form" | "root" }[],
+  ): Promise<DivergenceOut> {
+    return call<DivergenceOut>("/divergences", { method: "POST", body: JSON.stringify({ forms }) });
   },
 
   // --- the claim spine, from the app (Phase 5 was CLI-only) ---------------------
