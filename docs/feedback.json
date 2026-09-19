@@ -1,0 +1,13 @@
+{
+  "$doc": "Feedback & communication log between the maintainer and Claude about MQ Research Gate. The repo-side, chat-extractable mirror of the conversation. The live version is the feedback threads in the published docs/atlas.html (backed by the artifact db capability); Claude reconciles new entries here.",
+  "entryShape": { "ts": "ISO 8601 string", "author": "who wrote it", "section": "atlas section id (system|data|money|gate|community|publishing|mcp|roadmap|general)", "text": "the note", "status": "open | answered | done (optional)" },
+  "entries": [
+    {
+      "ts": "2026-09-19T00:00:00Z",
+      "author": "Claude",
+      "section": "general",
+      "text": "Monetization Phases A–D shipped on branch feature/monetization-entitlements: plan/entitlement layer + 402 gate, community moved live-remote with the local mirror removed, publishing gated. MCP kept local (Phase E deferred by decision — the cloud has none of the corpus). This atlas (docs/atlas.json for AI, docs/atlas.html for humans) is the shared map. Leave feedback per section in the published page or here; I read it back.",
+      "status": "done"
+    }
+  ]
+}

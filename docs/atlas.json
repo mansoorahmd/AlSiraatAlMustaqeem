@@ -1,0 +1,137 @@
+{
+  "$doc": "MQ Research Gate — architecture & monetization atlas. Machine-readable source of truth for AI chats. Human view: docs/atlas.html. Feedback log: docs/feedback.json.",
+  "updated": "2026-09-19",
+  "branch": "feature/monetization-entitlements",
+  "app": {
+    "name": "MQ Research Gate",
+    "repoName": "AlSiraatAlMustaqeem",
+    "arabic": "الصراط المستقيم",
+    "oneLiner": "A detective's study for the Qur'an: meaning is earned from within the text (the organic Qur'anic methodology). Notice a word, open a case on its root family, gather every place the Book uses it, form a hypothesis, then weigh the classical dictionaries.",
+    "stack": "React + Vite + TypeScript SPA (app/) over a Hono + node:sqlite backend (server/). MCP server (mcp/) exposes corpus+research to an AI. Optional remote research channel (remote/) on Postgres + Better Auth. Electron desktop wrapper (electron/)."
+  },
+  "principle": {
+    "core": "Studying stays local, offline and free; the community is the paid, cloud layer.",
+    "constraint": "You can only enforceably charge for what the server holds, never for what already sits on the reader's disk (the app ships as local code + local SQLite).",
+    "consequence": "Monetization lives entirely on the cloud remote. The local app + both local databases + the MCP stay free."
+  },
+  "components": [
+    { "id": "app", "name": "App", "runtime": "React 18 + Vite SPA", "role": "Reader + investigation UI. Talks to the local server at /api/v1, and directly to the remote for the community layer.", "path": "app/" },
+    { "id": "server", "name": "Server", "runtime": "Hono on Node node:sqlite", "role": "The ONLY thing that touches the local databases. Reads quran.db, reads+writes research.db. Serves /api/v1.", "path": "server/" },
+    { "id": "mcp", "name": "MCP", "runtime": "stdio MCP server (Node/tsx)", "role": "Lets an AI study the corpus + the reader's local research and propose notes/indications/board items (source='ai'). LOCAL and FREE. Reuses the server query layer.", "path": "mcp/" },
+    { "id": "remote", "name": "Remote", "runtime": "Hono + Postgres + Better Auth", "role": "Optional, invite-only cloud research channel. The paid surface: auth, roles, the claim spine, plan/entitlements, gated community reads + publishing. Separate service from the local server; shares only a login.", "path": "remote/", "port": 8100 },
+    { "id": "electron", "name": "Desktop", "runtime": "Electron", "role": "Wraps the built SPA + server in a desktop window.", "path": "electron/" }
+  ],
+  "databases": {
+    "quran.db": {
+      "kind": "corpus", "access": "read-only", "location": "local, ships with the app (~150 MB)",
+      "holds": "Qur'an text in four scripts, per-word morphology (root/lemma/form), roots, ~9 classical lexicons (Lane, Lisan, Maqayis, Mufradat, ...), translations, FTS indexes.",
+      "corrections": "Never hosted as a DB. Shipped as signed, versioned patch files applied in order (see CORPUS.md). The corpus is reference material, not research.",
+      "onCloud": false
+    },
+    "research.db": {
+      "kind": "personal research", "access": "read-write, self-migrating", "location": "local; the one irreplaceable file",
+      "holds": "cases + board layout, form_research (established meanings) + form_revisions, trails, notes, word_indications (+ refinements), user_root_meanings, motifs, compare_sets, settings. Plus own-outbox derived_submissions / derived_proposed_claims.",
+      "ownership": "A one-row owner table (name, email, uuidv5-of-email) makes the file self-describing and portable.",
+      "aiWrites": "MCP proposals are tagged source='ai' and stay proposals until the reader accepts them in the app.",
+      "onCloud": false
+    }
+  },
+  "monetization": {
+    "model": "Sell infrastructure + collaboration, not the Book. Free tier = local-first study (offline, no account). Paid tier = the cloud community: reading the group's readings and publishing to it.",
+    "roleLadder": ["reader", "researcher", "moderator", "maintainer"],
+    "roleMeaning": "What you may DO in the research process. reader<researcher<moderator<maintainer. remote/src/roles.ts, requireRole(min).",
+    "planLadder": ["free", "pro"],
+    "planMeaning": "What you have PAID for. Orthogonal to role. remote/src/plans.ts, requirePlan(min).",
+    "gate": {
+      "middleware": "requirePlan('pro') runs AFTER requireRole on paid routes: role = 'are you allowed to', plan = 'have you paid for it'.",
+      "unpaidStatus": 402,
+      "unauthStatus": 401,
+      "roleTooLowStatus": 403,
+      "activeFlag": "planActive (paid AND high-enough rung AND not lapsed) — the app trusts this, never the plan name alone.",
+      "expiry": "users.plan_expires_at (NULL = no expiry / manual grant).",
+      "file": "remote/src/plans.ts"
+    },
+    "matrix": [
+      { "action": "Read the corpus / study locally / establish own meanings / MCP AI study / backup", "needsRole": null, "needsPlan": false, "where": "local" },
+      { "action": "See community readings, dissent, ⚖ divergence, community chips", "needsRole": "reader", "needsPlan": true, "where": "cloud" },
+      { "action": "Publish: submit notes/questions, propose claims", "needsRole": "researcher", "needsPlan": true, "where": "cloud" },
+      { "action": "Approve / object (review)", "needsRole": "moderator", "needsPlan": false, "where": "cloud", "note": "role-gated, deliberately NOT charged — staff run the community" },
+      { "action": "Establish directly / issue invites / grant plans", "needsRole": "maintainer", "needsPlan": false, "where": "cloud" }
+    ],
+    "billing": "Not wired yet. A maintainer grants a plan out of band: `npm run set-plan -w @alsiraat/remote -- email pro [days]` or POST /plan (maintainer). This is the single seam a real payment provider slots into with no rework of the gate.",
+    "enforcement": "Real because the gated DATA lives on the cloud, not the client. A modified/offline client cannot obtain community readings or publish without an active plan."
+  },
+  "remoteEndpoints": [
+    { "method": "GET", "path": "/me", "role": "reader", "plan": false, "note": "returns plan, planExpiresAt, planActive" },
+    { "method": "POST", "path": "/plan", "role": "maintainer", "plan": false, "note": "grant/revoke a plan (manual billing stand-in)" },
+    { "method": "POST", "path": "/divergences", "role": "reader", "plan": true, "note": "client sends its established forms; server diffs vs global_forms, returns differences" },
+    { "method": "GET", "path": "/community/readings", "role": "reader", "plan": true, "note": "?root=&lemma= — community readings for a word (root + form), reader chips" },
+    { "method": "POST", "path": "/submissions", "role": "researcher", "plan": true, "note": "publish additive work upstream" },
+    { "method": "POST", "path": "/claims", "role": "researcher", "plan": true, "note": "propose a competing reading of a form/root" },
+    { "method": "GET", "path": "/claims", "role": "reader", "plan": false, "note": "every reading of a subject + the group's current one" },
+    { "method": "GET", "path": "/claims/:id/dissents", "role": "reader", "plan": false },
+    { "method": "POST", "path": "/claims/:id/versions/:v/review", "role": "moderator", "plan": false, "note": "approve/object; establishment = approvals>=required AND approvals>objections" },
+    { "method": "POST", "path": "/claims/:id/versions/:v/establish", "role": "maintainer", "plan": false },
+    { "method": "POST", "path": "/invites", "role": "maintainer", "plan": false },
+    { "method": "POST", "path": "/invites/redeem", "role": null, "plan": false, "note": "public — the invite code is the credential; grants the invite's role" }
+  ],
+  "changes": {
+    "communityLayer": {
+      "before": "The group's readings were PULLED and mirrored into local research.db derived_* tables so they worked offline — which also put them on the reader's disk forever, un-gateable.",
+      "after": "Read LIVE from the remote, gated (requireRole + requirePlan), never stored locally. Offline/free/unpaid readers simply see their own work.",
+      "removedLocal": ["derived_global_forms", "derived_dissents", "derived_peer_indications", "derived_sync_state", "the whole /research/pull/* + /research/group-*/divergences routes and their ResearchStore methods (applyPull, groupReading, groupGloss, peerIndications, peerFormReadings, divergences, resetPulled, syncCursors)"],
+      "keptLocal": ["derived_submissions (your outbox)", "derived_proposed_claims (readings you proposed) — both your OWN actions, not others' work"],
+      "addedRemote": ["POST /divergences", "GET /community/readings"],
+      "appConsumers": "app/src/screens/Divergences.tsx (⚖ list) and the reader's indication chips via app/src/persistence/db.ts indications.forWord (merges remote community readings only when planActive)."
+    }
+  },
+  "phases": [
+    { "id": "A", "title": "Entitlement layer", "status": "done", "commit": "efebc15", "summary": "plan ladder free<pro; requirePlan → 402; set-plan CLI + POST /plan; planActive on /me; migration 0005_entitlements.sql; 10 boundary tests." },
+    { "id": "B+C", "title": "Community live-remote; local mirror removed", "status": "done", "commits": ["f91cd63", "fc7c378", "b5b897f"], "summary": "POST /divergences + GET /community/readings (gated); derived_* mirror + pull path deleted; Divergences.tsx and indication chips read live; sync-boundary test adapted; pull.test removed." },
+    { "id": "D", "title": "Publishing gated", "status": "done", "commit": "21a63eb", "summary": "requirePlan on POST /submissions and POST /claims; upgrade nudges in ShareButton + ProposeReading; review/establish stay role-only." },
+    { "id": "E", "title": "MCP → cloud", "status": "deferred", "summary": "Decided to keep the MCP local & free. The cloud has NONE of the corpus (read_ayah/study_root/trace_word etc. read the 150 MB local quran.db, which by design is never hosted). Moving personal research to the cloud would also break the AI-proposes→app-reviews loop unless the whole app migrates (reverses local-first). Parked." },
+    { "id": "next", "title": "Billing provider", "status": "todo", "summary": "Slots into set-plan / POST /plan with no rework of the gate." }
+  ],
+  "decisions": [
+    { "id": "corpus-stays-local", "decision": "The corpus (quran.db) stays local and free; never hosted on the cloud.", "why": "150 MB of static reference data; hosting it means re-implementing the whole corpus query layer against Postgres and charging to read the Qur'an — against the project's soul." },
+    { "id": "community-not-mirrored", "decision": "Community data is read live from the remote, never mirrored into research.db.", "why": "Mirroring puts it on the reader's disk, which makes it un-gateable. Live + gated is the enforceable design." },
+    { "id": "staff-not-charged", "decision": "Moderator review and maintainer establish are role-gated but NOT plan-gated.", "why": "The community's staff run it; charging them to moderate is counter-productive. One-line change if revisited." },
+    { "id": "mcp-local", "decision": "MCP stays local and free for now.", "why": "Corpus can't move to cloud; full cloud research reverses local-first and breaks the review loop. Monetization is already complete via the community layer." },
+    { "id": "plan-orthogonal-role", "decision": "plan is a separate axis from role.", "why": "A moderator on the free plan can still moderate; a paying reader isn't automatically a researcher. Independent concerns." }
+  ],
+  "fileMap": [
+    { "path": "remote/src/plans.ts", "purpose": "plan ladder + planActive + requirePlan (the gate)" },
+    { "path": "remote/src/roles.ts", "purpose": "role ladder + requireRole; Principal carries plan" },
+    { "path": "remote/src/claims.ts", "purpose": "claim spine + divergencesAgainstGlobal + communityReadingsFor" },
+    { "path": "remote/src/app.ts", "purpose": "remote HTTP routes incl. gated /divergences, /community/readings, /plan" },
+    { "path": "remote/src/invites.ts", "purpose": "loadPrincipal (reads plan), setPlan, userIdByEmail, invite redemption" },
+    { "path": "remote/src/set-plan-cli.ts", "purpose": "npm run set-plan — manual plan grants" },
+    { "path": "remote/migrations/0005_entitlements.sql", "purpose": "users.plan + plan_expires_at" },
+    { "path": "server/src/research.ts", "purpose": "ResearchStore; community mirror removed; indicationsForWord returns empty community arrays" },
+    { "path": "server/src/routes/research.ts", "purpose": "local /research/* routes; pull/community routes removed" },
+    { "path": "app/src/api/remote.ts", "purpose": "remote client: communityReadings(), divergences(); RemoteError/RemoteOffline" },
+    { "path": "app/src/hooks/useMe.ts", "purpose": "useMe + cachedMe() + isPro" },
+    { "path": "app/src/persistence/db.ts", "purpose": "group.divergences() live; indications.forWord merges live community when planActive" },
+    { "path": "app/src/screens/Divergences.tsx", "purpose": "⚖ Where I stand apart — live + gated, connect/subscribe states" },
+    { "path": "app/src/components/ShareButton.tsx", "purpose": "publish action + upgrade nudge on 402/unpaid" },
+    { "path": "app/src/components/reader/ProposeReading.tsx", "purpose": "propose claim + plan gate + upgrade panel" },
+    { "path": "INSTRUCTIONS.md", "purpose": "project master reference (UI conventions, schema, MCP write boundary)" },
+    { "path": "CORPUS.md", "purpose": "the signed corpus patch channel" },
+    { "path": "REMOTE.md", "purpose": "the remote research channel + Plans & entitlements section" },
+    { "path": "SHARED_RESEARCH.md", "purpose": "the locked shared-research design (note: the offline-community + derived-mirror decisions are now superseded for monetization)" }
+  ],
+  "glossary": {
+    "locally established": "A form meaning YOU established, in your own research.db. Dated, yours, never overwritten.",
+    "globally established": "The reading moderators accepted as the group's agreed meaning. Lives on the cloud.",
+    "dissent": "A recorded disagreement with a globally established reading, preserved not resolved.",
+    "divergence (⚖)": "A form you established whose meaning differs from the group's. Computed live on the remote now.",
+    "claim": "One author's reading of one subject (form or root); versions are that author's revisions; content-addressed id.",
+    "plan / planActive": "The billing axis. planActive = paid rung AND not lapsed. The one flag the app gates on.",
+    "requireRole / requirePlan": "The two Hono middlewares that gate a route: allowed-to vs paid-for."
+  },
+  "openQuestions": [
+    "Billing provider integration (the set-plan / POST /plan seam).",
+    "If 'full cloud research' is ever wanted: migrate the app's personal research to the cloud so the AI review loop stays coherent — larger migration, reverses offline/privacy.",
+    "Edit SHARED_RESEARCH.md to mark the superseded offline-community + derived-mirror decisions (like the retired 'nothing is revealed')."
+  ]
+}
