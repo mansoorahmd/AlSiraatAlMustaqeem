@@ -241,6 +241,54 @@ export async function globalReading(
   return g ? getVersion(r, g.claim_id, Number(g.version)) : null;
 }
 
+export interface DivergenceRow {
+  subjectKind: SubjectKind;
+  subjectValue: string;
+  mine: string;
+  theirs: string;
+  claimId: string;
+  version: number;
+  authorId: string;
+  dissents: number;
+}
+
+/**
+ * ⚖ Where a reader stands apart from the group — computed LIVE against the remote, never from a
+ * local mirror. The client sends the forms IT has established (subject + its own meaning); we
+ * diff each against the group's current reading and return only the ones that differ. This is
+ * the remote-only replacement for the old local `divergences()` that read `derived_global_forms`
+ * — the group's readings never touch the client's disk, which is what makes the feature gateable.
+ *
+ * Both readings are returned; NEITHER is changed. Divergence is a state to know, not resolve.
+ */
+export async function divergencesAgainstGlobal(
+  r: SqlRunner,
+  mine: { subjectKind?: SubjectKind; subjectValue: string; meaning: string }[],
+): Promise<{ divergences: DivergenceRow[]; overlap: number; globalTotal: number }> {
+  const out: DivergenceRow[] = [];
+  let overlap = 0;
+  for (const m of mine) {
+    const kind = m.subjectKind ?? "form";
+    const subject = m.subjectValue?.trim();
+    if (!subject) continue;
+    const g = await globalReading(r, kind, subject);
+    if (!g) continue; // the group hasn't settled this form — nothing to diverge from
+    overlap++;
+    const theirs = String((g.payload as { meaning?: string } | null)?.meaning ?? "").trim();
+    const mineMeaning = (m.meaning ?? "").trim();
+    if (theirs && mineMeaning && theirs !== mineMeaning) {
+      const dissents = (await dissentsFor(r, g.claimId, g.version)).length;
+      out.push({
+        subjectKind: kind, subjectValue: subject, mine: mineMeaning, theirs,
+        claimId: g.claimId, version: g.version, authorId: g.authorId, dissents,
+      });
+    }
+  }
+  const gt = await r.query("SELECT COUNT(*)::int AS n FROM global_forms");
+  const globalTotal = Number((gt[0] as { n: number })?.n ?? 0);
+  return { divergences: out, overlap, globalTotal };
+}
+
 /**
  * File a dissent against an established reading. It carries its OWN payload (§12.4) — it must
  * stand alone, because the submission it came from may later be redacted, and because a dissent

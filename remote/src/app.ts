@@ -15,7 +15,7 @@ import { config } from "./config.js";
 import { pgRunner } from "./db.js";
 import { sessionMiddleware } from "./session.js";
 import { requireRole, type Env } from "./roles.js";
-import { planActive, isPlan, type Plan } from "./plans.js";
+import { planActive, requirePlan, isPlan, type Plan } from "./plans.js";
 import {
   createInvite, bindLocalId, loadPrincipal, setDisplayName,
   validateInvite, emailTaken, finishRedeem, InviteError,
@@ -26,7 +26,7 @@ import {
 } from "./submissions.js";
 import {
   proposeClaim, review, claimsFor, globalReading, dissentsFor, establishAsMaintainer,
-  ClaimError, type SubjectKind, type Decision,
+  divergencesAgainstGlobal, ClaimError, type SubjectKind, type Decision,
 } from "./claims.js";
 import { pullSince, STREAMS, type Cursors } from "./pull.js";
 
@@ -167,6 +167,18 @@ export function createApp(): Hono<Env> {
 
   app.get("/claims/:id/dissents", requireRole("reader"), async (c) =>
     c.json(await dissentsFor(pgRunner, c.req.param("id"))));
+
+  /**
+   * ⚖ Where I stand apart — computed LIVE, the remote-only replacement for the old local
+   * mirror. The client sends the forms it has established; we diff against the group's current
+   * readings and return the differences. PAID: requireRole gates *who*, requirePlan gates
+   * *paid-for* — the group's readings never land on the client's disk, so the gate is real.
+   */
+  app.post("/divergences", requireRole("reader"), requirePlan("pro"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as
+      { forms?: { subjectKind?: SubjectKind; subjectValue: string; meaning: string }[] };
+    return c.json(await divergencesAgainstGlobal(pgRunner, body.forms ?? []));
+  });
 
   /**
    * The pull (Phase 6). A cursor walk over append-only streams: give me everything with
