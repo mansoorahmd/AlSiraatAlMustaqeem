@@ -26,7 +26,7 @@ import {
 } from "./submissions.js";
 import {
   proposeClaim, review, claimsFor, globalReading, dissentsFor, establishAsMaintainer,
-  divergencesAgainstGlobal, ClaimError, type SubjectKind, type Decision,
+  divergencesAgainstGlobal, communityReadingsFor, ClaimError, type SubjectKind, type Decision,
 } from "./claims.js";
 import { pullSince, STREAMS, type Cursors } from "./pull.js";
 
@@ -179,6 +179,16 @@ export function createApp(): Hono<Env> {
       { forms?: { subjectKind?: SubjectKind; subjectValue: string; meaning: string }[] };
     return c.json(await divergencesAgainstGlobal(pgRunner, body.forms ?? []));
   });
+
+  /**
+   * The community's readings of a word (its root + its exact form), for the reader's indication
+   * chips — the live, gated replacement for the old local derived_peer_indications mirror. PAID.
+   */
+  app.get("/community/readings", requireRole("reader"), requirePlan("pro"), async (c) =>
+    c.json(await communityReadingsFor(pgRunner, {
+      root: c.req.query("root") || null,
+      lemma: c.req.query("lemma") || null,
+    })));
 
   /**
    * The pull (Phase 6). A cursor walk over append-only streams: give me everything with

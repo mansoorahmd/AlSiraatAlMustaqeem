@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { runMigrations, type SqlRunner } from "../src/migrate.js";
 import {
-  proposeClaim, establishAsMaintainer, divergencesAgainstGlobal,
+  proposeClaim, establishAsMaintainer, divergencesAgainstGlobal, communityReadingsFor,
 } from "../src/claims.js";
 
 const MIGR = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
@@ -85,5 +85,47 @@ describe("divergencesAgainstGlobal", () => {
       { subjectValue: "هُدًى", meaning: "guidance" },
     ]);
     expect(out.divergences).toHaveLength(1);
+  });
+});
+
+describe("communityReadingsFor", () => {
+  it("returns the group's form reading, marked established", async () => {
+    await establishGroupForm("هُدًى", "a giving of direction");
+    const out = await communityReadingsFor(r, { lemma: "هُدًى", root: null });
+    expect(out.communityLemma).toHaveLength(1);
+    expect(out.communityLemma[0]).toMatchObject({
+      lemma: "هُدًى", scope: "lemma", meaning: "a giving of direction", status: "established",
+    });
+    expect(out.communityLemma[0]!.id).toMatch(/^peer:clm_/);
+    expect(out.communityRoot).toEqual([]);
+  });
+
+  it("an un-established reading shows as proposed", async () => {
+    await proposeClaim(r, { authorId: amina, subjectKind: "form", subjectValue: "نُور", payload: reading("light") });
+    const out = await communityReadingsFor(r, { lemma: "نُور" });
+    expect(out.communityLemma).toHaveLength(1);
+    expect(out.communityLemma[0]!.status).toBe("proposed");
+  });
+
+  it("establishing then revising leaves v1 established (global still points at it) and v2 proposed; established sorts first", async () => {
+    const v1 = await proposeClaim(r, { authorId: amina, subjectKind: "root", subjectValue: "ه د ي", payload: reading("first reading") });
+    await establishAsMaintainer(r, { claimId: v1.claimId, version: v1.version, maintainerId: boss });
+    await proposeClaim(r, { authorId: amina, subjectKind: "root", subjectValue: "ه د ي", payload: reading("a revised reading") });
+    const out = await communityReadingsFor(r, { root: "ه د ي" });
+    expect(out.communityRoot.map((p) => p.status)).toEqual(["established", "proposed"]);
+    expect(out.communityRoot[0]!.meaning).toBe("first reading"); // the established v1 sorts first
+  });
+
+  it("a non-established earlier version is marked superseded once a later one exists", async () => {
+    await proposeClaim(r, { authorId: amina, subjectKind: "form", subjectValue: "صِرَٰط", payload: reading("a path") });
+    await proposeClaim(r, { authorId: amina, subjectKind: "form", subjectValue: "صِرَٰط", payload: reading("the way") });
+    const out = await communityReadingsFor(r, { lemma: "صِرَٰط" });
+    // neither established; the current version is proposed, the earlier one superseded
+    expect(out.communityLemma.map((p) => p.status).sort()).toEqual(["proposed", "superseded"]);
+  });
+
+  it("empty for a word the community hasn't touched", async () => {
+    const out = await communityReadingsFor(r, { root: "ك ت ب", lemma: "كِتَاب" });
+    expect(out).toEqual({ communityRoot: [], communityLemma: [] });
   });
 });
