@@ -15,9 +15,11 @@ import { config } from "./config.js";
 import { pgRunner } from "./db.js";
 import { sessionMiddleware } from "./session.js";
 import { requireRole, type Env } from "./roles.js";
+import { planActive, isPlan, type Plan } from "./plans.js";
 import {
   createInvite, bindLocalId, loadPrincipal, setDisplayName,
   validateInvite, emailTaken, finishRedeem, InviteError,
+  setPlan, userIdByEmail,
 } from "./invites.js";
 import {
   createSubmission, listMine, getSubmission, SubmissionError, type SubmissionItemInput,
@@ -70,7 +72,27 @@ export function createApp(): Hono<Env> {
       id: me.id, role: me.role,
       email: p?.email ?? "", displayName: p?.displayName ?? "",
       localId: p?.localId ?? null,
+      // The billing axis. `planActive` is the one flag the app's feature gates read: the plan
+      // may be 'pro' but lapsed, so never let the app infer "paid" from the plan name alone.
+      plan: me.plan ?? "free",
+      planExpiresAt: me.planExpiresAt ?? null,
+      planActive: planActive(me),
     });
+  });
+
+  // Grant or revoke a plan. Maintainer-only, and never self-service in spirit — the manual
+  // stand-in for billing until it is wired (POST /plan or the set-plan CLI). `expiresInDays`
+  // omitted = a grant that never lapses; plan 'free' revokes and clears any expiry.
+  app.post("/plan", requireRole("maintainer"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as
+      { email?: string; plan?: string; expiresInDays?: number | null };
+    if (!body.email || !isPlan(body.plan)) {
+      return c.json({ detail: "email and a valid plan (free|pro) are required" }, 422);
+    }
+    const userId = await userIdByEmail(pgRunner, body.email);
+    if (!userId) return c.json({ detail: `no account for ${body.email}` }, 404);
+    await setPlan(pgRunner, { userId, plan: body.plan as Plan, expiresInDays: body.expiresInDays ?? null });
+    return c.json({ ok: true, email: body.email.trim().toLowerCase(), plan: body.plan });
   });
 
   app.post("/me/name", requireRole("reader"), async (c) => {

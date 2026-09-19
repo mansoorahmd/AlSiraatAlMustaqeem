@@ -18,8 +18,15 @@ export interface Me {
   email: string;
   displayName: string;
   localId: string | null;
+  // The billing axis (remote plans.ts). `planActive` is the ONE flag feature gates should read:
+  // a plan may be 'pro' yet lapsed, so never infer "paid" from the plan name. Optional so an
+  // older remote that doesn't send it reads as unpaid (the safe default = features locked).
+  plan?: Plan;
+  planExpiresAt?: string | null;
+  planActive?: boolean;
 }
 export type Role = "reader" | "researcher" | "moderator" | "maintainer";
+export type Plan = "free" | "pro";
 export interface InviteOut { code: string; role: Role; expires_at: string | null }
 
 /** Kinds that can't conflict with anyone else's work — all that's submittable so far. */

@@ -3,6 +3,7 @@
 // The auth layer (next step) sets c.get("user"); this middleware enforces the minimum rung.
 
 import type { MiddlewareHandler } from "hono";
+import type { Plan } from "./plans.js";
 
 export const ROLES = ["reader", "researcher", "moderator", "maintainer"] as const;
 export type Role = (typeof ROLES)[number];
@@ -18,6 +19,10 @@ export const atLeast = (role: Role, min: Role): boolean => rank(role) >= rank(mi
 export interface Principal {
   id: string;
   role: Role;
+  // The billing axis (see plans.ts). Carried on the principal so requirePlan reads it straight
+  // off c.var.user, exactly as requireRole reads the role. Populated by the session middleware.
+  plan?: Plan;
+  planExpiresAt?: string | null;
 }
 
 /** Hono env: the authenticated principal lives in c.var.user. */

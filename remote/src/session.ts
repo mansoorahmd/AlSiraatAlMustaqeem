@@ -10,9 +10,14 @@ import type { Env } from "./roles.js";
 export const sessionMiddleware = createMiddleware<Env>(async (c, next) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   if (session?.user?.id) {
-    // role is ours, read from the domain table — never taken from the auth payload
+    // role AND plan are ours, read from the domain table — never taken from the auth payload
     const principal = await loadPrincipal(pgRunner, String(session.user.id));
-    if (principal) c.set("user", { id: principal.id, role: principal.role });
+    if (principal) {
+      c.set("user", {
+        id: principal.id, role: principal.role,
+        plan: principal.plan, planExpiresAt: principal.planExpiresAt,
+      });
+    }
   }
   await next();
 });

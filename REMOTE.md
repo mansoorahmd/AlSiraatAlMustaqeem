@@ -114,9 +114,33 @@ a real reset email before the group grows.
 | `GET /me` | any signed-in user (id, role, bound localId) |
 | `POST /me/local-id` | any signed-in user (bind this device) |
 | `POST /me/name` | any signed-in user (display name) |
+| `POST /plan` | maintainer — grant/revoke a plan (the manual stand-in for billing) |
 | `POST /submissions` | researcher+ — offer work upstream |
 | `GET /submissions` | researcher+ — your outbox |
 | `GET /submissions/:id` | researcher+ |
+
+## Plans & entitlements (monetization)
+
+Alongside the `role` ladder (*what you may do*) there is a second, orthogonal axis: **`plan`**
+(*what you have paid for*) — `free < pro`, in `src/plans.ts`, mirroring `src/roles.ts`. A
+`requirePlan('pro')` middleware sits **after** `requireRole` on the server-gated features
+(community reads, publishing, cloud MCP): role answers "are you allowed to", plan answers "have
+you paid for it". Below an active plan it returns **402 Payment Required**, not 403.
+
+Local, offline study never touches this — it needs no account and no plan. The gate is real
+because the gated *data* lives on the remote, not because the client hides a button.
+
+Billing isn't wired yet; a maintainer grants a plan out of band (like `bootstrap` /
+`set-password`) or over HTTP:
+
+```bash
+npm run set-plan -w @alsiraat/remote -- me@example.org pro       # grant pro, no expiry
+npm run set-plan -w @alsiraat/remote -- me@example.org pro 30    # grant pro for 30 days
+npm run set-plan -w @alsiraat/remote -- me@example.org free      # revoke
+```
+
+`GET /me` returns `plan`, `planExpiresAt`, and the computed **`planActive`** — the one flag the
+app reads (a plan may be `pro` yet lapsed, so never infer "paid" from the name).
 
 ## Configuration
 
