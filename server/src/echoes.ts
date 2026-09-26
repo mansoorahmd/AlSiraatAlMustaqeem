@@ -6,7 +6,8 @@
 // computed on demand by extending a shared 3-gram against the verses that
 // share it.
 
-import type { Db } from "./db.js";
+import type { CorpusDb } from "./corpus-db.js";
+import { once } from "./corpus-db.js";
 import { foldArabic } from "./text/normalize.js";
 
 const MIN_WORDS = 3; // shortest phrase considered an "echo"
@@ -31,12 +32,14 @@ export class EchoIndex {
   private meta = new Map<string, [number, number]>(); // verse_key -> [chapter, verseNo]
   private gram3 = new Map<string, string[]>();       // 3-gram -> verse keys (≥2), sorted
   private withEcho = new Set<string>();              // verses containing any echo
-  private built = false;
+  /** Built once, on first use; concurrent callers share the one build. */
+  readonly build: () => Promise<void>;
 
-  constructor(private db: Db) {}
+  constructor(private db: CorpusDb) {
+    this.build = once(() => this.load());
+  }
 
-  build(): this {
-    if (this.built) return this;
+  private async load(): Promise<void> {
     // Tokenize the UTHMANI text, not imlaei-simple. The reader positions words by
     // splitting the displayed (Uthmani) verse and skipping non-letter pause marks, and
     // foldArabic strips exactly those marks + diacritics — so folded-Uthmani words line
@@ -44,7 +47,7 @@ export class EchoIndex {
     // (يا ايها = 2 words vs يَـٰٓأَيُّهَا = 1), which shifted every echo highlight.
     // (Uthmani is the reader's default/mushaf script; imlaei/indopak readers would need
     //  a per-script index — a later refinement if wanted.)
-    const rows = this.db.query<{ verse_key: string; chapter_id: number; verse_number: number; t: string | null }>(
+    const rows = await this.db.query<{ verse_key: string; chapter_id: number; verse_number: number; t: string | null }>(
       `SELECT verse_key, chapter_id, verse_number, text_uthmani AS t
        FROM verses ORDER BY chapter_id, verse_number`,
     );
@@ -68,13 +71,11 @@ export class EchoIndex {
         for (const k of keys) this.withEcho.add(k);
       }
     }
-    this.built = true;
-    return this;
   }
 
   /** Verse keys in a chapter that contain at least one repeated phrase. */
-  chapterEchoes(chapterId: number): string[] {
-    this.build();
+  async chapterEchoes(chapterId: number): Promise<string[]> {
+    await this.build();
     const out: string[] = [];
     for (const k of this.withEcho) if (cnum(k) === chapterId) out.push(k);
     out.sort((a, b) => (this.meta.get(a)![1]) - (this.meta.get(b)![1]));
@@ -100,8 +101,8 @@ export class EchoIndex {
   }
 
   /** The maximal repeated phrases contained in a verse. */
-  echoesForVerse(verseKey: string): Echo[] {
-    this.build();
+  async echoesForVerse(verseKey: string): Promise<Echo[]> {
+    await this.build();
     const w = this.words.get(verseKey);
     if (!w) return [];
     const found: Echo[] = [];

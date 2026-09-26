@@ -4,34 +4,22 @@
 import { resolve } from "node:path";
 import { Db } from "./db.js";
 import { Databases } from "./databases.js";
-import { QuranContent } from "./content.js";
-import { RootExplorer } from "./roots.js";
-import { RootLinkages } from "./linkages.js";
-import { SimilarityEngine } from "./similarity/compose.js";
-import { FreeTextSearch } from "./freetext.js";
 import { ResearchStore } from "./research.js";
-import { EchoIndex } from "./echoes.js";
-import { SpellingIndex, WordFormIndex } from "./spellings.js";
+import { sqliteCorpus } from "./corpus-db.js";
+import { createCorpusServices, type CorpusServices } from "./corpus-services.js";
 
 // project root = two levels up from server/src
 const ROOT = resolve(import.meta.dirname, "..", "..");
 const QURAN_DB = process.env.QF_QURAN_DB ?? resolve(ROOT, "quran.db");
 const RESEARCH_DB = process.env.QF_RESEARCH_DB ?? resolve(ROOT, "research.db");
 
-export interface AppState {
+/** The corpus services (over quran.db, via the SQLite driver) plus the reader's research. */
+export interface AppState extends CorpusServices {
   quran: Db;
   /** Swappable at runtime — see `reopenResearch`. Routes must read it per request. */
   researchDb: Db;
   databases: Databases;
-  content: QuranContent;
-  roots: RootExplorer;
-  linkages: RootLinkages;
-  engine: SimilarityEngine;
-  freetext: FreeTextSearch;
   research: ResearchStore;
-  echoes: EchoIndex;
-  spellings: SpellingIndex;
-  wordForms: WordFormIndex;
 }
 
 export function createState(): AppState {
@@ -41,18 +29,11 @@ export function createState(): AppState {
   const researchDb = new Db(databases.currentPath()); // read-write
   databases.use(researchDb.path); // remember it, so it appears in "recently opened"
   return {
+    ...createCorpusServices(sqliteCorpus(quran)),
     quran,
     databases,
     researchDb,
-    content: new QuranContent(quran),
-    roots: new RootExplorer(quran),
-    linkages: new RootLinkages(quran),
-    engine: new SimilarityEngine(quran),
-    freetext: new FreeTextSearch(quran),
     research: new ResearchStore(researchDb),
-    echoes: new EchoIndex(quran),
-    spellings: new SpellingIndex(quran),
-    wordForms: new WordFormIndex(quran),
   };
 }
 

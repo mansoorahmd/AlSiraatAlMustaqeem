@@ -1,9 +1,9 @@
-// Similarity + free-text search routes.
+// Similarity + free-text search routes. Mounted by both hosts (see routes/content.ts).
 
 import { Hono } from "hono";
-import type { AppState } from "../state.js";
 import { qint } from "../http.js";
 import { expressionSearch, type ExprTerm, type ExprMode } from "../expressions.js";
+import type { CorpusServices } from "../corpus-services.js";
 
 function weights(c: { req: { query: (k: string) => string | undefined } }) {
   const g = (k: string) => {
@@ -18,12 +18,12 @@ function weights(c: { req: { query: (k: string) => string | undefined } }) {
   return Object.keys(w).length ? w : undefined;
 }
 
-export function similarityRoutes(state: AppState): Hono {
+export function similarityRoutes(svc: CorpusServices): Hono {
   const r = new Hono();
 
-  r.get("/verses/:key/similar", (c) => {
+  r.get("/verses/:key/similar", async (c) => {
     const key = c.req.param("key");
-    const matches = state.engine.similarVerses(key, {
+    const matches = await svc.engine.similarVerses(key, {
       topK: qint(c, "top_k", 20, { min: 1, max: 200 }) ?? 20,
       minShared: qint(c, "min_shared", 1, { min: 1 }) ?? 1,
       weights: weights(c),
@@ -39,7 +39,7 @@ export function similarityRoutes(state: AppState): Hono {
     if (num(body.w_overlap) != null) w.overlap = body.w_overlap as number;
     if (num(body.w_phrase) != null) w.phrase = body.w_phrase as number;
     if (num(body.w_morphology) != null) w.morphology = body.w_morphology as number;
-    const result = state.freetext.search(String(body.text ?? ""), {
+    const result = await svc.freetext.search(String(body.text ?? ""), {
       topK: (num(body.top_k) as number) ?? 20,
       minShared: (num(body.min_shared) as number) ?? 1,
       weights: Object.keys(w).length ? w : undefined,
@@ -58,7 +58,7 @@ export function similarityRoutes(state: AppState): Hono {
       rootBuckwalter: t.root ?? null,
     }));
     const mode: ExprMode = body.mode === "roots" ? "roots" : "verbatim";
-    return c.json(expressionSearch(state.quran, terms, mode, body.limit ?? 300));
+    return c.json(await expressionSearch(svc.corpus, terms, mode, body.limit ?? 300));
   });
 
   return r;

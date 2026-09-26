@@ -14,7 +14,9 @@ import { setPlan } from "../src/invites.js";
 import {
   listRules, setRule, removeRule, wholeMin, requireResource, itemFilter, clearResourceAccessCache,
 } from "../src/resource-access.js";
-import { corpusRoutes } from "../src/corpus/routes.js";
+import { corpusApp } from "../src/corpus/serve.js";
+import { pgCorpus } from "../src/corpus/pg-corpus.js";
+import { createCorpusServices } from "../../server/src/corpus-services.js";
 import { migrateCorpus } from "../src/corpus/load.js";
 import { makeFixture, pgliteRunner } from "./fixtures/corpus-fixture.js";
 
@@ -25,6 +27,9 @@ beforeAll(async () => {
   r = pgliteRunner().r;
   await runMigrations(r, MIGR);
   await migrateCorpus({ sqlitePath: makeFixture("access.db"), runner: r });
+  // one PGlite connection plays both pools: unqualified corpus tables resolve to `corpus`,
+  // the app's own tables still to `public` (their names don't overlap)
+  await r.exec("SET search_path TO corpus, public");
 });
 
 beforeEach(async () => {
@@ -114,7 +119,7 @@ function makeApp() {
   });
   app.get("/community-thing", requireResource("community", r), (c) => c.json({ ok: true }));
   app.use("/corpus/*", requireResource("corpus", r));
-  app.route("/corpus", corpusRoutes(r));
+  app.route("/corpus", corpusApp(createCorpusServices(pgCorpus(r)), r));
   return app;
 }
 // built once the database exists — makeApp() at import time would capture an undefined runner
@@ -192,6 +197,15 @@ describe("per-item resources are filtered, not refused", () => {
   it("dropping the rule restores it", async () => {
     await removeRule(r, "translation", "131");
     expect(await ids("/corpus/verses/1:1/translations")).toEqual([20, 131]);
+  });
+
+  it("a dictionary below the caller's tier is left out of a root's meanings", async () => {
+    await setRule(r, "lexicon", "lane", "student");
+    const sources = async (plan?: string) =>
+      ((await (await get("/corpus/roots/Hmd", plan)).json()) as { meanings: { source: string }[] })
+        .meanings.map((m) => m.source);
+    expect(await sources()).toEqual([]);                // anonymous: lane is locked
+    expect(await sources("student")).toEqual(["lane"]);  // at the tier: included
   });
 
   it("a lexicon rule is the same predicate, keyed by source", async () => {

@@ -24,8 +24,8 @@ beforeAll(async () => {
 });
 
 describe("study_root form counts", () => {
-  it("keeps every (spelling, pos) row and they sum to the root total (رحم)", () => {
-    const r = study.run(state, { root: "رحم", occurrences: 0 });
+  it("keeps every (spelling, pos) row and they sum to the root total (رحم)", async () => {
+    const r = await study.run(state, { root: "رحم", occurrences: 0 });
     // the per-form counts reconcile with the root total — the whole point
     expect(r.forms.reduce((s: number, f: any) => s + f.occurrences, 0)).toBe(r.total_occurrences);
     expect(r.total_occurrences).toBe(339);

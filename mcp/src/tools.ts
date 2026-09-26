@@ -87,9 +87,9 @@ interface OccRow {
   lemma_arabic: string | null;
   verse_text: string | null;
 }
-const getRoot = (s: AppState, r: string) => s.roots.getRoot(r) as RootRow | null;
-const rootOccurrences = (s: AppState, bw: string, limit: number) =>
-  s.roots.occurrences(bw, { script: "uthmani", limit }) as unknown as OccRow[];
+const getRoot = async (s: AppState, r: string) => (await s.roots.getRoot(r)) as RootRow | null;
+const rootOccurrences = async (s: AppState, bw: string, limit: number) =>
+  (await s.roots.occurrences(bw, { script: "uthmani", limit })) as unknown as OccRow[];
 
 
 /** Lexicon text carries editorial apparatus that only burns context. */
@@ -107,7 +107,8 @@ export interface Tool {
   schema: z.ZodRawShape;
   /** true for the two write tools, so the client can flag them */
   writes?: boolean;
-  run: (state: AppState, args: any) => unknown;
+  /** Corpus reads are async (the corpus may be a remote service), so a tool may return a promise. */
+  run: (state: AppState, args: any) => unknown | Promise<unknown>;
 }
 
 // ---------------------------------------------------------------- composed ----
@@ -125,11 +126,13 @@ const study_root: Tool = {
     occurrences: z.number().int().min(0).max(50).default(8)
       .describe("How many sample occurrences to include."),
   },
-  run: (state, { root, occurrences }) => {
-    const d = getRoot(state, root);
+  run: async (state, { root, occurrences }) => {
+    const d = await getRoot(state, root);
     if (!d) return { error: `root not found: ${root}` };
     const bw = d.root_buckwalter;
     const ind = state.research.indicationsForWord(null, d.root_arabic);
+    const company = await state.linkages.coOccurringRoots(bw, { scope: "ayah", limit: 10, sortBy: "count" });
+    const samples = occurrences ? await rootOccurrences(state, bw, occurrences) : [];
     return {
       root: d.root_arabic,
       root_buckwalter: bw,
@@ -161,16 +164,12 @@ const study_root: Tool = {
         proposed_by: s.source,
         refined_forms: s.refinedCount,
       })),
-      keeps_company_with: state.linkages
-        .coOccurringRoots(bw, { scope: "ayah", limit: 10, sortBy: "count" })
-        .map((l) => ({ root: l.root_arabic, together_in_ayat: l.cooccur })),
-      sample_occurrences: occurrences
-        ? rootOccurrences(state, bw, occurrences).map((o) => ({
-            verse_key: o.verse_key,
-            form: o.form_arabic,
-            text: o.verse_text,
-          }))
-        : [],
+      keeps_company_with: company.map((l) => ({ root: l.root_arabic, together_in_ayat: l.cooccur })),
+      sample_occurrences: samples.map((o) => ({
+        verse_key: o.verse_key,
+        form: o.form_arabic,
+        text: o.verse_text,
+      })),
     };
   },
 };
@@ -186,11 +185,11 @@ const read_ayah: Tool = {
     verse_key: z.string().describe('Chapter:verse, e.g. "2:255".'),
     script: SCRIPT,
   },
-  run: (state, { verse_key, script }) => {
-    const v = state.content.getVerse(verse_key, { script, withWords: true });
+  run: async (state, { verse_key, script }) => {
+    const v = await state.content.getVerse(verse_key, { script, withWords: true });
     if (!v) return { error: `verse not found: ${verse_key}` };
-    const words = ((v.words ?? []) as any[]).map((w) => {
-      const wz = waznForWord(state.quran, verse_key, w.position);
+    const words = await Promise.all(((v.words ?? []) as any[]).map(async (w) => {
+      const wz = await waznForWord(state.corpus, verse_key, w.position);
       return {
         position: w.position,
         word: w.arabic,
@@ -199,7 +198,13 @@ const read_ayah: Tool = {
         pos: w.pos_english ?? w.pos,
         wazn: wz ? { pattern: wz.wazn, kind: wz.kind, form: wz.form, label: wz.label } : null,
       };
-    });
+    }));
+    const echoes = await state.echoes.echoesForVerse(verse_key);
+    const variantPositions = (await state.spellings.chapterVariants(Number(verse_key.split(":")[0])))
+      .filter((x) => x.verse_key === verse_key)
+      .flatMap((x) => x.positions);
+    const unusual = await Promise.all(variantPositions.map(async (pos) =>
+      ({ word_position: pos, variants: await state.spellings.variantsForWord(verse_key, pos) })));
     return {
       verse_key,
       text: v.text,
@@ -208,15 +213,11 @@ const read_ayah: Tool = {
         kind: n.kind, text: n.text, answer: n.answer || null,
         word_position: n.wordPosition, proposed_by: n.source,
       })),
-      repeated_phrases: state.echoes.echoesForVerse(verse_key).map((e) => ({
+      repeated_phrases: echoes.map((e) => ({
         phrase: e.phrase,
         also_in: e.occurrences.map((o) => o.verseKey),
       })),
-      unusual_spellings: state.spellings
-        .chapterVariants(Number(verse_key.split(":")[0]))
-        .filter((x) => x.verse_key === verse_key)
-        .flatMap((x) => x.positions)
-        .map((pos) => ({ word_position: pos, variants: state.spellings.variantsForWord(verse_key, pos) })),
+      unusual_spellings: unusual,
     };
   },
 };
@@ -233,12 +234,12 @@ const find_where_roots_meet: Tool = {
     script: SCRIPT,
     limit: z.number().int().min(1).max(300).default(50),
   },
-  run: (state, { root_a, root_b, script, limit }) => {
-    const a = getRoot(state, root_a);
-    const b = getRoot(state, root_b);
+  run: async (state, { root_a, root_b, script, limit }) => {
+    const a = await getRoot(state, root_a);
+    const b = await getRoot(state, root_b);
     if (!a) return { error: `root not found: ${root_a}` };
     if (!b) return { error: `root not found: ${root_b}` };
-    const rows = state.linkages.sharedVerses(a.root_buckwalter, b.root_buckwalter, script, limit);
+    const rows = await state.linkages.sharedVerses(a.root_buckwalter, b.root_buckwalter, script, limit);
     return {
       roots: [a.root_arabic, b.root_arabic],
       together_in: rows.length,
@@ -262,35 +263,39 @@ const trace_word: Tool = {
       .describe("true = only this written spelling; false = the root's whole family."),
     limit: z.number().int().min(1).max(300).default(60),
   },
-  run: (state, { word, exact, limit }) => {
+  run: async (state, { word, exact, limit }) => {
     if (exact) {
       // The index keys on the WHOLE written word, so ٱلصَّلَوٰةَ is a different rasm from
       // صلوٰة. Reporting only the bare form would say "2 occurrences" while 65 sit inside
       // prefixed spellings — so return the total, and name the related forms explicitly.
-      const total = state.wordForms.total(word);
-      const hits = state.wordForms.occurrences(word, limit);
+      const total = await state.wordForms.total(word);
+      const hits = await state.wordForms.occurrences(word, limit);
       const texts = new Map<string, string | null>();
-      const textOf = (vk: string) => {
+      const textOf = async (vk: string) => {
         if (!texts.has(vk)) {
-          const v = state.content.getVerse(vk, { script: "uthmani" });
+          const v = await state.content.getVerse(vk, { script: "uthmani" });
           texts.set(vk, (v?.text as string) ?? null);
         }
         return texts.get(vk) ?? null;
       };
-      const related = state.wordForms.relatedForms(word);
+      const related = await state.wordForms.relatedForms(word);
       const relatedTotal = related.reduce((s, r) => s + r.count, 0);
+      const occurrences: { verse_key: string; word_position: number; word: string | undefined; text: string | null }[] = [];
+      for (const h of hits) {
+        occurrences.push({
+          verse_key: h.verse_key,
+          word_position: h.word_position,
+          word: h.surface,
+          text: await textOf(h.verse_key),
+        });
+      }
       return {
         following: word,
         mode: "exact written word",
         total,
         returned: hits.length,
         truncated: hits.length < total,
-        occurrences: hits.map((h) => ({
-          verse_key: h.verse_key,
-          word_position: h.word_position,
-          word: h.surface,
-          text: textOf(h.verse_key),
-        })),
+        occurrences,
         also_written: related,
         note: related.length
           ? `This is the BARE spelling: ${total} occurrence(s). The same letters also occur ` +
@@ -299,11 +304,11 @@ const trace_word: Tool = {
           : undefined,
       };
     }
-    const d = getRoot(state, word);
+    const d = await getRoot(state, word);
     if (!d) return { error: `root not found: ${word} (for an exact word, pass exact=true)` };
     // count first, then page: `count` used to be the returned length, so a small limit
     // made a 99-occurrence root look like it had 5
-    const all = rootOccurrences(state, d.root_buckwalter, 3000);
+    const all = await rootOccurrences(state, d.root_buckwalter, 3000);
     const occ = all.slice(0, limit);
     return {
       following: d.root_arabic,
@@ -333,9 +338,9 @@ const search_quran: Tool = {
     limit: z.number().int().min(1).max(100).default(20),
     script: SCRIPT,
   },
-  run: (state, { query, mode, limit, script }) => {
+  run: async (state, { query, mode, limit, script }) => {
     if (mode === "phrase") {
-      return { mode, matches: state.content.phraseSearch(query, { script, limit }) };
+      return { mode, matches: await state.content.phraseSearch(query, { script, limit }) };
     }
     if (mode === "expression") {
       const terms: { surface: string; rootBuckwalter: string | null }[] = String(query)
@@ -345,10 +350,10 @@ const search_quran: Tool = {
       return {
         mode,
         terms: terms.map((t) => t.surface),
-        matches: expressionSearch(state.quran, terms, "roots", limit),
+        matches: await expressionSearch(state.corpus, terms, "roots", limit),
       };
     }
-    const r = state.freetext.search(query, { topK: limit });
+    const r = await state.freetext.search(query, { topK: limit });
     return {
       mode,
       resolved: r.resolved,
@@ -370,10 +375,10 @@ const compare_forms: Tool = {
     root: z.string(),
     per_form: z.number().int().min(1).max(20).default(5).describe("Sample āyāt per form."),
   },
-  run: (state, { root, per_form }) => {
-    const d = getRoot(state, root);
+  run: async (state, { root, per_form }) => {
+    const d = await getRoot(state, root);
     if (!d) return { error: `root not found: ${root}` };
-    const occ = rootOccurrences(state, d.root_buckwalter, 3000);
+    const occ = await rootOccurrences(state, d.root_buckwalter, 3000);
     const groups = new Map<string, { verse_key: string; text: string | null }[]>();
     for (const o of occ) {
       const form = o.lemma_arabic ?? "—";
@@ -403,11 +408,11 @@ const my_research_on: Tool = {
     root: z.string().optional(),
     verse_key: z.string().optional(),
   },
-  run: (state, { root, verse_key }) => {
+  run: async (state, { root, verse_key }) => {
     if (!root && !verse_key) return { error: "pass root or verse_key" };
     const out: Record<string, unknown> = {};
     if (root) {
-      const d = getRoot(state, root);
+      const d = await getRoot(state, root);
       const ar = d?.root_arabic ?? root;
       const ind = state.research.indicationsForWord(null, ar);
       out.root = ar;
@@ -442,7 +447,7 @@ const thin: Tool[] = [
   {
     name: "get_root", title: "Root record", description: "Raw root record: forms and lexicon entries.",
     schema: { root: z.string() },
-    run: (s, { root }) => getRoot(s, root) ?? { error: `root not found: ${root}` },
+    run: async (s, { root }) => (await getRoot(s, root)) ?? { error: `root not found: ${root}` },
   },
   {
     name: "list_roots", title: "List roots",
@@ -452,7 +457,9 @@ const thin: Tool[] = [
       limit: z.number().int().min(1).max(200).default(50),
       offset: z.number().int().min(0).default(0),
     },
-    run: (s, a) => s.roots.listRoots({ orderBy: a.order_by === "alpha" ? "root" : "count", limit: a.limit, offset: a.offset }),
+    // "alpha" is the explorer's own key — this used to pass "root", which it rejects, so an
+    // alphabetical listing always failed
+    run: (s, a) => s.roots.listRoots({ orderBy: a.order_by === "alpha" ? "alpha" : "count", descending: a.order_by !== "alpha", limit: a.limit, offset: a.offset }),
   },
   {
     name: "get_verses", title: "Verses of a chapter",
@@ -485,7 +492,7 @@ const thin: Tool[] = [
     name: "get_wazn", title: "Morphological pattern of a word",
     description: "The صرف pattern of one word: form I–XII, participle, masdar, aspect, voice.",
     schema: { verse_key: z.string(), word_position: z.number().int().min(1) },
-    run: (s, { verse_key, word_position }) => waznForWord(s.quran, verse_key, word_position) ?? { error: "no morphology for that word" },
+    run: async (s, { verse_key, word_position }) => (await waznForWord(s.corpus, verse_key, word_position)) ?? { error: "no morphology for that word" },
   },
   {
     name: "get_spelling_variants", title: "Rasm variants of a word",
@@ -516,7 +523,7 @@ const add_note: Tool = {
     kind: z.enum(["note", "question"]).default("note"),
     word_position: z.number().int().min(1).optional().describe("Attach to one word, not the whole āyah."),
   },
-  run: (state, a) => {
+  run: async (state, a) => {
     const verseKey = guard.verseKey(a.verse_key);
     const text = guard.requireText(a.text, "text");
     const id = proposalId("note");
@@ -525,7 +532,7 @@ const add_note: Tool = {
     let lemma: string | null = null;
     let root: string | null = null;
     if (a.word_position) {
-      const w = (state.content.verseWords(verseKey) as any[]).find((x) => x.position === a.word_position);
+      const w = ((await state.content.verseWords(verseKey)) as any[]).find((x) => x.position === a.word_position);
       lemma = w?.lemma ?? null;
       root = w?.root ?? null;
     }
@@ -563,8 +570,8 @@ const propose_indication: Tool = {
       .default([])
       .describe("How each form specialises the indication."),
   },
-  run: (state, a) => {
-    const d = getRoot(state, a.root);
+  run: async (state, a) => {
+    const d = await getRoot(state, a.root);
     if (!d) return { error: `root not found: ${a.root}` };
     const label = guard.requireText(a.label, "label");
     const id = proposalId("ind");
@@ -668,9 +675,9 @@ const open_case: Tool = {
     title: z.string().describe("A short title for the investigation."),
     description: z.string().default("").describe("The question this case is meant to settle."),
   },
-  run: (state, a) => {
+  run: async (state, a) => {
     const subject = a.subject_type === "root"
-      ? (getRoot(state, a.subject)?.root_arabic ?? a.subject)
+      ? ((await getRoot(state, a.subject))?.root_arabic ?? a.subject)
       : a.subject;
     const now = Date.now();
     const saved = state.research.saveCase({
@@ -701,7 +708,7 @@ const add_evidence: Tool = {
     })).min(1).max(40),
     expect_version: VERSION,
   },
-  run: (state, a) => {
+  run: async (state, a) => {
     const c = mustGetCase(state, a.case_id);
     expectVersion(c, a.expect_version);
     const next = { ...c, cards: [...(c.cards ?? [])] };
@@ -709,7 +716,7 @@ const add_evidence: Tool = {
     const skipped: unknown[] = [];
     for (const item of a.ayat) {
       const vk = guard.verseKey(item.verse_key);
-      if (!state.content.getVerse(vk, { script: "uthmani" })) {
+      if (!(await state.content.getVerse(vk, { script: "uthmani" }))) {
         skipped.push({ verse_key: vk, why: "no such āyah" });
         continue;
       }
@@ -926,9 +933,9 @@ const list_motifs: Tool = {
   schema: {
     root: z.string().optional().describe("Only motifs containing this root (Arabic or buckwalter)."),
   },
-  run: (state, { root }) => {
+  run: async (state, { root }) => {
     if (root) {
-      const d = getRoot(state, root);
+      const d = await getRoot(state, root);
       const ar = d?.root_arabic ?? root;
       return { root: ar, motifs: state.research.motifsForRoot(ar) };
     }
@@ -949,13 +956,13 @@ const propose_motif: Tool = {
     note: z.string().default("").describe("Why these roots belong together — the shared theme."),
     roots: z.array(z.string()).default([]).describe("Roots to include (Arabic or buckwalter)."),
   },
-  run: (state, a) => {
+  run: async (state, a) => {
     const name = guard.requireText(a.name, "name");
     const id = proposalId("motif");
     state.research.saveMotif({ id, name, note: a.note ?? "", source: AI_SOURCE });
     const added: string[] = [];
     for (const r of a.roots ?? []) {
-      const d = getRoot(state, r);
+      const d = await getRoot(state, r);
       const ar = d?.root_arabic ?? String(r);
       state.research.addMotifRoot(id, ar);
       added.push(ar);
@@ -975,9 +982,9 @@ const add_root_to_motif: Tool = {
     motif_id: z.string(),
     root: z.string().describe("The root to add (Arabic or buckwalter)."),
   },
-  run: (state, a) => {
+  run: async (state, a) => {
     const m = guard.ownMotif(state, a.motif_id);
-    const d = getRoot(state, a.root);
+    const d = await getRoot(state, a.root);
     const ar = d?.root_arabic ?? String(a.root);
     state.research.addMotifRoot(m.id, ar);
     return { ok: true, motif_id: m.id, root: ar, roots: (state.research.getMotif(m.id) as any)?.roots ?? [] };
@@ -993,9 +1000,9 @@ const remove_root_from_motif: Tool = {
     motif_id: z.string(),
     root: z.string().describe("The root to remove (Arabic or buckwalter)."),
   },
-  run: (state, a) => {
+  run: async (state, a) => {
     const m = guard.ownMotif(state, a.motif_id);
-    const d = getRoot(state, a.root);
+    const d = await getRoot(state, a.root);
     const ar = d?.root_arabic ?? String(a.root);
     state.research.removeMotifRoot(m.id, ar);
     return { ok: true, motif_id: m.id, root: ar, roots: (state.research.getMotif(m.id) as any)?.roots ?? [] };

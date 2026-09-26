@@ -1,121 +1,140 @@
-// Prove the Postgres content port answers EXACTLY like the SQLite original, over the whole corpus.
+// Prove the cloud corpus answers EXACTLY like the local one, over the whole real corpus.
 //
-//   npm run corpus:parity
+//   npm run corpus:parity            # the full sweep
+//   npm run corpus:parity -- --quick # a fast sample (every chapter, 1 in 25 verses/roots)
 //
-// Runs the real server code (server/src/content.ts, QuranContent over quran.db) and the port
-// (src/corpus/content.ts, PgQuranContent over the Postgres `corpus` schema) side by side, and
-// compares the serialized JSON of every answer — key order included, since that's what the API
-// returns. Every chapter, every verse (with words and translations, in every script), neighbours,
-// every navigation filter, the error text. Exit code 1 on any difference.
+// One corpus codebase, two drivers: this mounts the IDENTICAL app (the shared server routes, via
+// corpusApp) over SQLite (quran.db) and over Postgres (the `corpus` schema), sends both the same
+// requests — every route, across every chapter, verse and root — and compares status and body
+// byte for byte, key order included. Exit code 1 on any difference.
 //
-// Prerequisite: `npm run corpus:migrate` (the Postgres copy must exist and match quran.db).
+// Prerequisite: `npm run corpus:migrate` (the Postgres copy must match quran.db).
 
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import pg from "pg";
-import { config } from "./config.js";
-import type { SqlRunner } from "./migrate.js";
+import type { Hono } from "hono";
+import { corpusPool, corpusRunner } from "./db.js";
+import { pgCorpus } from "./corpus/pg-corpus.js";
+import { corpusApp } from "./corpus/serve.js";
 import { Db } from "../../server/src/db.js";
-import { QuranContent } from "../../server/src/content.js";
-import { PgQuranContent } from "./corpus/content.js";
+import { sqliteCorpus } from "../../server/src/corpus-db.js";
+import { createCorpusServices, warmCorpus } from "../../server/src/corpus-services.js";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const sqlitePath = process.env.QF_QURAN_DB ?? resolve(repo, "quran.db");
 if (!existsSync(sqlitePath)) { console.error(`no quran.db at ${sqlitePath}`); process.exit(1); }
+const quick = process.argv.includes("--quick");
+const every = (n: number) => (_: unknown, i: number) => !quick || i % n === 0;
 
-const pool = new pg.Pool({ connectionString: config.databaseUrl, max: 4 });
-const runner: SqlRunner = {
-  exec: async (sql) => { await pool.query(sql); },
-  query: async (sql, params = []) => (await pool.query(sql, params as unknown[])).rows,
-};
-const lite = new QuranContent(new Db(sqlitePath, { readOnly: true }));
-const cloud = new PgQuranContent(runner);
+const db = new Db(sqlitePath, { readOnly: true });
+const liteSvc = createCorpusServices(sqliteCorpus(db));
+const cloudSvc = createCorpusServices(pgCorpus(corpusRunner));
+const lite = corpusApp(liteSvc) as unknown as Hono;
+const cloud = corpusApp(cloudSvc) as unknown as Hono;
 
-let cases = 0;
-const diffs: { name: string; sqlite: string; pg: string }[] = [];
+let checked = 0;
+const diffs: { req: string; sqlite: string; pg: string }[] = [];
 
-/** Run one question both ways; errors are compared as answers too (status + message). */
-async function same(name: string, a: () => unknown, b: () => Promise<unknown>): Promise<void> {
-  const settle = async (f: () => unknown) => {
-    try { return JSON.stringify(await f()) ?? "undefined"; } catch (e) {
-      const err = e as { status?: number; message?: string };
-      return `ERROR ${err.status ?? "?"}: ${err.message}`;
-    }
+async function same(path: string, init?: RequestInit): Promise<void> {
+  const ask = async (app: Hono) => {
+    const res = await app.request(path, init);
+    return `${res.status} ${await res.text()}`;
   };
-  const [x, y] = [await settle(a), await settle(b)];
-  cases++;
-  if (x !== y) diffs.push({ name, sqlite: x.slice(0, 300), pg: y.slice(0, 300) });
+  const [a, b] = await Promise.all([ask(lite), ask(cloud)]);
+  checked++;
+  if (a !== b) diffs.push({ req: `${init?.method ?? "GET"} ${path}`, sqlite: a.slice(0, 240), pg: b.slice(0, 240) });
 }
+const post = (path: string, body: unknown) =>
+  same(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+const enc = encodeURIComponent;
 
 const t0 = Date.now();
-const keys = (new Db(sqlitePath, { readOnly: true })).query<{ verse_key: string }>(
-  "SELECT verse_key FROM verses ORDER BY id").map((r) => r.verse_key);
-const step = (label: string) => console.log(`  ${label.padEnd(44)} ${cases.toLocaleString().padStart(7)} checks`);
+const step = (label: string) =>
+  console.log(`  ${label.padEnd(46)} ${checked.toLocaleString().padStart(7)} checks  ${((Date.now() - t0) / 1000).toFixed(0)}s`);
 
 try {
-  console.log(`comparing SQLite (${sqlitePath}) with Postgres (schema "corpus")…`);
+  console.log(`comparing SQLite (${sqlitePath}) with Postgres (schema "corpus")${quick ? " — quick sample" : ""}…`);
+  console.log("  building indexes on both engines…");
+  await Promise.all([warmCorpus(liteSvc), warmCorpus(cloudSvc)]);
 
-  await same("listChapters", () => lite.listChapters(), () => cloud.listChapters());
-  for (const id of [0, 115, 1.5, -1]) await same(`getChapter(${id})`, () => lite.getChapter(id), () => cloud.getChapter(id));
-  for (let id = 1; id <= 114; id++) await same(`getChapter(${id})`, () => lite.getChapter(id), () => cloud.getChapter(id));
-  step("chapters");
+  const verseKeys = db.query<{ verse_key: string }>("SELECT verse_key FROM verses ORDER BY id").map((r) => r.verse_key);
+  const roots = db.query<{ root_buckwalter: string }>("SELECT root_buckwalter FROM roots ORDER BY id").map((r) => r.root_buckwalter);
 
-  for (let id = 1; id <= 114; id++) {
-    await same(`chapterVerses(${id}, all scripts + words)`,
-      () => lite.chapterVerses(id, { allScripts: true, withWords: true }),
-      () => cloud.chapterVerses(id, { allScripts: true, withWords: true }));
-    await same(`chapterVerses(${id}, imlaei, limit 5 offset 2)`,
-      () => lite.chapterVerses(id, { script: "imlaei", limit: 5, offset: 2 }),
-      () => cloud.chapterVerses(id, { script: "imlaei", limit: 5, offset: 2 }));
+  for (const p of ["/scripts", "/chapters", "/translation-resources", "/corpus/version", "/chapters/0", "/chapters/115"]) await same(p);
+  for (let ch = 1; ch <= 114; ch++) {
+    await same(`/chapters/${ch}`);
+    await same(`/chapters/${ch}/verses?all_scripts=1&words=1`);
+    await same(`/chapters/${ch}/verses?script=imlaei&limit=5&offset=2`);
+    await same(`/chapters/${ch}/variants`);
+    await same(`/chapters/${ch}/echoes`);
   }
-  step("chapter verses (every script, every word)");
+  step("chapters (every script, words, variants, echoes)");
 
-  for (const k of keys) {
-    await same(`getVerse(${k}, words + translations)`,
-      () => lite.getVerse(k, { withWords: true, withTranslations: true }),
-      () => cloud.getVerse(k, { withWords: true, withTranslations: true }));
+  for (const k of verseKeys.filter(every(25))) {
+    await same(`/verses/${k}?words=1&translations=1`);
+    await same(`/verses/${k}/echoes`);
+    await same(`/verses/${k}/similar?top_k=10`);
   }
-  step("every verse with words + translations");
+  step("verses (words, translations, echoes, similar)");
 
-  for (const k of keys.filter((_, i) => i % 25 === 0).concat(["1:1", "114:6", "2:255", "0:0", "nope"])) {
-    await same(`verseNeighbours(${k}, r=3)`,
-      () => lite.verseNeighbours(k, { radius: 3 }), () => cloud.verseNeighbours(k, { radius: 3 }));
-    await same(`getVerse(${k}, all scripts)`,
-      () => lite.getVerse(k, { allScripts: true }), () => cloud.getVerse(k, { allScripts: true }));
-  }
-  step("neighbours + all-scripts sample");
-
-  const nav: Record<string, number[]> = {
-    juz: [...Array(30)].map((_, i) => i + 1), manzil: [1, 2, 3, 4, 5, 6, 7],
-    hizb: [1, 17, 30, 45, 60], page: [1, 2, 50, 300, 604], ruku: [1, 40, 556, 999999],
-    chapter: [1, 2, 18, 114],
-  };
-  for (const [f, vals] of Object.entries(nav)) {
-    for (const v of vals) {
-      await same(`listVerses(${f}=${v})`,
-        () => lite.listVerses({ [f]: v, limit: 300 }), () => cloud.listVerses({ [f]: v, limit: 300 }));
+  for (const k of verseKeys.filter(every(40))) {
+    await same(`/verses/${k}/neighbours?radius=3`);
+    await same(`/verses/${k}?all_scripts=1`);
+    for (const pos of [1, 2, 3]) {
+      await same(`/verses/${k}/wazn?pos=${pos}`);
+      await same(`/verses/${k}/spelling?pos=${pos}`);
     }
   }
-  await same("listVerses(default)", () => lite.listVerses(), () => cloud.listVerses());
-  await same("listVerses(offset 6200)", () => lite.listVerses({ offset: 6200, limit: 300 }), () => cloud.listVerses({ offset: 6200, limit: 300 }));
+  step("neighbours, all scripts, wazn, spellings");
+
+  for (const [f, vals] of Object.entries({
+    juz: [1, 10, 20, 30], hizb: [1, 30, 60], page: [1, 300, 604], manzil: [1, 4, 7], ruku: [1, 300, 556],
+  })) for (const v of vals) await same(`/verses?${f}=${v}&limit=300`);
+  await same("/verses?offset=6200&limit=300");
   step("navigation filters");
 
-  await same("listTranslationResources", () => lite.listTranslationResources(), () => cloud.listTranslationResources());
-  await same("unknown script", () => lite.getVerse("1:1", { script: "klingon" }), () => cloud.getVerse("1:1", { script: "klingon" }));
-  step("resources + errors");
+  for (const o of ["count", "forms", "letters", "alpha", "arabic"]) {
+    await same(`/roots?order_by=${o}&limit=2000`);
+    await same(`/roots?order_by=${o}&descending=false&limit=2000`);
+  }
+  for (const r of roots.filter(every(25))) {
+    await same(`/roots/${enc(r)}`);
+    await same(`/roots/${enc(r)}/forms`);
+    await same(`/roots/${enc(r)}/occurrences?limit=3000`);
+    await same(`/roots/${enc(r)}/linkages`);
+    await same(`/roots/${enc(r)}/linkages?scope=adjacent&window=2&sort_by=count`);
+  }
+  step("roots (lists, detail, forms, occurrences, linkages)");
+
+  const pairs = [["Allh", "rHm"], ["Amn", "Eml"], ["nfq", "Amn"], ["hdy", "Dll"], ["qwl", "Allh"], ["kfr", "Amn"]];
+  for (const [a, b] of pairs) await same(`/roots/${a}/with/${b}?limit=500`);
+  step("root pairs (shared verses, incl. over the limit)");
+
+  const words = ["ٱلرَّحْمَٰنِ", "ٱلرَّحْمَـٰنِ", "صلوٰة", "إِيَّاكَ", "الله", "مِمَّا", "ٱلصَّلَوٰةَ"];
+  for (const w of words) {
+    await same(`/words/occurrences?surface=${enc(w)}`);
+    await same(`/words/occurrences?surface=${enc(w)}&full=1`);
+  }
+  for (const q of ["الحمد لله", "يا ايها الذين امنوا", "رب العالمين", "لا اله الا هو"]) {
+    await same(`/phrase-search?q=${enc(q)}&limit=300`);
+    await post("/search", { text: q, top_k: 30 });
+  }
+  await post("/expression-search", { terms: [{ surface: "الصلاة", root: "Slw" }, { surface: "الزكاة", root: "zkw" }], mode: "roots" });
+  await post("/expression-search", { terms: [{ surface: "الحمد" }, { surface: "لله" }], mode: "verbatim" });
+  step("words, phrase, free-text and expression search");
 
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   if (diffs.length === 0) {
-    console.log(`\n  ✔ ${cases.toLocaleString()} answers compared in ${secs}s — Postgres answers exactly like SQLite.`);
+    console.log(`\n  ✔ ${checked.toLocaleString()} requests compared in ${secs}s — the cloud corpus answers exactly like the local one.`);
   } else {
-    console.log(`\n  ✘ ${diffs.length} of ${cases.toLocaleString()} answers differ. First few:`);
-    for (const d of diffs.slice(0, 5)) console.log(`\n  ${d.name}\n    sqlite: ${d.sqlite}\n    pg:     ${d.pg}`);
+    console.log(`\n  ✘ ${diffs.length} of ${checked.toLocaleString()} requests differ. First few:`);
+    for (const d of diffs.slice(0, 6)) console.log(`\n  ${d.req}\n    sqlite: ${d.sqlite}\n    pg:     ${d.pg}`);
     process.exitCode = 1;
   }
 } catch (e) {
   console.error(`corpus:parity: ${(e as Error).message}`);
   process.exitCode = 1;
 } finally {
-  await pool.end();
+  await corpusPool.end();
 }

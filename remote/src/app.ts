@@ -19,7 +19,14 @@ import { loadTiers, rankOf, setTier, removeTier, TierError, FREE } from "./plans
 import {
   requireResource, wholeMin, canRead, listRules, setRule, removeRule, isResourceKind,
 } from "./resource-access.js";
-import { corpusRoutes } from "./corpus/routes.js";
+import { corpusApp } from "./corpus/serve.js";
+import { pgCorpus } from "./corpus/pg-corpus.js";
+import { createCorpusServices, type CorpusServices } from "../../server/src/corpus-services.js";
+import { corpusRunner } from "./db.js";
+
+/** The corpus services over Postgres — one set per process, so their in-memory indexes are built
+ *  once. server.ts warms them at startup. */
+export const cloudCorpus: CorpusServices = createCorpusServices(pgCorpus(corpusRunner));
 import {
   createInvite, bindLocalId, loadPrincipal, setDisplayName,
   validateInvite, emailTaken, finishRedeem, InviteError,
@@ -161,8 +168,9 @@ export function createApp(): Hono<Env> {
   });
 
   // The Qur'an corpus itself, from Postgres — a RESOURCE, so its gate is the corpus plan rule.
+  // Same route code as the local server's /api/v1 (see corpus/serve.ts).
   app.use("/corpus/*", requireResource("corpus", pgRunner));
-  app.route("/corpus", corpusRoutes(pgRunner));
+  app.route("/corpus", corpusApp(cloudCorpus, pgRunner));
 
   app.post("/me/name", requireRole("reader"), async (c) => {
     const { displayName } = (await c.req.json().catch(() => ({}))) as { displayName?: string };

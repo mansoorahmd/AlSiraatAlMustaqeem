@@ -1,8 +1,12 @@
 // Quran content & metadata — port of quran_api/content.py.
 // Read-only access to chapters, verses (multiple scripts), per-word breakdown,
 // translations, neighbours, and verbatim phrase search.
+//
+// Runs over either corpus engine (corpus-db.ts): SQLite locally, Postgres in the cloud. Translations
+// take an optional `allow(resourceId)` predicate, so a caller's plan can leave some out (the cloud
+// passes one; locally there is none and nothing is filtered).
 
-import type { Db } from "./db.js";
+import type { CorpusDb, Row } from "./corpus-db.js";
 import { foldArabic } from "./text/normalize.js";
 
 const NAV_FILTERS: Record<string, string> = {
@@ -29,10 +33,14 @@ const VERSE_META = [
   "page_number", "ruku_number", "manzil_number",
 ];
 
-type Row = Record<string, unknown>;
+export type Allow<K = number> = (key: K) => boolean;
+
+/** Ids that aren't whole int4 numbers can't match a row; answer "nothing" before the engine
+ *  sees them (SQLite would just match nothing; Postgres would reject the value). */
+const isId = (n: number): boolean => Number.isInteger(n) && n >= -2147483648 && n <= 2147483647;
 
 export class QuranContent {
-  constructor(private db: Db) {}
+  constructor(private db: CorpusDb) {}
 
   private scriptCol(script: string): string {
     const col = SCRIPTS[script];
@@ -43,10 +51,11 @@ export class QuranContent {
   }
 
   // -- chapters --
-  listChapters(): Row[] {
+  listChapters(): Promise<Row[]> {
     return this.db.query("SELECT * FROM chapters ORDER BY id");
   }
-  getChapter(chapterId: number): Row | undefined {
+  async getChapter(chapterId: number): Promise<Row | undefined> {
+    if (!isId(chapterId)) return undefined;
     return this.db.one("SELECT * FROM chapters WHERE id = ?", [chapterId]);
   }
 
@@ -65,43 +74,46 @@ export class QuranContent {
     return d;
   }
 
-  getVerse(
+  async getVerse(
     verseKey: string,
-    opts: { script?: string; allScripts?: boolean; withWords?: boolean; withTranslations?: boolean } = {},
-  ): Row | undefined {
+    opts: { script?: string; allScripts?: boolean; withWords?: boolean; withTranslations?: boolean; allow?: Allow } = {},
+  ): Promise<Row | undefined> {
     const script = opts.script ?? "uthmani";
     this.scriptCol(script);
-    const row = this.db.one("SELECT * FROM verses WHERE verse_key = ?", [verseKey]);
+    const row = await this.db.one("SELECT * FROM verses WHERE verse_key = ?", [verseKey]);
     if (!row) return undefined;
     const d = this.verseDict(row, script, opts.allScripts ?? false);
-    if (opts.withWords) d.words = this.verseWords(verseKey);
-    if (opts.withTranslations) d.translations = this.verseTranslations(verseKey);
+    if (opts.withWords) d.words = await this.verseWords(verseKey);
+    if (opts.withTranslations) d.translations = await this.verseTranslations(verseKey, opts.allow);
     return d;
   }
 
-  chapterVerses(
+  async chapterVerses(
     chapterId: number,
     opts: { script?: string; allScripts?: boolean; withWords?: boolean; limit?: number | null; offset?: number } = {},
-  ): Row[] {
+  ): Promise<Row[]> {
     const script = opts.script ?? "uthmani";
     this.scriptCol(script);
+    if (!isId(chapterId)) return [];
     let sql = "SELECT * FROM verses WHERE chapter_id = ? ORDER BY verse_number";
     const params: unknown[] = [chapterId];
     if (opts.limit != null) {
       sql += " LIMIT ? OFFSET ?";
       params.push(opts.limit, opts.offset ?? 0);
     }
-    return this.db.query(sql, params).map((row) => {
+    const out: Row[] = [];
+    for (const row of await this.db.query(sql, params)) {
       const d = this.verseDict(row, script, opts.allScripts ?? false);
-      if (opts.withWords) d.words = this.verseWords(row.verse_key as string);
-      return d;
-    });
+      if (opts.withWords) d.words = await this.verseWords(row.verse_key as string);
+      out.push(d);
+    }
+    return out;
   }
 
-  listVerses(opts: {
+  async listVerses(opts: {
     script?: string; limit?: number; offset?: number;
     chapter?: number; juz?: number; hizb?: number; page?: number; ruku?: number; manzil?: number;
-  } = {}): Row[] {
+  } = {}): Promise<Row[]> {
     const script = opts.script ?? "uthmani";
     this.scriptCol(script);
     const where: string[] = [];
@@ -109,6 +121,7 @@ export class QuranContent {
     for (const key of ["chapter", "juz", "hizb", "page", "ruku", "manzil"] as const) {
       const val = opts[key];
       if (val != null) {
+        if (!isId(val)) return [];
         where.push(`${NAV_FILTERS[key]} = ?`);
         params.push(val);
       }
@@ -117,29 +130,29 @@ export class QuranContent {
     if (where.length) sql += " WHERE " + where.join(" AND ");
     sql += " ORDER BY chapter_id, verse_number LIMIT ? OFFSET ?";
     params.push(opts.limit ?? 50, opts.offset ?? 0);
-    return this.db.query(sql, params).map((r) => this.verseDict(r, script, false));
+    return (await this.db.query(sql, params)).map((r) => this.verseDict(r, script, false));
   }
 
-  verseNeighbours(
+  async verseNeighbours(
     verseKey: string,
     opts: { radius?: number; script?: string } = {},
-  ): Row[] | null {
+  ): Promise<Row[] | null> {
     const script = opts.script ?? "uthmani";
     const radius = opts.radius ?? 2;
     this.scriptCol(script);
-    const target = this.db.one<{ chapter_id: number; verse_number: number }>(
+    const target = await this.db.one<{ chapter_id: number; verse_number: number }>(
       "SELECT chapter_id, verse_number FROM verses WHERE verse_key = ?", [verseKey],
     );
     if (!target) return null;
     const { chapter_id: ci, verse_number: vn } = target;
-    const before = this.db.query(
+    const before = await this.db.query(
       `SELECT * FROM verses
        WHERE chapter_id < ? OR (chapter_id = ? AND verse_number < ?)
        ORDER BY chapter_id DESC, verse_number DESC LIMIT ?`,
       [ci, ci, vn, radius],
     );
-    const center = this.db.one("SELECT * FROM verses WHERE verse_key = ?", [verseKey])!;
-    const after = this.db.query(
+    const center = (await this.db.one("SELECT * FROM verses WHERE verse_key = ?", [verseKey]))!;
+    const after = await this.db.query(
       `SELECT * FROM verses
        WHERE chapter_id > ? OR (chapter_id = ? AND verse_number > ?)
        ORDER BY chapter_id ASC, verse_number ASC LIMIT ?`,
@@ -153,7 +166,7 @@ export class QuranContent {
     });
   }
 
-  phraseSearch(phrase: string, opts: { script?: string; limit?: number } = {}): Row[] {
+  async phraseSearch(phrase: string, opts: { script?: string; limit?: number } = {}): Promise<Row[]> {
     const script = opts.script ?? "uthmani";
     const limit = opts.limit ?? 50;
     this.scriptCol(script);
@@ -161,7 +174,7 @@ export class QuranContent {
     const q = skel(phrase).trim();
     if (!q) return [];
     const out: Row[] = [];
-    for (const r of this.db.query("SELECT * FROM verses ORDER BY chapter_id, verse_number")) {
+    for (const r of await this.db.query("SELECT * FROM verses ORDER BY chapter_id, verse_number")) {
       if (skel((r.text_imlaei_simple as string) ?? "").includes(q)) {
         out.push(this.verseDict(r, script, false));
         if (out.length >= limit) break;
@@ -171,8 +184,8 @@ export class QuranContent {
   }
 
   // -- words --
-  private wordArabic(verseKey: string): Map<number, string> {
-    const rows = this.db.query<{ word_position: number; form_arabic: string | null }>(
+  private async wordArabic(verseKey: string): Promise<Map<number, string>> {
+    const rows = await this.db.query<{ word_position: number; form_arabic: string | null }>(
       `SELECT word_position, form_arabic FROM word_segments
        WHERE verse_key = ? ORDER BY word_position, segment_number`,
       [verseKey],
@@ -184,9 +197,9 @@ export class QuranContent {
     return out;
   }
 
-  verseWords(verseKey: string): Row[] {
-    const arabic = this.wordArabic(verseKey);
-    const rows = this.db.query<Row>(
+  async verseWords(verseKey: string): Promise<Row[]> {
+    const arabic = await this.wordArabic(verseKey);
+    const rows = await this.db.query<Row>(
       `SELECT position, translation_text, transliteration_text,
               lemma_arabic, root_arabic, root_buckwalter,
               pos_english, pos_class
@@ -206,9 +219,9 @@ export class QuranContent {
     }));
   }
 
-  // -- translations --
-  verseTranslations(verseKey: string): Row[] {
-    return this.db.query(
+  // -- translations (a caller's plan may leave some out) --
+  async verseTranslations(verseKey: string, allow?: Allow): Promise<Row[]> {
+    const rows = await this.db.query(
       `SELECT vt.resource_id, vt.language_name, vt.text,
               tr.name AS resource_name, tr.author_name, tr.resource_type
        FROM verse_translations vt
@@ -217,14 +230,16 @@ export class QuranContent {
        ORDER BY vt.resource_id`,
       [verseKey],
     );
+    return allow ? rows.filter((r) => allow(r.resource_id as number)) : rows;
   }
 
-  listTranslationResources(): Row[] {
-    return this.db.query(
+  async listTranslationResources(allow?: Allow): Promise<Row[]> {
+    const rows = await this.db.query(
       `SELECT tr.* FROM translation_resources tr
        WHERE tr.id IN (SELECT DISTINCT resource_id FROM verse_translations)
        ORDER BY tr.id`,
     );
+    return allow ? rows.filter((r) => allow(r.id as number)) : rows;
   }
 }
 
