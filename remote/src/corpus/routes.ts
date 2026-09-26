@@ -9,7 +9,7 @@
 import { Hono, type Context } from "hono";
 import type { SqlRunner } from "../migrate.js";
 import type { Env } from "../roles.js";
-import { translationFilter } from "../corpus-access.js";
+import { itemFilter } from "../resource-access.js";
 import { PgQuranContent, SCRIPTS, HttpError } from "./content.js";
 
 // query coercion identical to server/src/http.ts (qbool / qint / qstr)
@@ -41,7 +41,7 @@ const h = (fn: Handler): Handler => async (c) => {
 export function corpusRoutes(r: SqlRunner): Hono<Env> {
   const app = new Hono<Env>();
   const content = new PgQuranContent(r);
-  const allowFor = (c: Context<Env>) => translationFilter(r, c.get("user"));
+  const allowFor = async (c: Context<Env>) => { const f = await itemFilter(r, c.get("user"), "translation"); return (id: number) => f(id); };
 
   app.get("/scripts", (c) => c.json(Object.keys(SCRIPTS).sort()));
 

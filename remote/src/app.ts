@@ -15,14 +15,10 @@ import { config } from "./config.js";
 import { pgRunner } from "./db.js";
 import { sessionMiddleware } from "./session.js";
 import { requireRole, type Env } from "./roles.js";
+import { loadTiers, rankOf, setTier, removeTier, TierError, FREE } from "./plans.js";
 import {
-  requirePlan, meetsPlan, loadTiers, rankOf, setTier, removeTier, TierError,
-  COMMUNITY_PLAN, FREE,
-} from "./plans.js";
-import {
-  requireCorpusAccess, getCorpusPolicy, setCorpusPolicy, getTranslationAccess,
-  setTranslationAccess, type CorpusAccess,
-} from "./corpus-access.js";
+  requireResource, wholeMin, canRead, listRules, setRule, removeRule, isResourceKind,
+} from "./resource-access.js";
 import { corpusRoutes } from "./corpus/routes.js";
 import {
   createInvite, bindLocalId, loadPrincipal, setDisplayName,
@@ -82,13 +78,13 @@ export function createApp(): Hono<Env> {
       id: me.id, role: me.role,
       email: p?.email ?? "", displayName: p?.displayName ?? "",
       localId: p?.localId ?? null,
-      // The billing axis. `planActive` is the flag the app's COMMUNITY gates read: at or above
-      // the community tier and not lapsed — never infer "paid" from the tier name alone.
+      // The billing axis. `planActive` = this account may read the community resource right now
+      // (its tier, not lapsed) — the flag the app's community UI reads. Never infer from the name.
       plan,
       planLabel: tiers.get(plan)?.label ?? plan,
       planRank: rankOf(tiers, plan),
       planExpiresAt: me.planExpiresAt ?? null,
-      planActive: meetsPlan(me, COMMUNITY_PLAN, tiers),
+      planActive: canRead(me, await wholeMin(pgRunner, "community"), tiers),
     });
   });
 
@@ -133,33 +129,30 @@ export function createApp(): Hono<Env> {
     }
   });
 
-  // --- who may read the corpus, and each translation (corpus-access.ts) ---
-  // Public read: the app tells a reader what's required BEFORE they hit a 401/402.
-  app.get("/corpus-access", async (c) => {
-    const policy = await getCorpusPolicy(pgRunner);
-    const locked = [...(await getTranslationAccess(pgRunner))]
-      .map(([resourceId, minPlan]) => ({ resourceId, minPlan }))
-      .sort((a, b) => a.resourceId - b.resourceId);
-    return c.json({ ...policy, lockedTranslations: locked });
-  });
+  // --- resources are plan-based (resource-access.ts); features below are role-based ---
+  // Public read, so the app can say what a resource needs BEFORE the reader hits a 401/402.
+  app.get("/resource-access", async (c) => c.json(await listRules(pgRunner)));
 
-  app.put("/corpus-access", requireRole("maintainer"), async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { access?: string; minPlan?: string };
+  /** Set a resource's minimum tier: {minPlan: "<tier>" | "free" | null (= public)}. */
+  app.put("/resource-access/:kind/:key", requireRole("maintainer"), async (c) => {
+    const kind = c.req.param("kind"), key = c.req.param("key");
+    const body = (await c.req.json().catch(() => ({}))) as { minPlan?: string | null };
+    if (!isResourceKind(kind)) return c.json({ detail: `unknown resource kind: ${kind}` }, 422);
+    if (body.minPlan === undefined) return c.json({ detail: "minPlan is required (a tier, or null for public)" }, 422);
     try {
-      return c.json(await setCorpusPolicy(pgRunner,
-        { access: body.access as CorpusAccess, minPlan: body.minPlan }, c.get("user")!.id));
+      return c.json(await setRule(pgRunner, kind, key, body.minPlan, c.get("user")!.id));
     } catch (e) {
       if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
       throw e;
     }
   });
 
-  /** Lock a translation to a tier ({minPlan}) or unlock it ({minPlan: null}). */
-  app.put("/translation-access/:resourceId", requireRole("maintainer"), async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { minPlan?: string | null };
+  /** Drop a per-item rule (a translation or lexicon then needs only what the corpus needs). */
+  app.delete("/resource-access/:kind/:key", requireRole("maintainer"), async (c) => {
+    const kind = c.req.param("kind");
+    if (!isResourceKind(kind)) return c.json({ detail: `unknown resource kind: ${kind}` }, 422);
     try {
-      await setTranslationAccess(pgRunner, Number(c.req.param("resourceId")),
-        body.minPlan ?? null, c.get("user")!.id);
+      await removeRule(pgRunner, kind, c.req.param("key"));
       return c.json({ ok: true });
     } catch (e) {
       if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
@@ -167,9 +160,8 @@ export function createApp(): Hono<Env> {
     }
   });
 
-  // The Qur'an corpus itself, from Postgres — same paths and JSON as the local API's content
-  // routes, gated by the policy above.
-  app.use("/corpus/*", requireCorpusAccess(pgRunner));
+  // The Qur'an corpus itself, from Postgres — a RESOURCE, so its gate is the corpus plan rule.
+  app.use("/corpus/*", requireResource("corpus", pgRunner));
   app.route("/corpus", corpusRoutes(pgRunner));
 
   app.post("/me/name", requireRole("reader"), async (c) => {
@@ -187,10 +179,8 @@ export function createApp(): Hono<Env> {
   });
 
   // --- submissions: local research offered upstream (Phase 4, additive kinds only) ---
-  // Guarded at `researcher` AND an active plan: publishing your work into the community is a paid
-  // action. (Moderation/establishment below stay role-only — the leader's staff run the community
-  // and must not be charged to do so; flip that by adding requirePlan there if the model changes.)
-  app.post("/submissions", requireRole("researcher"), requirePlan(COMMUNITY_PLAN, pgRunner), async (c) => {
+  // Publishing is a FEATURE, so it is role-based alone: researcher and above.
+  app.post("/submissions", requireRole("researcher"), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { items?: SubmissionItemInput[]; supersedes?: string | null };
     try {
@@ -217,8 +207,8 @@ export function createApp(): Hono<Env> {
 
   // --- claims: contending readings, review, establishment, dissent (Phase 5) ---
 
-  /** Offer your reading of a form or root. Must carry its argument (§12.1). Publishing → paid. */
-  app.post("/claims", requireRole("researcher"), requirePlan(COMMUNITY_PLAN, pgRunner), async (c) => {
+  /** Offer your reading of a form or root. Must carry its argument (§12.1). A feature → role. */
+  app.post("/claims", requireRole("researcher"), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { subjectKind?: SubjectKind; subjectValue?: string; payload?: never };
     try {
@@ -234,8 +224,12 @@ export function createApp(): Hono<Env> {
     }
   });
 
+  // Everything below that READS the community's work is the community RESOURCE — plan-based,
+  // one rule. (These were role-only before, which let a free account read paid readings.)
+  const community = requireResource("community", pgRunner);
+
   /** Every reading of a subject, and the group's current one — what a reader compares. */
-  app.get("/claims", requireRole("reader"), async (c) => {
+  app.get("/claims", community, async (c) => {
     const kind = (c.req.query("subjectKind") ?? "form") as SubjectKind;
     const value = c.req.query("subjectValue") ?? "";
     return c.json({
@@ -244,16 +238,16 @@ export function createApp(): Hono<Env> {
     });
   });
 
-  app.get("/claims/:id/dissents", requireRole("reader"), async (c) =>
+  app.get("/claims/:id/dissents", community, async (c) =>
     c.json(await dissentsFor(pgRunner, c.req.param("id"))));
 
   /**
    * ⚖ Where I stand apart — computed LIVE, the remote-only replacement for the old local
    * mirror. The client sends the forms it has established; we diff against the group's current
-   * readings and return the differences. PAID: requireRole gates *who*, requirePlan gates
-   * *paid-for* — the group's readings never land on the client's disk, so the gate is real.
+   * readings and return the differences. The community resource — the group's readings never
+   * land on the client's disk, so the gate is real.
    */
-  app.post("/divergences", requireRole("reader"), requirePlan(COMMUNITY_PLAN, pgRunner), async (c) => {
+  app.post("/divergences", community, async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { forms?: { subjectKind?: SubjectKind; subjectValue: string; meaning: string }[] };
     return c.json(await divergencesAgainstGlobal(pgRunner, body.forms ?? []));
@@ -263,7 +257,7 @@ export function createApp(): Hono<Env> {
    * The community's readings of a word (its root + its exact form), for the reader's indication
    * chips — the live, gated replacement for the old local derived_peer_indications mirror. PAID.
    */
-  app.get("/community/readings", requireRole("reader"), requirePlan(COMMUNITY_PLAN, pgRunner), async (c) =>
+  app.get("/community/readings", community, async (c) =>
     c.json(await communityReadingsFor(pgRunner, {
       root: c.req.query("root") || null,
       lemma: c.req.query("lemma") || null,
@@ -275,7 +269,7 @@ export function createApp(): Hono<Env> {
    * asks again, and a full resync is `since=0` — which is safe precisely because everything
    * here lands in the client's DERIVED tables.
    */
-  app.get("/pull", requireRole("reader"), async (c) => {
+  app.get("/pull", community, async (c) => {
     const limit = Math.min(Number(c.req.query("limit") ?? 500), 2000);
     // One position per stream — each table's `seq` is its own sequence, so a single shared
     // cursor would run one stream's counter ahead of another's and skip rows. An omitted

@@ -19,8 +19,6 @@ import type { SqlRunner } from "./migrate.js";
 import type { Env } from "./roles.js";
 
 export const FREE = "free";
-/** The tier the community gates (reads + publishing) require. It can't be removed. */
-export const COMMUNITY_PLAN = "pro";
 
 export interface Tier { name: string; rank: number; label: string }
 export type Tiers = Map<string, Tier>;
@@ -64,16 +62,17 @@ export async function setTier(r: SqlRunner, t: { name: string; rank: number; lab
   return { name: t.name, rank: t.rank, label: t.label ?? "" };
 }
 
-/** Remove a tier nobody holds and nothing requires. */
+/** Remove a tier nobody holds and no resource requires. */
 export async function removeTier(r: SqlRunner, name: string): Promise<void> {
   if (name === FREE) throw new TierError("free can't be removed", 409);
-  if (name === COMMUNITY_PLAN) throw new TierError(`${COMMUNITY_PLAN} gates the community and can't be removed`, 409);
   const used = (await r.query(
-    `SELECT (SELECT COUNT(*)::int FROM users WHERE plan = $1)
-          + (SELECT COUNT(*)::int FROM corpus_policy WHERE min_plan = $1)
-          + (SELECT COUNT(*)::int FROM translation_access WHERE min_plan = $1) AS n`, [name]))[0];
-  if (Number(used?.n ?? 0) > 0) {
-    throw new TierError(`${name} is still held by an account or required by a policy — move them first`, 409);
+    `SELECT (SELECT COUNT(*)::int FROM users WHERE plan = $1) AS holders,
+            (SELECT COUNT(*)::int FROM resource_access WHERE min_plan = $1) AS resources`, [name]))[0];
+  const holders = Number(used?.holders ?? 0), resources = Number(used?.resources ?? 0);
+  if (holders || resources) {
+    throw new TierError(
+      `${name} is still ${[holders && `held by ${holders} account(s)`, resources && `required by ${resources} resource(s)`]
+        .filter(Boolean).join(" and ")} — move them first`, 409);
   }
   await r.query("DELETE FROM plan_tiers WHERE name = $1", [name]);
   clearTierCache(r);
