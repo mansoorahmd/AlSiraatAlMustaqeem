@@ -1,7 +1,7 @@
 {
   "$doc": "MQ Research Gate — architecture & monetization atlas. Machine-readable source of truth for AI chats. Human view: docs/atlas.html. Feedback log: docs/feedback.json.",
-  "updated": "2026-09-19",
-  "branch": "feature/monetization-entitlements",
+  "updated": "2026-09-26",
+  "branch": "feature/corpus-postgres (stacked on feature/monetization-entitlements)",
   "app": {
     "name": "MQ Research Gate",
     "repoName": "AlSiraatAlMustaqeem",
@@ -25,8 +25,16 @@
     "quran.db": {
       "kind": "corpus", "access": "read-only", "location": "local, ships with the app (~150 MB)",
       "holds": "Qur'an text in four scripts, per-word morphology (root/lemma/form), roots, ~9 classical lexicons (Lane, Lisan, Maqayis, Mufradat, ...), translations, FTS indexes.",
-      "corrections": "Never hosted as a DB. Shipped as signed, versioned patch files applied in order (see CORPUS.md). The corpus is reference material, not research.",
-      "onCloud": false
+      "corrections": "Shipped as signed, versioned patch files applied in order (see CORPUS.md). The corpus is reference material, not research.",
+      "onCloud": "MOVING. Step 1 done: the data is copied into Postgres schema `corpus` (remote DATABASE_URL) and verified exact, row-for-row. Step 2 (not started): port the query layer so the app/MCP read Postgres. Until then the app and MCP still read quran.db.",
+      "postgres": {
+        "schema": "corpus",
+        "command": "npm run corpus:migrate   (add -- --verify to re-verify only)",
+        "code": "remote/src/corpus/{schema,load,verify}.ts",
+        "firstRun": "294,804 rows, 143.5 MB, 18 s, exact; every table content-fingerprinted; view 77,915=77,915; FKs 9/9; indexes 29/29",
+        "collation": "every text column COLLATE \"C\" (= SQLite BINARY). The DB default English_United States.1252 would re-sort Arabic; proven load-bearing — the هدي forms query returns identical ORDER only with C.",
+        "edition": "corpus.corpus_meta mirrors the patch channel's keys (corpus_version, schema_version) + source_sha256"
+      }
     },
     "research.db": {
       "kind": "personal research", "access": "read-write, self-migrating", "location": "local; the one irreplaceable file",
@@ -89,11 +97,14 @@
     { "id": "A", "title": "Entitlement layer", "status": "done", "commit": "efebc15", "summary": "plan ladder free<pro; requirePlan → 402; set-plan CLI + POST /plan; planActive on /me; migration 0005_entitlements.sql; 10 boundary tests." },
     { "id": "B+C", "title": "Community live-remote; local mirror removed", "status": "done", "commits": ["f91cd63", "fc7c378", "b5b897f"], "summary": "POST /divergences + GET /community/readings (gated); derived_* mirror + pull path deleted; Divergences.tsx and indication chips read live; sync-boundary test adapted; pull.test removed." },
     { "id": "D", "title": "Publishing gated", "status": "done", "commit": "21a63eb", "summary": "requirePlan on POST /submissions and POST /claims; upgrade nudges in ShareButton + ProposeReading; review/establish stay role-only." },
-    { "id": "E", "title": "MCP → cloud", "status": "deferred", "summary": "Decided to keep the MCP local & free. The cloud has NONE of the corpus (read_ayah/study_root/trace_word etc. read the 150 MB local quran.db, which by design is never hosted). Moving personal research to the cloud would also break the AI-proposes→app-reviews loop unless the whole app migrates (reverses local-first). Parked." },
+    { "id": "E", "title": "MCP → cloud", "status": "deferred", "summary": "Kept the MCP local & free. The original blocker — the cloud had none of the corpus — is being lifted by the corpus migration below (data is now in Postgres; the query layer isn't ported yet). The second blocker still stands: moving personal research to the cloud breaks the AI-proposes→app-reviews loop unless the app migrates too. Parked." },
+    { "id": "corpus-1", "title": "Corpus → Postgres, step 1: move + verify the data", "status": "done", "summary": "quran.db loaded into Postgres schema `corpus` in one transaction (UTF8-gated, repeatable, rolls back on failure) and verified exact on every row of every table. remote/src/corpus/. 11 tests. App/MCP untouched — still read SQLite." },
+    { "id": "corpus-2", "title": "Corpus → Postgres, step 2: port the readers", "status": "todo", "summary": "Port the sync node:sqlite corpus layer to async pg; ILIKE for SQLite's case-insensitive LIKE; decide Arabic full-text (diacritic-folded column or pg_trgm); Postgres target for signed patches; run the golden-parity suite against Postgres. See CORPUS.md 'Step 2'." },
     { "id": "next", "title": "Billing provider", "status": "todo", "summary": "Slots into set-plan / POST /plan with no rework of the gate." }
   ],
   "decisions": [
-    { "id": "corpus-stays-local", "decision": "The corpus (quran.db) stays local and free; never hosted on the cloud.", "why": "150 MB of static reference data; hosting it means re-implementing the whole corpus query layer against Postgres and charging to read the Qur'an — against the project's soul." },
+    { "id": "corpus-stays-local", "status": "SUPERSEDED 2026-09-26 by corpus-to-postgres", "decision": "The corpus (quran.db) stays local; never hosted on the cloud.", "why": "150 MB of static reference data; hosting it means re-implementing the whole corpus query layer against Postgres." },
+    { "id": "corpus-to-postgres", "decision": "Move the corpus to Postgres (the maintainer's call), in two steps: first move and verify the data, then port the readers.", "why": "Staged so nothing breaks: step 1 is additive and reversible (a separate `corpus` schema; the app keeps reading SQLite). The heavy, risky part — async-porting the query layer — is isolated in step 2 and can be proven with the existing parity suite. Whether cloud corpus reads are free or plan-gated is not yet decided (the principle so far: reading the Qur'an stays free)." },
     { "id": "community-not-mirrored", "decision": "Community data is read live from the remote, never mirrored into research.db.", "why": "Mirroring puts it on the reader's disk, which makes it un-gateable. Live + gated is the enforceable design." },
     { "id": "staff-not-charged", "decision": "Moderator review and maintainer establish are role-gated but NOT plan-gated.", "why": "The community's staff run it; charging them to moderate is counter-productive. One-line change if revisited." },
     { "id": "mcp-local", "decision": "MCP stays local and free for now.", "why": "Corpus can't move to cloud; full cloud research reverses local-first and breaks the review loop. Monetization is already complete via the community layer." },
@@ -115,6 +126,12 @@
     { "path": "app/src/screens/Divergences.tsx", "purpose": "⚖ Where I stand apart — live + gated, connect/subscribe states" },
     { "path": "app/src/components/ShareButton.tsx", "purpose": "publish action + upgrade nudge on 402/unpaid" },
     { "path": "app/src/components/reader/ProposeReading.tsx", "purpose": "propose claim + plan gate + upgrade panel" },
+    { "path": "remote/src/corpus/schema.ts", "purpose": "the Postgres `corpus` schema: faithful DDL translation of quran.db, post-load FKs/indexes/FTS/view" },
+    { "path": "remote/src/corpus/load.ts", "purpose": "migrateCorpus: UTF8 gate, single-transaction rebuild, batched copy, sequence fix-up, provenance" },
+    { "path": "remote/src/corpus/verify.ts", "purpose": "verifyCorpus: full-content fingerprint per table + view, FK/index/provenance/Arabic checks" },
+    { "path": "remote/src/corpus/sqlite.ts", "purpose": "node:sqlite via createRequire (Vite/vitest can't resolve the prefix-only builtin statically)" },
+    { "path": "remote/src/corpus-migrate-cli.ts", "purpose": "npm run corpus:migrate [-- --verify]; one pg.Client so the transaction isn't split across a pool" },
+    { "path": "remote/test/corpus-migrate.test.ts", "purpose": "11 tests on PGlite: exact copy, byte-exact Arabic/NULL/BLOB, repeatable, catches one stripped shadda, rollback leaves prior copy, UTF8 gate" },
     { "path": "INSTRUCTIONS.md", "purpose": "project master reference (UI conventions, schema, MCP write boundary)" },
     { "path": "CORPUS.md", "purpose": "the signed corpus patch channel" },
     { "path": "REMOTE.md", "purpose": "the remote research channel + Plans & entitlements section" },
@@ -130,6 +147,9 @@
     "requireRole / requirePlan": "The two Hono middlewares that gate a route: allowed-to vs paid-for."
   },
   "openQuestions": [
+    "Corpus step 2: port the query layer to async pg, then switch the app/MCP readers (see CORPUS.md 'Step 2').",
+    "Arabic full-text search in Postgres: diacritic-folded column vs pg_trgm — decide by comparing against FTS5 results.",
+    "Will cloud corpus reads be free or plan-gated? (Principle so far: reading the Qur'an stays free.)",
     "Billing provider integration (the set-plan / POST /plan seam).",
     "If 'full cloud research' is ever wanted: migrate the app's personal research to the cloud so the AI review loop stays coherent — larger migration, reverses offline/privacy.",
     "Edit SHARED_RESEARCH.md to mark the superseded offline-community + derived-mirror decisions (like the retired 'nothing is revealed')."

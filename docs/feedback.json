@@ -8,6 +8,20 @@
       "section": "general",
       "text": "Monetization Phases A–D shipped on branch feature/monetization-entitlements: plan/entitlement layer + 402 gate, community moved live-remote with the local mirror removed, publishing gated. MCP kept local (Phase E deferred by decision — the cloud has none of the corpus). This atlas (docs/atlas.json for AI, docs/atlas.html for humans) is the shared map. Leave feedback per section in the published page or here; I read it back.",
       "status": "done"
+    },
+    {
+      "ts": "2026-09-26T00:00:00Z",
+      "author": "Maintainer",
+      "section": "roadmap",
+      "text": "Let's make things simple first: migrate quran.db to Postgres.",
+      "status": "answered"
+    },
+    {
+      "ts": "2026-09-26T00:00:01Z",
+      "author": "Claude",
+      "section": "roadmap",
+      "text": "Corpus step 1 done on branch feature/corpus-postgres: quran.db is in Postgres schema `corpus` (294,804 rows, 18 s) and verified exact on every row of every table, the view, FKs and indexes. Text is COLLATE \"C\" so Arabic sorts as it does in SQLite — the هدي forms query returns the identical answer in identical order on both. Nothing reads the Postgres copy yet; step 2 ports the query layer (sync→async) and decides Arabic full-text. Open question for you: should cloud corpus reads be free, or plan-gated?",
+      "status": "open"
     }
   ]
 }

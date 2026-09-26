@@ -20,6 +20,7 @@
     "remote:demo:keep": "npm run demo:claims -w @alsiraat/remote -- --keep",
     "remote:diagnose": "npm run diagnose:pull -w @alsiraat/remote",
     "remote:demo:clean": "npm run demo:clean -w @alsiraat/remote",
+    "corpus:migrate": "npm run corpus:migrate -w @alsiraat/remote --",
     "build": "npm run build -w app",
     "start": "npm run build -w app && npm run start:static -w server",
     "mcp": "npm start --silent -w @alsiraat/mcp",

@@ -304,6 +304,9 @@
               <text x="660" y="301" font-size="12.5" font-weight="600" fill="var(--lapis)">Community (gated)</text>
               <text x="660" y="320" font-size="11" fill="var(--ink-soft)">divergences · readings</text>
               <text x="660" y="336" font-size="11" fill="var(--ink-soft)">publish · review</text>
+              <rect x="648" y="358" width="240" height="58" rx="8" fill="var(--surface-2)" stroke="var(--gold)" stroke-dasharray="5 4"/>
+              <text x="660" y="379" font-size="12.5" font-weight="600" fill="var(--gold)">Corpus copy · Postgres</text>
+              <text x="660" y="398" font-size="11" fill="var(--ink-soft)">verified · not read yet (step 2)</text>
             </g>
 
             <!-- arrows local -->
@@ -325,7 +328,9 @@
         </div>
         <figcaption><b>The whole system.</b> The app talks to the local server for all corpus and personal
           research; the MCP reads the same two local files directly. Only the <b>community</b> path crosses into
-          the cloud — and it is gated. The corpus is never hosted; corrections arrive as signed patch files.</figcaption>
+          the cloud — and it is gated. The corpus is <b>moving to Postgres</b>: a verified copy now lives in the
+          cloud (dashed — nothing reads it yet), while the app and MCP keep reading <code>quran.db</code> until
+          step 2 ports the readers. Corrections still arrive as signed patch files.</figcaption>
       </figure>
       <div class="thread" data-section="system"></div>
     </section>
@@ -341,7 +346,8 @@
           <ul class="checks">
             <li>Text in four scripts, per-word morphology, roots, ~9 classical lexicons</li>
             <li><strong>Read-only</strong>, ships with the app, ~150 MB</li>
-            <li>Never hosted as a DB — corrections are <em>signed patch releases</em></li>
+            <li>Corrections are <em>signed patch releases</em></li>
+            <li><strong>Moving to Postgres</strong> — step 1 done: a copy verified exact, row-for-row (schema <code>corpus</code>)</li>
           </ul>
         </div>
         <div class="card">
@@ -541,11 +547,14 @@
 
     <section id="mcp">
       <h2><span class="num">07</span>The MCP — local, and staying that way (for now)</h2>
-      <p>The MCP lets an AI study the Book <em>with</em> you. We looked hard at moving it to the cloud and decided
-        against it, for a concrete reason: <strong>the cloud has none of the corpus.</strong> Every corpus tool —
+      <p>The MCP lets an AI study the Book <em>with</em> you. When we looked at moving it to the cloud, the blocker
+        was concrete: <strong>the cloud had none of the corpus.</strong> Every corpus tool —
         <code>read_ayah</code>, <code>study_root</code>, <code>trace_word</code>, <code>search_quran</code> — reads
-        the 150 MB local <code>quran.db</code>, which by design is never hosted. Putting it on the cloud would mean
-        migrating 150 MB and re-implementing the whole corpus query layer, to charge for… reading the Qur'an.</p>
+        the local <code>quran.db</code>.</p>
+      <p>That blocker is now half-lifted: the corpus <em>data</em> is in Postgres and verified (see §08). What's left
+        is the heavy part — porting the query layer from synchronous SQLite to async Postgres — plus the second
+        blocker, which hasn't moved: the AI's proposals only reach you for review if your personal research lives
+        where the AI writes.</p>
       <div class="callout">
         <span class="h">Decision (revisit later).</span> Keep the MCP fully local and free — consistent with the
         app's own free, offline core. Monetization is already complete without it: the enforceable paid surface is
@@ -559,13 +568,15 @@
 
     <section id="roadmap">
       <h2><span class="num">08</span>Roadmap &amp; status</h2>
-      <p>Branch <code>feature/monetization-entitlements</code> — five commits, all typechecking clean; the remote
-        suite is 91/91.</p>
+      <p>Monetization: branch <code>feature/monetization-entitlements</code>. Corpus migration:
+        <code>feature/corpus-postgres</code>, stacked on it. Everything typechecks clean; the remote suite is 102/102.</p>
       <div class="road">
         <div class="step"><span class="st done">A · done</span><div><h4>Entitlement layer</h4><p>The <code>plan</code> ladder, <code>requirePlan</code> (→ 402), <code>set-plan</code> CLI + <code>POST /plan</code>, <code>planActive</code> on <code>/me</code>. 10 boundary tests.</p></div></div>
         <div class="step"><span class="st done">B+C · done</span><div><h4>Community goes live-remote, local mirror removed</h4><p><code>POST /divergences</code> + <code>GET /community/readings</code> (gated); the <code>derived_*</code> mirror and pull path deleted; app reads the community live.</p></div></div>
         <div class="step"><span class="st done">D · done</span><div><h4>Publishing gated</h4><p><code>requirePlan</code> on submit/propose; upgrade nudges in the share &amp; propose flows.</p></div></div>
-        <div class="step"><span class="st defer">E · deferred</span><div><h4>MCP → cloud</h4><p>Parked by decision (see §07). MCP stays local &amp; free; the corpus can't/shouldn't move to the cloud.</p></div></div>
+        <div class="step"><span class="st defer">E · deferred</span><div><h4>MCP → cloud</h4><p>Parked (see §07). MCP stays local &amp; free; its corpus blocker is being lifted by the migration below.</p></div></div>
+        <div class="step"><span class="st done">corpus 1 · done</span><div><h4>Corpus → Postgres: move &amp; verify the data</h4><p><code>npm run corpus:migrate</code> — 294,804 rows in 18 s, one transaction, verified exact on every row. Text columns <code>COLLATE "C"</code> so Arabic sorts exactly as SQLite does (proven: the هدي forms return in identical order). App &amp; MCP untouched.</p></div></div>
+        <div class="step"><span class="st defer">corpus 2 · next</span><div><h4>Corpus → Postgres: port the readers</h4><p>Sync <code>node:sqlite</code> → async <code>pg</code> across the corpus layer; <code>ILIKE</code> where SQLite's <code>LIKE</code> was case-insensitive; an Arabic full-text decision; a Postgres target for signed patches; prove it with the golden-parity suite.</p></div></div>
         <div class="step"><span class="st defer">next</span><div><h4>Billing provider</h4><p>Slots into the one seam — <code>set-plan</code> / <code>POST /plan</code> — with no rework of the gate.</p></div></div>
       </div>
       <div class="thread" data-section="roadmap"></div>

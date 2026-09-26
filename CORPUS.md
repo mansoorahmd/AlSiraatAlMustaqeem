@@ -69,6 +69,57 @@ QF_QURAN_DB=/path/to/quran.db npm run corpus -w server -- apply signed.json
 npm run corpus -w server -- version
 ```
 
+## The corpus in Postgres (step 1 — data moved, verified)
+
+The corpus is moving to the cloud. **Step 1 is done: the data is in Postgres and proven exact.**
+The app and the MCP still read `quran.db`; they move over in step 2.
+
+```bash
+npm run corpus:migrate            # load quran.db → Postgres schema "corpus", then verify
+npm run corpus:migrate -- --verify  # re-verify an existing copy (e.g. after replacing quran.db)
+```
+
+Source is `QF_QURAN_DB` (default `./quran.db`), opened read-only. Target is the remote's
+`DATABASE_URL`, schema **`corpus`** — the remote's research tables in `public` are never touched.
+Code: `remote/src/corpus/` (`schema.ts`, `load.ts`, `verify.ts`); tests `remote/test/corpus-migrate.test.ts`.
+
+**Guarantees.** Refuses a non-UTF8 database before touching anything (Arabic would be corrupted).
+The whole rebuild is **one transaction** — a failed load rolls back and the previous copy survives.
+Re-running rebuilds to the same state. `corpus.corpus_meta` records the edition in the patch
+channel's own keys (`corpus_version`, `schema_version`) plus the source file's sha256.
+
+**Verification is total, not sampled.** Every table is reduced on both sides to a row count and an
+order-independent fingerprint of every column of every row, so one changed diacritic fails it. Also
+checked: column lists, the `word_occurrences` view (count + content), 9/9 foreign keys, 29/29 indexes,
+and that the copy is of *this* file. First real run: **294,804 rows, 143.5 MB, 18 s, exact** — and the
+same study query (every form of هدي) returns the identical answer, in the identical order, on both.
+
+**Translation choices that matter:**
+
+- **`COLLATE "C"` on every text column.** Byte order — the exact equivalent of SQLite's `BINARY`.
+  This database's own collation (`English_United States.1252`) would sort and compare Arabic
+  differently; the identical-order result above is the proof that this choice is load-bearing.
+- **ids are copied verbatim**; AUTOINCREMENT tables become identity columns whose sequences are
+  advanced past the copied ids, so a later insert can't collide.
+- **FTS5 → Postgres full-text.** The two FTS5 tables were external-content indexes (no data of their
+  own), so they become GIN indexes on `verses` / `verse_translations`.
+
+### Step 2 — what porting the readers involves (not started)
+
+- **Sync → async.** The corpus query layer (`server/src/roots.ts`, `content.ts`, `similarity/`,
+  `echoes.ts`, `spellings.ts`, `wazn.ts`, `freetext.ts`, `linkages.ts`, `expressions.ts`) is built on
+  synchronous `node:sqlite`; `pg` is async, so every function and every caller (routes, MCP tools)
+  gains an `await`. This is the bulk of the work.
+- **`LIKE` differs.** SQLite's `LIKE` is case-insensitive for ASCII; Postgres's is case-sensitive —
+  use `ILIKE` wherever a query relied on that.
+- **Arabic full-text needs its own decision.** Postgres's parser can split vocalised Arabic at the
+  diacritics, depending on the database's character settings. Likely answer: a diacritic-folded
+  search column, or `pg_trgm`. Compare results against FTS5 before switching search.
+- **The signed patch channel** (`server/src/corpus/patch.ts`) writes SQLite; it needs a Postgres
+  target. The `corpus_meta` keys are already mirrored, so the ordering/idempotency rules carry over.
+- **Parity.** Run the server's existing golden-parity suite against the Postgres-backed layer — the
+  same tests that proved the Python→TypeScript port.
+
 ## Still to wire (desktop integration)
 
 The applier writes to `quran.db`, so it runs out-of-band, not through the live server (which
