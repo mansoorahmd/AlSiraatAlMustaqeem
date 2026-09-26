@@ -19,6 +19,7 @@ import { loadTiers, rankOf, setTier, removeTier, TierError, FREE } from "./plans
 import {
   requireResource, wholeMin, canRead, listRules, setRule, removeRule, isResourceKind,
 } from "./resource-access.js";
+import { createToken, listTokens, revokeToken } from "./api-tokens.js";
 import { corpusApp } from "./corpus/serve.js";
 import { pgCorpus } from "./corpus/pg-corpus.js";
 import { createCorpusServices, type CorpusServices } from "../../server/src/corpus-services.js";
@@ -177,6 +178,22 @@ export function createApp(): Hono<Env> {
     if (!displayName?.trim()) return c.json({ detail: "displayName is required" }, 422);
     await setDisplayName(pgRunner, c.get("user")!.id, displayName);
     return c.json({ ok: true });
+  });
+
+  // --- personal API tokens: how a headless client (the MCP) acts as you (api-tokens.ts) ---
+  // A feature, so role-based: any signed-in account. You only ever see or revoke your own.
+  app.get("/me/tokens", requireRole("reader"), async (c) =>
+    c.json(await listTokens(pgRunner, c.get("user")!.id)));
+
+  /** Mint a token. Its secret is in this response and nowhere else — show it once. */
+  app.post("/me/tokens", requireRole("reader"), async (c) => {
+    const { label } = (await c.req.json().catch(() => ({}))) as { label?: string };
+    return c.json(await createToken(pgRunner, c.get("user")!.id, label?.trim() || "MCP"), 201);
+  });
+
+  app.delete("/me/tokens/:id", requireRole("reader"), async (c) => {
+    const ok = await revokeToken(pgRunner, c.get("user")!.id, c.req.param("id"));
+    return ok ? c.json({ ok: true }) : c.json({ detail: "no such token of yours" }, 404);
   });
 
   app.post("/me/local-id", requireRole("reader"), async (c) => {
