@@ -3213,6 +3213,20 @@ a { color: var(--lapis); }
   border: 1px solid color-mix(in srgb, var(--error) 35%, transparent);
   color: var(--wax-dark); font-size: var(--fs-small); }
 
+/* --- why the Qur'an text isn't showing (CorpusAccessBanner) — one tinted block under the top bar */
+.corpus-banner { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1rem;
+  flex-wrap: wrap; margin: 0.6rem 1rem 0; padding: 0.6rem 0.8rem; border-radius: 8px;
+  font-size: var(--fs-small); line-height: 1.9; }
+.corpus-banner.is-gated { background: color-mix(in srgb, var(--gold) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent); }
+.corpus-banner.is-offline { background: color-mix(in srgb, var(--error) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--error) 35%, transparent); color: var(--wax-dark); }
+.corpus-banner-text { display: flex; flex-direction: column; min-width: 0; }
+.corpus-banner-text strong { font-weight: 600; }
+.corpus-banner-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+/* a secondary action outside a toolbar needs an edge, or it reads as absent (INSTRUCTIONS.md) */
+.corpus-banner-actions .ctl:not(.primary) { border-color: var(--paper-edge); color: var(--ink); }
+
 /* --- identity header --- */
 .acct-head { display: flex; align-items: flex-start; gap: 0.75rem; }
 .acct-avatar {

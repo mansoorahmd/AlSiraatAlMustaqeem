@@ -11,6 +11,8 @@
 import type { PeerIndication } from "./types";
 
 const REMOTE = import.meta.env.VITE_REMOTE_URL ?? "http://localhost:8100";
+/** The research server's base URL — also where the Qur'an corpus is read from (`/corpus`). */
+export const REMOTE_URL: string = REMOTE;
 
 export interface Me {
   id: string;

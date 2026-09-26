@@ -16,6 +16,7 @@ import { AppProvider, useAppState } from "./state/store";
 import { useEffect, useState } from "react";
 import { OwnerGate } from "./components/OwnerGate";
 import { fetchIdentity } from "./persistence/db";
+import { CorpusAccessBanner } from "./components/CorpusAccessBanner";
 
 function Screen() {
   const { tab } = useAppState();
@@ -49,6 +50,7 @@ export default function App() {
       <CommandPalette />
       <div className="shell">
         <TopBar />
+        <CorpusAccessBanner />
         <main className="main">
           <Screen />
         </main>
