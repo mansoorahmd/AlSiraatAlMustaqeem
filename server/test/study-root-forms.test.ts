@@ -11,6 +11,8 @@ import { join } from "node:path";
 
 // isolate research writes to a throwaway db (study_root only reads, but createState
 // opens research.db read-write and migrates it)
+// these tests are about tool behaviour, against the local corpus reference (the remote path has its own test)
+process.env.MQ_CORPUS = "local";
 process.env.QF_RESEARCH_DB = join(mkdtempSync(join(tmpdir(), "alsiraat-sr-")), "r.db");
 
 let study: any;

@@ -17,7 +17,7 @@
 //    items ourselves on a grid that avoids what is already there.
 
 import { AI_SOURCE, WriteRefused } from "./core.js";
-import type { AppState } from "../../server/src/state.js";
+import type { McpState } from "./core.js";
 
 type Doc = Record<string, any>;
 
@@ -39,7 +39,7 @@ export const isAiOwned = (item: Doc): boolean =>
 const arr = (v: unknown): Doc[] => (Array.isArray(v) ? v : []);
 
 /** Read a case or refuse clearly. */
-export function mustGetCase(state: AppState, caseId: string): Doc {
+export function mustGetCase(state: McpState, caseId: string): Doc {
   const c = state.research.getCase(caseId) as Doc | undefined;
   if (!c) throw new WriteRefused(`No case with id ${caseId}. Use list_cases to find it.`);
   return c;
@@ -92,7 +92,7 @@ export function findOwnItem(c: Doc, itemId: string): { kind: "card" | "slip" | "
 }
 
 /** Save a case after mutation, keeping the reader's fields exactly as they were. */
-export function saveGuarded(state: AppState, before: Doc, after: Doc): Doc {
+export function saveGuarded(state: McpState, before: Doc, after: Doc): Doc {
   // belt and braces: conclusions are the reader's alone, whatever the caller built
   const clean: Doc = {
     ...after,

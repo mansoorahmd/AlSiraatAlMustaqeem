@@ -8,9 +8,7 @@
 // a translator's rendering.
 
 import { z } from "zod";
-import type { AppState } from "../../server/src/state.js";
-import { waznForWord } from "../../server/src/wazn.js";
-import { expressionSearch } from "../../server/src/expressions.js";
+import type { McpState } from "./core.js";
 import { foldArabic, buckToArabic } from "../../server/src/text/normalize.js";
 import { AI_SOURCE, guard, proposalId, WriteRefused } from "./core.js";
 import {
@@ -87,8 +85,8 @@ interface OccRow {
   lemma_arabic: string | null;
   verse_text: string | null;
 }
-const getRoot = async (s: AppState, r: string) => (await s.roots.getRoot(r)) as RootRow | null;
-const rootOccurrences = async (s: AppState, bw: string, limit: number) =>
+const getRoot = async (s: McpState, r: string) => (await s.roots.getRoot(r)) as RootRow | null;
+const rootOccurrences = async (s: McpState, bw: string, limit: number) =>
   (await s.roots.occurrences(bw, { script: "uthmani", limit })) as unknown as OccRow[];
 
 
@@ -108,7 +106,7 @@ export interface Tool {
   /** true for the two write tools, so the client can flag them */
   writes?: boolean;
   /** Corpus reads are async (the corpus may be a remote service), so a tool may return a promise. */
-  run: (state: AppState, args: any) => unknown | Promise<unknown>;
+  run: (state: McpState, args: any) => unknown | Promise<unknown>;
 }
 
 // ---------------------------------------------------------------- composed ----
@@ -189,7 +187,7 @@ const read_ayah: Tool = {
     const v = await state.content.getVerse(verse_key, { script, withWords: true });
     if (!v) return { error: `verse not found: ${verse_key}` };
     const words = await Promise.all(((v.words ?? []) as any[]).map(async (w) => {
-      const wz = await waznForWord(state.corpus, verse_key, w.position);
+      const wz = await state.wazn(verse_key, w.position);
       return {
         position: w.position,
         word: w.arabic,
@@ -350,7 +348,7 @@ const search_quran: Tool = {
       return {
         mode,
         terms: terms.map((t) => t.surface),
-        matches: await expressionSearch(state.corpus, terms, "roots", limit),
+        matches: await state.expressions(terms, "roots", limit),
       };
     }
     const r = await state.freetext.search(query, { topK: limit });
@@ -492,7 +490,7 @@ const thin: Tool[] = [
     name: "get_wazn", title: "Morphological pattern of a word",
     description: "The صرف pattern of one word: form I–XII, participle, masdar, aspect, voice.",
     schema: { verse_key: z.string(), word_position: z.number().int().min(1) },
-    run: async (s, { verse_key, word_position }) => (await waznForWord(s.corpus, verse_key, word_position)) ?? { error: "no morphology for that word" },
+    run: async (s, { verse_key, word_position }) => (await s.wazn(verse_key, word_position)) ?? { error: "no morphology for that word" },
   },
   {
     name: "get_spelling_variants", title: "Rasm variants of a word",

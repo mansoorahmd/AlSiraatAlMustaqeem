@@ -48,6 +48,10 @@ export interface DivergenceOut {
   globalTotal: number;
 }
 export interface InviteOut { code: string; role: Role; expires_at: string | null }
+export interface ApiToken {
+  id: string; label: string; prefix: string;
+  createdAt: string; lastUsedAt: string | null; revokedAt: string | null;
+}
 
 /** Kinds that can't conflict with anyone else's work — all that's submittable so far. */
 export type AdditiveKind = "note" | "question" | "evidence";
@@ -174,6 +178,22 @@ export const remote = {
   /** Set your own display name — what other researchers see on your work. */
   setName(displayName: string): Promise<unknown> {
     return call("/me/name", { method: "POST", body: JSON.stringify({ displayName }) });
+  },
+
+  // --- personal API tokens: how a headless client (the MCP) acts as you ------------
+
+  /** Your tokens, newest first — never their secrets, only a recognisable prefix. */
+  tokens(): Promise<ApiToken[]> {
+    return call<ApiToken[]>("/me/tokens");
+  },
+
+  /** Mint a token. The secret (`token`) is in this response ONLY — show it once. */
+  createToken(label: string): Promise<ApiToken & { token: string }> {
+    return call("/me/tokens", { method: "POST", body: JSON.stringify({ label }) });
+  },
+
+  revokeToken(id: string): Promise<{ ok: boolean }> {
+    return call(`/me/tokens/${encodeURIComponent(id)}`, { method: "DELETE" });
   },
 
   /**

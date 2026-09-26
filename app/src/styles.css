@@ -3298,6 +3298,19 @@ a { color: var(--lapis); }
 .acct-code-box code { font-family: ui-monospace, monospace; font-size: var(--fs-small);
   word-break: break-all; flex: 1; min-width: 8rem; }
 
+/* AI-assistant tokens: one row each, and the once-only config block */
+.acct-tokens { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.acct-tokens li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.6rem;
+  font-size: var(--fs-small); padding: 0.35rem 0; border-bottom: 1px solid var(--paper-edge); }
+.acct-tokens li .ctl { margin-left: auto; }
+.acct-tokens code { font-family: ui-monospace, monospace; }
+.acct-token-label { font-weight: 500; color: var(--ink); }
+.acct-token-fresh { flex-direction: column; align-items: stretch; }
+.acct-token-fresh pre { margin: 0; padding: 0.5rem; overflow-x: auto; font-size: 0.78rem;
+  font-family: ui-monospace, monospace; background: var(--paper); border-radius: 4px;
+  white-space: pre; direction: ltr; text-align: left; }
+.acct-token-fresh .ctl { align-self: flex-start; }
+
 /* one clear primary action per section */
 .ctl.primary { background: var(--lapis); border-color: var(--lapis); color: #fff; font-weight: 500; }
 .ctl.primary:hover:not(:disabled) { background: #1d4ed8; border-color: #1d4ed8; }

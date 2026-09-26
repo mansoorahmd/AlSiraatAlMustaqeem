@@ -9,7 +9,7 @@
 // working offline, which is the whole premise (SHARED_RESEARCH.md §2).
 
 import { useCallback, useEffect, useState } from "react";
-import { remote, RemoteOffline, type Me, type Role, type InviteOut } from "../api/remote";
+import { remote, RemoteOffline, type Me, type Role, type InviteOut, type ApiToken } from "../api/remote";
 import { fetchIdentity, owner as ownerApi } from "../persistence/db";
 
 /**
@@ -40,6 +40,102 @@ function initials(me: Me): string {
   const src = me.displayName.trim() || me.email;
   const parts = src.split(/[\s@._-]+/).filter(Boolean);
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+}
+
+/** The MCP client config for a fresh token — the reader pastes it into their AI app. */
+function mcpConfig(token: string): string {
+  return JSON.stringify({
+    mcpServers: {
+      "Organic-Quranic-Methodology": {
+        command: "node",
+        args: ["<path to AlSiraatAlMustaqeem>/mcp/bin/start.mjs"],
+        env: { REMOTE_URL: remote.url, REMOTE_TOKEN: token },
+      },
+    },
+  }, null, 2);
+}
+
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString() : "never");
+
+/**
+ * "Connect an AI assistant": personal API tokens. The MCP runs headless, so it can't hold a
+ * session cookie — it reads the corpus AS YOU with a token instead, and so sees exactly what
+ * your plan allows. The secret is shown once, at creation; after that only its prefix.
+ */
+function AiAssistantSection() {
+  const [tokens, setTokens] = useState<ApiToken[] | null>(null);
+  const [label, setLabel] = useState("");
+  const [fresh, setFresh] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    remote.tokens().then(setTokens).catch((e) => setErr((e as Error).message));
+  }, []);
+  useEffect(load, [load]);
+
+  const act = async (fn: () => Promise<void>) => {
+    setBusy(true); setErr(null);
+    try { await fn(); load(); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+  };
+  const live = (tokens ?? []).filter((t) => !t.revokedAt);
+
+  return (
+    <section className="acct-section">
+      <h3>Connect an AI assistant</h3>
+      <p className="acct-hint">
+        The MCP server lets an AI (Claude, etc.) read the Qur’an and propose research as you. Give
+        it a token — it then reads exactly what your plan allows. Revoke a token to cut it off.
+      </p>
+      {err && <p className="acct-error" role="alert">{err}</p>}
+
+      {live.length > 0 && (
+        <ul className="acct-tokens">
+          {live.map((t) => (
+            <li key={t.id}>
+              <span className="acct-token-label">{t.label}</span>
+              <code>{t.prefix}…</code>
+              <span className="acct-muted">created {when(t.createdAt)} · last used {when(t.lastUsedAt)}</span>
+              <button className="ctl" disabled={busy}
+                onClick={() => act(async () => { await remote.revokeToken(t.id); })}>
+                Revoke
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="acct-field">
+        <label htmlFor="acct-token-label">Name it</label>
+        <input id="acct-token-label" placeholder="e.g. Claude on my laptop"
+          value={label} onChange={(e) => setLabel(e.target.value)} />
+      </div>
+      <div className="acct-actions">
+        <button className="ctl primary" disabled={busy}
+          onClick={() => act(async () => {
+            const t = await remote.createToken(label.trim() || "MCP");
+            setFresh(t.token); setCopied(false); setLabel("");
+          })}>
+          {busy ? "Creating…" : "Create token"}
+        </button>
+      </div>
+
+      {fresh && (
+        <div className="acct-code-box acct-token-fresh">
+          <span className="acct-hint">
+            Copy this now — it won’t be shown again. Paste it into your AI app’s MCP config:
+          </span>
+          <pre>{mcpConfig(fresh)}</pre>
+          <button className="ctl"
+            onClick={() => { void navigator.clipboard?.writeText(mcpConfig(fresh)); setCopied(true); }}>
+            {copied ? "Copied" : "Copy config"}
+          </button>
+          <button className="ctl" onClick={() => setFresh(null)}>Done</button>
+        </div>
+      )}
+    </section>
+  );
 }
 
 export function AccountSheet() {
@@ -297,6 +393,8 @@ export function AccountSheet() {
               )}
             </section>
           )}
+
+          <AiAssistantSection />
 
           <div className="acct-footer">
             <button className="ctl" disabled={busy}

@@ -14,6 +14,8 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+// these tests are about tool behaviour, against the local corpus reference (the remote path has its own test)
+process.env.MQ_CORPUS = "local";
 process.env.QF_RESEARCH_DB = join(mkdtempSync(join(tmpdir(), "alsiraat-trace-")), "r.db");
 
 let state: any;
