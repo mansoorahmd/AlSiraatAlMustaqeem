@@ -20,6 +20,7 @@ import {
   requireResource, wholeMin, canRead, listRules, setRule, removeRule, isResourceKind,
 } from "./resource-access.js";
 import { createToken, listTokens, revokeToken } from "./api-tokens.js";
+import { listUsers, setRole, listResources, isUserId, AdminError } from "./admin.js";
 import { corpusApp } from "./corpus/serve.js";
 import { pgCorpus } from "./corpus/pg-corpus.js";
 import { createCorpusServices, type CorpusServices } from "../../server/src/corpus-services.js";
@@ -167,6 +168,40 @@ export function createApp(): Hono<Env> {
       throw e;
     }
   });
+
+  // --- the in-app Admin screen (admin.ts) — maintainer-only ---
+  const adminErr = (e: unknown) => {
+    if (e instanceof AdminError || e instanceof TierError) return { detail: e.message, status: e.status };
+    throw e;
+  };
+
+  app.get("/admin/users", requireRole("maintainer"), async (c) => c.json(await listUsers(pgRunner)));
+
+  app.put("/admin/users/:id/role", requireRole("maintainer"), async (c) => {
+    const { role } = (await c.req.json().catch(() => ({}))) as { role?: string };
+    try {
+      await setRole(pgRunner, c.req.param("id"), String(role ?? ""));
+      return c.json({ ok: true });
+    } catch (e) { const x = adminErr(e); return c.json({ detail: x.detail }, x.status as 400); }
+  });
+
+  /** The same grant as POST /plan, by user id (the Admin screen lists users, not emails). */
+  app.put("/admin/users/:id/plan", requireRole("maintainer"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { plan?: string; expiresInDays?: number | null };
+    if (!body.plan) return c.json({ detail: "plan is required" }, 422);
+    const id = c.req.param("id");
+    if (!isUserId(id) || !(await pgRunner.query("SELECT 1 FROM users WHERE id = $1", [id])).length) {
+      return c.json({ detail: "no such user" }, 404);
+    }
+    try {
+      await setPlan(pgRunner, { userId: id, plan: body.plan, expiresInDays: body.expiresInDays ?? null });
+      return c.json({ ok: true });
+    } catch (e) { const x = adminErr(e); return c.json({ detail: x.detail }, x.status as 400); }
+  });
+
+  /** Every translation and dictionary with its rule — unfiltered, unlike the public lists. */
+  app.get("/admin/resources", requireRole("maintainer"), async (c) =>
+    c.json(await listResources(corpusRunner, pgRunner)));
 
   // The Qur'an corpus itself, from Postgres — a RESOURCE, so its gate is the corpus plan rule.
   // Same route code as the local server's /api/v1 (see corpus/serve.ts).

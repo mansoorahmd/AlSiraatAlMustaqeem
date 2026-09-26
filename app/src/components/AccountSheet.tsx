@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { remote, RemoteOffline, type Me, type Role, type InviteOut, type ApiToken } from "../api/remote";
 import { fetchIdentity, owner as ownerApi } from "../persistence/db";
+import { cachedMe, refreshMe } from "../hooks/useMe";
 
 /**
  * Tie the open database to this account. If the file has no owner yet, claim it for this email;
@@ -164,6 +165,8 @@ export function AccountSheet() {
     try {
       const who = await remote.me();
       setMe(who);
+      // keep the app-wide account in step (sign-in/out changes the Admin tab, the banner, …)
+      if (who?.id !== cachedMe()?.id || who?.role !== cachedMe()?.role) void refreshMe();
       if (who) setNameDraft(who.displayName);
       setStatus(who ? "signed-in" : "signed-out");
     } catch (e) {
