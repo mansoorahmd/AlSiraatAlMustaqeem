@@ -18,15 +18,20 @@ export interface Me {
   email: string;
   displayName: string;
   localId: string | null;
-  // The billing axis (remote plans.ts). `planActive` is the ONE flag feature gates should read:
-  // a plan may be 'pro' yet lapsed, so never infer "paid" from the plan name. Optional so an
-  // older remote that doesn't send it reads as unpaid (the safe default = features locked).
+  // The billing axis (remote plans.ts). Tiers are data on the remote (free < … < scholar), so
+  // `plan` is any tier name. `planActive` is the flag COMMUNITY gates read: at or above the
+  // community tier and not lapsed — never infer "paid" from the name. Optional so an older
+  // remote that doesn't send it reads as unpaid (the safe default = features locked).
   plan?: Plan;
+  planLabel?: string;
+  /** position on the ladder; higher unlocks more (free = 0) */
+  planRank?: number;
   planExpiresAt?: string | null;
   planActive?: boolean;
 }
 export type Role = "reader" | "researcher" | "moderator" | "maintainer";
-export type Plan = "free" | "pro";
+/** A tier name from the remote's plan ladder (e.g. "free", "pro", "scholar"). */
+export type Plan = string;
 
 /** ⚖ The remote's live divergence result: my established forms diffed against the group's. */
 export interface DivergenceOut {

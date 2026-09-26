@@ -15,7 +15,15 @@ import { config } from "./config.js";
 import { pgRunner } from "./db.js";
 import { sessionMiddleware } from "./session.js";
 import { requireRole, type Env } from "./roles.js";
-import { planActive, requirePlan, isPlan, type Plan } from "./plans.js";
+import {
+  requirePlan, meetsPlan, loadTiers, rankOf, setTier, removeTier, TierError,
+  COMMUNITY_PLAN, FREE,
+} from "./plans.js";
+import {
+  requireCorpusAccess, getCorpusPolicy, setCorpusPolicy, getTranslationAccess,
+  setTranslationAccess, type CorpusAccess,
+} from "./corpus-access.js";
+import { corpusRoutes } from "./corpus/routes.js";
 import {
   createInvite, bindLocalId, loadPrincipal, setDisplayName,
   validateInvite, emailTaken, finishRedeem, InviteError,
@@ -68,32 +76,101 @@ export function createApp(): Hono<Env> {
   app.get("/me", requireRole("reader"), async (c) => {
     const me = c.get("user")!;
     const p = await loadPrincipal(pgRunner, me.id);
+    const tiers = await loadTiers(pgRunner);
+    const plan = me.plan ?? FREE;
     return c.json({
       id: me.id, role: me.role,
       email: p?.email ?? "", displayName: p?.displayName ?? "",
       localId: p?.localId ?? null,
-      // The billing axis. `planActive` is the one flag the app's feature gates read: the plan
-      // may be 'pro' but lapsed, so never let the app infer "paid" from the plan name alone.
-      plan: me.plan ?? "free",
+      // The billing axis. `planActive` is the flag the app's COMMUNITY gates read: at or above
+      // the community tier and not lapsed — never infer "paid" from the tier name alone.
+      plan,
+      planLabel: tiers.get(plan)?.label ?? plan,
+      planRank: rankOf(tiers, plan),
       planExpiresAt: me.planExpiresAt ?? null,
-      planActive: planActive(me),
+      planActive: meetsPlan(me, COMMUNITY_PLAN, tiers),
     });
   });
 
-  // Grant or revoke a plan. Maintainer-only, and never self-service in spirit — the manual
-  // stand-in for billing until it is wired (POST /plan or the set-plan CLI). `expiresInDays`
-  // omitted = a grant that never lapses; plan 'free' revokes and clears any expiry.
+  // Grant or revoke a plan tier. Maintainer-only — the manual stand-in for billing until it is
+  // wired. `expiresInDays` omitted = a grant that never lapses; plan 'free' revokes.
   app.post("/plan", requireRole("maintainer"), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { email?: string; plan?: string; expiresInDays?: number | null };
-    if (!body.email || !isPlan(body.plan)) {
-      return c.json({ detail: "email and a valid plan (free|pro) are required" }, 422);
-    }
+    if (!body.email || !body.plan) return c.json({ detail: "email and plan are required" }, 422);
     const userId = await userIdByEmail(pgRunner, body.email);
     if (!userId) return c.json({ detail: `no account for ${body.email}` }, 404);
-    await setPlan(pgRunner, { userId, plan: body.plan as Plan, expiresInDays: body.expiresInDays ?? null });
+    try {
+      await setPlan(pgRunner, { userId, plan: body.plan, expiresInDays: body.expiresInDays ?? null });
+    } catch (e) {
+      if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
     return c.json({ ok: true, email: body.email.trim().toLowerCase(), plan: body.plan });
   });
+
+  // --- the plan ladder: data, edited at runtime (plans.ts) ---
+  // Public read so the app can show what each tier is; edits are a maintainer act.
+  app.get("/plan-tiers", async (c) => c.json([...(await loadTiers(pgRunner)).values()]));
+
+  app.put("/plan-tiers/:name", requireRole("maintainer"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { rank?: number; label?: string };
+    try {
+      return c.json(await setTier(pgRunner, { name: c.req.param("name"), rank: Number(body.rank), label: body.label }));
+    } catch (e) {
+      if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+
+  app.delete("/plan-tiers/:name", requireRole("maintainer"), async (c) => {
+    try {
+      await removeTier(pgRunner, c.req.param("name"));
+      return c.json({ ok: true });
+    } catch (e) {
+      if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+
+  // --- who may read the corpus, and each translation (corpus-access.ts) ---
+  // Public read: the app tells a reader what's required BEFORE they hit a 401/402.
+  app.get("/corpus-access", async (c) => {
+    const policy = await getCorpusPolicy(pgRunner);
+    const locked = [...(await getTranslationAccess(pgRunner))]
+      .map(([resourceId, minPlan]) => ({ resourceId, minPlan }))
+      .sort((a, b) => a.resourceId - b.resourceId);
+    return c.json({ ...policy, lockedTranslations: locked });
+  });
+
+  app.put("/corpus-access", requireRole("maintainer"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { access?: string; minPlan?: string };
+    try {
+      return c.json(await setCorpusPolicy(pgRunner,
+        { access: body.access as CorpusAccess, minPlan: body.minPlan }, c.get("user")!.id));
+    } catch (e) {
+      if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+
+  /** Lock a translation to a tier ({minPlan}) or unlock it ({minPlan: null}). */
+  app.put("/translation-access/:resourceId", requireRole("maintainer"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { minPlan?: string | null };
+    try {
+      await setTranslationAccess(pgRunner, Number(c.req.param("resourceId")),
+        body.minPlan ?? null, c.get("user")!.id);
+      return c.json({ ok: true });
+    } catch (e) {
+      if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+
+  // The Qur'an corpus itself, from Postgres — same paths and JSON as the local API's content
+  // routes, gated by the policy above.
+  app.use("/corpus/*", requireCorpusAccess(pgRunner));
+  app.route("/corpus", corpusRoutes(pgRunner));
 
   app.post("/me/name", requireRole("reader"), async (c) => {
     const { displayName } = (await c.req.json().catch(() => ({}))) as { displayName?: string };
@@ -113,7 +190,7 @@ export function createApp(): Hono<Env> {
   // Guarded at `researcher` AND an active plan: publishing your work into the community is a paid
   // action. (Moderation/establishment below stay role-only — the leader's staff run the community
   // and must not be charged to do so; flip that by adding requirePlan there if the model changes.)
-  app.post("/submissions", requireRole("researcher"), requirePlan("pro"), async (c) => {
+  app.post("/submissions", requireRole("researcher"), requirePlan(COMMUNITY_PLAN, pgRunner), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { items?: SubmissionItemInput[]; supersedes?: string | null };
     try {
@@ -141,7 +218,7 @@ export function createApp(): Hono<Env> {
   // --- claims: contending readings, review, establishment, dissent (Phase 5) ---
 
   /** Offer your reading of a form or root. Must carry its argument (§12.1). Publishing → paid. */
-  app.post("/claims", requireRole("researcher"), requirePlan("pro"), async (c) => {
+  app.post("/claims", requireRole("researcher"), requirePlan(COMMUNITY_PLAN, pgRunner), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { subjectKind?: SubjectKind; subjectValue?: string; payload?: never };
     try {
@@ -176,7 +253,7 @@ export function createApp(): Hono<Env> {
    * readings and return the differences. PAID: requireRole gates *who*, requirePlan gates
    * *paid-for* — the group's readings never land on the client's disk, so the gate is real.
    */
-  app.post("/divergences", requireRole("reader"), requirePlan("pro"), async (c) => {
+  app.post("/divergences", requireRole("reader"), requirePlan(COMMUNITY_PLAN, pgRunner), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { forms?: { subjectKind?: SubjectKind; subjectValue: string; meaning: string }[] };
     return c.json(await divergencesAgainstGlobal(pgRunner, body.forms ?? []));
@@ -186,7 +263,7 @@ export function createApp(): Hono<Env> {
    * The community's readings of a word (its root + its exact form), for the reader's indication
    * chips — the live, gated replacement for the old local derived_peer_indications mirror. PAID.
    */
-  app.get("/community/readings", requireRole("reader"), requirePlan("pro"), async (c) =>
+  app.get("/community/readings", requireRole("reader"), requirePlan(COMMUNITY_PLAN, pgRunner), async (c) =>
     c.json(await communityReadingsFor(pgRunner, {
       root: c.req.query("root") || null,
       lemma: c.req.query("lemma") || null,

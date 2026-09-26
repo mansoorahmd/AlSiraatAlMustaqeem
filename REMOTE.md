@@ -114,33 +114,80 @@ a real reset email before the group grows.
 | `GET /me` | any signed-in user (id, role, bound localId) |
 | `POST /me/local-id` | any signed-in user (bind this device) |
 | `POST /me/name` | any signed-in user (display name) |
-| `POST /plan` | maintainer — grant/revoke a plan (the manual stand-in for billing) |
-| `POST /submissions` | researcher+ — offer work upstream |
+| `POST /plan` | maintainer — grant/revoke a plan tier (the manual stand-in for billing) |
+| `GET /plan-tiers` | public — the plan ladder (name, rank, label) |
+| `PUT /plan-tiers/:name` · `DELETE /plan-tiers/:name` | maintainer — edit the ladder |
+| `GET /corpus-access` | public — who may read the corpus, and which translations are locked |
+| `PUT /corpus-access` | maintainer — `{access, minPlan}` |
+| `PUT /translation-access/:resourceId` | maintainer — `{minPlan}` to lock, `{minPlan: null}` to unlock |
+| `GET /corpus/*` | per the corpus policy — the Qur'an from Postgres (below) |
+| `POST /submissions` | researcher+ and the community tier — offer work upstream |
 | `GET /submissions` | researcher+ — your outbox |
 | `GET /submissions/:id` | researcher+ |
 
 ## Plans & entitlements (monetization)
 
 Alongside the `role` ladder (*what you may do*) there is a second, orthogonal axis: **`plan`**
-(*what you have paid for*) — `free < pro`, in `src/plans.ts`, mirroring `src/roles.ts`. A
-`requirePlan('pro')` middleware sits **after** `requireRole` on the server-gated features
-(community reads, publishing, cloud MCP): role answers "are you allowed to", plan answers "have
-you paid for it". Below an active plan it returns **402 Payment Required**, not 403.
+(*what you have paid for*). The plan ladder is **data**, in the `plan_tiers` table — each tier has
+a name, a **rank**, and a label — so a maintainer defines it at runtime, for example
+`free (0) < student (50) < pro (100) < scholar (200)`. A gate names a minimum tier and asks
+whether the caller's rank reaches it. Below it: **402 Payment Required**, naming the tier needed.
+
+`free` is always rank 0. `pro` is the **community tier**: community reads and publishing require
+it, so it can't be removed. Tier names are free-form. You can call one "researcher" or "admin",
+but a tier is only ever *what's paid for* — the power to administer is the `maintainer` **role**.
+
+Every rule fails **closed**: an unknown tier never passes a gate, and a **lapsed** plan
+(`plan_expires_at` in the past) counts as `free`.
 
 Local, offline study never touches this — it needs no account and no plan. The gate is real
 because the gated *data* lives on the remote, not because the client hides a button.
 
-Billing isn't wired yet; a maintainer grants a plan out of band (like `bootstrap` /
-`set-password`) or over HTTP:
+Billing isn't wired yet. A maintainer manages it out of band, or over HTTP (routes above):
 
 ```bash
-npm run set-plan -w @alsiraat/remote -- me@example.org pro       # grant pro, no expiry
-npm run set-plan -w @alsiraat/remote -- me@example.org pro 30    # grant pro for 30 days
-npm run set-plan -w @alsiraat/remote -- me@example.org free      # revoke
+npm run access -w @alsiraat/remote -- show                         # the ladder + corpus policy
+npm run access -w @alsiraat/remote -- tier scholar 200 "Scholar"   # add or change a tier
+npm run access -w @alsiraat/remote -- tier-remove student          # remove an unused tier
+
+npm run set-plan -w @alsiraat/remote -- me@example.org scholar     # grant, no expiry
+npm run set-plan -w @alsiraat/remote -- me@example.org pro 30      # grant for 30 days
+npm run set-plan -w @alsiraat/remote -- me@example.org free        # revoke
 ```
 
-`GET /me` returns `plan`, `planExpiresAt`, and the computed **`planActive`** — the one flag the
-app reads (a plan may be `pro` yet lapsed, so never infer "paid" from the name).
+`GET /me` returns `plan`, `planLabel`, `planRank`, `planExpiresAt`, and **`planActive`** —
+at or above the community tier and not lapsed. That's the flag the app's community gates read.
+Never infer "paid" from the tier name.
+
+## Reading the corpus from the cloud
+
+The Qur'an corpus is served from Postgres at **`/corpus/*`** — the same paths, query parameters
+and JSON as the local API's content routes (`/corpus/verses/2:255?words=true` answers exactly like
+`/api/v1/verses/2:255?words=true`). Source: `src/corpus/content.ts`, `src/corpus/routes.ts`.
+
+**Who may read it is a runtime switch** (`corpus_policy`, one row):
+
+| `access` | Who may read |
+|---|---|
+| `public` | anyone, no sign-in |
+| `signed_in` | any signed-in account — the free plan is enough |
+| `plan` | an active plan at or above `minPlan` (e.g. `pro`, `scholar`) |
+
+**Each translation can require its own tier** (`translation_access`). A translation the caller's
+plan doesn't reach is **left out** of results; the request still succeeds. `GET /corpus-access`
+lists what's locked and at which tier, so the app can offer the upgrade.
+
+```bash
+npm run access -w @alsiraat/remote -- corpus public              # anyone may read
+npm run access -w @alsiraat/remote -- corpus signed_in           # any signed-in account
+npm run access -w @alsiraat/remote -- corpus plan scholar        # scholar or higher
+npm run access -w @alsiraat/remote -- translation 131 scholar    # lock translation 131
+npm run access -w @alsiraat/remote -- translation 131 none       # unlock it
+```
+
+The default is `plan` ≥ `pro`. A missing setting also reads as `plan` ≥ `pro` (fail closed).
+Settings are cached for 10 s per process: a change applies at once on the instance that made it,
+and within 10 s on any other.
 
 ## Configuration
 

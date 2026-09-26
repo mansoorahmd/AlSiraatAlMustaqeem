@@ -104,7 +104,24 @@ same study query (every form of هدي) returns the identical answer, in the ide
 - **FTS5 → Postgres full-text.** The two FTS5 tables were external-content indexes (no data of their
   own), so they become GIN indexes on `verses` / `verse_translations`.
 
-### Step 2 — what porting the readers involves (not started)
+### Step 2 — porting the readers (in progress)
+
+**Done: content.** Chapters, verses (every script), per-word breakdown, neighbours, navigation
+filters, translations and translation resources are served from Postgres at `/corpus/*` on the
+remote (`remote/src/corpus/content.ts`) — an async twin of `server/src/content.ts`. The access
+gate and per-translation tier locks are described in REMOTE.md ("Reading the corpus from the cloud").
+
+**Proven identical.** `npm run corpus:parity` runs the real server code over `quran.db` and the port
+over Postgres, and compares the JSON of every answer, key order included. First real run:
+**7,152 answers, all identical** — every verse with words and translations, every chapter in every
+script, neighbours, navigation filters, errors. `remote/test/corpus-parity.test.ts` does the same on
+a fixture in CI.
+
+Still to port: phrase search and full-text search, roots/forms/lexicons, linkages, echoes,
+similarity, spellings, wazn. The app and the MCP still read `quran.db`; pointing them at `/corpus/*`
+is a separate decision, because it makes reading need a network.
+
+What each remaining piece involves:
 
 - **Sync → async.** The corpus query layer (`server/src/roots.ts`, `content.ts`, `similarity/`,
   `echoes.ts`, `spellings.ts`, `wazn.ts`, `freetext.ts`, `linkages.ts`, `expressions.ts`) is built on

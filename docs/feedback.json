@@ -21,7 +21,21 @@
       "author": "Claude",
       "section": "roadmap",
       "text": "Corpus step 1 done on branch feature/corpus-postgres: quran.db is in Postgres schema `corpus` (294,804 rows, 18 s) and verified exact on every row of every table, the view, FKs and indexes. Text is COLLATE \"C\" so Arabic sorts as it does in SQLite — the هدي forms query returns the identical answer in identical order on both. Nothing reads the Postgres copy yet; step 2 ports the query layer (sync→async) and decides Arabic full-text. Open question for you: should cloud corpus reads be free, or plan-gated?",
-      "status": "open"
+      "status": "answered"
+    },
+    {
+      "ts": "2026-09-26T01:00:00Z",
+      "author": "Maintainer",
+      "section": "money",
+      "text": "Go with step 2. Corpus reading: yes, gated, but configurable — if the admin sets it free it's free; whether sign-in is needed is configurable too. Plans can be tiers (student, researcher, scholar, admin…) and translations can be plan-based.",
+      "status": "answered"
+    },
+    {
+      "ts": "2026-09-26T01:00:01Z",
+      "author": "Claude",
+      "section": "money",
+      "text": "Done. Plan tiers are now data (plan_tiers: name + rank), edited with `npm run access -- tier …`. Reading the cloud corpus follows a runtime policy — public, signed_in, or plan ≥ a tier (default plan ≥ pro). Each translation can require its own tier; below it the translation is left out, and GET /corpus-access says what's locked. Step 2's first piece is live: chapters/verses/words/translations at /corpus/*, and corpus:parity compared 7,152 answers with SQLite — all identical. Note: a tier named 'admin' is only what's paid for; administering stays the maintainer role.",
+      "status": "done"
     }
   ]
 }

@@ -13,7 +13,7 @@
 import { randomBytes } from "node:crypto";
 import type { SqlRunner } from "./migrate.js";
 import { isRole, type Role } from "./roles.js";
-import { isPlan, type Plan } from "./plans.js";
+import { FREE, loadTiers, TierError } from "./plans.js";
 
 export interface Invite {
   code: string;
@@ -97,7 +97,7 @@ export async function loadPrincipal(
   userId: string,
 ): Promise<{
   id: string; role: Role; localId: string | null; email: string; displayName: string;
-  plan: Plan; planExpiresAt: string | null;
+  plan: string; planExpiresAt: string | null;
 } | null> {
   const rows = await r.query(
     "SELECT id, role, local_id, email, display_name, plan, plan_expires_at FROM users WHERE id = $1",
@@ -110,8 +110,8 @@ export async function loadPrincipal(
   return {
     id: u.id, role: u.role, localId: u.local_id,
     email: u.email, displayName: u.display_name ?? "",
-    // A bad value in the column must never read as a paid plan — default to free.
-    plan: isPlan(u.plan) ? u.plan : "free",
+    // users.plan is a foreign key into plan_tiers, so it is always a real tier
+    plan: u.plan || FREE,
     planExpiresAt: u.plan_expires_at == null ? null : new Date(u.plan_expires_at).toISOString(),
   };
 }
@@ -123,11 +123,14 @@ export async function loadPrincipal(
  */
 export async function setPlan(
   r: SqlRunner,
-  opts: { userId: string; plan: Plan; expiresInDays?: number | null },
+  opts: { userId: string; plan: string; expiresInDays?: number | null },
 ): Promise<void> {
-  if (!isPlan(opts.plan)) throw new Error(`unknown plan: ${opts.plan}`);
+  const tiers = await loadTiers(r);
+  if (!tiers.has(opts.plan)) {
+    throw new TierError(`unknown plan tier: ${opts.plan} (tiers: ${[...tiers.keys()].join(", ")})`, 422);
+  }
   const expires =
-    opts.plan === "free" || opts.expiresInDays == null
+    opts.plan === FREE || opts.expiresInDays == null
       ? "NULL"
       : `now() + interval '${Number(opts.expiresInDays)} days'`;
   await r.query(
