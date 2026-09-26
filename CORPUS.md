@@ -69,10 +69,13 @@ QF_QURAN_DB=/path/to/quran.db npm run corpus -w server -- apply signed.json
 npm run corpus -w server -- version
 ```
 
-## The corpus in Postgres (step 1 — data moved, verified)
+## The corpus in Postgres
 
-The corpus is moving to the cloud. **Step 1 is done: the data is in Postgres and proven exact.**
-The app and the MCP still read `quran.db`; they move over in step 2.
+The corpus lives on the research server, in Postgres, and **the app and the MCP read it from there**
+(`/corpus`, plan-gated — REMOTE.md). `quran.db` remains the source it's loaded from, the local driver
+(tests, `MQ_CORPUS=local` for the MCP), and the reference parity is measured against.
+
+### Step 1 — moving the data (done)
 
 ```bash
 npm run corpus:migrate            # load quran.db → Postgres schema "corpus", then verify
@@ -104,38 +107,46 @@ same study query (every form of هدي) returns the identical answer, in the ide
 - **FTS5 → Postgres full-text.** The two FTS5 tables were external-content indexes (no data of their
   own), so they become GIN indexes on `verses` / `verse_translations`.
 
-### Step 2 — porting the readers (in progress)
+### Step 2 — one corpus codebase, two drivers (done)
 
-**Done: content.** Chapters, verses (every script), per-word breakdown, neighbours, navigation
-filters, translations and translation resources are served from Postgres at `/corpus/*` on the
-remote (`remote/src/corpus/content.ts`) — an async twin of `server/src/content.ts`. The access
-gate and per-translation tier locks are described in REMOTE.md ("Reading the corpus from the cloud").
+Rather than a Postgres twin of the query layer (which would drift), **every corpus service is
+written once**, async, against a small interface — `CorpusDb {query, one, scalar}` in
+`server/src/corpus-db.ts` — with two drivers:
 
-**Proven identical.** `npm run corpus:parity` runs the real server code over `quran.db` and the port
-over Postgres, and compares the JSON of every answer, key order included. First real run:
-**7,152 answers, all identical** — every verse with words and translations, every chapter in every
-script, neighbours, navigation filters, errors. `remote/test/corpus-parity.test.ts` does the same on
-a fixture in CI.
+| Driver | Where | Used by |
+|---|---|---|
+| `sqliteCorpus(db)` | `server/src/corpus-db.ts` | the local server, tests, the MCP with `MQ_CORPUS=local` |
+| `pgCorpus(runner)` | `remote/src/corpus/pg-corpus.ts` (`?` → `$n`) | the research server's `/corpus` |
 
-Still to port: phrase search and full-text search, roots/forms/lexicons, linkages, echoes,
-similarity, spellings, wazn. The app and the MCP still read `quran.db`; pointing them at `/corpus/*`
-is a separate decision, because it makes reading need a network.
+`createCorpusServices(db)` (`server/src/corpus-services.ts`) builds all of them — content, roots,
+linkages, wazn, expressions, echoes, spellings, free-text, similarity, word forms. The route
+builders in `server/src/routes/` take the services plus optional *entitlements* (translation and
+lexicon filters); the local server mounts them at `/api/v1`, the cloud mounts the same builders at
+`/corpus` (`remote/src/corpus/serve.ts`) with the plan filters plugged in. Expensive indexes are built
+once per process (`once()`); the cloud warms them at startup (`warmCorpus`).
 
-What each remaining piece involves:
+**Portable SQL.** What made one codebase give identical answers on both engines:
 
-- **Sync → async.** The corpus query layer (`server/src/roots.ts`, `content.ts`, `similarity/`,
-  `echoes.ts`, `spellings.ts`, `wazn.ts`, `freetext.ts`, `linkages.ts`, `expressions.ts`) is built on
-  synchronous `node:sqlite`; `pg` is async, so every function and every caller (routes, MCP tools)
-  gains an `await`. This is the bulk of the work.
-- **`LIKE` differs.** SQLite's `LIKE` is case-insensitive for ASCII; Postgres's is case-sensitive —
-  use `ILIKE` wherever a query relied on that.
-- **Arabic full-text needs its own decision.** Postgres's parser can split vocalised Arabic at the
-  diacritics, depending on the database's character settings. Likely answer: a diacritic-folded
-  search column, or `pg_trgm`. Compare results against FTS5 before switching search.
-- **The signed patch channel** (`server/src/corpus/patch.ts`) writes SQLite; it needs a Postgres
-  target. The `corpus_meta` keys are already mirrored, so the ordering/idempotency rules carry over.
-- **Parity.** Run the server's existing golden-parity suite against the Postgres-backed layer — the
-  same tests that proved the Python→TypeScript port.
+- `GROUP BY` every non-aggregated column (Postgres rejects bare columns; SQLite silently picks one).
+- A **total** `ORDER BY` wherever order is visible — SQLite's storage order had been hiding ties.
+  Example: 20:94 يَبْنَؤُمَّ carries two roots (ب ن ي, أ م م) at one word position; ordering by
+  `root_form_id` as the last key fixed Postgres without changing SQLite's answer.
+- `DISTINCT` → `GROUP BY … ORDER BY MIN(id)` (DISTINCT has no defined order).
+- Nullable sort keys: `NULLS FIRST` ascending, `NULLS LAST` descending (SQLite's behaviour).
+- Postgres `int8` counts are normalised to numbers in the driver.
+- Text is `COLLATE "C"` (step 1), so Arabic compares byte for byte.
+
+**Proven identical.** `npm run corpus:parity` serves the SAME routes over each driver and compares
+the JSON of every answer over HTTP, key order included. Full sweep (2026-09-26): **77,439 requests,
+all identical** — every chapter in every script, every verse (words, translations, echoes, similar
+verses, neighbours, wazn, spellings), navigation filters, every root (list, detail, forms,
+occurrences, linkages), root pairs, word occurrences, phrase / expression / free-text search.
+`-- --quick` samples ~3,000. `remote/test/corpus-parity.test.ts` runs ~50 URLs on a fixture in CI, and
+`server/test/mcp-remote-corpus.test.ts` proves the MCP's tools answer identically over HTTP.
+
+**Still open:** the signed patch channel (`server/src/corpus/patch.ts`) writes SQLite; corrections
+need a Postgres target (the `corpus_meta` keys are already mirrored, so the ordering/idempotency rules
+carry over). Until then, re-run `corpus:migrate` after patching `quran.db`.
 
 ## Still to wire (desktop integration)
 

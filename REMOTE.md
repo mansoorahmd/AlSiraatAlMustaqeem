@@ -1,12 +1,13 @@
 # Remote research channel (`remote/`)
 
-The optional, invite-only server where research is published, reviewed, and agreed
-(`SHARED_RESEARCH.md`). It is a **separate service** from the local API — they share nothing
-but the concept. Local study stays offline and account-free; only this remote needs an account.
+The invite-only research server: it serves the **Qur'an corpus** to the app and the MCP, and is
+where research is published, reviewed, and agreed (`SHARED_RESEARCH.md`). It is a **separate
+service** from the local API, which owns the reader's own `research.db` and never leaves their machine.
 
 Backed by **Postgres** (where a structured, multi-writer, transactional store earns its place —
-`SHARED_RESEARCH.md` §3). The corpus is *not* here; corrections ship as signed patch files
-(`CORPUS.md`).
+`SHARED_RESEARCH.md` §3). The corpus lives in its own schema, `corpus`, loaded from `quran.db` and
+proven identical (`CORPUS.md`). Access follows one rule: **features are role-based, resources are
+plan-based** (below).
 
 ## What's built (Phase 3)
 
@@ -54,10 +55,15 @@ by magic link. An uninvited email can request a link but no account will ever ex
 - **Issue invites** (maintainer only) — pick a role, get a code to share (30 days, single use).
 - **Link this device** — binds your `local_id` so work done before you had an account is
   attributed to you.
+- **Connect an AI assistant** — mint a personal API token for the MCP (shown once, inside a
+  ready-to-paste MCP config), see when each was last used, revoke any.
 - **Sign out.**
 
-If the remote isn't running the panel says so and everything else keeps working — the remote is
-optional by design.
+Maintainers also get an **Admin** tab in the top bar (see "Administering it" below).
+
+If the remote isn't running, the panel says so and your own research still works; reading the
+Qur'an needs it, and a banner at the top of the app says why when it can't read (offline, sign in,
+or which plan is needed).
 
 ### Sharing your work (Phase 4)
 
@@ -111,83 +117,112 @@ a real reset email before the group grows.
 | `GET /signed-in` | public — the magic-link landing page |
 | `POST /invites` | maintainer |
 | `POST /invites/redeem` | public — the code *is* the credential |
-| `GET /me` | any signed-in user (id, role, bound localId) |
+| `GET /me` | any signed-in user (id, role, plan, bound localId) |
 | `POST /me/local-id` | any signed-in user (bind this device) |
 | `POST /me/name` | any signed-in user (display name) |
-| `POST /plan` | maintainer — grant/revoke a plan tier (the manual stand-in for billing) |
+| `GET /me/tokens` · `POST /me/tokens` | any signed-in user — list / mint personal API tokens (below) |
+| `DELETE /me/tokens/:id` | any signed-in user — revoke one of your own |
+| `POST /plan` | maintainer — grant/revoke a plan tier by email (the manual stand-in for billing) |
 | `GET /plan-tiers` | public — the plan ladder (name, rank, label) |
 | `PUT /plan-tiers/:name` · `DELETE /plan-tiers/:name` | maintainer — edit the ladder |
-| `GET /corpus-access` | public — who may read the corpus, and which translations are locked |
-| `PUT /corpus-access` | maintainer — `{access, minPlan}` |
-| `PUT /translation-access/:resourceId` | maintainer — `{minPlan}` to lock, `{minPlan: null}` to unlock |
-| `GET /corpus/*` | per the corpus policy — the Qur'an from Postgres (below) |
-| `POST /submissions` | researcher+ and the community tier — offer work upstream |
+| `GET /resource-access` | public — every resource rule `{kind, key, minPlan}` |
+| `PUT /resource-access/:kind/:key` | maintainer — `{minPlan: "<tier>" \| "free" \| null}` |
+| `DELETE /resource-access/:kind/:key` | maintainer — drop a per-item rule |
+| `GET /admin/users` | maintainer — every user with role and plan |
+| `PUT /admin/users/:id/role` | maintainer — `{role}`; won't demote the last maintainer |
+| `PUT /admin/users/:id/plan` | maintainer — `{plan, expiresInDays?}` |
+| `GET /admin/resources` | maintainer — every translation and lexicon with its rule, unfiltered |
+| `GET\|POST /corpus/*` | resource `corpus` — the whole Qur'an corpus from Postgres (below) |
+| `GET /community/readings` · `POST /divergences` · `GET /claims` · `GET /pull` | reader+ and resource `community` |
+| `POST /submissions` · `POST /claims` | researcher+ — offer work upstream (a feature: role only) |
 | `GET /submissions` | researcher+ — your outbox |
 | `GET /submissions/:id` | researcher+ |
 
-## Plans & entitlements (monetization)
+**Signing in.** The app uses the Better Auth session cookie. A headless client — the MCP — uses a
+**personal API token** instead: `Authorization: Bearer mqrg_…`. Tokens are made in the app (Account →
+*Connect an AI assistant*), shown once, stored only as a SHA-256 hash, and revocable; a token acts
+exactly as its user, roles and plan included (`src/api-tokens.ts`, `src/session.ts`).
 
-Alongside the `role` ladder (*what you may do*) there is a second, orthogonal axis: **`plan`**
-(*what you have paid for*). The plan ladder is **data**, in the `plan_tiers` table — each tier has
-a name, a **rank**, and a label — so a maintainer defines it at runtime, for example
-`free (0) < student (50) < pro (100) < scholar (200)`. A gate names a minimum tier and asks
-whether the caller's rank reaches it. Below it: **402 Payment Required**, naming the tier needed.
+## Access: features are role-based, resources are plan-based
 
-`free` is always rank 0. `pro` is the **community tier**: community reads and publishing require
-it, so it can't be removed. Tier names are free-form. You can call one "researcher" or "admin",
-but a tier is only ever *what's paid for* — the power to administer is the `maintainer` **role**.
+Two independent axes, one question each:
 
-Every rule fails **closed**: an unknown tier never passes a gate, and a **lapsed** plan
-(`plan_expires_at` in the past) counts as `free`.
+- **Features** — what you may **do** — are gated by **role** (`requireRole`, `src/roles.ts`):
+  publishing needs `researcher`, review `moderator`, establishing, inviting and administering
+  `maintainer`. Below it: 401 (signed out) or 403 (role too low).
+- **Resources** — what you may **read** — are gated by **plan** (`requireResource`,
+  `src/resource-access.ts`). Below it: 401 if a sign-in is needed, **402** `{detail, resource, plan}`
+  if a higher plan is.
 
-Local, offline study never touches this — it needs no account and no plan. The gate is real
-because the gated *data* lives on the remote, not because the client hides a button.
+### The plan ladder
 
-Billing isn't wired yet. A maintainer manages it out of band, or over HTTP (routes above):
+The ladder is **data**, in `plan_tiers` — each tier a name, a **rank** and a label — so a
+maintainer defines it at runtime, e.g. `free (0) < student (50) < pro (100) < scholar (200)`. A higher
+rank unlocks everything a lower one does. `free` is always rank 0. Tier names are free-form: you can
+call one "researcher" or "admin", but a tier is only ever *what's paid for* — the power to administer
+is the `maintainer` **role**.
+
+Every rule fails **closed**: an unknown tier never passes, and a **lapsed** plan (`plan_expires_at` in
+the past) counts as `free`. A tier can't be removed while an account holds it or a resource needs it.
+
+### The resources
+
+`resource_access (kind, key, min_plan)`. `min_plan` is a tier, `free` (= any signed-in account), or
+`NULL` (= public, no sign-in at all).
+
+| kind | key | Guards | Below the tier |
+|---|---|---|---|
+| `corpus` | `*` | every `/corpus` route | 401 / 402 |
+| `community` | `*` | community readings, claims, dissents, divergences, pull | 401 / 402 |
+| `translation` | resource id | that translation in any result | **left out** — the request still succeeds |
+| `lexicon` | source (`lane`, `lisan`, …) | that dictionary's entries on a root page | **left out** |
+
+`corpus` and `community` default to `pro`. A translation or lexicon with no rule needs only what the
+corpus needs. Rules are cached for 10 s per process: a change applies at once on the instance that made
+it, and within 10 s on any other.
+
+### Administering it
+
+In the app: sign in as a maintainer and open the **Admin** tab — plan tiers, *who can read* (the corpus,
+the community, each translation and dictionary), and people (each user's role and plan, with an optional
+expiry). The same, scripted:
 
 ```bash
-npm run access -w @alsiraat/remote -- show                         # the ladder + corpus policy
+npm run access -w @alsiraat/remote -- show                         # the ladder + every rule
 npm run access -w @alsiraat/remote -- tier scholar 200 "Scholar"   # add or change a tier
 npm run access -w @alsiraat/remote -- tier-remove student          # remove an unused tier
+npm run access -w @alsiraat/remote -- corpus public                # anyone may read the corpus
+npm run access -w @alsiraat/remote -- corpus free                  # any signed-in account
+npm run access -w @alsiraat/remote -- corpus scholar               # scholar or higher
+npm run access -w @alsiraat/remote -- community pro                # the community's tier
+npm run access -w @alsiraat/remote -- translation 131 scholar      # translation 131 needs scholar
+npm run access -w @alsiraat/remote -- translation 131 none         # back to "same as the corpus"
+npm run access -w @alsiraat/remote -- lexicon lane scholar         # Lane's lexicon needs scholar
 
 npm run set-plan -w @alsiraat/remote -- me@example.org scholar     # grant, no expiry
 npm run set-plan -w @alsiraat/remote -- me@example.org pro 30      # grant for 30 days
 npm run set-plan -w @alsiraat/remote -- me@example.org free        # revoke
 ```
 
-`GET /me` returns `plan`, `planLabel`, `planRank`, `planExpiresAt`, and **`planActive`** —
-at or above the community tier and not lapsed. That's the flag the app's community gates read.
-Never infer "paid" from the tier name.
+Billing isn't wired yet; the plan grant (Admin tab, `set-plan`, `POST /plan`) is the seam a payment
+provider slots into. `GET /me` returns `plan`, `planLabel`, `planRank`, `planExpiresAt` and
+`planActive` (= can read the community). Never infer "paid" from the tier name.
 
-## Reading the corpus from the cloud
+**Staff need a plan too.** A maintainer on `free` can administer everything but still gets 402 on a
+`pro` resource — grant yourself a tier (or open the resource) if that's not what you want.
 
-The Qur'an corpus is served from Postgres at **`/corpus/*`** — the same paths, query parameters
-and JSON as the local API's content routes (`/corpus/verses/2:255?words=true` answers exactly like
-`/api/v1/verses/2:255?words=true`). Source: `src/corpus/content.ts`, `src/corpus/routes.ts`.
+## The corpus, served from the cloud
 
-**Who may read it is a runtime switch** (`corpus_policy`, one row):
+The whole Qur'an corpus is served from Postgres at **`/corpus`** — the same paths, query parameters
+and JSON as the local API (`/corpus/verses/2:255?words=true` answers exactly like
+`/api/v1/verses/2:255?words=true`): verses in every script, words, chapters, roots and forms, lexicons,
+linkages, echoes, similar verses, spellings, wazn, and phrase / expression / free-text search.
 
-| `access` | Who may read |
-|---|---|
-| `public` | anyone, no sign-in |
-| `signed_in` | any signed-in account — the free plan is enough |
-| `plan` | an active plan at or above `minPlan` (e.g. `pro`, `scholar`) |
-
-**Each translation can require its own tier** (`translation_access`). A translation the caller's
-plan doesn't reach is **left out** of results; the request still succeeds. `GET /corpus-access`
-lists what's locked and at which tier, so the app can offer the upgrade.
-
-```bash
-npm run access -w @alsiraat/remote -- corpus public              # anyone may read
-npm run access -w @alsiraat/remote -- corpus signed_in           # any signed-in account
-npm run access -w @alsiraat/remote -- corpus plan scholar        # scholar or higher
-npm run access -w @alsiraat/remote -- translation 131 scholar    # lock translation 131
-npm run access -w @alsiraat/remote -- translation 131 none       # unlock it
-```
-
-The default is `plan` ≥ `pro`. A missing setting also reads as `plan` ≥ `pro` (fail closed).
-Settings are cached for 10 s per process: a change applies at once on the instance that made it,
-and within 10 s on any other.
+It is **the same code** as the local server, not a port: every corpus service is written against one
+`CorpusDb` interface (`server/src/corpus-db.ts`) with two drivers — SQLite locally, Postgres here
+(`src/corpus/pg-corpus.ts`) — and `src/corpus/serve.ts` mounts the shared route builders with the plan
+filters. The corpus indexes are built once at startup (`warmCorpus`). The app and the MCP read the
+corpus from here; see CORPUS.md for how the copy is loaded and proven identical.
 
 ## Configuration
 
@@ -196,7 +231,7 @@ and within 10 s on any other.
 | `DATABASE_URL` | `postgres://postgres:researchgate@localhost:5432/researchgate` |
 | `REMOTE_PORT` / `REMOTE_BASE_URL` | `8100` / `http://localhost:8100` |
 | `AUTH_SECRET` | a dev placeholder — **set a real secret in any deployment** |
-| `TRUSTED_ORIGINS` | `http://localhost:5173,http://localhost:8000` |
+| `TRUSTED_ORIGINS` | `localhost` and `127.0.0.1` on 5174 (Vite), 8000 (built SPA) and 51789 (desktop) |
 | `EMAIL_TRANSPORT` | `console` — magic links are printed to the server log (no SMTP in dev) |
 
 ## Running it

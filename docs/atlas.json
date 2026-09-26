@@ -7,34 +7,32 @@
     "repoName": "AlSiraatAlMustaqeem",
     "arabic": "الصراط المستقيم",
     "oneLiner": "A detective's study for the Qur'an: meaning is earned from within the text (the organic Qur'anic methodology). Notice a word, open a case on its root family, gather every place the Book uses it, form a hypothesis, then weigh the classical dictionaries.",
-    "stack": "React + Vite + TypeScript SPA (app/) over a Hono + node:sqlite backend (server/). MCP server (mcp/) exposes corpus+research to an AI. Optional remote research channel (remote/) on Postgres + Better Auth. Electron desktop wrapper (electron/)."
+    "stack": "React + Vite + TypeScript SPA (app/) over a Hono + node:sqlite backend (server/). The research server (remote/, Hono + Postgres + Better Auth) now also serves the Qur'an corpus at /corpus. MCP server (mcp/) exposes corpus + research to an AI. Electron desktop wrapper (electron/)."
   },
   "principle": {
-    "core": "Studying stays local, offline and free; the community is the paid, cloud layer.",
-    "constraint": "You can only enforceably charge for what the server holds, never for what already sits on the reader's disk (the app ships as local code + local SQLite).",
-    "consequence": "Monetization lives entirely on the cloud remote. The local app + both local databases + the MCP stay free."
+    "core": "Features are ROLE-based (what you may do); resources are PLAN-based (what you may read). Your own research stays local and yours.",
+    "constraint": "You can only enforceably charge for what the server holds, never for what already sits on the reader's disk.",
+    "consequence": "The corpus and the community both live on the cloud and are plan-gated there (the admin can make either free). research.db stays on the reader's machine; the app and MCP read the corpus from the cloud."
   },
   "components": [
-    { "id": "app", "name": "App", "runtime": "React 18 + Vite SPA", "role": "Reader + investigation UI. Talks to the local server at /api/v1, and directly to the remote for the community layer.", "path": "app/" },
-    { "id": "server", "name": "Server", "runtime": "Hono on Node node:sqlite", "role": "The ONLY thing that touches the local databases. Reads quran.db, reads+writes research.db. Serves /api/v1.", "path": "server/" },
-    { "id": "mcp", "name": "MCP", "runtime": "stdio MCP server (Node/tsx)", "role": "Lets an AI study the corpus + the reader's local research and propose notes/indications/board items (source='ai'). LOCAL and FREE. Reuses the server query layer.", "path": "mcp/" },
-    { "id": "remote", "name": "Remote", "runtime": "Hono + Postgres + Better Auth", "role": "Optional, invite-only cloud research channel. The paid surface: auth, roles, the claim spine, plan/entitlements, gated community reads + publishing. Separate service from the local server; shares only a login.", "path": "remote/", "port": 8100 },
-    { "id": "electron", "name": "Desktop", "runtime": "Electron", "role": "Wraps the built SPA + server in a desktop window.", "path": "electron/" }
+    { "id": "app", "name": "App", "runtime": "React 18 + Vite SPA", "role": "Reader + investigation UI. Reads the CORPUS from the research server (${REMOTE_URL}/corpus, with the session cookie), the reader's RESEARCH from the local server (/api/v1/research), and the community from the research server. Maintainers get an Admin tab.", "path": "app/" },
+    { "id": "server", "name": "Local server", "runtime": "Hono on Node node:sqlite", "role": "Owns research.db (read-write). Still serves quran.db at /api/v1 for local tools/tests, but the app no longer reads the corpus from it. Its corpus code is the SAME code the cloud runs (server/src/corpus-*.ts, two drivers).", "path": "server/" },
+    { "id": "mcp", "name": "MCP", "runtime": "stdio MCP server (Node/tsx)", "role": "Lets an AI study the corpus + the reader's research and propose notes/indications/board items (source='ai'). Corpus: remote by default (REMOTE_URL + REMOTE_TOKEN, reads as its user) or MQ_CORPUS=local (quran.db). Research: the local research.db the app has open, behind the write guard.", "path": "mcp/" },
+    { "id": "remote", "name": "Research server", "runtime": "Hono + Postgres + Better Auth", "role": "The cloud: auth (cookie or personal API token), roles, plan tiers, resource access rules, the corpus at /corpus (Postgres), the community (claims, readings, divergences), publishing, and the Admin endpoints.", "path": "remote/", "port": 8100 },
+    { "id": "electron", "name": "Desktop", "runtime": "Electron", "role": "Wraps the built SPA + local server in a desktop window.", "path": "electron/" }
   ],
   "databases": {
+    "corpus (Postgres schema `corpus`)": {
+      "kind": "corpus", "access": "read-only, plan-gated (resource 'corpus')", "location": "cloud — the research server's DATABASE_URL",
+      "holds": "Qur'an text in four scripts, per-word morphology (root/lemma/form), roots, ~10 classical lexicons, translations, search indexes. Copied from quran.db and verified exact.",
+      "load": "npm run corpus:migrate (-- --verify to re-verify only). remote/src/corpus/{schema,load,verify}.ts. 294,804 rows, 143.5 MB, 18 s.",
+      "collation": "every text column COLLATE \"C\" (= SQLite BINARY) so Arabic sorts identically.",
+      "parity": "npm run corpus:parity — the SAME corpus routes over each driver, compared over HTTP. Full sweep 2026-09-26: 77,439 requests (every chapter, verse, root, root pair, word, search) — all identical. --quick samples ~3k."
+    },
     "quran.db": {
-      "kind": "corpus", "access": "read-only", "location": "local, ships with the app (~150 MB)",
-      "holds": "Qur'an text in four scripts, per-word morphology (root/lemma/form), roots, ~9 classical lexicons (Lane, Lisan, Maqayis, Mufradat, ...), translations, FTS indexes.",
-      "corrections": "Shipped as signed, versioned patch files applied in order (see CORPUS.md). The corpus is reference material, not research.",
-      "onCloud": "MOVING. Step 1 done: the data is copied into Postgres schema `corpus` (remote DATABASE_URL) and verified exact, row-for-row. Step 2 (not started): port the query layer so the app/MCP read Postgres. Until then the app and MCP still read quran.db.",
-      "postgres": {
-        "schema": "corpus",
-        "command": "npm run corpus:migrate   (add -- --verify to re-verify only)",
-        "code": "remote/src/corpus/{schema,load,verify}.ts",
-        "firstRun": "294,804 rows, 143.5 MB, 18 s, exact; every table content-fingerprinted; view 77,915=77,915; FKs 9/9; indexes 29/29",
-        "collation": "every text column COLLATE \"C\" (= SQLite BINARY). The DB default English_United States.1252 would re-sort Arabic; proven load-bearing — the هدي forms query returns identical ORDER only with C.",
-        "edition": "corpus.corpus_meta mirrors the patch channel's keys (corpus_version, schema_version) + source_sha256"
-      }
+      "kind": "corpus (local copy)", "access": "read-only", "location": "local",
+      "holds": "The same corpus in SQLite. Now the SOURCE for corpus:migrate, the local driver (MQ_CORPUS=local, tests, offline MCP) and the parity reference. The app no longer reads it.",
+      "corrections": "Signed, versioned patch files (CORPUS.md)."
     },
     "research.db": {
       "kind": "personal research", "access": "read-write, self-migrating", "location": "local; the one irreplaceable file",
@@ -44,135 +42,135 @@
       "onCloud": false
     }
   },
-  "monetization": {
-    "model": "Sell infrastructure + collaboration, not the Book. Free tier = local-first study (offline, no account). Paid tier = the cloud community: reading the group's readings and publishing to it.",
-    "roleLadder": ["reader", "researcher", "moderator", "maintainer"],
-    "roleMeaning": "What you may DO in the research process. reader<researcher<moderator<maintainer. remote/src/roles.ts, requireRole(min).",
-    "planLadder": "DATA, not code: table plan_tiers (name, rank, label), edited at runtime by a maintainer. Seeded free (0) < pro (100); e.g. add student (50), scholar (200). free is always rank 0; pro is the COMMUNITY tier and can't be removed.",
-    "planMeaning": "What you have PAID for. Orthogonal to role — a tier may be called 'researcher' or 'admin', but administering is the maintainer ROLE. remote/src/plans.ts: meetsPlan(user, minTier, tiers), requirePlan(minTier, runner). Fails closed: unknown tier never passes; a lapsed plan counts as free.",
-    "gate": {
-      "middleware": "requirePlan('pro') runs AFTER requireRole on paid routes: role = 'are you allowed to', plan = 'have you paid for it'.",
-      "unpaidStatus": 402,
-      "unauthStatus": 401,
-      "roleTooLowStatus": 403,
-      "activeFlag": "planActive (paid AND high-enough rung AND not lapsed) — the app trusts this, never the plan name alone.",
-      "expiry": "users.plan_expires_at (NULL = no expiry / manual grant).",
-      "file": "remote/src/plans.ts"
+  "accessModel": {
+    "rule": "Features are role-based; resources are plan-based. Everything fails closed.",
+    "roles": {
+      "ladder": ["reader", "researcher", "moderator", "maintainer"],
+      "meaning": "What you may DO. requireRole(min) in remote/src/roles.ts → 401 signed out, 403 too low.",
+      "features": { "pull the group's readings": "reader", "submit work / propose claims": "researcher", "approve / object": "moderator", "establish, invite, administer (Admin tab)": "maintainer" }
     },
-    "matrix": [
-      { "action": "Read the corpus / study locally / establish own meanings / MCP AI study / backup", "needsRole": null, "needsPlan": false, "where": "local" },
-      { "action": "Read the corpus from the cloud (/corpus/*)", "needsRole": null, "needsPlan": "per corpus_policy: public | signed_in | plan ≥ minPlan (default plan ≥ pro)", "where": "cloud" },
-      { "action": "See a locked translation", "needsRole": null, "needsPlan": "its translation_access.min_plan tier; below it the translation is omitted, not refused", "where": "cloud" },
-      { "action": "See community readings, dissent, ⚖ divergence, community chips", "needsRole": "reader", "needsPlan": true, "where": "cloud" },
-      { "action": "Publish: submit notes/questions, propose claims", "needsRole": "researcher", "needsPlan": true, "where": "cloud" },
-      { "action": "Approve / object (review)", "needsRole": "moderator", "needsPlan": false, "where": "cloud", "note": "role-gated, deliberately NOT charged — staff run the community" },
-      { "action": "Establish directly / issue invites / grant plans", "needsRole": "maintainer", "needsPlan": false, "where": "cloud" }
-    ],
-    "billing": "Not wired yet. A maintainer grants a plan out of band: `npm run set-plan -w @alsiraat/remote -- email pro [days]` or POST /plan (maintainer). This is the single seam a real payment provider slots into with no rework of the gate.",
-    "enforcement": "Real because the gated DATA lives on the cloud, not the client. A modified/offline client cannot obtain community readings or publish without an active plan."
+    "plans": {
+      "ladder": "DATA: table plan_tiers (name, rank, label). Seeded free (0) < pro (100); a maintainer adds e.g. student 50, scholar 200 in the Admin tab. free is always rank 0.",
+      "meaning": "What you may READ. A higher rank unlocks everything a lower one does; a lapsed plan (users.plan_expires_at past) counts as free.",
+      "file": "remote/src/plans.ts (meetsPlan, effectiveRank)"
+    },
+    "resources": {
+      "table": "resource_access (kind, key, min_plan). min_plan = a tier, 'free' (= any signed-in account), or NULL (= public, no sign-in).",
+      "whole": { "corpus": "key '*' — every /corpus route (default pro)", "community": "key '*' — community readings, claims, dissents, divergences, pull (default pro)" },
+      "perItem": { "translation": "key = resource id; below its tier the translation is LEFT OUT of results", "lexicon": "key = source (lane, lisan, …); below its tier the entries are left out of a root page" },
+      "noRule": "An item with no rule needs only what the corpus needs.",
+      "refusal": "requireResource(kind) → 401 {detail} if a sign-in is needed, 402 {detail, resource, plan} if a higher plan is.",
+      "file": "remote/src/resource-access.ts (canRead, wholeMin, requireResource, itemFilter)"
+    },
+    "edit": "In the app: Admin tab (maintainers). Also `npm run access -- show | tier | tier-remove | corpus | community | translation | lexicon` and `npm run set-plan -w @alsiraat/remote -- <email> <tier> [days]`.",
+    "billing": "Not wired yet. A maintainer grants plans in the Admin tab (or set-plan / POST /plan). That is the single seam a payment provider slots into."
+  },
+  "auth": {
+    "cookie": "Better Auth session cookie — the app (credentials: 'include').",
+    "apiTokens": "Personal API tokens (mqrg_…, stored as SHA-256; secret shown once) for headless clients — the MCP. Sent as `Authorization: Bearer`. Made in the app: Account → Connect an AI assistant (it prints a ready MCP config). remote/src/api-tokens.ts, session.ts. A token acts exactly as its user, so the MCP reads what that user's plan allows."
+  },
+  "corpusCode": {
+    "oneCodebase": "server/src/corpus-db.ts defines CorpusDb {query, one, scalar} (async). Every corpus service (content, roots, linkages, wazn, expressions, echoes, spellings, freetext, similarity, morphology) is written once against it.",
+    "drivers": { "sqlite": "sqliteCorpus(db) — server/src/corpus-db.ts", "postgres": "pgCorpus(runner) — remote/src/corpus/pg-corpus.ts (? → $n)" },
+    "services": "createCorpusServices(db) in server/src/corpus-services.ts; warmCorpus builds the memoised indexes (the cloud warms them at startup).",
+    "routes": "server/src/routes/{content,roots,similarity,echoes,corpus}.ts take (services, entitlements). The local server mounts them at /api/v1; the cloud mounts the identical builders at /corpus (remote/src/corpus/serve.ts) with the plan filters as entitlements.",
+    "portableSql": ["GROUP BY every non-aggregated column", "a total ORDER BY wherever order is visible", "DISTINCT → GROUP BY … ORDER BY MIN(id)", "nullable sort keys NULLS FIRST (ASC) / NULLS LAST (DESC)", "Postgres int8 counts normalised to numbers"]
+  },
+  "clients": {
+    "app": "app/src/api/client.ts: CORPUS = ${REMOTE_URL}/corpus. A refused read announces itself (CORPUS_ACCESS_EVENT) and CorpusAccessBanner says why once, at the top: offline / sign in / needs the X plan — and 'Your access has changed, reload' after a sign-in or plan grant.",
+    "mcp": "mcp/src/corpus-client.ts: CorpusReads with remoteReads (HTTP, default) and localReads (MQ_CORPUS=local). 401 → 'create a token', 402 → 'needs the X plan', unreachable → 'set REMOTE_URL or MQ_CORPUS=local'. server/test/mcp-remote-corpus.test.ts runs every corpus tool on both paths: byte-identical.",
+    "mcpEnv": { "REMOTE_URL": "research server (default http://localhost:8100)", "REMOTE_TOKEN": "a personal API token", "MQ_CORPUS": "'local' = read quran.db instead", "QF_RESEARCH_DB": "research.db path (default: the repo's; the app's current file is used)" }
   },
   "remoteEndpoints": [
-    { "method": "GET", "path": "/me", "role": "reader", "plan": false, "note": "returns plan, planLabel, planRank, planExpiresAt, planActive (= meets the community tier)" },
-    { "method": "POST", "path": "/plan", "role": "maintainer", "plan": false, "note": "grant/revoke a plan tier (manual billing stand-in)" },
-    { "method": "GET", "path": "/plan-tiers", "role": null, "plan": false, "note": "public: the ladder" },
-    { "method": "PUT|DELETE", "path": "/plan-tiers/:name", "role": "maintainer", "plan": false, "note": "edit the ladder ({rank,label})" },
-    { "method": "GET", "path": "/corpus-access", "role": null, "plan": false, "note": "public: {access, minPlan, lockedTranslations[]}" },
-    { "method": "PUT", "path": "/corpus-access", "role": "maintainer", "plan": false, "note": "{access: public|signed_in|plan, minPlan}" },
-    { "method": "PUT", "path": "/translation-access/:resourceId", "role": "maintainer", "plan": false, "note": "{minPlan} locks, {minPlan:null} unlocks" },
-    { "method": "GET", "path": "/corpus/{scripts,chapters,chapters/:id,chapters/:id/verses,verses,verses/:key,verses/:key/words,verses/:key/translations,verses/:key/neighbours,translation-resources}", "role": null, "plan": "per corpus_policy", "note": "same paths/params/JSON as the local /api/v1 content routes; translations filtered by tier" },
-    { "method": "POST", "path": "/divergences", "role": "reader", "plan": true, "note": "client sends its established forms; server diffs vs global_forms, returns differences" },
-    { "method": "GET", "path": "/community/readings", "role": "reader", "plan": true, "note": "?root=&lemma= — community readings for a word (root + form), reader chips" },
-    { "method": "POST", "path": "/submissions", "role": "researcher", "plan": true, "note": "publish additive work upstream" },
-    { "method": "POST", "path": "/claims", "role": "researcher", "plan": true, "note": "propose a competing reading of a form/root" },
-    { "method": "GET", "path": "/claims", "role": "reader", "plan": false, "note": "every reading of a subject + the group's current one" },
-    { "method": "GET", "path": "/claims/:id/dissents", "role": "reader", "plan": false },
-    { "method": "POST", "path": "/claims/:id/versions/:v/review", "role": "moderator", "plan": false, "note": "approve/object; establishment = approvals>=required AND approvals>objections" },
-    { "method": "POST", "path": "/claims/:id/versions/:v/establish", "role": "maintainer", "plan": false },
-    { "method": "POST", "path": "/invites", "role": "maintainer", "plan": false },
-    { "method": "POST", "path": "/invites/redeem", "role": null, "plan": false, "note": "public — the invite code is the credential; grants the invite's role" }
+    { "method": "GET", "path": "/me", "role": "reader", "note": "plan, planLabel, planRank, planExpiresAt, planActive (= can read the community)" },
+    { "method": "GET|POST", "path": "/me/tokens", "role": "reader", "note": "list / mint personal API tokens (the secret is in the POST response only)" },
+    { "method": "DELETE", "path": "/me/tokens/:id", "role": "reader", "note": "revoke one of your own" },
+    { "method": "GET", "path": "/plan-tiers", "role": null, "note": "public: the ladder" },
+    { "method": "PUT|DELETE", "path": "/plan-tiers/:name", "role": "maintainer", "note": "{rank,label}; won't remove free, or a tier held by accounts or required by resources" },
+    { "method": "GET", "path": "/resource-access", "role": null, "note": "public: every rule {kind,key,minPlan}" },
+    { "method": "PUT|DELETE", "path": "/resource-access/:kind/:key", "role": "maintainer", "note": "{minPlan: tier | 'free' | null}; whole kinds can be changed, not removed" },
+    { "method": "GET", "path": "/admin/users", "role": "maintainer", "note": "every user with role + plan" },
+    { "method": "PUT", "path": "/admin/users/:id/role", "role": "maintainer", "note": "won't demote the last maintainer" },
+    { "method": "PUT", "path": "/admin/users/:id/plan", "role": "maintainer", "note": "{plan, expiresInDays?}" },
+    { "method": "GET", "path": "/admin/resources", "role": "maintainer", "note": "every translation + lexicon with its rule, unfiltered" },
+    { "method": "POST", "path": "/plan", "role": "maintainer", "note": "grant by email (CLI-era twin of /admin/users/:id/plan)" },
+    { "method": "GET|POST", "path": "/corpus/*", "role": null, "resource": "corpus", "note": "the whole corpus API — same paths/params/JSON as the local /api/v1 (verses, chapters, words, roots, linkages, echoes, similar, spellings, wazn, phrase/expression/free-text search); translations + lexicons filtered by tier" },
+    { "method": "GET", "path": "/community/readings", "role": "reader", "resource": "community" },
+    { "method": "POST", "path": "/divergences", "role": "reader", "resource": "community" },
+    { "method": "GET", "path": "/claims, /claims/:id/dissents, /pull", "role": "reader", "resource": "community" },
+    { "method": "POST", "path": "/submissions, /claims", "role": "researcher", "note": "features: role only" },
+    { "method": "POST", "path": "/claims/:id/versions/:v/review", "role": "moderator" },
+    { "method": "POST", "path": "/claims/:id/versions/:v/establish, /invites", "role": "maintainer" },
+    { "method": "POST", "path": "/invites/redeem", "role": null, "note": "the invite code is the credential" }
   ],
-  "changes": {
-    "communityLayer": {
-      "before": "The group's readings were PULLED and mirrored into local research.db derived_* tables so they worked offline — which also put them on the reader's disk forever, un-gateable.",
-      "after": "Read LIVE from the remote, gated (requireRole + requirePlan), never stored locally. Offline/free/unpaid readers simply see their own work.",
-      "removedLocal": ["derived_global_forms", "derived_dissents", "derived_peer_indications", "derived_sync_state", "the whole /research/pull/* + /research/group-*/divergences routes and their ResearchStore methods (applyPull, groupReading, groupGloss, peerIndications, peerFormReadings, divergences, resetPulled, syncCursors)"],
-      "keptLocal": ["derived_submissions (your outbox)", "derived_proposed_claims (readings you proposed) — both your OWN actions, not others' work"],
-      "addedRemote": ["POST /divergences", "GET /community/readings"],
-      "appConsumers": "app/src/screens/Divergences.tsx (⚖ list) and the reader's indication chips via app/src/persistence/db.ts indications.forWord (merges remote community readings only when planActive)."
-    }
-  },
   "phases": [
-    { "id": "A", "title": "Entitlement layer", "status": "done", "commit": "efebc15", "summary": "plan ladder free<pro; requirePlan → 402; set-plan CLI + POST /plan; planActive on /me; migration 0005_entitlements.sql; 10 boundary tests." },
-    { "id": "B+C", "title": "Community live-remote; local mirror removed", "status": "done", "commits": ["f91cd63", "fc7c378", "b5b897f"], "summary": "POST /divergences + GET /community/readings (gated); derived_* mirror + pull path deleted; Divergences.tsx and indication chips read live; sync-boundary test adapted; pull.test removed." },
-    { "id": "D", "title": "Publishing gated", "status": "done", "commit": "21a63eb", "summary": "requirePlan on POST /submissions and POST /claims; upgrade nudges in ShareButton + ProposeReading; review/establish stay role-only." },
-    { "id": "E", "title": "MCP → cloud", "status": "deferred", "summary": "Kept the MCP local & free. The original blocker — the cloud had none of the corpus — is being lifted by the corpus migration below (data is now in Postgres; the query layer isn't ported yet). The second blocker still stands: moving personal research to the cloud breaks the AI-proposes→app-reviews loop unless the app migrates too. Parked." },
-    { "id": "corpus-1", "title": "Corpus → Postgres, step 1: move + verify the data", "status": "done", "summary": "quran.db loaded into Postgres schema `corpus` in one transaction (UTF8-gated, repeatable, rolls back on failure) and verified exact on every row of every table. remote/src/corpus/. 11 tests. App/MCP untouched — still read SQLite." },
-    { "id": "access", "title": "Plan tiers as data + corpus & translation access policy", "status": "done", "summary": "plan_tiers table (runtime ladder); corpus_policy (public | signed_in | plan ≥ tier, default plan ≥ pro); translation_access (per-translation tier, locked ones omitted). Migration 0006, remote/src/{plans,corpus-access,access-cli}.ts. Proven end-to-end through the real app on real data." },
-    { "id": "corpus-2", "title": "Corpus → Postgres, step 2: port the readers", "status": "in progress", "summary": "DONE: content (chapters, verses in every script, words, neighbours, nav filters, translations) at remote /corpus/*, async twin of server/src/content.ts — corpus:parity: 7,152 answers identical to SQLite. TODO: phrase/full-text search (Arabic tokenisation decision), roots/forms/lexicons, linkages, echoes, similarity, spellings, wazn; a Postgres target for signed patches; whether the app/MCP read /corpus/* (makes reading need a network)." },
-    { "id": "next", "title": "Billing provider", "status": "todo", "summary": "Slots into set-plan / POST /plan with no rework of the gate." }
+    { "id": "A–D", "title": "Monetization: entitlements, live community, gated publishing", "status": "done", "commits": ["efebc15", "f91cd63", "fc7c378", "b5b897f", "21a63eb"] },
+    { "id": "corpus-1", "title": "Corpus → Postgres: move + verify the data", "status": "done", "commit": "1013ec0" },
+    { "id": "access", "title": "Plan tiers as data; then 'features are role-based, resources are plan-based'", "status": "done", "commits": ["71ffaa6", "0a0add0"], "summary": "plan_tiers; resource_access (corpus, community whole; translation, lexicon per item) replaces corpus_policy/translation_access; publishing is role-only." },
+    { "id": "corpus-2", "title": "Corpus → Postgres: port the readers", "status": "done", "commit": "a9b1dbe", "summary": "One corpus codebase, two drivers; the cloud serves ALL of it at /corpus. Full parity: 77,439 requests identical." },
+    { "id": "tokens", "title": "Personal API tokens", "status": "done", "commit": "3d9582f" },
+    { "id": "app-cloud", "title": "The app reads the corpus from /corpus", "status": "done", "commit": "7a2ca76" },
+    { "id": "mcp-cloud", "title": "The MCP reads the corpus from /corpus, as its user", "status": "done", "commit": "e6dcbb8", "summary": "Research stays local. Account → Connect an AI assistant mints the token." },
+    { "id": "admin", "title": "Admin tab in the app", "status": "done", "commit": "912bc88", "summary": "Plan tiers, who can read (corpus, community, each translation and dictionary), people (role + plan). Maintainers only." },
+    { "id": "next", "title": "Billing provider", "status": "todo", "summary": "Slots into the plan grant (Admin tab / set-plan) with no rework of the gates." }
   ],
   "decisions": [
-    { "id": "corpus-stays-local", "status": "SUPERSEDED 2026-09-26 by corpus-to-postgres", "decision": "The corpus (quran.db) stays local; never hosted on the cloud.", "why": "150 MB of static reference data; hosting it means re-implementing the whole corpus query layer against Postgres." },
-    { "id": "corpus-to-postgres", "decision": "Move the corpus to Postgres (the maintainer's call), in two steps: first move and verify the data, then port the readers.", "why": "Staged so nothing breaks: step 1 is additive and reversible (a separate `corpus` schema; the app keeps reading SQLite). The heavy, risky part — async-porting the query layer — is isolated in step 2 and can be proven with the existing parity suite. Whether cloud corpus reads are free or plan-gated is not yet decided (the principle so far: reading the Qur'an stays free)." },
-    { "id": "community-not-mirrored", "decision": "Community data is read live from the remote, never mirrored into research.db.", "why": "Mirroring puts it on the reader's disk, which makes it un-gateable. Live + gated is the enforceable design." },
-    { "id": "staff-not-charged", "decision": "Moderator review and maintainer establish are role-gated but NOT plan-gated.", "why": "The community's staff run it; charging them to moderate is counter-productive. One-line change if revisited." },
-    { "id": "mcp-local", "decision": "MCP stays local and free for now.", "why": "Corpus can't move to cloud; full cloud research reverses local-first and breaks the review loop. Monetization is already complete via the community layer." },
-    { "id": "plan-orthogonal-role", "decision": "plan is a separate axis from role.", "why": "A moderator on the free plan can still moderate; a paying reader isn't automatically a researcher. Independent concerns." },
-    { "id": "tiers-as-data", "decision": "The plan ladder is a table, not code (maintainer's request: student/researcher/scholar-style tiers).", "why": "Tiers change with the business; a table lets the maintainer add or re-rank them with no deploy. Gates compare ranks, so a new tier slots in without touching any gate." },
-    { "id": "corpus-access-configurable", "decision": "Reading the cloud corpus is guarded by a runtime policy (public | signed_in | plan ≥ tier); default plan ≥ pro.", "why": "Maintainer's call: gated by default, but the admin can make reading free — or require only a sign-in — at any time. Fails closed if the setting is missing." },
-    { "id": "translation-locks-omit", "decision": "A translation above the caller's tier is omitted from results, not refused.", "why": "One verse carries many translations; refusing the whole verse for one locked translation would be wrong. GET /corpus-access says what's locked so the app can offer the upgrade." }
+    { "id": "features-role-resources-plan", "decision": "Every feature is role-based; every resource is plan-based.", "why": "Maintainer's call, 2026-09-26: 'it will be easier.' One question per gate: may you DO this (role), may you READ this (plan)." },
+    { "id": "corpus-to-postgres", "decision": "The corpus lives in Postgres and the cloud serves it; the app and MCP read it from /corpus.", "why": "The maintainer's call. Makes the corpus a gateable resource. Cost: reading needs the research server (the banner says so; MQ_CORPUS=local keeps the MCP working offline)." },
+    { "id": "one-corpus-codebase", "decision": "One corpus code path over a driver interface, not a Postgres twin.", "why": "A twin drifts. With one codebase, parity is a property of SQL portability, proven by comparing the same routes over both drivers." },
+    { "id": "research-stays-local", "decision": "research.db stays on the reader's machine; the MCP writes to it behind the guard.", "why": "It is the reader's irreplaceable work, and the AI-proposes → app-reviews loop needs both to see the same file." },
+    { "id": "admin-in-app", "decision": "Administration is an Admin tab for maintainers, not only a CLI.", "why": "Maintainer's request. The CLI stays for scripting." },
+    { "id": "tokens-for-mcp", "decision": "The MCP authenticates with a personal API token and reads as its user.", "why": "A headless process can't hold a browser session; a revocable token keeps the plan gate honest for the AI too." },
+    { "id": "item-locks-omit", "decision": "A translation or lexicon above the caller's tier is left out, not refused.", "why": "One verse carries many translations; refusing the whole page for one locked item would be wrong." },
+    { "id": "community-not-mirrored", "decision": "Community data is read live from the remote, never mirrored into research.db.", "why": "Mirroring puts it on the reader's disk, which makes it un-gateable." },
+    { "id": "plan-orthogonal-role", "decision": "Plan is a separate axis from role.", "why": "A moderator on free can moderate; a paying reader isn't a researcher. A tier named 'admin' is only what's paid for." },
+    { "id": "last-maintainer", "decision": "The last maintainer can't be demoted.", "why": "It would lock everyone out of administering the community." }
   ],
   "fileMap": [
-    { "path": "remote/src/plans.ts", "purpose": "plan ladder + planActive + requirePlan (the gate)" },
-    { "path": "remote/src/roles.ts", "purpose": "role ladder + requireRole; Principal carries plan" },
-    { "path": "remote/src/claims.ts", "purpose": "claim spine + divergencesAgainstGlobal + communityReadingsFor" },
-    { "path": "remote/src/app.ts", "purpose": "remote HTTP routes incl. gated /divergences, /community/readings, /plan" },
-    { "path": "remote/src/invites.ts", "purpose": "loadPrincipal (reads plan), setPlan, userIdByEmail, invite redemption" },
-    { "path": "remote/src/set-plan-cli.ts", "purpose": "npm run set-plan — manual plan grants" },
-    { "path": "remote/migrations/0005_entitlements.sql", "purpose": "users.plan + plan_expires_at" },
-    { "path": "server/src/research.ts", "purpose": "ResearchStore; community mirror removed; indicationsForWord returns empty community arrays" },
-    { "path": "server/src/routes/research.ts", "purpose": "local /research/* routes; pull/community routes removed" },
-    { "path": "app/src/api/remote.ts", "purpose": "remote client: communityReadings(), divergences(); RemoteError/RemoteOffline" },
-    { "path": "app/src/hooks/useMe.ts", "purpose": "useMe + cachedMe() + isPro" },
-    { "path": "app/src/persistence/db.ts", "purpose": "group.divergences() live; indications.forWord merges live community when planActive" },
-    { "path": "app/src/screens/Divergences.tsx", "purpose": "⚖ Where I stand apart — live + gated, connect/subscribe states" },
-    { "path": "app/src/components/ShareButton.tsx", "purpose": "publish action + upgrade nudge on 402/unpaid" },
-    { "path": "app/src/components/reader/ProposeReading.tsx", "purpose": "propose claim + plan gate + upgrade panel" },
-    { "path": "remote/src/corpus/schema.ts", "purpose": "the Postgres `corpus` schema: faithful DDL translation of quran.db, post-load FKs/indexes/FTS/view" },
-    { "path": "remote/src/corpus/load.ts", "purpose": "migrateCorpus: UTF8 gate, single-transaction rebuild, batched copy, sequence fix-up, provenance" },
-    { "path": "remote/src/corpus/verify.ts", "purpose": "verifyCorpus: full-content fingerprint per table + view, FK/index/provenance/Arabic checks" },
-    { "path": "remote/src/corpus/sqlite.ts", "purpose": "node:sqlite via createRequire (Vite/vitest can't resolve the prefix-only builtin statically)" },
-    { "path": "remote/src/corpus/content.ts", "purpose": "PgQuranContent: async twin of server/src/content.ts over Postgres; translations take an allow() filter" },
-    { "path": "remote/src/corpus/routes.ts", "purpose": "/corpus/* routes, same contract as the local /api/v1 content routes" },
-    { "path": "remote/src/corpus-access.ts", "purpose": "corpus policy + translation locks + requireCorpusAccess + translationFilter" },
-    { "path": "remote/src/access-cli.ts", "purpose": "npm run access -- show | tier | tier-remove | corpus | translation" },
-    { "path": "remote/src/corpus-parity-cli.ts", "purpose": "npm run corpus:parity — real server code vs the port over the whole corpus" },
-    { "path": "remote/migrations/0006_corpus_access.sql", "purpose": "plan_tiers, users.plan FK, corpus_policy, translation_access" },
-    { "path": "remote/test/access.test.ts", "purpose": "tiers, policy levels, translation locks — through the real /corpus routes" },
-    { "path": "remote/test/corpus-parity.test.ts", "purpose": "fixture parity: server QuranContent vs PgQuranContent" },
-    { "path": "remote/src/corpus-migrate-cli.ts", "purpose": "npm run corpus:migrate [-- --verify]; one pg.Client so the transaction isn't split across a pool" },
-    { "path": "remote/test/corpus-migrate.test.ts", "purpose": "11 tests on PGlite: exact copy, byte-exact Arabic/NULL/BLOB, repeatable, catches one stripped shadda, rollback leaves prior copy, UTF8 gate" },
-    { "path": "INSTRUCTIONS.md", "purpose": "project master reference (UI conventions, schema, MCP write boundary)" },
-    { "path": "CORPUS.md", "purpose": "the signed corpus patch channel" },
-    { "path": "REMOTE.md", "purpose": "the remote research channel + Plans & entitlements section" },
-    { "path": "SHARED_RESEARCH.md", "purpose": "the locked shared-research design (note: the offline-community + derived-mirror decisions are now superseded for monetization)" }
+    { "path": "server/src/corpus-db.ts", "purpose": "CorpusDb interface + sqliteCorpus + once()" },
+    { "path": "server/src/corpus-services.ts", "purpose": "createCorpusServices, warmCorpus, Entitlements" },
+    { "path": "server/src/{content,roots,linkages,wazn,expressions,echoes,spellings,freetext,morphology}.ts, similarity/", "purpose": "the corpus services, async, portable SQL" },
+    { "path": "server/src/routes/{content,roots,similarity,echoes,corpus}.ts", "purpose": "corpus route builders shared by /api/v1 and /corpus" },
+    { "path": "remote/src/corpus/pg-corpus.ts", "purpose": "Postgres driver" },
+    { "path": "remote/src/corpus/serve.ts", "purpose": "corpusApp: mounts the shared routes with plan entitlements" },
+    { "path": "remote/src/corpus/{schema,load,verify}.ts", "purpose": "corpus:migrate — load + prove the copy exact" },
+    { "path": "remote/src/corpus-parity-cli.ts", "purpose": "npm run corpus:parity [-- --quick]" },
+    { "path": "remote/src/resource-access.ts", "purpose": "resource rules, canRead, requireResource, itemFilter" },
+    { "path": "remote/src/plans.ts", "purpose": "tier ladder, meetsPlan" },
+    { "path": "remote/src/roles.ts", "purpose": "role ladder, requireRole" },
+    { "path": "remote/src/api-tokens.ts, session.ts", "purpose": "personal API tokens; bearer-or-cookie sessions" },
+    { "path": "remote/src/admin.ts", "purpose": "listUsers, setRole (last-maintainer guard), listResources" },
+    { "path": "remote/src/app.ts", "purpose": "every remote route" },
+    { "path": "remote/src/access-cli.ts", "purpose": "npm run access — the scripted twin of the Admin tab" },
+    { "path": "remote/migrations/0007_resource_access.sql, 0008_api_tokens.sql", "purpose": "resource_access; api_tokens" },
+    { "path": "app/src/api/client.ts", "purpose": "corpus reads → ${REMOTE_URL}/corpus; access events" },
+    { "path": "app/src/components/CorpusAccessBanner.tsx", "purpose": "why the Qur'an isn't showing, once, at the top" },
+    { "path": "app/src/components/AccountSheet.tsx", "purpose": "account; Connect an AI assistant (tokens)" },
+    { "path": "app/src/screens/Admin.tsx, app/src/api/admin.ts", "purpose": "the Admin tab" },
+    { "path": "mcp/src/corpus-client.ts", "purpose": "CorpusReads: remoteReads / localReads" },
+    { "path": "mcp/src/core.ts", "purpose": "openState: corpus (remote|local) + local research; the write guard" },
+    { "path": "server/test/mcp-remote-corpus.test.ts", "purpose": "every MCP corpus tool, remote vs local: identical" },
+    { "path": "remote/test/{access,admin,api-tokens,corpus-parity,corpus-migrate}.test.ts", "purpose": "PGlite tests for the above" },
+    { "path": "remote/scripts/{token,admin,access}-smoke.ts, ui-test-account.ts", "purpose": "smoke checks through the real app; a throwaway maintainer for browser checks" },
+    { "path": "INSTRUCTIONS.md, CORPUS.md, REMOTE.md", "purpose": "the deeper references" }
   ],
   "glossary": {
-    "locally established": "A form meaning YOU established, in your own research.db. Dated, yours, never overwritten.",
-    "globally established": "The reading moderators accepted as the group's agreed meaning. Lives on the cloud.",
+    "feature": "Something you DO (publish, review, establish, administer). Gated by role.",
+    "resource": "Something you READ (the corpus, the community, a translation, a dictionary). Gated by plan.",
+    "tier": "A rung on the plan ladder (plan_tiers). Higher rank unlocks more.",
+    "min_plan": "A resource's requirement: a tier, 'free' (signed in), or NULL (public).",
+    "API token": "mqrg_… — a revocable credential that acts as its user; how the MCP signs in.",
+    "locally established": "A form meaning YOU established, in your own research.db.",
+    "globally established": "The reading moderators accepted as the group's; lives on the cloud.",
     "dissent": "A recorded disagreement with a globally established reading, preserved not resolved.",
-    "divergence (⚖)": "A form you established whose meaning differs from the group's. Computed live on the remote now.",
-    "claim": "One author's reading of one subject (form or root); versions are that author's revisions; content-addressed id.",
-    "plan / planActive": "The billing axis. planActive = paid rung AND not lapsed. The one flag the app gates on.",
-    "requireRole / requirePlan": "The two Hono middlewares that gate a route: allowed-to vs paid-for."
+    "divergence (⚖)": "A form you established whose meaning differs from the group's. Computed live on the remote."
   },
+  "notice": "The maintainer account (mansoor@wimetrix.com) is maintainer · FREE, while the corpus rule is pro — so it currently gets 'Reading this needs the pro plan'. Fix in the Admin tab (People → Change → Pro, or Who can read → corpus → Signed in), or `npm run set-plan -w @alsiraat/remote -- mansoor@wimetrix.com pro`.",
   "openQuestions": [
-    "Corpus step 2 remaining: search, roots/lexicons, linkages, echoes, similarity, spellings, wazn (see CORPUS.md 'Step 2').",
-    "Should the app/MCP read /corpus/* instead of quran.db? It would make reading need a network — decide deliberately.",
-    "Arabic full-text search in Postgres: diacritic-folded column vs pg_trgm — decide by comparing against FTS5 results.",
-    "Should the community gates' tier (currently fixed at 'pro') also become a runtime setting, like the corpus minPlan?",
-    "Billing provider integration (the set-plan / POST /plan seam).",
-    "If 'full cloud research' is ever wanted: migrate the app's personal research to the cloud so the AI review loop stays coherent — larger migration, reverses offline/privacy.",
-    "Edit SHARED_RESEARCH.md to mark the superseded offline-community + derived-mirror decisions (like the retired 'nothing is revealed')."
+    "Billing provider integration (the plan-grant seam).",
+    "Should a maintainer bypass resource gates automatically? Today staff need a plan like anyone else (explicit, but easy to trip over).",
+    "Offline reading in the app: today it needs the research server. A signed local cache of the corpus is possible later if wanted.",
+    "Corpus patches: the signed patch channel still targets quran.db; a Postgres target is needed for corrections to reach the cloud copy.",
+    "Edit SHARED_RESEARCH.md to mark the superseded offline-community + derived-mirror decisions."
   ]
 }

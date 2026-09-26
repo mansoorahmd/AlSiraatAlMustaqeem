@@ -1,6 +1,6 @@
 {
   "$doc": "Feedback & communication log between the maintainer and Claude about MQ Research Gate. The repo-side, chat-extractable mirror of the conversation. The live version is the feedback threads in the published docs/atlas.html (backed by the artifact db capability); Claude reconciles new entries here.",
-  "entryShape": { "ts": "ISO 8601 string", "author": "who wrote it", "section": "atlas section id (system|data|money|gate|community|publishing|mcp|roadmap|general)", "text": "the note", "status": "open | answered | done (optional)" },
+  "entryShape": { "ts": "ISO 8601 string", "author": "who wrote it", "section": "atlas section id (system|data|money|gate|community|publishing|mcp|admin|roadmap|general)", "text": "the note", "status": "open | answered | done (optional)" },
   "entries": [
     {
       "ts": "2026-09-19T00:00:00Z",
@@ -36,6 +36,20 @@
       "section": "money",
       "text": "Done. Plan tiers are now data (plan_tiers: name + rank), edited with `npm run access -- tier …`. Reading the cloud corpus follows a runtime policy — public, signed_in, or plan ≥ a tier (default plan ≥ pro). Each translation can require its own tier; below it the translation is left out, and GET /corpus-access says what's locked. Step 2's first piece is live: chapters/verses/words/translations at /corpus/*, and corpus:parity compared 7,152 answers with SQLite — all identical. Note: a tier named 'admin' is only what's paid for; administering stays the maintainer role.",
       "status": "done"
+    },
+    {
+      "ts": "2026-09-26T02:00:00Z",
+      "author": "Maintainer",
+      "section": "roadmap",
+      "text": "Do step 2, and yes — the app and the MCP now read from /corpus. Every feature is role-based, every resource is plan-based; it will be easier. And instead of a CLI for admin, add a UI in the app if the logged-in user is an admin.",
+      "status": "answered"
+    },
+    {
+      "ts": "2026-09-26T03:00:00Z",
+      "author": "Claude",
+      "section": "admin",
+      "text": "All done on feature/corpus-postgres. (1) Access: features are role-based (publish = researcher, review = moderator, administer = maintainer); resources are plan-based — the corpus, the community, each translation and each dictionary, each with a rule: a tier, 'signed in', or public. (2) Step 2: one corpus codebase with SQLite and Postgres drivers; the cloud serves ALL of it at /corpus; the full parity sweep compared 77,439 requests — every one identical. (3) The app reads the Qur'an from /corpus, with one banner when it can't (offline / sign in / needs a plan). (4) The MCP reads it as you, with a personal API token from Account → Connect an AI assistant; research stays in your local research.db. (5) Admin tab for maintainers: plan tiers, who can read what, people (role + plan). Heads-up: your account is maintainer · free and the corpus rule is pro, so the app will tell you it needs the pro plan — grant yourself pro in Admin → People, or set the corpus to 'Signed in'. Open: should maintainers bypass resource gates automatically?",
+      "status": "open"
     }
   ]
 }
