@@ -44,7 +44,7 @@ export function corpusApp(svc: CorpusServices, access?: SqlRunner): Hono<Env> {
   app.onError((err, c) => {
     if (err instanceof HttpError) return c.json({ detail: err.message }, err.status as 400);
     console.error(err);
-    return c.json({ detail: `internal error: ${(err as Error).message}` }, 500);
+    return c.json({ detail: "internal error" }, 500);   // the details go to the log, not the caller
   });
   app.route("/", contentRoutes(svc, ent));
   app.route("/", rootRoutes(svc, ent));

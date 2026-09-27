@@ -22,7 +22,8 @@ const ROLE_HINT: Record<Role, string> = {
 type Pick = string | null | "none";
 
 function accessLabel(v: Pick | undefined, tiers: Tier[]): string {
-  if (v === undefined || v === "none") return "No extra rule — same as the corpus";
+  if (v === undefined) return "Unknown — couldn't load the rules";
+  if (v === "none") return "No extra rule — same as the corpus";
   if (v === null) return "Anyone — no sign-in";
   if (v === "free") return "Any signed-in account";
   const t = tiers.find((x) => x.name === v);
@@ -37,10 +38,15 @@ function AccessPicker({ value, tiers, allowNone, onSave }: {
   const [draft, setDraft] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const enc = (v: Pick | undefined) => (v === undefined || v === "none" ? "__none" : v === null ? "__public" : v);
+  // an unknown value never opens the editor (see below), so there is no default to fall into
+  const enc = (v: Pick) => (v === "none" ? "__none" : v === null ? "__public" : v);
   const dec = (s: string): Pick => (s === "__none" ? "none" : s === "__public" ? null : s);
 
   const save = async () => {
+    // only ever save a choice that is actually on the list — never a fallback
+    const offered = draft === "__public" || draft === "free" || (allowNone && draft === "__none") ||
+      tiers.some((t) => t.name === draft);
+    if (!offered) { setErr("Pick an option first."); return; }
     setBusy(true); setErr(null);
     try { await onSave(dec(draft)); setEditing(false); }
     catch (e) { setErr((e as Error).message); }
@@ -51,7 +57,8 @@ function AccessPicker({ value, tiers, allowNone, onSave }: {
     return (
       <div className="admin-access">
         <span className="admin-access-value">{accessLabel(value, tiers)}</span>
-        <button className="ctl" onClick={() => { setDraft(enc(value)); setEditing(true); }}>Change</button>
+        <button className="ctl" disabled={value === undefined}
+          onClick={() => { if (value !== undefined) { setDraft(enc(value)); setEditing(true); } }}>Change</button>
       </div>
     );
   }
@@ -228,14 +235,24 @@ export function Admin() {
 
   const load = useCallback(async () => {
     setErr(null);
-    try {
-      const [t, r, x, u] = await Promise.all([admin.tiers(), admin.rules(), admin.resources(), admin.users()]);
-      setTiers(t); setRules(r); setRes(x); setUsers(u);
-    } catch (e) { setErr((e as Error).message); }
+    // each part loads on its own, so one failure doesn't blank (or mislabel) the rest
+    const [t, r, x, u] = await Promise.allSettled([admin.tiers(), admin.rules(), admin.resources(), admin.users()]);
+    if (t.status === "fulfilled") setTiers(t.value);
+    if (r.status === "fulfilled") setRules(r.value);
+    if (x.status === "fulfilled") setRes(x.value);
+    if (u.status === "fulfilled") setUsers(u.value);
+    const failed = [t, r, x, u].find((p) => p.status === "rejected") as PromiseRejectedResult | undefined;
+    if (failed) setErr((failed.reason as Error)?.message ?? "couldn't load everything");
   }, []);
   useEffect(() => { if (isAdmin) void load(); }, [isAdmin, load]);
 
+  /** undefined until the rules have loaded — the picker then refuses to open */
   const whole = (kind: "corpus" | "community") => rules.find((r) => r.kind === kind && r.key === "*")?.minPlan;
+  const setWhole = (kind: "corpus" | "community") => async (v: Pick) => {
+    if (v === "none") throw new Error("the corpus and the community always have a rule");
+    await admin.setRule(kind, "*", v);
+    await load();
+  };
   const setItem = (kind: "translation" | "lexicon", key: string) => async (v: Pick) => {
     if (v === "none") await admin.removeRule(kind, key); else await admin.setRule(kind, key, v);
     await load();
@@ -286,13 +303,13 @@ export function Admin() {
             <span className="admin-name"><strong>The Qur'an corpus</strong>
               <span className="admin-sub">text, words, roots, dictionaries, search</span></span>
             <AccessPicker value={whole("corpus")} tiers={tiers}
-              onSave={async (v) => { await admin.setRule("corpus", "*", v === "none" ? null : v); await load(); }} />
+              onSave={setWhole("corpus")} />
           </li>
           <li className="admin-row">
             <span className="admin-name"><strong>The community's readings</strong>
               <span className="admin-sub">readings, dissents, where you stand apart</span></span>
             <AccessPicker value={whole("community")} tiers={tiers}
-              onSave={async (v) => { await admin.setRule("community", "*", v === "none" ? null : v); await load(); }} />
+              onSave={setWhole("community")} />
           </li>
         </ul>
       </section>

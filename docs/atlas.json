@@ -57,7 +57,7 @@
     "resources": {
       "table": "resource_access (kind, key, min_plan). min_plan = a tier, 'free' (= any signed-in account), or NULL (= public, no sign-in).",
       "whole": { "corpus": "key '*' — every /corpus route (default pro)", "community": "key '*' — community readings, claims, dissents, divergences, pull (default pro)" },
-      "perItem": { "translation": "key = resource id; below its tier the translation is LEFT OUT of results", "lexicon": "key = source (lane, lisan, …); below its tier the entries are left out of a root page" },
+      "perItem": { "translation": "key = resource id; below its tier the translation is LEFT OUT of results", "lexicon": "key = source (lanes_lexicon, lisan_ul_arab, …); below its tier the entries are left out of a root page" },
       "noRule": "An item with no rule needs only what the corpus needs.",
       "refusal": "requireResource(kind) → 401 {detail} if a sign-in is needed, 402 {detail, resource, plan} if a higher plan is.",
       "file": "remote/src/resource-access.ts (canRead, wholeMin, requireResource, itemFilter)"

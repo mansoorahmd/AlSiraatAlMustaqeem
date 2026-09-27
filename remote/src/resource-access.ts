@@ -77,6 +77,14 @@ function assertShape(kind: ResourceKind, key: string): void {
       ? `${kind} is a whole resource — its key is *`
       : `${kind} rules name one ${kind} (a key, not *)`, 422);
   }
+  // A rule only protects what its key exactly matches, so a near-miss key ("05", "lane ")
+  // would protect nothing while looking set. Insist on the canonical form.
+  if (kind === "translation" && !/^[1-9]\d{0,8}$/.test(key)) {
+    throw new TierError(`a translation key is its resource id, e.g. 131 (got "${key}")`, 422);
+  }
+  if (kind === "lexicon" && !/^[a-z0-9_]{1,64}$/.test(key)) {
+    throw new TierError(`a lexicon key is its source name, e.g. lane (got "${key}")`, 422);
+  }
 }
 
 /** Set a resource's minimum tier (null = public). A maintainer act. */

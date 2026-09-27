@@ -29,6 +29,11 @@ interface RawDb {
   close(): void;
 }
 
+// Several connections share a file (the app, the MCP, parallel test workers). Without a busy
+// timeout a connection that meets a lock (e.g. another's WAL checkpoint) fails at once with
+// "database is locked"; with it, it waits up to 5 s.
+const BUSY = "PRAGMA busy_timeout = 5000";
+
 function openRaw(path: string, readOnly: boolean): RawDb {
   if (USE_BETTER) {
     const Database = require("better-sqlite3") as new (
@@ -38,12 +43,14 @@ function openRaw(path: string, readOnly: boolean): RawDb {
     const db = new Database(path, { readonly: readOnly });
     if (!readOnly) db.exec("PRAGMA journal_mode = WAL"); // match the web db's WAL mode
     db.exec("PRAGMA foreign_keys = ON");
+    db.exec(BUSY);
     return db;
   }
   const { DatabaseSync } = require("node:sqlite") as typeof SqliteNS;
   const db = new DatabaseSync(path) as unknown as RawDb;
   if (readOnly) db.exec("PRAGMA query_only = ON");
   db.exec("PRAGMA foreign_keys = ON");
+  db.exec(BUSY);
   return db;
 }
 

@@ -16,10 +16,12 @@ import type { Env } from "./roles.js";
 
 export const sessionMiddleware = createMiddleware<Env>(async (c, next) => {
   let userId: string | null = null;
+  let via: "session" | "token" = "session";
 
   const bearer = c.req.header("authorization")?.match(/^Bearer\s+(\S+)$/i)?.[1];
   if (bearer?.startsWith(TOKEN_PREFIX)) {
     userId = await userForToken(pgRunner, bearer);
+    via = "token";
   } else {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
     if (session?.user?.id) userId = String(session.user.id);
@@ -31,7 +33,7 @@ export const sessionMiddleware = createMiddleware<Env>(async (c, next) => {
     if (principal) {
       c.set("user", {
         id: principal.id, role: principal.role,
-        plan: principal.plan, planExpiresAt: principal.planExpiresAt,
+        plan: principal.plan, planExpiresAt: principal.planExpiresAt, via,
       });
     }
   }

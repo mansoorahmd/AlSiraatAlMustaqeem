@@ -166,7 +166,8 @@ export function AccountSheet() {
       const who = await remote.me();
       setMe(who);
       // keep the app-wide account in step (sign-in/out changes the Admin tab, the banner, …)
-      if (who?.id !== cachedMe()?.id || who?.role !== cachedMe()?.role) void refreshMe();
+      const key = (m: Me | null) => (m ? [m.id, m.role, m.plan, m.planActive, m.planExpiresAt].join("|") : "");
+      if (key(who) !== key(cachedMe())) void refreshMe();
       if (who) setNameDraft(who.displayName);
       setStatus(who ? "signed-in" : "signed-out");
     } catch (e) {

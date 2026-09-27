@@ -14,7 +14,7 @@ import { auth } from "./auth.js";
 import { config } from "./config.js";
 import { pgRunner } from "./db.js";
 import { sessionMiddleware } from "./session.js";
-import { requireRole, type Env } from "./roles.js";
+import { requireRole, requireSession, type Env } from "./roles.js";
 import { loadTiers, rankOf, setTier, removeTier, TierError, FREE } from "./plans.js";
 import {
   requireResource, wholeMin, canRead, listRules, setRule, removeRule, isResourceKind,
@@ -216,17 +216,19 @@ export function createApp(): Hono<Env> {
   });
 
   // --- personal API tokens: how a headless client (the MCP) acts as you (api-tokens.ts) ---
-  // A feature, so role-based: any signed-in account. You only ever see or revoke your own.
-  app.get("/me/tokens", requireRole("reader"), async (c) =>
+  // A feature, so role-based: any signed-in account. You only ever see or revoke your own —
+  // and only from a signed-in session, never with a token (requireSession says why).
+  app.get("/me/tokens", requireRole("reader"), requireSession, async (c) =>
     c.json(await listTokens(pgRunner, c.get("user")!.id)));
 
   /** Mint a token. Its secret is in this response and nowhere else — show it once. */
-  app.post("/me/tokens", requireRole("reader"), async (c) => {
-    const { label } = (await c.req.json().catch(() => ({}))) as { label?: string };
-    return c.json(await createToken(pgRunner, c.get("user")!.id, label?.trim() || "MCP"), 201);
+  app.post("/me/tokens", requireRole("reader"), requireSession, async (c) => {
+    const { label } = (await c.req.json().catch(() => ({}))) as { label?: unknown };
+    const name = typeof label === "string" && label.trim() ? label.trim().slice(0, 80) : "MCP";
+    return c.json(await createToken(pgRunner, c.get("user")!.id, name), 201);
   });
 
-  app.delete("/me/tokens/:id", requireRole("reader"), async (c) => {
+  app.delete("/me/tokens/:id", requireRole("reader"), requireSession, async (c) => {
     const ok = await revokeToken(pgRunner, c.get("user")!.id, c.req.param("id"));
     return ok ? c.json({ ok: true }) : c.json({ detail: "no such token of yours" }, 404);
   });
@@ -308,9 +310,18 @@ export function createApp(): Hono<Env> {
    * land on the client's disk, so the gate is real.
    */
   app.post("/divergences", community, async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as
-      { forms?: { subjectKind?: SubjectKind; subjectValue: string; meaning: string }[] };
-    return c.json(await divergencesAgainstGlobal(pgRunner, body.forms ?? []));
+    const body = (await c.req.json().catch(() => ({}))) as { forms?: unknown };
+    const forms = body.forms ?? [];
+    // shape-checked and capped: each form costs queries, so an unbounded list could tie up the pool
+    const ok = (f: unknown): f is { subjectKind?: SubjectKind; subjectValue: string; meaning: string } =>
+      !!f && typeof f === "object" && typeof (f as { subjectValue?: unknown }).subjectValue === "string" &&
+      typeof (f as { meaning?: unknown }).meaning === "string" &&
+      [undefined, "form", "root"].includes((f as { subjectKind?: string }).subjectKind);
+    if (!Array.isArray(forms) || !forms.every(ok)) {
+      return c.json({ detail: "forms must be a list of {subjectValue, meaning, subjectKind?: form|root}" }, 422);
+    }
+    if (forms.length > 5000) return c.json({ detail: "at most 5000 forms per request" }, 413);
+    return c.json(await divergencesAgainstGlobal(pgRunner, forms));
   });
 
   /**
@@ -389,7 +400,7 @@ export function createApp(): Hono<Env> {
       });
       return c.json(invite, 201);
     } catch (e) {
-      return c.json({ detail: (e as Error).message }, 400);
+      return c.json({ detail: (e as Error).message }, (e instanceof InviteError ? e.status : 400) as 400);
     }
   });
 

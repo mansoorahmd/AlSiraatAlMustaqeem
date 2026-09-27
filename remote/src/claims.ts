@@ -276,9 +276,9 @@ async function readingsForSubject(
     `SELECT cv.claim_id, cv.version, cv.payload_json, cv.created_at,
             c.author_id, c.subject_kind, c.subject_value, c.current_version,
             (g.claim_id IS NOT NULL) AS is_global,
-            COALESCE(NULLIF(au.display_name, ''), au.email) AS author_name,
+            COALESCE(NULLIF(au.display_name, ''), 'a researcher') AS author_name,
             COALESCE((
-              SELECT json_agg(COALESCE(NULLIF(mu.display_name, ''), mu.email) ORDER BY rv.created_at)
+              SELECT json_agg(COALESCE(NULLIF(mu.display_name, ''), 'a moderator') ORDER BY rv.created_at)
                 FROM reviews rv JOIN users mu ON mu.id = rv.moderator_id
                WHERE rv.claim_id = cv.claim_id AND rv.claim_version = cv.version
                  AND rv.decision = 'approve'

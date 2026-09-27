@@ -268,25 +268,20 @@ const trace_word: Tool = {
       // prefixed spellings — so return the total, and name the related forms explicitly.
       const total = await state.wordForms.total(word);
       const hits = await state.wordForms.occurrences(word, limit);
-      const texts = new Map<string, string | null>();
-      const textOf = async (vk: string) => {
-        if (!texts.has(vk)) {
-          const v = await state.content.getVerse(vk, { script: "uthmani" });
-          texts.set(vk, (v?.text as string) ?? null);
-        }
-        return texts.get(vk) ?? null;
-      };
-      const related = await state.wordForms.relatedForms(word);
+      // each distinct āyah once, all at the same time (the corpus may be across the network)
+      const keys = [...new Set(hits.map((h) => h.verse_key))];
+      const [related, fetched] = await Promise.all([
+        state.wordForms.relatedForms(word),
+        Promise.all(keys.map((vk) => state.content.getVerse(vk, { script: "uthmani" }))),
+      ]);
+      const texts = new Map(keys.map((vk, i) => [vk, (fetched[i]?.text as string) ?? null]));
       const relatedTotal = related.reduce((s, r) => s + r.count, 0);
-      const occurrences: { verse_key: string; word_position: number; word: string | undefined; text: string | null }[] = [];
-      for (const h of hits) {
-        occurrences.push({
-          verse_key: h.verse_key,
-          word_position: h.word_position,
-          word: h.surface,
-          text: await textOf(h.verse_key),
-        });
-      }
+      const occurrences = hits.map((h) => ({
+        verse_key: h.verse_key,
+        word_position: h.word_position,
+        word: h.surface,
+        text: texts.get(h.verse_key) ?? null,
+      }));
       return {
         following: word,
         mode: "exact written word",

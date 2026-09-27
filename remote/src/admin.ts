@@ -40,15 +40,19 @@ export const isUserId = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 export async function setRole(r: SqlRunner, userId: string, role: string): Promise<void> {
   if (!isRole(role)) throw new AdminError("role must be reader, researcher, moderator or maintainer", 422);
   if (!isUserId(userId)) throw new AdminError("no such user", 404);
-  const current = (await r.query("SELECT role FROM users WHERE id = $1", [userId]))[0];
-  if (!current) throw new AdminError("no such user", 404);
-  if (current.role === "maintainer" && role !== "maintainer") {
-    const [n] = await r.query("SELECT COUNT(*)::int AS n FROM users WHERE role = 'maintainer'");
-    if (Number(n?.n ?? 0) <= 1) {
-      throw new AdminError("this is the only maintainer — make someone else a maintainer first", 409);
-    }
-  }
-  await r.query("UPDATE users SET role = $1, updated_at = now() WHERE id = $2", [role, userId]);
+  // One statement that first LOCKS every maintainer row: two maintainers demoting each other at
+  // the same moment would otherwise both count "2 maintainers" and leave none. With the lock the
+  // second waits, re-reads the rows once the first commits, counts 1, and is refused.
+  const done = await r.query(
+    `WITH m AS (SELECT id FROM users WHERE role = 'maintainer' FOR UPDATE)
+     UPDATE users SET role = $1, updated_at = now()
+      WHERE id = $2
+        AND (role <> 'maintainer' OR $1 = 'maintainer' OR (SELECT COUNT(*) FROM m) > 1)
+      RETURNING id`, [role, userId]);
+  if (done.length) return;
+  const exists = await r.query("SELECT 1 FROM users WHERE id = $1", [userId]);
+  if (!exists.length) throw new AdminError("no such user", 404);
+  throw new AdminError("this is the only maintainer — make someone else a maintainer first", 409);
 }
 
 export interface AdminResources {

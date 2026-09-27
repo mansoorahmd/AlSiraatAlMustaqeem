@@ -40,7 +40,7 @@ export function similarityRoutes(svc: CorpusServices): Hono {
     if (num(body.w_phrase) != null) w.phrase = body.w_phrase as number;
     if (num(body.w_morphology) != null) w.morphology = body.w_morphology as number;
     const result = await svc.freetext.search(String(body.text ?? ""), {
-      topK: (num(body.top_k) as number) ?? 20,
+      topK: Math.min(Math.max(Math.trunc((num(body.top_k) as number) ?? 20), 1), 200),
       minShared: (num(body.min_shared) as number) ?? 1,
       weights: Object.keys(w).length ? w : undefined,
     });

@@ -101,13 +101,14 @@ export class QuranContent {
       sql += " LIMIT ? OFFSET ?";
       params.push(opts.limit, opts.offset ?? 0);
     }
-    const out: Row[] = [];
-    for (const row of await this.db.query(sql, params)) {
+    const rows = await this.db.query(sql, params);
+    // words for the whole page in two queries, not two per verse (a remote database pays per trip)
+    const words = opts.withWords ? await this.wordsFor(rows.map((r) => r.verse_key as string)) : null;
+    return rows.map((row) => {
       const d = this.verseDict(row, script, opts.allScripts ?? false);
-      if (opts.withWords) d.words = await this.verseWords(row.verse_key as string);
-      out.push(d);
-    }
-    return out;
+      if (words) d.words = words.get(row.verse_key as string) ?? [];
+      return d;
+    });
   }
 
   async listVerses(opts: {
@@ -184,31 +185,46 @@ export class QuranContent {
   }
 
   // -- words --
-  private async wordArabic(verseKey: string): Promise<Map<number, string>> {
-    const rows = await this.db.query<{ word_position: number; form_arabic: string | null }>(
-      `SELECT word_position, form_arabic FROM word_segments
-       WHERE verse_key = ? ORDER BY word_position, segment_number`,
-      [verseKey],
+  /** Each verse's word-by-word breakdown, for any number of verses in two queries. */
+  private async wordsFor(verseKeys: string[]): Promise<Map<string, Row[]>> {
+    const out = new Map<string, Row[]>();
+    if (!verseKeys.length) return out;
+    const ph = verseKeys.map(() => "?").join(", ");
+    // a word's Arabic is its segments joined in order
+    const segs = await this.db.query<{ verse_key: string; word_position: number; form_arabic: string | null }>(
+      `SELECT verse_key, word_position, form_arabic FROM word_segments
+       WHERE verse_key IN (${ph}) ORDER BY verse_key, word_position, segment_number`,
+      verseKeys,
     );
-    const out = new Map<number, string>();
+    const arabic = new Map<string, string>();
+    for (const r of segs) {
+      if (!r.form_arabic) continue;
+      const k = `${r.verse_key}#${r.word_position}`;
+      arabic.set(k, (arabic.get(k) ?? "") + r.form_arabic);
+    }
+    const rows = await this.db.query<Row>(
+      `SELECT verse_key, position, translation_text, transliteration_text,
+              lemma_arabic, root_arabic, root_buckwalter,
+              pos_english, pos_class
+       FROM words WHERE verse_key IN (${ph}) ORDER BY verse_key, position`,
+      verseKeys,
+    );
     for (const r of rows) {
-      if (r.form_arabic) out.set(r.word_position, (out.get(r.word_position) ?? "") + r.form_arabic);
+      const key = r.verse_key as string;
+      const list = out.get(key) ?? out.set(key, []).get(key)!;
+      list.push(this.wordDict(r, arabic.get(`${key}#${r.position}`) ?? null));
     }
     return out;
   }
 
   async verseWords(verseKey: string): Promise<Row[]> {
-    const arabic = await this.wordArabic(verseKey);
-    const rows = await this.db.query<Row>(
-      `SELECT position, translation_text, transliteration_text,
-              lemma_arabic, root_arabic, root_buckwalter,
-              pos_english, pos_class
-       FROM words WHERE verse_key = ? ORDER BY position`,
-      [verseKey],
-    );
-    return rows.map((r) => ({
+    return (await this.wordsFor([verseKey])).get(verseKey) ?? [];
+  }
+
+  private wordDict(r: Row, arabic: string | null): Row {
+    return {
       position: r.position,
-      arabic: arabic.get(r.position as number) ?? null,
+      arabic,
       gloss: r.translation_text,
       transliteration: r.transliteration_text,
       lemma: r.lemma_arabic,
@@ -216,7 +232,7 @@ export class QuranContent {
       root_buckwalter: r.root_buckwalter,
       pos: r.pos_english,
       pos_class: r.pos_class,
-    }));
+    };
   }
 
   // -- translations (a caller's plan may leave some out) --

@@ -97,7 +97,14 @@ export function remoteReads(base: string, token?: string, fetchImpl: Fetch = fet
     } catch {
       throw new CorpusAccessError(`Can't reach the research server at ${base} — is it running? (Set REMOTE_URL, or MQ_CORPUS=local to read quran.db offline.)`);
     }
-    if (res.status === 404) return missing;
+    // "nothing there" is a corpus route's own 404, which carries a {detail}. A bare 404 means
+    // the path itself doesn't exist — a wrong REMOTE_URL, or a server without /corpus — and
+    // must not quietly read as "root not found".
+    if (res.status === 404) {
+      const body = (await res.json().catch(() => null)) as { detail?: unknown } | null;
+      if (body && typeof body.detail === "string") return missing;
+      throw new CorpusAccessError(`${base} doesn't serve the corpus (${path} → 404). Check REMOTE_URL, or set MQ_CORPUS=local.`);
+    }
     if (res.status === 401) {
       throw new CorpusAccessError(token
         ? "The research server didn't accept this MCP's token — it may be revoked. Create a new one in the app (Account → Connect an AI assistant) and set REMOTE_TOKEN."

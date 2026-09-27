@@ -175,7 +175,7 @@ the past) counts as `free`. A tier can't be removed while an account holds it or
 | `corpus` | `*` | every `/corpus` route | 401 / 402 |
 | `community` | `*` | community readings, claims, dissents, divergences, pull | 401 / 402 |
 | `translation` | resource id | that translation in any result | **left out** — the request still succeeds |
-| `lexicon` | source (`lane`, `lisan`, …) | that dictionary's entries on a root page | **left out** |
+| `lexicon` | source (`lanes_lexicon`, `lisan_ul_arab`, …) | that dictionary's entries on a root page | **left out** |
 
 `corpus` and `community` default to `pro`. A translation or lexicon with no rule needs only what the
 corpus needs. Rules are cached for 10 s per process: a change applies at once on the instance that made
@@ -197,7 +197,7 @@ npm run access -w @alsiraat/remote -- corpus scholar               # scholar or 
 npm run access -w @alsiraat/remote -- community pro                # the community's tier
 npm run access -w @alsiraat/remote -- translation 131 scholar      # translation 131 needs scholar
 npm run access -w @alsiraat/remote -- translation 131 none         # back to "same as the corpus"
-npm run access -w @alsiraat/remote -- lexicon lane scholar         # Lane's lexicon needs scholar
+npm run access -w @alsiraat/remote -- lexicon lanes_lexicon scholar  # Lane's lexicon needs scholar
 
 npm run set-plan -w @alsiraat/remote -- me@example.org scholar     # grant, no expiry
 npm run set-plan -w @alsiraat/remote -- me@example.org pro 30      # grant for 30 days

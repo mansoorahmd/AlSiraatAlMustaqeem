@@ -24,6 +24,19 @@ export interface Invite {
 
 export const newInviteCode = (): string => randomBytes(16).toString("base64url");
 
+/**
+ * A duration in whole days, 1–36500, or null for "no expiry". Anything else is refused (422)
+ * rather than reaching Postgres as `interval 'NaN days'` — and it goes in as a parameter.
+ */
+export function expiryDays(v: unknown): number | null {
+  if (v === undefined || v === null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isInteger(n) || n < 1 || n > 36500) {
+    throw new InviteError("expiresInDays must be a whole number of days from 1 to 36500 (or omitted)", 422);
+  }
+  return n;
+}
+
 /** Issue an invite. Caller must already be authorized as a maintainer (route guard). */
 export async function createInvite(
   r: SqlRunner,
@@ -32,14 +45,12 @@ export async function createInvite(
   const role: Role = opts.role ?? "researcher";
   if (!isRole(role)) throw new Error(`unknown role: ${role}`);
   const code = opts.code ?? newInviteCode();
-  const expires = opts.expiresInDays
-    ? `now() + interval '${Number(opts.expiresInDays)} days'`
-    : "NULL";
+  const days = expiryDays(opts.expiresInDays);
   const rows = await r.query(
     `INSERT INTO invites (code, issued_by, role, expires_at)
-     VALUES ($1, $2, $3, ${expires})
+     VALUES ($1, $2, $3, CASE WHEN $4::int IS NULL THEN NULL ELSE now() + make_interval(days => $4::int) END)
      RETURNING code, role, expires_at, redeemed_by`,
-    [code, opts.issuedBy, role],
+    [code, opts.issuedBy, role, days],
   );
   return rows[0] as unknown as Invite;
 }
@@ -129,13 +140,14 @@ export async function setPlan(
   if (!tiers.has(opts.plan)) {
     throw new TierError(`unknown plan tier: ${opts.plan} (tiers: ${[...tiers.keys()].join(", ")})`, 422);
   }
-  const expires =
-    opts.plan === FREE || opts.expiresInDays == null
-      ? "NULL"
-      : `now() + interval '${Number(opts.expiresInDays)} days'`;
+  let days: number | null;
+  try { days = opts.plan === FREE ? null : expiryDays(opts.expiresInDays); }
+  catch (e) { throw new TierError((e as Error).message, 422); }
   await r.query(
-    `UPDATE users SET plan = $1, plan_expires_at = ${expires}, updated_at = now() WHERE id = $2`,
-    [opts.plan, opts.userId],
+    `UPDATE users SET plan = $1, updated_at = now(),
+            plan_expires_at = CASE WHEN $3::int IS NULL THEN NULL ELSE now() + make_interval(days => $3::int) END
+      WHERE id = $2`,
+    [opts.plan, opts.userId, days],
   );
 }
 
