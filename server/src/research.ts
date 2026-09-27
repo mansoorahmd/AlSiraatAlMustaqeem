@@ -20,8 +20,12 @@ export const STAMPED_TABLES = [
   "cases", "notes", "trails", "motifs", "user_root_meanings", "word_indications", "compare_sets",
 ];
 
-/** The research.db file's schema (SQLite). The Postgres twin is remote/src/research/schema.ts. */
-const SCHEMA = `
+/**
+ * The research schema, as a research.db file (SQLite) declares it. The research server derives
+ * each account's Postgres schema from this same text (remote/src/research/schema.ts), so the two
+ * can't drift apart.
+ */
+export const SQLITE_SCHEMA = `
 CREATE TABLE IF NOT EXISTS cases (
     id TEXT PRIMARY KEY, subject_type TEXT NOT NULL, subject_value TEXT NOT NULL,
     title TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'open',
@@ -161,6 +165,14 @@ CREATE TABLE IF NOT EXISTS derived_proposed_claims (
 -- derived_proposed_claims remain: they record YOUR OWN outbound actions, not anyone else's work.)
 `;
 
+/** Indexes a research.db gains in migrateSqlite (after its columns exist) — also created in Postgres. */
+export const LATER_INDEXES = [
+  "CREATE INDEX IF NOT EXISTS idx_notes_lemma ON notes(lemma)",
+  "CREATE INDEX IF NOT EXISTS idx_notes_root ON notes(root)",
+  "CREATE INDEX IF NOT EXISTS idx_notes_source ON notes(source)",
+  "CREATE INDEX IF NOT EXISTS idx_word_indications_source ON word_indications(source)",
+];
+
 const NOTE_MIGRATIONS: [string, string][] = [
   ["answer", "TEXT NOT NULL DEFAULT ''"],
   ["lemma", "TEXT"],
@@ -198,7 +210,7 @@ export class ResearchStore {
     const cols = async (t: string) =>
       new Set((await db.query<{ name: string }>(`PRAGMA table_info(${t})`)).map((r) => r.name));
     await db.exec("PRAGMA journal_mode = WAL");
-    await db.exec(SCHEMA);
+    await db.exec(SQLITE_SCHEMA);
     const have = await cols("notes");
     for (const [col, decl] of NOTE_MIGRATIONS) {
       if (!have.has(col)) await db.exec(`ALTER TABLE notes ADD COLUMN ${col} ${decl}`);

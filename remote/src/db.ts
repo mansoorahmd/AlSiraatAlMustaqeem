@@ -41,3 +41,24 @@ export const corpusRunner = {
   query: async (sql: string, params: unknown[] = []): Promise<Record<string, unknown>[]> =>
     (await corpusPool.query(sql, params)).rows,
 };
+
+// Each account's research is read through this pool: a request checks out ONE connection, runs
+// in a transaction with search_path set to that account's own schema, and returns it (see
+// research/serve.ts). int8 (millisecond timestamps, COUNT) comes back as a number, as in SQLite.
+export const researchPool = new pg.Pool({
+  connectionString: config.databaseUrl,
+  types: corpusPool.options.types,
+});
+
+export const researchConnections = {
+  async connect() {
+    const client = await researchPool.connect();
+    return {
+      query: async (sql: string, params: unknown[] = []) => {
+        const r = await client.query(sql, params);
+        return { rows: r.rows as Record<string, unknown>[], rowCount: r.rowCount ?? 0 };
+      },
+      release: () => client.release(),
+    };
+  },
+};

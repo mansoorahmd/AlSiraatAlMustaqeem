@@ -25,6 +25,8 @@ export interface AiBoundary {
   stamp<T extends Doc>(doc: T): T;
   /** refuse outright (deleting, accepting proposals, …) */
   refuse(what: string): never;
+  /** a case write: the reader's items and conclusions preserved, only AI-owned additions allowed */
+  mergeCase(existing: Doc | undefined, incoming: Doc): Doc;
 }
 
 export class BoundaryError extends Error {}
@@ -52,7 +54,7 @@ export function researchDataRoutes(
     let doc = await c.req.json();
     if (doc?.id !== c.req.param("id")) return idMismatch(c);
     const ai = boundaryFor(c);
-    if (ai) { ai.mustBeNewOrAi("case", await s.getCase(doc.id)); doc = ai.stamp(doc); }
+    if (ai) doc = ai.mergeCase(await s.getCase(doc.id), doc);
     return c.json(await s.saveCase(doc));
   });
   r.delete("/research/cases/:id", async (c) => {

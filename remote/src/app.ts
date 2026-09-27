@@ -25,7 +25,8 @@ import { listUsers, setRole, listResources, isUserId, AdminError } from "./admin
 import { corpusApp } from "./corpus/serve.js";
 import { pgCorpus } from "./corpus/pg-corpus.js";
 import { createCorpusServices, type CorpusServices } from "../../server/src/corpus-services.js";
-import { corpusRunner } from "./db.js";
+import { corpusRunner, researchConnections } from "./db.js";
+import { researchApp } from "./research/serve.js";
 
 /** The corpus services over Postgres — one set per process, so their in-memory indexes are built
  *  once. server.ts warms them at startup. */
@@ -211,6 +212,12 @@ export function createApp(): Hono<Env> {
   // Same route code as the local server's /api/v1 (see corpus/serve.ts).
   app.use("/corpus/*", requireResource("corpus", pgRunner));
   app.route("/corpus", corpusApp(cloudCorpus, pgRunner));
+
+  // --- each account's own research (research/serve.ts): private, in its own schema ---
+  app.route("/", researchApp(researchConnections, async (userId) => {
+    const u = (await pgRunner.query("SELECT email, display_name FROM users WHERE id = $1", [userId]))[0];
+    return { email: String(u?.email ?? ""), name: String(u?.display_name ?? "") };
+  }) as never);
 
   app.post("/me/name", requireRole("reader"), async (c) => {
     const { displayName } = (await c.req.json().catch(() => ({}))) as { displayName?: string };
