@@ -21,6 +21,7 @@ import {
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
 import { openState, resolveDbs, WriteRefused } from "./core.js";
+import { ResearchRefused } from "./research-client.js";
 import { TOOLS } from "./tools.js";
 import { METHOD, PROMPTS, WRITE_POLICY } from "./method.js";
 
@@ -65,7 +66,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
   } catch (err) {
     // a refused write is a normal outcome the model should read and adapt to,
     // not a crash — surface the reason plainly
-    const why = err instanceof WriteRefused
+    const why = err instanceof WriteRefused || err instanceof ResearchRefused
       ? `Refused: ${err.message}`
       : err instanceof z.ZodError
         ? `Invalid arguments: ${err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`

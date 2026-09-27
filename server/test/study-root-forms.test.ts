@@ -13,6 +13,7 @@ import { join } from "node:path";
 // opens research.db read-write and migrates it)
 // these tests are about tool behaviour, against the local corpus reference (the remote path has its own test)
 process.env.MQ_CORPUS = "local";
+process.env.MQ_RESEARCH = "local";
 process.env.QF_RESEARCH_DB = join(mkdtempSync(join(tmpdir(), "alsiraat-sr-")), "r.db");
 
 let study: any;

@@ -91,6 +91,10 @@ export function researchDataRoutes(
       root: c.req.query("root") ?? undefined,
       lemma: c.req.query("lemma") ?? undefined,
     })));
+  r.get("/research/notes/:id", async (c) => {
+    const n = await (await storeFor(c)).getNote(c.req.param("id"));
+    return n ? c.json(n) : notFound(c, "note");
+  });
   r.put("/research/notes/:id", async (c) => {
     const s = await storeFor(c);
     let doc = await c.req.json();

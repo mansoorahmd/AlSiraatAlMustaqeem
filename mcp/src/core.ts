@@ -4,24 +4,26 @@
 // The CORPUS is read-only and, by default, comes from the research server's /corpus as the user
 // (corpus-client.ts): REMOTE_URL (default http://localhost:8100) + REMOTE_TOKEN (a personal API
 // token from the app). MQ_CORPUS=local reads quran.db instead — offline work, and the tests.
-// The RESEARCH stays local: the same research.db the app has open, read-write only through
-// `guard` below.
+// The RESEARCH is the reader's, in their account on the research server (research-client.ts),
+// read and written as them with the same token; the server enforces the AI boundary on top of
+// `guard` below. MQ_RESEARCH=local uses a research.db file instead (offline work, the tests).
 
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ResearchStore } from "../../server/src/research.js";
 import { localReads, remoteReads, type CorpusReads } from "./corpus-client.js";
+import { remoteResearch, type McpResearch } from "./research-client.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "..", "..");
 
 /** What every tool works with: the corpus reads, plus the reader's own research. */
 export interface McpState extends CorpusReads {
-  research: ResearchStore;
+  research: McpResearch;
 }
 
 export const corpusMode = (): "remote" | "local" => (process.env.MQ_CORPUS === "local" ? "local" : "remote");
+export const researchMode = (): "remote" | "local" => (process.env.MQ_RESEARCH === "local" ? "local" : "remote");
 
 /** Resolve the project's own databases when no env vars are set, so a client config with no
  *  environment block just works on the real research. quran.db is needed only in local mode. */
@@ -35,18 +37,14 @@ export function resolveDbs(): { quran: string; research: string } {
 }
 
 /** The server modules resolve database paths at IMPORT time, so the env is settled first and the
- *  modules are imported lazily. The research file is whichever one the app has open
- *  (databases.json), exactly as before, so the AI's proposals land where the reader will see them. */
+ *  modules are imported lazily. */
 export async function openState(): Promise<McpState> {
   const { quran, research } = resolveDbs();
   process.env.QF_QURAN_DB = quran;
   process.env.QF_RESEARCH_DB = research;
   const { Db } = await import("../../server/src/db.js");
-  const { Databases } = await import("../../server/src/databases.js");
-  const { ResearchStore } = await import("../../server/src/research.js");
-  const databases = new Databases(research);
-  const researchDb = new Db(databases.currentPath());
-  databases.use(researchDb.path);
+  const base = process.env.REMOTE_URL ?? "http://localhost:8100";
+  const token = process.env.REMOTE_TOKEN || undefined;
 
   let corpus: CorpusReads;
   if (corpusMode() === "local") {
@@ -54,9 +52,17 @@ export async function openState(): Promise<McpState> {
     const { createCorpusServices } = await import("../../server/src/corpus-services.js");
     corpus = localReads(createCorpusServices(sqliteCorpus(new Db(quran, { readOnly: true }))));
   } else {
-    corpus = remoteReads(process.env.REMOTE_URL ?? "http://localhost:8100", process.env.REMOTE_TOKEN || undefined);
+    corpus = remoteReads(base, token);
   }
+
+  if (researchMode() === "remote") return { ...corpus, research: remoteResearch(base, token) };
+  // local: whichever research.db the app has open (databases.json), so proposals land in it
+  const { Databases } = await import("../../server/src/databases.js");
+  const { ResearchStore } = await import("../../server/src/research.js");
   const { sqliteResearch } = await import("../../server/src/research-db.js");
+  const databases = new Databases(research);
+  const researchDb = new Db(databases.currentPath());
+  databases.use(researchDb.path);
   return { ...corpus, research: await ResearchStore.open(sqliteResearch(researchDb)) };
 }
 
