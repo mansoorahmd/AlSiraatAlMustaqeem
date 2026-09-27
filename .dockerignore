@@ -1,0 +1,16 @@
+# Only the remote's manifests and sources go into the image (remote/Dockerfile copies them
+# explicitly); keep everything big or private out of the build context.
+**/node_modules
+*.db
+*.db-wal
+*.db-shm
+backups
+deploy/.env
+deploy/corpus
+deploy/backups
+.env
+.git
+app/dist
+dist-desktop
+electron/build
+mobile

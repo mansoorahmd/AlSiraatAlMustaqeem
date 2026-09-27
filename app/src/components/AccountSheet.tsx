@@ -150,6 +150,8 @@ export function AccountSheet() {
   const [password, setPassword] = useState("");
   const [showRedeem, setShowRedeem] = useState(false);
   const [code, setCode] = useState("");
+  // forgotten password: true once the reset email has been requested
+  const [resetSent, setResetSent] = useState(false);
   // profile editing — closed by default, opened with the pencil
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
@@ -301,10 +303,24 @@ export function AccountSheet() {
           </p>
 
           {!showRedeem && (
-            <p className="acct-hint">
-              Forgotten your password? There’s no reset email yet — ask a maintainer to set a new
-              one for you.
-            </p>
+            resetSent ? (
+              <p className="acct-hint" role="status">
+                If <strong>{email.trim()}</strong> has an account, a reset link is on its way — it
+                works once, for an hour. Check your spam folder if it doesn’t arrive.
+              </p>
+            ) : (
+              <p className="acct-alt">
+                Forgotten your password?{" "}
+                <button className="linkish" disabled={busy || !email.includes("@")}
+                  title={email.includes("@") ? undefined : "Type your email above first"}
+                  onClick={() => guard(async () => {
+                    await remote.requestPasswordReset(email.trim());
+                    setResetSent(true);
+                  })}>
+                  Email me a reset link
+                </button>
+              </p>
+            )
           )}
         </>
       )}

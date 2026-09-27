@@ -46,3 +46,6 @@ databases.json
 profiles.json
 research-*.db
 research-*.db-*
+
+# deployment — secrets and the corpus file live on the server, not in git
+deploy/corpus/

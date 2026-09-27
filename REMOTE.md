@@ -103,10 +103,17 @@ The desktop window loads `http://localhost:<port>` (not `127.0.0.1`) so it is *s
 the remote on `localhost:8100` — otherwise the browser refuses to send the `SameSite=Lax` session
 cookie and the app can never appear signed in.
 
-**Password reset needs an email transport** (Better Auth's `sendResetPassword`), so for now a
-forgotten password means a maintainer runs `set-password` (above). It hashes with Better Auth's
-own hasher via `auth.$context` and upserts the `account` row, so sign-in accepts it. Worth wiring
-a real reset email before the group grows.
+**Forgotten passwords** reset by email. In the app, Account → *Email me a reset link* calls
+`POST /api/auth/request-password-reset`; the email (`src/mailer.ts`, SMTP) carries a one-time link
+valid for an hour, which lands on this server's own **`/reset-password`** page (`src/reset-page.ts`;
+no referrer, no external assets, the token removed from the address bar). Setting the new password
+signs out every other device. The answer is the same whether or not the address has an account.
+With `EMAIL_TRANSPORT=console` the email is printed to the server log instead, and a maintainer can
+still run `set-password` (it hashes with Better Auth's own hasher and upserts the `account` row).
+
+**Across sites.** Deployed, the server is on its own https:// domain while the app runs on the
+reader's `localhost` — different sites — so over HTTPS the session cookie is issued
+`SameSite=None; Secure` (`crossSiteCookies`, `src/config.ts`), or the browser wouldn't send it.
 
 ## Routes
 
@@ -232,7 +239,13 @@ corpus from here; see CORPUS.md for how the copy is loaded and proven identical.
 | `REMOTE_PORT` / `REMOTE_BASE_URL` | `8100` / `http://localhost:8100` |
 | `AUTH_SECRET` | a dev placeholder — **set a real secret in any deployment** |
 | `TRUSTED_ORIGINS` | `localhost` and `127.0.0.1` on 5174 (Vite), 8000 (built SPA) and 51789 (desktop) |
-| `EMAIL_TRANSPORT` | `console` — magic links are printed to the server log (no SMTP in dev) |
+| `EMAIL_TRANSPORT` | `console` — emails (resets, magic links) are printed to the log; `smtp` sends them |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | — / `587` / `true` only for port 465 (STARTTLS otherwise) |
+| `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | the SMTP login, and the From: line (`MQ Research Gate <no-reply@…>`) |
+| `NODE_ENV` | `production` makes the server **refuse to start** on an unsafe environment — no or dev `AUTH_SECRET`, no `DATABASE_URL`, a non-https `REMOTE_BASE_URL`, SMTP chosen but unset |
+
+**Deploying:** see [`DEPLOY.md`](DEPLOY.md) — one VPS with Docker (Postgres, this server, Caddy for
+HTTPS), the corpus load, the first maintainer, backups.
 
 ## Running it
 
