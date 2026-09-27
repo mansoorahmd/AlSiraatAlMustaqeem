@@ -137,7 +137,8 @@ AlSiraatAlMustaqeem/
 ├── app/                  # React + Vite single-page app (the reader & investigation UI)
 ├── server/               # Hono API on Node (serves /api/v1) + Vitest parity tests
 ├── mcp/                  # MCP server (stdio) — lets an AI study the corpus with you
-├── quran.db              # read-only content (Quran text, words, roots, translations)
+├── remote/               # the research server: the corpus (Postgres) at /corpus, accounts, community
+├── quran.db              # read-only content (Quran text, words, roots, translations) — the corpus source
 ├── research.db           # read-write user research (cases, trails, notes, established meanings)
 ├── package.json          # workspace root — the commands below live here
 ├── run-dev.bat / .sh     # convenience dev launchers
@@ -145,12 +146,17 @@ AlSiraatAlMustaqeem/
 └── DESIGN.md
 ```
 
-- **`app/`** — the front end (React 18 + Vite + TypeScript). Talks to the API at `/api/v1`.
-- **`server/`** — the back end (Hono + Node's built-in `node:sqlite`). Reads `quran.db`
-  (read-only) and reads/writes `research.db`. Ported 1:1 from the original Python/FastAPI backend
-  and verified by golden-parity tests (`server/test/`).
-- **`mcp/`** — an MCP server over stdio that reuses the back end's query layer, so an AI client
-  can study the corpus and your research with you. See "The MCP server" below.
+- **`app/`** — the front end (React 18 + Vite + TypeScript). Reads the **corpus** from the
+  research server (`${VITE_REMOTE_URL}/corpus`, default `http://localhost:8100/corpus`) and your
+  **research** from the local API at `/api/v1/research`.
+- **`server/`** — the local back end (Hono + Node's built-in `node:sqlite`). Reads/writes
+  `research.db`, and still serves `quran.db` at `/api/v1` (tests, local tools). Its corpus code is the
+  same code the research server runs, over a different driver (`server/src/corpus-db.ts`). Ported 1:1
+  from the original Python/FastAPI backend and verified by golden-parity tests (`server/test/`).
+- **`remote/`** — the research server (Hono + Postgres + Better Auth): the corpus, accounts, plans,
+  the community. See `REMOTE.md` and `CORPUS.md`.
+- **`mcp/`** — an MCP server over stdio so an AI client can study the corpus and your research with
+  you. See "The MCP server" below.
 
 > The backend was migrated from Python to TypeScript — see `BACKEND_TS_MIGRATION.md`. The old
 > Python data-pipeline and API code are no longer in this repo (archived separately).
@@ -167,6 +173,7 @@ All commands run from the **project root**.
 ```bash
 npm install        # one-time — installs the app, server and mcp workspaces
 
+npm run remote:dev  # the research server (:8100) — the Qur'an text is read from here (REMOTE.md)
 npm run dev        # start API (:8000) and web app (:5174) together
                    # open http://localhost:5174
                    # (wait for the "[api] AlSiraat API on http://localhost:8000" line
@@ -189,17 +196,18 @@ mobile app can call `/api/v1` directly.
 
 ## The two databases
 
-**In plain terms.** The app is one web build (optionally wrapped in a desktop window).
-Both the reader UI and the AI (through the MCP server) talk to a single Hono server, and
-that server is the *only* thing that touches either database. It **reads** the fixed Qur'an
-corpus and **reads and writes** the reader's personal research. Two files, two jobs:
+**In plain terms.** The app is one web build (optionally wrapped in a desktop window). It
+**reads** the fixed Qur'an corpus from the research server (Postgres, loaded from `quran.db` and
+proven identical), and **reads and writes** the reader's personal research through the local
+server, the only thing that touches `research.db`. Two jobs:
 
 - **`quran.db` is the reference material** — the Qur'an and everything known *about* its
   words: the text in every script, each word's root and form (morphology), the roots and
   their derived forms, the classical dictionaries (Lane, Lisān, Maqāyīs, Mufradāt, etc.)
-  keyed to each root, plus translations and search indexes. It ships with the app, never
-  changes, and is the shared factual ground everyone reasons from. Think *built-in
-  dictionary and concordance*.
+  keyed to each root, plus translations and search indexes. It never changes (corrections
+  ship as signed patches) and is the shared factual ground everyone reasons from. Think
+  *built-in dictionary and concordance*. Reading it is a plan-gated **resource** on the research
+  server — the admin can make it free.
 - **`research.db` is what you build on top of it** — your cases and board layout, per-form
   established meanings (with revision history), trails, notes and questions, your own root
   indications and motifs, saved comparisons, and UI settings. The corpus is fixed; this
@@ -306,19 +314,34 @@ QF_RESEARCH_DB=/tmp/smoke.db npm run smoke -w @alsiraat/mcp   # end-to-end smoke
 **First, once:** run `npm install` in the project root — `mcp/` is a workspace and needs its
 dependencies.
 
-Then point your client at the launcher by absolute path. Nothing else is needed — no `cwd`, no
-`env`:
+Then, in the app: **Account → Connect an AI assistant → Create token**. The MCP reads the corpus
+from the research server **as you** — it sees exactly what your plan allows — so it needs a personal
+API token. The app shows the token once, inside a ready-to-paste config like this (point `args` at
+the launcher by absolute path; no `cwd` needed):
 
 ```json
 {
   "mcpServers": {
     "Organic-Quranic-Methodology": {
       "command": "node",
-      "args": ["C:\\Users\\baapo\\Claude\\Projects\\AlSiraatAlMustaqeem\\mcp\\bin\\start.mjs"]
+      "args": ["C:\\Users\\baapo\\Claude\\Projects\\AlSiraatAlMustaqeem\\mcp\\bin\\start.mjs"],
+      "env": { "REMOTE_URL": "http://localhost:8100", "REMOTE_TOKEN": "mqrg_…" }
     }
   }
 }
 ```
+
+| Env | Meaning |
+|---|---|
+| `REMOTE_URL` | the research server (default `http://localhost:8100`) |
+| `REMOTE_TOKEN` | your personal API token (revoke it in the app to cut the AI off) |
+| `MQ_CORPUS=local` | read `quran.db` instead of the research server — offline work; no token needed |
+| `QF_RESEARCH_DB` / `QF_QURAN_DB` | override the research file / the local corpus file |
+
+When it can't read the corpus it tells the AI why, in words it can pass on: no or revoked token →
+create one in the app; below the corpus tier → which plan is needed; server unreachable → set
+`REMOTE_URL`, or `MQ_CORPUS=local`. (`mcp/src/corpus-client.ts`; `server/test/mcp-remote-corpus.test.ts`
+runs every corpus tool both ways and requires identical answers.)
 
 `mcp/bin/start.mjs` exists because launching this server is deceptively fragile. Two failures
 worth knowing about, both hit in practice:
@@ -337,8 +360,9 @@ programmatically resolved **from its own location**, prints only to stderr, and 
 what to do if dependencies are missing. Databases are likewise resolved from the file's location,
 not the working directory.
 
-Override the databases with `QF_QURAN_DB` / `QF_RESEARCH_DB` if you want it to read a copy. The
-app's own server does **not** need to be running — the MCP server opens the databases directly.
+Your **research** stays local: the MCP opens the same `research.db` the app has open (it follows the
+app's current file, `databases.json`) and writes to it only through the guard below. The app's local
+server does **not** need to be running; the research server does, unless `MQ_CORPUS=local`.
 
 For running it by hand (not via a client), `npm run mcp` from the project root still works.
 
@@ -362,7 +386,7 @@ first), `alsiraat://write-policy`, `alsiraat://research/summary`.
 
 | | |
 |---|---|
-| Corpus (`quran.db`) | **read-only**, always |
+| Corpus (research server, or `quran.db`) | **read-only**, always — and only what your plan allows |
 | Translations | **not exposed at all** — the method builds meaning from Arabic, morphology and the lexicons |
 | May write | notes/questions; indications with per-form refinements; cases and their board items |
 | May never | edit or delete **your** notes, indications, or board items |

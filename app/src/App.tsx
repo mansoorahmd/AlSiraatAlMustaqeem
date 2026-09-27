@@ -8,6 +8,7 @@ import { Search } from "./screens/Search";
 import { Motifs } from "./screens/Motifs";
 import { Compare } from "./screens/Compare";
 import { Divergences } from "./screens/Divergences";
+import { Admin } from "./screens/Admin";
 import { Shortcuts } from "./components/Shortcuts";
 import { CommandPalette } from "./components/CommandPalette";
 import { ExpressionBar } from "./components/ExpressionBar";
@@ -16,6 +17,7 @@ import { AppProvider, useAppState } from "./state/store";
 import { useEffect, useState } from "react";
 import { OwnerGate } from "./components/OwnerGate";
 import { fetchIdentity } from "./persistence/db";
+import { CorpusAccessBanner } from "./components/CorpusAccessBanner";
 
 function Screen() {
   const { tab } = useAppState();
@@ -27,6 +29,7 @@ function Screen() {
   if (tab === "motifs") return <Motifs />;
   if (tab === "compare") return <Compare />;
   if (tab === "diverge") return <Divergences />;
+  if (tab === "admin") return <Admin />;
   return <ReadingRoom />;
 }
 
@@ -49,6 +52,7 @@ export default function App() {
       <CommandPalette />
       <div className="shell">
         <TopBar />
+        <CorpusAccessBanner />
         <main className="main">
           <Screen />
         </main>

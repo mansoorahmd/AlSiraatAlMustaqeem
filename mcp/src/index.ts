@@ -60,7 +60,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
   }
   try {
     const args = z.object(tool.schema).parse(req.params.arguments ?? {});
-    const result = tool.run(state, args);
+    const result = await tool.run(state, args);
     return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
   } catch (err) {
     // a refused write is a normal outcome the model should read and adapt to,

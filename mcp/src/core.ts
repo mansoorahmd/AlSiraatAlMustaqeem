@@ -1,39 +1,62 @@
-// Shared plumbing for the MCP server: which databases to open, and the guard
+// Shared plumbing for the MCP server: where the corpus and the research come from, and the guard
 // that keeps AI writes inside the boundary the reader chose.
 //
-// The corpus (quran.db) is opened READ-ONLY and no tool can write to it.
-// research.db is read-write, but only through `guard` below.
+// The CORPUS is read-only and, by default, comes from the research server's /corpus as the user
+// (corpus-client.ts): REMOTE_URL (default http://localhost:8100) + REMOTE_TOKEN (a personal API
+// token from the app). MQ_CORPUS=local reads quran.db instead — offline work, and the tests.
+// The RESEARCH stays local: the same research.db the app has open, read-write only through
+// `guard` below.
 
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-// type-only (erased at runtime); the real module is imported lazily below
-import type { AppState } from "../../server/src/state.js";
+import type { ResearchStore } from "../../server/src/research.js";
+import { localReads, remoteReads, type CorpusReads } from "./corpus-client.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "..", "..");
 
-/** Resolve the project's own databases when no env vars are set, so a client
- *  config with no environment block just works on the real research. */
+/** What every tool works with: the corpus reads, plus the reader's own research. */
+export interface McpState extends CorpusReads {
+  research: ResearchStore;
+}
+
+export const corpusMode = (): "remote" | "local" => (process.env.MQ_CORPUS === "local" ? "local" : "remote");
+
+/** Resolve the project's own databases when no env vars are set, so a client config with no
+ *  environment block just works on the real research. quran.db is needed only in local mode. */
 export function resolveDbs(): { quran: string; research: string } {
   const quran = process.env.QF_QURAN_DB ?? resolve(repo, "quran.db");
   const research = process.env.QF_RESEARCH_DB ?? resolve(repo, "research.db");
-  if (!existsSync(quran)) {
-    throw new Error(
-      `Quran corpus not found at ${quran}. Set QF_QURAN_DB to its location.`,
-    );
+  if (corpusMode() === "local" && !existsSync(quran)) {
+    throw new Error(`Quran corpus not found at ${quran}. Set QF_QURAN_DB, or drop MQ_CORPUS=local to read it from the research server.`);
   }
   return { quran, research };
 }
 
-/** server/src/state.ts resolves its database paths at IMPORT time, so the env
- *  must be settled before that module is loaded — hence the dynamic import. */
-export async function openState(): Promise<AppState> {
+/** The server modules resolve database paths at IMPORT time, so the env is settled first and the
+ *  modules are imported lazily. The research file is whichever one the app has open
+ *  (databases.json), exactly as before, so the AI's proposals land where the reader will see them. */
+export async function openState(): Promise<McpState> {
   const { quran, research } = resolveDbs();
   process.env.QF_QURAN_DB = quran;
   process.env.QF_RESEARCH_DB = research;
-  const { createState } = await import("../../server/src/state.js");
-  return createState();
+  const { Db } = await import("../../server/src/db.js");
+  const { Databases } = await import("../../server/src/databases.js");
+  const { ResearchStore } = await import("../../server/src/research.js");
+  const databases = new Databases(research);
+  const researchDb = new Db(databases.currentPath());
+  databases.use(researchDb.path);
+
+  let corpus: CorpusReads;
+  if (corpusMode() === "local") {
+    const { sqliteCorpus } = await import("../../server/src/corpus-db.js");
+    const { createCorpusServices } = await import("../../server/src/corpus-services.js");
+    corpus = localReads(createCorpusServices(sqliteCorpus(new Db(quran, { readOnly: true }))));
+  } else {
+    corpus = remoteReads(process.env.REMOTE_URL ?? "http://localhost:8100", process.env.REMOTE_TOKEN || undefined);
+  }
+  return { ...corpus, research: new ResearchStore(researchDb) };
 }
 
 // ---- the write boundary -------------------------------------------------------
@@ -56,7 +79,7 @@ export function proposalId(prefix: string): string {
 
 export const guard = {
   /** Refuse to touch a record that already exists — writes are additive only. */
-  mustNotExist(state: AppState, kind: "note" | "indication", id: string): void {
+  mustNotExist(state: McpState, kind: "note" | "indication", id: string): void {
     const found =
       kind === "note"
         ? state.research.listNotes().some((n) => n.id === id)
@@ -93,7 +116,7 @@ export const guard = {
 
   /** A motif the AI may edit — one it proposed. The reader's own motifs are their
    *  curation and stay untouchable, mirroring the rule for notes/indications. */
-  ownMotif(state: AppState, id: string): { id: string; source?: string } {
+  ownMotif(state: McpState, id: string): { id: string; source?: string } {
     const m = state.research.getMotif(id) as { id: string; source?: string } | undefined;
     if (!m) throw new WriteRefused(`No such motif: ${id}.`);
     if (m.source !== "ai") {

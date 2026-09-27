@@ -13,7 +13,7 @@
 import { randomBytes } from "node:crypto";
 import type { SqlRunner } from "./migrate.js";
 import { isRole, type Role } from "./roles.js";
-import { isPlan, type Plan } from "./plans.js";
+import { FREE, loadTiers, TierError } from "./plans.js";
 
 export interface Invite {
   code: string;
@@ -24,6 +24,19 @@ export interface Invite {
 
 export const newInviteCode = (): string => randomBytes(16).toString("base64url");
 
+/**
+ * A duration in whole days, 1–36500, or null for "no expiry". Anything else is refused (422)
+ * rather than reaching Postgres as `interval 'NaN days'` — and it goes in as a parameter.
+ */
+export function expiryDays(v: unknown): number | null {
+  if (v === undefined || v === null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isInteger(n) || n < 1 || n > 36500) {
+    throw new InviteError("expiresInDays must be a whole number of days from 1 to 36500 (or omitted)", 422);
+  }
+  return n;
+}
+
 /** Issue an invite. Caller must already be authorized as a maintainer (route guard). */
 export async function createInvite(
   r: SqlRunner,
@@ -32,14 +45,12 @@ export async function createInvite(
   const role: Role = opts.role ?? "researcher";
   if (!isRole(role)) throw new Error(`unknown role: ${role}`);
   const code = opts.code ?? newInviteCode();
-  const expires = opts.expiresInDays
-    ? `now() + interval '${Number(opts.expiresInDays)} days'`
-    : "NULL";
+  const days = expiryDays(opts.expiresInDays);
   const rows = await r.query(
     `INSERT INTO invites (code, issued_by, role, expires_at)
-     VALUES ($1, $2, $3, ${expires})
+     VALUES ($1, $2, $3, CASE WHEN $4::int IS NULL THEN NULL ELSE now() + make_interval(days => $4::int) END)
      RETURNING code, role, expires_at, redeemed_by`,
-    [code, opts.issuedBy, role],
+    [code, opts.issuedBy, role, days],
   );
   return rows[0] as unknown as Invite;
 }
@@ -97,7 +108,7 @@ export async function loadPrincipal(
   userId: string,
 ): Promise<{
   id: string; role: Role; localId: string | null; email: string; displayName: string;
-  plan: Plan; planExpiresAt: string | null;
+  plan: string; planExpiresAt: string | null;
 } | null> {
   const rows = await r.query(
     "SELECT id, role, local_id, email, display_name, plan, plan_expires_at FROM users WHERE id = $1",
@@ -110,8 +121,8 @@ export async function loadPrincipal(
   return {
     id: u.id, role: u.role, localId: u.local_id,
     email: u.email, displayName: u.display_name ?? "",
-    // A bad value in the column must never read as a paid plan — default to free.
-    plan: isPlan(u.plan) ? u.plan : "free",
+    // users.plan is a foreign key into plan_tiers, so it is always a real tier
+    plan: u.plan || FREE,
     planExpiresAt: u.plan_expires_at == null ? null : new Date(u.plan_expires_at).toISOString(),
   };
 }
@@ -123,16 +134,20 @@ export async function loadPrincipal(
  */
 export async function setPlan(
   r: SqlRunner,
-  opts: { userId: string; plan: Plan; expiresInDays?: number | null },
+  opts: { userId: string; plan: string; expiresInDays?: number | null },
 ): Promise<void> {
-  if (!isPlan(opts.plan)) throw new Error(`unknown plan: ${opts.plan}`);
-  const expires =
-    opts.plan === "free" || opts.expiresInDays == null
-      ? "NULL"
-      : `now() + interval '${Number(opts.expiresInDays)} days'`;
+  const tiers = await loadTiers(r);
+  if (!tiers.has(opts.plan)) {
+    throw new TierError(`unknown plan tier: ${opts.plan} (tiers: ${[...tiers.keys()].join(", ")})`, 422);
+  }
+  let days: number | null;
+  try { days = opts.plan === FREE ? null : expiryDays(opts.expiresInDays); }
+  catch (e) { throw new TierError((e as Error).message, 422); }
   await r.query(
-    `UPDATE users SET plan = $1, plan_expires_at = ${expires}, updated_at = now() WHERE id = $2`,
-    [opts.plan, opts.userId],
+    `UPDATE users SET plan = $1, updated_at = now(),
+            plan_expires_at = CASE WHEN $3::int IS NULL THEN NULL ELSE now() + make_interval(days => $3::int) END
+      WHERE id = $2`,
+    [opts.plan, opts.userId, days],
   );
 }
 

@@ -1,7 +1,8 @@
 // M3 — Morphology-pattern similarity. Port of similarity/morphology.py.
 // IDF-weighted cosine over POS bigrams+trigrams + longest common POS run.
 
-import type { Db } from "../db.js";
+import type { CorpusDb } from "../corpus-db.js";
+import { once } from "../corpus-db.js";
 import { longestCommonRun } from "./lexical.js";
 
 const NGRAM_WEIGHT = 0.7;
@@ -20,16 +21,17 @@ export class MorphologySimilarity {
   seq = new Map<string, string[]>();
   meta = new Map<string, [number, number, string | null]>();
   private idf = new Map<string, number>();
-  private built = false;
+  /** Built once, on first use; concurrent callers share the one build. */
+  readonly build: () => Promise<void>;
 
-  constructor(private db: Db, level: "class" | "tag" = "class") {
+  constructor(private db: CorpusDb, level: "class" | "tag" = "class") {
     this.level = level;
+    this.build = once(() => this.load());
   }
 
-  build(): this {
-    if (this.built) return this;
+  private async load(): Promise<void> {
     const col = this.level === "class" ? "pos_class" : "pos";
-    const rows = this.db.query<{
+    const rows = await this.db.query<{
       verse_key: string; pos: string; chapter_id: number; verse_number: number; text: string | null;
     }>(
       `SELECT w.verse_key, w.${col} AS pos, v.chapter_id, v.verse_number,
@@ -53,8 +55,6 @@ export class MorphologySimilarity {
     }
     const n = this.seq.size || 1;
     for (const [g, c] of df) this.idf.set(g, Math.log(n / c) + 1.0);
-    this.built = true;
-    return this;
   }
 
   private ngramVec(seq: string[]): Map<string, number> {
@@ -83,8 +83,8 @@ export class MorphologySimilarity {
     return NGRAM_WEIGHT * ngram + RUN_WEIGHT * run;
   }
 
-  posFor(verseKey: string): string[] {
-    this.build();
+  async posFor(verseKey: string): Promise<string[]> {
+    await this.build();
     return [...(this.seq.get(verseKey) ?? [])];
   }
 }

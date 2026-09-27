@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAsync } from "../hooks/useAsync";
+import { useMe } from "../hooks/useMe";
 import { useAppState, useAppDispatch, type Tab } from "../state/store";
 import { ActivityBell } from "./ActivityBell";
 import { AccountButton } from "./AccountButton";
@@ -27,6 +28,7 @@ const STUDY: { id: Tab; label: string; desc: string }[] = [
 export function TopBar() {
   const { tab, activeCompareSetId, compareTick } = useAppState();
   const dispatch = useAppDispatch();
+  const { me } = useMe();
   // badge = number of items in the active comparison
   const compareCount = useAsync(async () => {
     if (!activeCompareSetId) return 0;
@@ -76,6 +78,17 @@ export function TopBar() {
             {t.label}
           </button>
         ))}
+
+        {/* the maintainer's console — only for maintainers (the server enforces it too) */}
+        {me?.role === "maintainer" && (
+          <button
+            className={`tab${tab === "admin" ? " active" : ""}`}
+            aria-current={tab === "admin" ? "page" : undefined}
+            onClick={() => dispatch({ type: "setTab", tab: "admin" })}
+          >
+            Admin
+          </button>
+        )}
 
         {/* the reference tools, grouped */}
         <div className="study-wrap" ref={studyRef}>

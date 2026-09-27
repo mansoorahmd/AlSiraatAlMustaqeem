@@ -1,14 +1,13 @@
-// Corpus channel routes. Read-only reporting only — applying patches writes to quran.db
-// and is done out-of-band by the CLI / desktop startup, not through the running server
-// (which holds the corpus read-only).
+// Corpus channel routes. Read-only reporting only — applying patches writes to the corpus and is
+// done out-of-band by the CLI / desktop startup, not through a running server (which holds the
+// corpus read-only). Mounted by both hosts (see routes/content.ts).
 
 import { Hono } from "hono";
-import type { AppState } from "../state.js";
-import { readCorpusVersion } from "../corpus/patch.js";
+import { corpusVersion, type CorpusServices } from "../corpus-services.js";
 
-export function corpusRoutes(state: AppState): Hono {
+export function corpusRoutes(svc: CorpusServices): Hono {
   const r = new Hono();
   // which corpus edition is loaded — 0 if never patched
-  r.get("/corpus/version", (c) => c.json(readCorpusVersion(state.quran)));
+  r.get("/corpus/version", async (c) => c.json(await corpusVersion(svc.corpus)));
   return r;
 }

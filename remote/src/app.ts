@@ -14,8 +14,21 @@ import { auth } from "./auth.js";
 import { config } from "./config.js";
 import { pgRunner } from "./db.js";
 import { sessionMiddleware } from "./session.js";
-import { requireRole, type Env } from "./roles.js";
-import { planActive, requirePlan, isPlan, type Plan } from "./plans.js";
+import { requireRole, requireSession, type Env } from "./roles.js";
+import { loadTiers, rankOf, setTier, removeTier, TierError, FREE } from "./plans.js";
+import {
+  requireResource, wholeMin, canRead, listRules, setRule, removeRule, isResourceKind,
+} from "./resource-access.js";
+import { createToken, listTokens, revokeToken } from "./api-tokens.js";
+import { listUsers, setRole, listResources, isUserId, AdminError } from "./admin.js";
+import { corpusApp } from "./corpus/serve.js";
+import { pgCorpus } from "./corpus/pg-corpus.js";
+import { createCorpusServices, type CorpusServices } from "../../server/src/corpus-services.js";
+import { corpusRunner } from "./db.js";
+
+/** The corpus services over Postgres — one set per process, so their in-memory indexes are built
+ *  once. server.ts warms them at startup. */
+export const cloudCorpus: CorpusServices = createCorpusServices(pgCorpus(corpusRunner));
 import {
   createInvite, bindLocalId, loadPrincipal, setDisplayName,
   validateInvite, emailTaken, finishRedeem, InviteError,
@@ -68,38 +81,156 @@ export function createApp(): Hono<Env> {
   app.get("/me", requireRole("reader"), async (c) => {
     const me = c.get("user")!;
     const p = await loadPrincipal(pgRunner, me.id);
+    const tiers = await loadTiers(pgRunner);
+    const plan = me.plan ?? FREE;
     return c.json({
       id: me.id, role: me.role,
       email: p?.email ?? "", displayName: p?.displayName ?? "",
       localId: p?.localId ?? null,
-      // The billing axis. `planActive` is the one flag the app's feature gates read: the plan
-      // may be 'pro' but lapsed, so never let the app infer "paid" from the plan name alone.
-      plan: me.plan ?? "free",
+      // The billing axis. `planActive` = this account may read the community resource right now
+      // (its tier, not lapsed) — the flag the app's community UI reads. Never infer from the name.
+      plan,
+      planLabel: tiers.get(plan)?.label ?? plan,
+      planRank: rankOf(tiers, plan),
       planExpiresAt: me.planExpiresAt ?? null,
-      planActive: planActive(me),
+      planActive: canRead(me, await wholeMin(pgRunner, "community"), tiers),
     });
   });
 
-  // Grant or revoke a plan. Maintainer-only, and never self-service in spirit — the manual
-  // stand-in for billing until it is wired (POST /plan or the set-plan CLI). `expiresInDays`
-  // omitted = a grant that never lapses; plan 'free' revokes and clears any expiry.
+  // Grant or revoke a plan tier. Maintainer-only — the manual stand-in for billing until it is
+  // wired. `expiresInDays` omitted = a grant that never lapses; plan 'free' revokes.
   app.post("/plan", requireRole("maintainer"), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { email?: string; plan?: string; expiresInDays?: number | null };
-    if (!body.email || !isPlan(body.plan)) {
-      return c.json({ detail: "email and a valid plan (free|pro) are required" }, 422);
-    }
+    if (!body.email || !body.plan) return c.json({ detail: "email and plan are required" }, 422);
     const userId = await userIdByEmail(pgRunner, body.email);
     if (!userId) return c.json({ detail: `no account for ${body.email}` }, 404);
-    await setPlan(pgRunner, { userId, plan: body.plan as Plan, expiresInDays: body.expiresInDays ?? null });
+    try {
+      await setPlan(pgRunner, { userId, plan: body.plan, expiresInDays: body.expiresInDays ?? null });
+    } catch (e) {
+      if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
     return c.json({ ok: true, email: body.email.trim().toLowerCase(), plan: body.plan });
   });
+
+  // --- the plan ladder: data, edited at runtime (plans.ts) ---
+  // Public read so the app can show what each tier is; edits are a maintainer act.
+  app.get("/plan-tiers", async (c) => c.json([...(await loadTiers(pgRunner)).values()]));
+
+  app.put("/plan-tiers/:name", requireRole("maintainer"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { rank?: number; label?: string };
+    try {
+      return c.json(await setTier(pgRunner, { name: c.req.param("name"), rank: Number(body.rank), label: body.label }));
+    } catch (e) {
+      if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+
+  app.delete("/plan-tiers/:name", requireRole("maintainer"), async (c) => {
+    try {
+      await removeTier(pgRunner, c.req.param("name"));
+      return c.json({ ok: true });
+    } catch (e) {
+      if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+
+  // --- resources are plan-based (resource-access.ts); features below are role-based ---
+  // Public read, so the app can say what a resource needs BEFORE the reader hits a 401/402.
+  app.get("/resource-access", async (c) => c.json(await listRules(pgRunner)));
+
+  /** Set a resource's minimum tier: {minPlan: "<tier>" | "free" | null (= public)}. */
+  app.put("/resource-access/:kind/:key", requireRole("maintainer"), async (c) => {
+    const kind = c.req.param("kind"), key = c.req.param("key");
+    const body = (await c.req.json().catch(() => ({}))) as { minPlan?: string | null };
+    if (!isResourceKind(kind)) return c.json({ detail: `unknown resource kind: ${kind}` }, 422);
+    if (body.minPlan === undefined) return c.json({ detail: "minPlan is required (a tier, or null for public)" }, 422);
+    try {
+      return c.json(await setRule(pgRunner, kind, key, body.minPlan, c.get("user")!.id));
+    } catch (e) {
+      if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+
+  /** Drop a per-item rule (a translation or lexicon then needs only what the corpus needs). */
+  app.delete("/resource-access/:kind/:key", requireRole("maintainer"), async (c) => {
+    const kind = c.req.param("kind");
+    if (!isResourceKind(kind)) return c.json({ detail: `unknown resource kind: ${kind}` }, 422);
+    try {
+      await removeRule(pgRunner, kind, c.req.param("key"));
+      return c.json({ ok: true });
+    } catch (e) {
+      if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+
+  // --- the in-app Admin screen (admin.ts) — maintainer-only ---
+  const adminErr = (e: unknown) => {
+    if (e instanceof AdminError || e instanceof TierError) return { detail: e.message, status: e.status };
+    throw e;
+  };
+
+  app.get("/admin/users", requireRole("maintainer"), async (c) => c.json(await listUsers(pgRunner)));
+
+  app.put("/admin/users/:id/role", requireRole("maintainer"), async (c) => {
+    const { role } = (await c.req.json().catch(() => ({}))) as { role?: string };
+    try {
+      await setRole(pgRunner, c.req.param("id"), String(role ?? ""));
+      return c.json({ ok: true });
+    } catch (e) { const x = adminErr(e); return c.json({ detail: x.detail }, x.status as 400); }
+  });
+
+  /** The same grant as POST /plan, by user id (the Admin screen lists users, not emails). */
+  app.put("/admin/users/:id/plan", requireRole("maintainer"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { plan?: string; expiresInDays?: number | null };
+    if (!body.plan) return c.json({ detail: "plan is required" }, 422);
+    const id = c.req.param("id");
+    if (!isUserId(id) || !(await pgRunner.query("SELECT 1 FROM users WHERE id = $1", [id])).length) {
+      return c.json({ detail: "no such user" }, 404);
+    }
+    try {
+      await setPlan(pgRunner, { userId: id, plan: body.plan, expiresInDays: body.expiresInDays ?? null });
+      return c.json({ ok: true });
+    } catch (e) { const x = adminErr(e); return c.json({ detail: x.detail }, x.status as 400); }
+  });
+
+  /** Every translation and dictionary with its rule — unfiltered, unlike the public lists. */
+  app.get("/admin/resources", requireRole("maintainer"), async (c) =>
+    c.json(await listResources(corpusRunner, pgRunner)));
+
+  // The Qur'an corpus itself, from Postgres — a RESOURCE, so its gate is the corpus plan rule.
+  // Same route code as the local server's /api/v1 (see corpus/serve.ts).
+  app.use("/corpus/*", requireResource("corpus", pgRunner));
+  app.route("/corpus", corpusApp(cloudCorpus, pgRunner));
 
   app.post("/me/name", requireRole("reader"), async (c) => {
     const { displayName } = (await c.req.json().catch(() => ({}))) as { displayName?: string };
     if (!displayName?.trim()) return c.json({ detail: "displayName is required" }, 422);
     await setDisplayName(pgRunner, c.get("user")!.id, displayName);
     return c.json({ ok: true });
+  });
+
+  // --- personal API tokens: how a headless client (the MCP) acts as you (api-tokens.ts) ---
+  // A feature, so role-based: any signed-in account. You only ever see or revoke your own —
+  // and only from a signed-in session, never with a token (requireSession says why).
+  app.get("/me/tokens", requireRole("reader"), requireSession, async (c) =>
+    c.json(await listTokens(pgRunner, c.get("user")!.id)));
+
+  /** Mint a token. Its secret is in this response and nowhere else — show it once. */
+  app.post("/me/tokens", requireRole("reader"), requireSession, async (c) => {
+    const { label } = (await c.req.json().catch(() => ({}))) as { label?: unknown };
+    const name = typeof label === "string" && label.trim() ? label.trim().slice(0, 80) : "MCP";
+    return c.json(await createToken(pgRunner, c.get("user")!.id, name), 201);
+  });
+
+  app.delete("/me/tokens/:id", requireRole("reader"), requireSession, async (c) => {
+    const ok = await revokeToken(pgRunner, c.get("user")!.id, c.req.param("id"));
+    return ok ? c.json({ ok: true }) : c.json({ detail: "no such token of yours" }, 404);
   });
 
   app.post("/me/local-id", requireRole("reader"), async (c) => {
@@ -110,10 +241,8 @@ export function createApp(): Hono<Env> {
   });
 
   // --- submissions: local research offered upstream (Phase 4, additive kinds only) ---
-  // Guarded at `researcher` AND an active plan: publishing your work into the community is a paid
-  // action. (Moderation/establishment below stay role-only — the leader's staff run the community
-  // and must not be charged to do so; flip that by adding requirePlan there if the model changes.)
-  app.post("/submissions", requireRole("researcher"), requirePlan("pro"), async (c) => {
+  // Publishing is a FEATURE, so it is role-based alone: researcher and above.
+  app.post("/submissions", requireRole("researcher"), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { items?: SubmissionItemInput[]; supersedes?: string | null };
     try {
@@ -140,8 +269,8 @@ export function createApp(): Hono<Env> {
 
   // --- claims: contending readings, review, establishment, dissent (Phase 5) ---
 
-  /** Offer your reading of a form or root. Must carry its argument (§12.1). Publishing → paid. */
-  app.post("/claims", requireRole("researcher"), requirePlan("pro"), async (c) => {
+  /** Offer your reading of a form or root. Must carry its argument (§12.1). A feature → role. */
+  app.post("/claims", requireRole("researcher"), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { subjectKind?: SubjectKind; subjectValue?: string; payload?: never };
     try {
@@ -157,8 +286,12 @@ export function createApp(): Hono<Env> {
     }
   });
 
+  // Everything below that READS the community's work is the community RESOURCE — plan-based,
+  // one rule. (These were role-only before, which let a free account read paid readings.)
+  const community = requireResource("community", pgRunner);
+
   /** Every reading of a subject, and the group's current one — what a reader compares. */
-  app.get("/claims", requireRole("reader"), async (c) => {
+  app.get("/claims", community, async (c) => {
     const kind = (c.req.query("subjectKind") ?? "form") as SubjectKind;
     const value = c.req.query("subjectValue") ?? "";
     return c.json({
@@ -167,26 +300,35 @@ export function createApp(): Hono<Env> {
     });
   });
 
-  app.get("/claims/:id/dissents", requireRole("reader"), async (c) =>
+  app.get("/claims/:id/dissents", community, async (c) =>
     c.json(await dissentsFor(pgRunner, c.req.param("id"))));
 
   /**
    * ⚖ Where I stand apart — computed LIVE, the remote-only replacement for the old local
    * mirror. The client sends the forms it has established; we diff against the group's current
-   * readings and return the differences. PAID: requireRole gates *who*, requirePlan gates
-   * *paid-for* — the group's readings never land on the client's disk, so the gate is real.
+   * readings and return the differences. The community resource — the group's readings never
+   * land on the client's disk, so the gate is real.
    */
-  app.post("/divergences", requireRole("reader"), requirePlan("pro"), async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as
-      { forms?: { subjectKind?: SubjectKind; subjectValue: string; meaning: string }[] };
-    return c.json(await divergencesAgainstGlobal(pgRunner, body.forms ?? []));
+  app.post("/divergences", community, async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { forms?: unknown };
+    const forms = body.forms ?? [];
+    // shape-checked and capped: each form costs queries, so an unbounded list could tie up the pool
+    const ok = (f: unknown): f is { subjectKind?: SubjectKind; subjectValue: string; meaning: string } =>
+      !!f && typeof f === "object" && typeof (f as { subjectValue?: unknown }).subjectValue === "string" &&
+      typeof (f as { meaning?: unknown }).meaning === "string" &&
+      [undefined, "form", "root"].includes((f as { subjectKind?: string }).subjectKind);
+    if (!Array.isArray(forms) || !forms.every(ok)) {
+      return c.json({ detail: "forms must be a list of {subjectValue, meaning, subjectKind?: form|root}" }, 422);
+    }
+    if (forms.length > 5000) return c.json({ detail: "at most 5000 forms per request" }, 413);
+    return c.json(await divergencesAgainstGlobal(pgRunner, forms));
   });
 
   /**
    * The community's readings of a word (its root + its exact form), for the reader's indication
    * chips — the live, gated replacement for the old local derived_peer_indications mirror. PAID.
    */
-  app.get("/community/readings", requireRole("reader"), requirePlan("pro"), async (c) =>
+  app.get("/community/readings", community, async (c) =>
     c.json(await communityReadingsFor(pgRunner, {
       root: c.req.query("root") || null,
       lemma: c.req.query("lemma") || null,
@@ -198,7 +340,7 @@ export function createApp(): Hono<Env> {
    * asks again, and a full resync is `since=0` — which is safe precisely because everything
    * here lands in the client's DERIVED tables.
    */
-  app.get("/pull", requireRole("reader"), async (c) => {
+  app.get("/pull", community, async (c) => {
     const limit = Math.min(Number(c.req.query("limit") ?? 500), 2000);
     // One position per stream — each table's `seq` is its own sequence, so a single shared
     // cursor would run one stream's counter ahead of another's and skip rows. An omitted
@@ -258,7 +400,7 @@ export function createApp(): Hono<Env> {
       });
       return c.json(invite, 201);
     } catch (e) {
-      return c.json({ detail: (e as Error).message }, 400);
+      return c.json({ detail: (e as Error).message }, (e instanceof InviteError ? e.status : 400) as 400);
     }
   });
 

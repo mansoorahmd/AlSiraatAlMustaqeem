@@ -4,7 +4,7 @@
 // radicals beside the template rather than fabricate a surface form.
 // Ported from the mobile app's data/wazn.ts.
 
-import type { Db } from "./db.js";
+import type { CorpusDb } from "./corpus-db.js";
 
 export interface Wazn {
   kind: "verb" | "active-participle" | "passive-participle" | "verbal-noun";
@@ -113,8 +113,8 @@ export function describeWazn(m: WordMorph): Wazn | null {
   return null;
 }
 
-export function waznForWord(db: Db, verseKey: string, wordPosition: number): Wazn | null {
-  const m = db.one<WordMorph>(
+export async function waznForWord(db: CorpusDb, verseKey: string, wordPosition: number): Promise<Wazn | null> {
+  const m = await db.one<WordMorph>(
     `SELECT pos_english, pos, verb_form, derivation, verb_aspect, verb_voice, root_arabic
      FROM word_segments
      WHERE verse_key = ? AND word_position = ? AND segment_type = 'STEM'

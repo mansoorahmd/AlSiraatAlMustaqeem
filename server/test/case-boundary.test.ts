@@ -11,11 +11,14 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+// these tests are about tool behaviour, against the local corpus reference (the remote path has its own test)
+process.env.MQ_CORPUS = "local";
 process.env.QF_RESEARCH_DB = join(mkdtempSync(join(tmpdir(), "alsiraat-case-")), "r.db");
 
 let state: any;
 let T: Map<string, any>;
-const call = (name: string, args: any) => T.get(name)!.run(state, args);
+// tools may be async (corpus reads), so every call is awaited and a refusal is a rejection
+const call = async (name: string, args: any): Promise<any> => T.get(name)!.run(state, args);
 
 beforeAll(async () => {
   const { openState } = await import("../../mcp/src/core.js");
@@ -39,45 +42,45 @@ function seedReaderCase() {
 }
 
 describe("case boundary — what the AI may do", () => {
-  it("opens a case and adds evidence, slips, links and groups", () => {
-    const opened = call("open_case", {
+  it("opens a case and adds evidence, slips, links and groups", async () => {
+    const opened = await call("open_case", {
       subject_type: "root", subject: "رحم", title: "AI case", description: "test",
     });
     expect(opened.created).toBe(true);
 
-    const ev = call("add_evidence", {
+    const ev = await call("add_evidence", {
       case_id: opened.case_id,
       ayat: [{ verse_key: "1:1" }, { verse_key: "1:3" }],
       expect_version: opened.updated_at,
     });
     expect(ev.added.length).toBe(2);
 
-    const slip = call("add_slip", {
+    const slip = await call("add_slip", {
       case_id: opened.case_id, kind: "comment", text: "both are the same construction",
       form: null, source: "", locator: "", expect_version: ev.updated_at,
     });
-    const link = call("link_evidence", {
+    const link = await call("link_evidence", {
       case_id: opened.case_id, from_id: ev.added[0].id, to_id: ev.added[1].id,
       label: "same construction", expect_version: slip.updated_at,
     });
-    const group = call("group_evidence", {
+    const group = await call("group_evidence", {
       case_id: opened.case_id, name: "physical sense",
       item_ids: [ev.added[0].id, slip.added], expect_version: link.updated_at,
     });
     expect(group.added).toBeTruthy();
 
     // cards must not be stacked on the same spot
-    const full = call("read_case", { case_id: opened.case_id });
+    const full = await call("read_case", { case_id: opened.case_id });
     const raw = state.research.getCase(opened.case_id);
     const spots = new Set([...raw.cards, ...raw.slips].map((i: any) => `${i.x},${i.y}`));
     expect(spots.size).toBe(raw.cards.length + raw.slips.length);
     expect(full.evidence.every((e: any) => e.added_by === "you")).toBe(true);
   });
 
-  it("skips an āyah already on the board, and a nonexistent one", () => {
-    const c = call("open_case", { subject_type: "root", subject: "رحم", title: "dupes", description: "" });
-    const first = call("add_evidence", { case_id: c.case_id, ayat: [{ verse_key: "2:2" }], expect_version: c.updated_at });
-    const again = call("add_evidence", {
+  it("skips an āyah already on the board, and a nonexistent one", async () => {
+    const c = await call("open_case", { subject_type: "root", subject: "رحم", title: "dupes", description: "" });
+    const first = await call("add_evidence", { case_id: c.case_id, ayat: [{ verse_key: "2:2" }], expect_version: c.updated_at });
+    const again = await call("add_evidence", {
       case_id: c.case_id, ayat: [{ verse_key: "2:2" }, { verse_key: "999:1" }],
       expect_version: first.updated_at,
     });
@@ -85,38 +88,38 @@ describe("case boundary — what the AI may do", () => {
     expect(again.skipped.length).toBe(2);
   });
 
-  it("edits and removes its OWN items", () => {
-    const c = call("open_case", { subject_type: "root", subject: "رحم", title: "own", description: "" });
-    const s = call("add_slip", {
+  it("edits and removes its OWN items", async () => {
+    const c = await call("open_case", { subject_type: "root", subject: "رحم", title: "own", description: "" });
+    const s = await call("add_slip", {
       case_id: c.case_id, kind: "comment", text: "first wording", form: null,
       source: "", locator: "", expect_version: c.updated_at,
     });
-    const r = call("revise_own_item", {
+    const r = await call("revise_own_item", {
       case_id: c.case_id, item_id: s.added, action: "retext", text: "better wording",
       expect_version: s.updated_at,
     });
     expect(state.research.getCase(c.case_id).slips[0].text).toBe("better wording");
-    call("revise_own_item", { case_id: c.case_id, item_id: s.added, action: "remove", text: "", expect_version: r.updated_at });
+    await call("revise_own_item", { case_id: c.case_id, item_id: s.added, action: "remove", text: "", expect_version: r.updated_at });
     expect(state.research.getCase(c.case_id).slips.length).toBe(0);
   });
 });
 
 describe("case boundary — what the AI may NOT do", () => {
-  it("refuses to edit or delete the reader's own card or slip", () => {
+  it("refuses to edit or delete the reader's own card or slip", async () => {
     const mine = seedReaderCase();
     for (const id of ["card_mine", "slip_mine"]) {
-      expect(() => call("revise_own_item", {
+      await expect(call("revise_own_item", {
         case_id: mine.id, item_id: id, action: "remove", text: "", expect_version: mine.updatedAt,
-      })).toThrow(/reader's own work/);
+      })).rejects.toThrow(/reader's own work/);
     }
     const after = state.research.getCase(mine.id);
     expect(after.cards.length).toBe(1);
     expect(after.slips.length).toBe(1);
   });
 
-  it("never writes verdict, status or formResearch — even while adding to the board", () => {
+  it("never writes verdict, status or formResearch — even while adding to the board", async () => {
     const mine = seedReaderCase();
-    const ev = call("add_evidence", { case_id: mine.id, ayat: [{ verse_key: "2:3" }], expect_version: mine.updatedAt });
+    const ev = await call("add_evidence", { case_id: mine.id, ayat: [{ verse_key: "2:3" }], expect_version: mine.updatedAt });
     const after = state.research.getCase(mine.id);
     expect(after.verdict).toBe("my verdict");   // untouched
     expect(after.status).toBe("partial");        // untouched
@@ -124,9 +127,9 @@ describe("case boundary — what the AI may NOT do", () => {
     expect(ev.added.length).toBe(1);
   });
 
-  it("parks a proposed conclusion without applying it", () => {
+  it("parks a proposed conclusion without applying it", async () => {
     const mine = seedReaderCase();
-    const p = call("propose_conclusion", {
+    const p = await call("propose_conclusion", {
       case_id: mine.id, kind: "verdict", form: null, text: "the root means X",
       reasoning: "because", suggested_status: "closed", expect_version: mine.updatedAt,
     });
@@ -136,40 +139,40 @@ describe("case boundary — what the AI may NOT do", () => {
     expect(after.status).toBe("partial");     // NOT closed
     expect(after.proposals.entries.length).toBe(1);
     // and the reader can see it waiting
-    expect(call("read_case", { case_id: mine.id }).awaiting_reader.length).toBe(1);
+    expect((await call("read_case", { case_id: mine.id })).awaiting_reader.length).toBe(1);
   });
 
-  it("marking a form established stays a proposal, not formResearch", () => {
+  it("marking a form established stays a proposal, not formResearch", async () => {
     const mine = seedReaderCase();
-    call("propose_conclusion", {
+    await call("propose_conclusion", {
       case_id: mine.id, kind: "form", form: "رَّحْمَٰن", text: "means Y",
       reasoning: "", expect_version: mine.updatedAt,
     });
     expect(state.research.getCase(mine.id).formResearch).toEqual({});
   });
 
-  it("refuses a write based on a stale read, so the reader is never clobbered", () => {
+  it("refuses a write based on a stale read, so the reader is never clobbered", async () => {
     const mine = seedReaderCase();
     const stale = mine.updatedAt;
     // the reader edits in the app meanwhile
     state.research.saveCase({ ...state.research.getCase(mine.id), title: "renamed by me" });
-    expect(() => call("add_evidence", {
+    await expect(call("add_evidence", {
       case_id: mine.id, ayat: [{ verse_key: "2:4" }], expect_version: stale,
-    })).toThrow(/changed since you read it/);
+    })).rejects.toThrow(/changed since you read it/);
     expect(state.research.getCase(mine.id).title).toBe("renamed by me");
   });
 
-  it("refuses to link or group items that are not on the case", () => {
-    const c = call("open_case", { subject_type: "root", subject: "رحم", title: "x", description: "" });
-    expect(() => call("link_evidence", {
+  it("refuses to link or group items that are not on the case", async () => {
+    const c = await call("open_case", { subject_type: "root", subject: "رحم", title: "x", description: "" });
+    await expect(call("link_evidence", {
       case_id: c.case_id, from_id: "nope", to_id: "nope2", label: "l", expect_version: c.updated_at,
-    })).toThrow(/not a card or slip/);
-    expect(() => call("group_evidence", {
+    })).rejects.toThrow(/not a card or slip/);
+    await expect(call("group_evidence", {
       case_id: c.case_id, name: "g", item_ids: ["nope"], expect_version: c.updated_at,
-    })).toThrow(/Not on this case/);
+    })).rejects.toThrow(/Not on this case/);
   });
 
-  it("does not mistake a slip's cited source for provenance", () => {
+  it("does not mistake a slip's cited source for provenance", async () => {
     // SlipRecord.source is the WORK BEING CITED ("Lane's Lexicon"), not who wrote the
     // slip (that is `author`). A reader's reference slip must stay untouchable.
     const now = Date.now();
@@ -182,16 +185,16 @@ describe("case boundary — what the AI may NOT do", () => {
       threads: [], clusters: [], formResearch: {}, verdict: "", status: "open",
       createdAt: now, updatedAt: now,
     });
-    expect(() => call("revise_own_item", {
+    await expect(call("revise_own_item", {
       case_id: c.id, item_id: "slip_cited", action: "remove", text: "", expect_version: c.updatedAt,
-    })).toThrow(/reader's own work/);
+    })).rejects.toThrow(/reader's own work/);
   });
 
-  it("requires a source on a reference slip", () => {
-    const c = call("open_case", { subject_type: "root", subject: "رحم", title: "y", description: "" });
-    expect(() => call("add_slip", {
+  it("requires a source on a reference slip", async () => {
+    const c = await call("open_case", { subject_type: "root", subject: "رحم", title: "y", description: "" });
+    await expect(call("add_slip", {
       case_id: c.case_id, kind: "reference", text: "quoted", form: null,
       source: "", locator: "", expect_version: c.updated_at,
-    })).toThrow(/needs `source`/);
+    })).rejects.toThrow(/needs `source`/);
   });
 });

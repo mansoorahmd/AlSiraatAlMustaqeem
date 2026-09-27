@@ -2,7 +2,8 @@
 // across the mushaf — e.g. إبراهيم full-yāʾ vs superscript small-yāʾ, رَأَىٰ vs
 // رَءَا. Ported from the mobile app's data/spellings.ts (word-level part).
 
-import type { Db } from "./db.js";
+import type { CorpusDb } from "./corpus-db.js";
+import { once } from "./corpus-db.js";
 import { foldArabic } from "./text/normalize.js";
 
 export interface SpellingVariant {
@@ -71,13 +72,15 @@ export class WordFormIndex {
   private byFolded = new Map<string, WordOccurrence[]>();
   /** first surface seen for each rasm, to name it in results */
   private sample = new Map<string, string>();
-  private built = false;
+  /** Built once, on first use; concurrent callers share the one build. */
+  readonly build: () => Promise<void>;
 
-  constructor(private db: Db) {}
+  constructor(private db: CorpusDb) {
+    this.build = once(() => this.load());
+  }
 
-  build(): this {
-    if (this.built) return this;
-    const rows = this.db.query<{ verse_key: string; word_position: number; form_arabic: string | null }>(
+  private async load(): Promise<void> {
+    const rows = await this.db.query<{ verse_key: string; word_position: number; form_arabic: string | null }>(
       `SELECT ws.verse_key, ws.word_position, ws.form_arabic
        FROM word_segments ws JOIN verses v ON v.verse_key = ws.verse_key
        ORDER BY v.chapter_id, v.verse_number, ws.word_position, ws.segment_number`,
@@ -109,14 +112,12 @@ export class WordFormIndex {
       if (flist) flist.push(occ);
       else this.byFolded.set(fk, [occ]);
     }
-    this.built = true;
-    return this;
   }
 
   /** Resolve a query to the occurrence list: exact rasm first, then the folded index
    *  so a word tapped in a non-Uthmani script still matches. `mode` says which hit. */
-  lookup(surface: string): { key: string; mode: "rasm" | "folded"; list: WordOccurrence[] } {
-    this.build();
+  async lookup(surface: string): Promise<{ key: string; mode: "rasm" | "folded"; list: WordOccurrence[] }> {
+    await this.build();
     const rk = rasmKey(surface);
     if (!rk) return { key: "", mode: "rasm", list: [] };
     const exact = this.byRasm.get(rk);
@@ -125,21 +126,21 @@ export class WordFormIndex {
   }
 
   /** Every occurrence of the exact written word, in mushaf order. */
-  occurrences(surface: string, limit = 3000): WordOccurrence[] {
-    return this.lookup(surface).list.slice(0, limit);
+  async occurrences(surface: string, limit = 3000): Promise<WordOccurrence[]> {
+    return (await this.lookup(surface)).list.slice(0, limit);
   }
 
   /** How many times this written form occurs — the total, before any limit. */
-  total(surface: string): number {
-    return this.lookup(surface).list.length;
+  async total(surface: string): Promise<number> {
+    return (await this.lookup(surface)).list.length;
   }
 
   /** Other written forms that contain this one, i.e. the same word with ٱل / و / بِ
    *  attached, or with a pronoun suffix. Without this, tracing صلوٰة reports 2 — the
    *  bare form — while 65 occurrences sit inside ٱلصَّلَوٰةَ and look like they do not
    *  exist. Sorted by frequency. */
-  relatedForms(surface: string, limit = 12): RelatedForm[] {
-    const { key, mode } = this.lookup(surface);
+  async relatedForms(surface: string, limit = 12): Promise<RelatedForm[]> {
+    const { key, mode } = await this.lookup(surface);
     if (!key) return [];
     const index = mode === "rasm" ? this.byRasm : this.byFolded;
     const out: RelatedForm[] = [];
@@ -161,13 +162,15 @@ export class SpellingIndex {
   private meta = new Map<string, [number, number]>(); // verse_key → [chapter, verseNo]
   private groupOf = new Map<string, string>();       // "verse#pos" → group key
   private groupVariants = new Map<string, SpellingVariant[]>(); // group key → variants
-  private built = false;
+  /** Built once, on first use; concurrent callers share the one build. */
+  readonly build: () => Promise<void>;
 
-  constructor(private db: Db) {}
+  constructor(private db: CorpusDb) {
+    this.build = once(() => this.load());
+  }
 
-  build(): this {
-    if (this.built) return this;
-    const rows = this.db.query<{
+  private async load(): Promise<void> {
+    const rows = await this.db.query<{
       verse_key: string; word_position: number; form_arabic: string | null;
       raw_features: string | null; lemma_buckwalter: string | null;
       chapter_id: number; verse_number: number;
@@ -223,21 +226,19 @@ export class SpellingIndex {
         s.add(pos);
       }
     }
-    this.built = true;
-    return this;
   }
 
   /** The rasm variants of the word at (verseKey, wordPosition), from the same
    *  grouping the ✍ marks use — so the two always agree. [] when no variation. */
-  variantsForWord(verseKey: string, wordPosition: number): SpellingVariant[] {
-    this.build();
+  async variantsForWord(verseKey: string, wordPosition: number): Promise<SpellingVariant[]> {
+    await this.build();
     const gk = this.groupOf.get(`${verseKey}#${wordPosition}`);
     return gk ? this.groupVariants.get(gk) ?? [] : [];
   }
 
   /** Verses in a chapter that contain variant words + those word positions. */
-  chapterVariants(chapterId: number): { verse_key: string; positions: number[] }[] {
-    this.build();
+  async chapterVariants(chapterId: number): Promise<{ verse_key: string; positions: number[] }[]> {
+    await this.build();
     const out: { verse_key: string; positions: number[] }[] = [];
     for (const [vk, set] of this.byVerse) {
       if (this.meta.get(vk)?.[0] === chapterId) out.push({ verse_key: vk, positions: [...set].sort((a, b) => a - b) });

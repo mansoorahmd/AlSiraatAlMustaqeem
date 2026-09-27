@@ -80,11 +80,11 @@ export async function pullSince(
     `SELECT cv.claim_id, cv.version, cv.payload_json, cv.created_at, cv.schema_version, cv.seq,
             c.author_id, c.subject_kind, c.subject_value, c.current_version,
             (g.claim_id IS NOT NULL) AS is_global,
-            -- who submitted it: display name if set, else the email
-            COALESCE(NULLIF(au.display_name, ''), au.email) AS author_name,
+            -- who submitted it: display name if set — never the email (it can be read beyond members)
+            COALESCE(NULLIF(au.display_name, ''), 'a researcher') AS author_name,
             -- who approved this exact version (moderators only object or approve)
             COALESCE((
-              SELECT json_agg(COALESCE(NULLIF(mu.display_name, ''), mu.email) ORDER BY rv.created_at)
+              SELECT json_agg(COALESCE(NULLIF(mu.display_name, ''), 'a moderator') ORDER BY rv.created_at)
                 FROM reviews rv
                 JOIN users mu ON mu.id = rv.moderator_id
                WHERE rv.claim_id = cv.claim_id AND rv.claim_version = cv.version

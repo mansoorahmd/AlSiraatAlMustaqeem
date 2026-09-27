@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { remote, type Me } from "../api/remote";
 import { SideSheet } from "./SideSheet";
 import { AccountSheet } from "./AccountSheet";
+import { OPEN_ACCOUNT_EVENT } from "./CorpusAccessBanner";
 
 /** Up to two initials — the conventional avatar fallback, same as the panel's. */
 function initials(me: Me): string {
@@ -25,6 +26,13 @@ export function AccountButton() {
   }, []);
 
   useEffect(() => { void check(); }, [check]);
+
+  // other parts of the app (the corpus banner's "Sign in") can ask for the sheet
+  useEffect(() => {
+    const open = () => setOpen(true);
+    window.addEventListener(OPEN_ACCOUNT_EVENT, open);
+    return () => window.removeEventListener(OPEN_ACCOUNT_EVENT, open);
+  }, []);
 
   return (
     <>

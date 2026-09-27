@@ -2,7 +2,8 @@
 // Resolve each Arabic word to its most common Quranic root + POS, then route
 // the root/POS sequences through the composite similarity engine.
 
-import type { Db } from "./db.js";
+import type { CorpusDb } from "./corpus-db.js";
+import { once } from "./corpus-db.js";
 import { foldArabic, affixTrials, tokenizeArabic } from "./text/normalize.js";
 import { SimilarityEngine, type CompositeMatch, type DEFAULT_WEIGHTS } from "./similarity/compose.js";
 
@@ -30,19 +31,24 @@ class FreeTextResolver {
   private rootSk: CountMap = new Map();
   private posSk: CountMap = new Map();
   private ar = new Map<string, string>();
-  private built = false;
+  /** Built once, on first use; concurrent callers share the one build. */
+  readonly build: () => Promise<void>;
 
-  constructor(private db: Db) {}
+  constructor(private db: CorpusDb) {
+    this.build = once(() => this.load());
+  }
 
   private static skeleton(folded: string): string {
     return folded.replaceAll("ا", "");
   }
 
-  build(): this {
-    if (this.built) return this;
-    const rows = this.db.query<{ lemma_arabic: string; root_buckwalter: string; root_arabic: string | null; pos_class: string | null }>(
+  private async load(): Promise<void> {
+    // "first seen wins" below depends on row order, so it is pinned: ORDER BY id is the order
+    // SQLite always returned (rowid) and Postgres otherwise wouldn't promise.
+    const rows = await this.db.query<{ lemma_arabic: string; root_buckwalter: string; root_arabic: string | null; pos_class: string | null }>(
       `SELECT lemma_arabic, root_buckwalter, root_arabic, pos_class
-       FROM words WHERE root_buckwalter IS NOT NULL AND lemma_arabic IS NOT NULL`,
+       FROM words WHERE root_buckwalter IS NOT NULL AND lemma_arabic IS NOT NULL
+       ORDER BY id`,
     );
     const bump = (m: CountMap, key: string, val: string) => {
       let inner = m.get(key);
@@ -63,8 +69,6 @@ class FreeTextResolver {
       }
       if (!this.ar.has(rb) && r.root_arabic) this.ar.set(rb, r.root_arabic);
     }
-    this.built = true;
-    return this;
   }
 
   private static best(rootIdx: CountMap, posIdx: CountMap, key: string): [string, string | null] {
@@ -82,8 +86,8 @@ class FreeTextResolver {
     return [rb, pos || null];
   }
 
+  /** Pure lookup over the built index — call build() first. */
   resolveToken(token: string): ResolvedWord {
-    this.build();
     const folded = foldArabic(token);
     const trials = affixTrials(folded);
     for (const trial of trials) {
@@ -111,26 +115,24 @@ export class FreeTextSearch {
   private resolver: FreeTextResolver;
   private engine: SimilarityEngine;
 
-  constructor(db: Db, unit: "root" | "lemma" = "root", posLevel: "class" | "tag" = "class") {
+  constructor(db: CorpusDb, unit: "root" | "lemma" = "root", posLevel: "class" | "tag" = "class") {
     this.resolver = new FreeTextResolver(db);
     this.engine = new SimilarityEngine(db, unit, posLevel);
   }
 
-  build(): this {
-    this.resolver.build();
-    this.engine.build();
-    return this;
+  async build(): Promise<void> {
+    await Promise.all([this.resolver.build(), this.engine.build()]);
   }
 
-  search(
+  async search(
     text: string,
     opts: { topK?: number; weights?: Partial<typeof DEFAULT_WEIGHTS>; minShared?: number } = {},
-  ): FreeTextResultDict {
-    this.build();
+  ): Promise<FreeTextResultDict> {
+    await this.build();
     const resolved = this.resolver.resolve(text);
     const rootSeq = resolved.filter((w) => w.root_buckwalter).map((w) => w.root_buckwalter!);
     const posSeq = resolved.filter((w) => w.root_buckwalter && w.pos_class).map((w) => w.pos_class!);
-    const matches = this.engine.similarToTokens(rootSeq, posSeq, {
+    const matches = await this.engine.similarToTokens(rootSeq, posSeq, {
       topK: opts.topK ?? 20, weights: opts.weights, minShared: opts.minShared ?? 1,
     });
     return {

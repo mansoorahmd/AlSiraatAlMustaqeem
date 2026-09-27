@@ -3213,6 +3213,20 @@ a { color: var(--lapis); }
   border: 1px solid color-mix(in srgb, var(--error) 35%, transparent);
   color: var(--wax-dark); font-size: var(--fs-small); }
 
+/* --- why the Qur'an text isn't showing (CorpusAccessBanner) — one tinted block under the top bar */
+.corpus-banner { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1rem;
+  flex-wrap: wrap; margin: 0.6rem 1rem 0; padding: 0.6rem 0.8rem; border-radius: 8px;
+  font-size: var(--fs-small); line-height: 1.9; }
+.corpus-banner.is-gated { background: color-mix(in srgb, var(--gold) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent); }
+.corpus-banner.is-offline { background: color-mix(in srgb, var(--error) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--error) 35%, transparent); color: var(--wax-dark); }
+.corpus-banner-text { display: flex; flex-direction: column; min-width: 0; }
+.corpus-banner-text strong { font-weight: 600; }
+.corpus-banner-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+/* a secondary action outside a toolbar needs an edge, or it reads as absent (INSTRUCTIONS.md) */
+.corpus-banner-actions .ctl:not(.primary) { border-color: var(--paper-edge); color: var(--ink); }
+
 /* --- identity header --- */
 .acct-head { display: flex; align-items: flex-start; gap: 0.75rem; }
 .acct-avatar {
@@ -3283,6 +3297,20 @@ a { color: var(--lapis); }
   background: var(--paper-warm); border: 1px solid var(--paper-edge); }
 .acct-code-box code { font-family: ui-monospace, monospace; font-size: var(--fs-small);
   word-break: break-all; flex: 1; min-width: 8rem; }
+
+/* AI-assistant tokens: one row each, and the once-only config block */
+.acct-tokens { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.acct-tokens li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.6rem;
+  font-size: var(--fs-small); padding: 0.35rem 0; border-bottom: 1px solid var(--paper-edge); }
+.acct-tokens li .ctl { margin-left: auto; }
+.acct-tokens code { font-family: ui-monospace, monospace; }
+.acct-token-label { font-weight: 500; color: var(--ink); }
+.acct-token-fresh { flex-direction: column; align-items: stretch; min-width: 0; }
+.acct-token-fresh .acct-hint { white-space: normal; }
+.acct-token-fresh pre { margin: 0; padding: 0.5rem; overflow-x: auto; min-width: 0; max-width: 100%; font-size: 0.78rem;
+  font-family: ui-monospace, monospace; background: var(--paper); border-radius: 4px;
+  white-space: pre; direction: ltr; text-align: left; }
+.acct-token-fresh .ctl { align-self: flex-start; }
 
 /* one clear primary action per section */
 .ctl.primary { background: var(--lapis); border-color: var(--lapis); color: #fff; font-weight: 500; }
@@ -3485,3 +3513,62 @@ a { color: var(--lapis); }
 .diverge-dissent { font-size: var(--fs-label); color: var(--gold);
   border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
   border-radius: 999px; padding: 0.05rem 0.4rem; white-space: nowrap; }
+
+/* ── Admin: the maintainer's console ───────────────────────────────────────────
+   Home's grammar (cards whose rows are the interface): each row shows its value as TEXT with
+   one "Change", which opens the controls in place — never a wall of open inputs. */
+.sheet.admin { max-width: 58rem; display: flex; flex-direction: column; gap: 1.25rem; }
+.sheet.admin .home-hero { margin-bottom: 0; }
+.admin-title { margin: 0; font-size: 1.4rem; font-weight: 600; color: var(--ink); }
+.home-card > .acct-hint { margin: 0 0.6rem 0.4rem; }
+.admin-count { font-size: var(--fs-small); font-weight: 500; color: var(--ink-faint);
+  font-variant-numeric: tabular-nums; }
+
+.admin-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.admin-list.scroll { max-height: 34rem; overflow-y: auto; }
+.admin-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.9rem;
+  padding: 0.6rem; border-radius: 8px; }
+.admin-row + .admin-row { border-top: 1px solid var(--paper-edge); }
+.admin-row:hover { background: var(--paper-warm); }
+.admin-row > .acct-error { flex-basis: 100%; margin: 0; }
+
+.admin-name { flex: 1 1 14rem; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem;
+  color: var(--ink); line-height: 1.5; }
+.admin-name strong { font-weight: 600; }
+.admin-name code { font-family: ui-monospace, monospace; font-size: var(--fs-small); color: var(--ink-faint); }
+.admin-sub { font-size: var(--fs-small); color: var(--ink-soft); }
+.admin-rank { flex: 0 0 3rem; text-align: end; font-variant-numeric: tabular-nums;
+  font-size: var(--fs-small); color: var(--ink-faint); }
+
+.admin-meta { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.admin-pill { padding: 0.05rem 0.55rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500;
+  background: var(--paper-warm); border: 1px solid var(--paper-edge); color: var(--ink-soft); }
+.admin-pill.plan { color: var(--lapis); border-color: color-mix(in srgb, var(--lapis) 30%, transparent);
+  background: color-mix(in srgb, var(--lapis) 6%, transparent); }
+.admin-pill.plan.lapsed { color: var(--ink-faint); border-color: var(--paper-edge); background: none;
+  text-decoration: line-through; }
+
+.admin-actions { display: flex; gap: 0.4rem; margin-inline-start: auto; }
+
+/* the "who can read" value, and its editor */
+.admin-access { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-inline-start: auto; }
+.admin-access-value { font-size: var(--fs-small); color: var(--ink); font-weight: 500; }
+.admin-access.editing .board-input { width: auto; min-width: 12rem; }
+.admin-access .acct-error { flex-basis: 100%; margin: 0; }
+
+/* inline editors: labelled fields on one line, wrapping on narrow screens */
+.admin-edit, .admin-add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem 0.75rem;
+  flex: 1 1 100%; }
+.admin-add { padding: 0.75rem 0.6rem 0.4rem; border-top: 1px solid var(--paper-edge); }
+.admin-add > .acct-error { flex-basis: 100%; margin: 0; }
+.admin-field { display: flex; flex-direction: column; gap: 0.2rem; min-width: 6rem; }
+.admin-field.grow { flex: 1 1 12rem; }
+.admin-field > span { font-size: var(--fs-label); color: var(--ink-soft); font-weight: 500; }
+.admin-field .board-input { width: 100%; }
+.admin-edit .admin-actions, .admin-add .admin-actions { margin-inline-start: 0; }
+.admin-filter { margin: 0 0.6rem 0.4rem; width: auto; }
+
+@media (max-width: 40rem) {
+  .admin-access, .admin-actions { margin-inline-start: 0; }
+  .admin-access.editing .board-input { min-width: 0; width: 100%; }
+}

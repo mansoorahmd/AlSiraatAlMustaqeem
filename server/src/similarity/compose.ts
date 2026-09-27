@@ -2,7 +2,7 @@
 // total = w_overlap*overlap + w_phrase*phrase + w_morphology*morphology,
 // over candidates sharing >= min_shared roots/lemmas with the query.
 
-import type { Db } from "../db.js";
+import type { CorpusDb } from "../corpus-db.js";
 import { LexicalSimilarity, longestCommonRunSlice, round4 } from "./lexical.js";
 import { MorphologySimilarity } from "./morphology.js";
 
@@ -25,28 +25,23 @@ export interface CompositeMatch {
 export class SimilarityEngine {
   lex: LexicalSimilarity;
   morph: MorphologySimilarity;
-  private built = false;
 
-  constructor(db: Db, unit: "root" | "lemma" = "root", posLevel: "class" | "tag" = "class") {
+  constructor(db: CorpusDb, unit: "root" | "lemma" = "root", posLevel: "class" | "tag" = "class") {
     this.lex = new LexicalSimilarity(db, unit);
     this.morph = new MorphologySimilarity(db, posLevel);
   }
 
-  build(): this {
-    if (!this.built) {
-      this.lex.build();
-      this.morph.build();
-      this.built = true;
-    }
-    return this;
+  /** Both indexes, built once each (their builds are memoised and share concurrent callers). */
+  async build(): Promise<void> {
+    await Promise.all([this.lex.build(), this.morph.build()]);
   }
 
+  /** Pure ranking over the built indexes — call build() first. */
   private rank(
     lexSeq: string[],
     posSeq: string[],
     opts: { topK: number; weights?: Partial<typeof DEFAULT_WEIGHTS>; minShared: number; exclude?: string },
   ): CompositeMatch[] {
-    this.build();
     const w = { ...DEFAULT_WEIGHTS, ...(opts.weights ?? {}) };
     const qvec = this.lex.weightedVec(lexSeq);
     const qset = new Set(lexSeq);
@@ -92,11 +87,11 @@ export class SimilarityEngine {
     return results.slice(0, opts.topK);
   }
 
-  similarVerses(
+  async similarVerses(
     verseKey: string,
     opts: { topK?: number; weights?: Partial<typeof DEFAULT_WEIGHTS>; minShared?: number } = {},
-  ): CompositeMatch[] {
-    this.build();
+  ): Promise<CompositeMatch[]> {
+    await this.build();
     const lexSeq = this.lex.seq.get(verseKey);
     if (!lexSeq) return [];
     const posSeq = this.morph.seq.get(verseKey) ?? [];
@@ -105,12 +100,12 @@ export class SimilarityEngine {
     });
   }
 
-  similarToTokens(
+  async similarToTokens(
     rootSeq: string[],
     posSeq: string[] = [],
     opts: { topK?: number; weights?: Partial<typeof DEFAULT_WEIGHTS>; minShared?: number; exclude?: string } = {},
-  ): CompositeMatch[] {
-    this.build();
+  ): Promise<CompositeMatch[]> {
+    await this.build();
     if (!rootSeq.length) return [];
     return this.rank(rootSeq, posSeq, {
       topK: opts.topK ?? 20, weights: opts.weights, minShared: opts.minShared ?? 1, exclude: opts.exclude,

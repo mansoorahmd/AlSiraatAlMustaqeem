@@ -17,5 +17,6 @@ and easy to pick up in a new session.
 
 ## The one line to remember
 
-> Studying stays local, offline and free; the community is the paid, cloud layer — because you can
-> only charge for what the server holds, never for what already sits on the reader's disk.
+> Features are role-based; resources are plan-based. The corpus and the community live on the
+> research server (you can only charge for what the server holds); your own research stays on your
+> machine and is always yours.

@@ -8,7 +8,7 @@ import {
 import type { Script, ExprTerm } from "../api/types";
 import { archive } from "../persistence/db";
 
-export type Tab = "home" | "read" | "search" | "investigate" | "vault" | "roots" | "motifs" | "compare" | "diverge";
+export type Tab = "home" | "read" | "search" | "investigate" | "vault" | "roots" | "motifs" | "compare" | "diverge" | "admin";
 
 export interface ReadingState {
   surahId: number;
@@ -226,7 +226,7 @@ function reducer(state: AppState, action: Action): AppState {
 export function tabFromHash(): Tab {
   const h = typeof window !== "undefined" ? window.location.hash.replace(/^#\/?/, "") : "";
   return h === "read" || h === "search" || h === "investigate" || h === "vault" || h === "diverge" ||
-    h === "roots" || h === "motifs" || h === "compare"
+    h === "roots" || h === "motifs" || h === "compare" || h === "admin"
     ? h
     : "home";
 }

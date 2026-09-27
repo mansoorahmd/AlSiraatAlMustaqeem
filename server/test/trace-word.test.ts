@@ -14,6 +14,8 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+// these tests are about tool behaviour, against the local corpus reference (the remote path has its own test)
+process.env.MQ_CORPUS = "local";
 process.env.QF_RESEARCH_DB = join(mkdtempSync(join(tmpdir(), "alsiraat-trace-")), "r.db");
 
 let state: any;
@@ -27,9 +29,9 @@ beforeAll(async () => {
 });
 
 describe("trace_word — root family", () => {
-  it("reports the true total even when the list is truncated", () => {
-    const few = trace.run(state, { word: "صلو", exact: false, limit: 5 });
-    const all = trace.run(state, { word: "صلو", exact: false, limit: 300 });
+  it("reports the true total even when the list is truncated", async () => {
+    const few = await trace.run(state, { word: "صلو", exact: false, limit: 5 });
+    const all = await trace.run(state, { word: "صلو", exact: false, limit: 300 });
     // the total must not depend on the limit
     expect(few.total).toBe(all.total);
     expect(few.total).toBeGreaterThan(90);
@@ -38,19 +40,19 @@ describe("trace_word — root family", () => {
     expect(all.truncated).toBe(false);
   });
 
-  it("gives each occurrence its form and verse text", () => {
-    const r = trace.run(state, { word: "صلو", exact: false, limit: 3 });
+  it("gives each occurrence its form and verse text", async () => {
+    const r = await trace.run(state, { word: "صلو", exact: false, limit: 3 });
     expect(r.occurrences.every((o: any) => o.verse_key && o.form && o.text)).toBe(true);
   });
 
-  it("refuses a root that does not exist, pointing at exact=true", () => {
-    expect(trace.run(state, { word: "زقتل", exact: false, limit: 5 }).error).toMatch(/exact=true/);
+  it("refuses a root that does not exist, pointing at exact=true", async () => {
+    expect((await trace.run(state, { word: "زقتل", exact: false, limit: 5 })).error).toMatch(/exact=true/);
   });
 });
 
 describe("trace_word — exact written word", () => {
-  it("does not present the bare spelling as the word's whole frequency", () => {
-    const r = trace.run(state, { word: "صلوٰة", exact: true, limit: 300 });
+  it("does not present the bare spelling as the word's whole frequency", async () => {
+    const r = await trace.run(state, { word: "صلوٰة", exact: true, limit: 300 });
     // the bare form really is rare — that part was never wrong
     expect(r.total).toBe(2);
     // ...but the prefixed spellings must be surfaced, not silently omitted
@@ -60,8 +62,8 @@ describe("trace_word — exact written word", () => {
     expect(r.note).toMatch(/BARE spelling/);
   });
 
-  it("returns the word and its verse text, not just coordinates", () => {
-    const r = trace.run(state, { word: "صلوٰة", exact: true, limit: 10 });
+  it("returns the word and its verse text, not just coordinates", async () => {
+    const r = await trace.run(state, { word: "صلوٰة", exact: true, limit: 10 });
     expect(r.occurrences.length).toBeGreaterThan(0);
     for (const o of r.occurrences) {
       expect(o.verse_key).toBeTruthy();
@@ -71,15 +73,15 @@ describe("trace_word — exact written word", () => {
     }
   });
 
-  it("works for a rootless word (a particle), which is the point of exact mode", () => {
-    const r = trace.run(state, { word: "إِيَّاكَ", exact: true, limit: 10 });
+  it("works for a rootless word (a particle), which is the point of exact mode", async () => {
+    const r = await trace.run(state, { word: "إِيَّاكَ", exact: true, limit: 10 });
     expect(r.total).toBeGreaterThan(0);
     expect(r.occurrences[0].verse_key).toBe("1:5");
   });
 
-  it("ignores diacritics: a bare-consonant query finds the vocalised word", () => {
-    const withMarks = trace.run(state, { word: "إِيَّاكَ", exact: true, limit: 10 });
-    const without = trace.run(state, { word: "إياك", exact: true, limit: 10 });
+  it("ignores diacritics: a bare-consonant query finds the vocalised word", async () => {
+    const withMarks = await trace.run(state, { word: "إِيَّاكَ", exact: true, limit: 10 });
+    const without = await trace.run(state, { word: "إياك", exact: true, limit: 10 });
     expect(without.total).toBe(withMarks.total);
   });
 });
@@ -97,16 +99,16 @@ describe("trace_word — a word tapped in the reader must match the index", () =
     const { createState } = await import("../src/state.js");
     const s: any = state ?? createState();
     for (const script of SCRIPTS) {
-      const verse: any = s.content.getVerse("1:1", { script });
+      const verse: any = await s.content.getVerse("1:1", { script });
       const token = String(verse.text).split(/\s+/)[2]; // ٱلرَّحْمَٰنِ
-      const r = trace.run(s, { word: token, exact: true, limit: 300 });
+      const r = await trace.run(s, { word: token, exact: true, limit: 300 });
       expect(r.total, `script ${script} (token ${token})`).toBe(45);
     }
   });
 
-  it("the tatweel form and the plain form are the same word", () => {
-    const withTatweel = trace.run(state, { word: "ٱلرَّحْمَـٰنِ", exact: true, limit: 300 });
-    const without = trace.run(state, { word: "ٱلرَّحْمَٰنِ", exact: true, limit: 300 });
+  it("the tatweel form and the plain form are the same word", async () => {
+    const withTatweel = await trace.run(state, { word: "ٱلرَّحْمَـٰنِ", exact: true, limit: 300 });
+    const without = await trace.run(state, { word: "ٱلرَّحْمَٰنِ", exact: true, limit: 300 });
     expect(withTatweel.total).toBe(without.total);
     expect(withTatweel.total).toBe(45);
   });
