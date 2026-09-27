@@ -17,6 +17,6 @@ and easy to pick up in a new session.
 
 ## The one line to remember
 
-> Features are role-based; resources are plan-based. The corpus and the community live on the
-> research server (you can only charge for what the server holds); your own research stays on your
-> machine and is always yours.
+> Features are role-based; resources are plan-based. Everything lives on the research server — the
+> corpus, the community, and your research, which is private to your account until you publish it,
+> and then seen only by the audience it names, once a reviewer approves it.

@@ -1,6 +1,12 @@
 {
   "$doc": "Feedback & communication log between the maintainer and Claude about MQ Research Gate. The repo-side, chat-extractable mirror of the conversation. The live version is the feedback threads in the published docs/atlas.html (backed by the artifact db capability); Claude reconciles new entries here.",
-  "entryShape": { "ts": "ISO 8601 string", "author": "who wrote it", "section": "atlas section id (system|data|money|gate|community|publishing|mcp|admin|roadmap|general)", "text": "the note", "status": "open | answered | done (optional)" },
+  "entryShape": {
+    "ts": "ISO 8601 string",
+    "author": "who wrote it",
+    "section": "atlas section id (system|data|money|gate|community|publishing|mcp|admin|roadmap|general)",
+    "text": "the note",
+    "status": "open | answered | done (optional)"
+  },
   "entries": [
     {
       "ts": "2026-09-19T00:00:00Z",
@@ -49,6 +55,20 @@
       "author": "Claude",
       "section": "admin",
       "text": "All done on feature/corpus-postgres. (1) Access: features are role-based (publish = researcher, review = moderator, administer = maintainer); resources are plan-based — the corpus, the community, each translation and each dictionary, each with a rule: a tier, 'signed in', or public. (2) Step 2: one corpus codebase with SQLite and Postgres drivers; the cloud serves ALL of it at /corpus; the full parity sweep compared 77,439 requests — every one identical. (3) The app reads the Qur'an from /corpus, with one banner when it can't (offline / sign in / needs a plan). (4) The MCP reads it as you, with a personal API token from Account → Connect an AI assistant; research stays in your local research.db. (5) Admin tab for maintainers: plan tiers, who can read what, people (role + plan). Heads-up: your account is maintainer · free and the corpus rule is pro, so the app will tell you it needs the pro plan — grant yourself pro in Admin → People, or set the corpus to 'Signed in'. Open: should maintainers bypass resource gates automatically?",
+      "status": "open"
+    },
+    {
+      "ts": "2026-09-27T04:00:00Z",
+      "author": "Maintainer",
+      "section": "data",
+      "text": "Yes, the research is on Postgres also — but a research is still private unless published and approved. And any published result is gated and maintained by roles: a publish could be for a role scholar or student, and again scholar with a pro plan. (Decided: student/scholar are ROLES; the publisher proposes the audience, the reviewer confirms.)",
+      "status": "answered"
+    },
+    {
+      "ts": "2026-09-27T09:00:00Z",
+      "author": "Claude",
+      "section": "data",
+      "text": "Done on feature/research-postgres. (1) Research is in Postgres: each account its own private schema, every request pinned to it from the sign-in alone — nobody else, staff included, can read it. Same code as a research.db file (78 calls proven identical). The app and the MCP read and write it as you; the server enforces the AI boundary on every token write. Settings → Your research: bring this computer's research.db in (a copy; the file stays), download a copy, import a file. (2) Roles are a ladder you edit: reader < student < researcher < scholar < moderator < maintainer; publishing's role is yours to set (researcher by default). (3) Every published result has an audience (min role + min plan), proposed by the author and confirmed or changed by the reviewer; every community read hides what a viewer's role and plan don't reach. Your own research is still in your local research.db until you bring it in.",
       "status": "open"
     }
   ]

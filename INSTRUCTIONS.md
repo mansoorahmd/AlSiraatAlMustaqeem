@@ -147,14 +147,16 @@ AlSiraatAlMustaqeem/
 ```
 
 - **`app/`** — the front end (React 18 + Vite + TypeScript). Reads the **corpus** from the
-  research server (`${VITE_REMOTE_URL}/corpus`, default `http://localhost:8100/corpus`) and your
-  **research** from the local API at `/api/v1/research`.
-- **`server/`** — the local back end (Hono + Node's built-in `node:sqlite`). Reads/writes
-  `research.db`, and still serves `quran.db` at `/api/v1` (tests, local tools). Its corpus code is the
-  same code the research server runs, over a different driver (`server/src/corpus-db.ts`). Ported 1:1
-  from the original Python/FastAPI backend and verified by golden-parity tests (`server/test/`).
-- **`remote/`** — the research server (Hono + Postgres + Better Auth): the corpus, accounts, plans,
-  the community. See `REMOTE.md` and `CORPUS.md`.
+  research server (`${VITE_REMOTE_URL}/corpus`, default `http://localhost:8100/corpus`), and reads and
+  writes your **research** in your account there (`${VITE_REMOTE_URL}/research`).
+- **`server/`** — the local back end (Hono + Node's built-in `node:sqlite`). Serves the same corpus
+  and research routes over local files (`quran.db`, `research.db`) for tests and local tools, and hands
+  the app a copy of an older `research.db` to bring into the account. Its corpus and research code is
+  the same code the research server runs, over a different driver (`server/src/corpus-db.ts`,
+  `research-db.ts`). Ported 1:1 from the original Python/FastAPI backend and verified by golden-parity
+  tests (`server/test/`).
+- **`remote/`** — the research server (Hono + Postgres + Better Auth): the corpus, every account's
+  private research, accounts, roles, plans, the community. See `REMOTE.md` and `CORPUS.md`.
 - **`mcp/`** — an MCP server over stdio so an AI client can study the corpus and your research with
   you. See "The MCP server" below.
 
@@ -198,8 +200,10 @@ mobile app can call `/api/v1` directly.
 
 **In plain terms.** The app is one web build (optionally wrapped in a desktop window). It
 **reads** the fixed Qur'an corpus from the research server (Postgres, loaded from `quran.db` and
-proven identical), and **reads and writes** the reader's personal research through the local
-server, the only thing that touches `research.db`. Two jobs:
+proven identical), and **reads and writes** the reader's personal research **in their account** on
+the same server — a private Postgres schema per account, with the same tables a `research.db` file
+has (REMOTE.md, "Your research, in your account"). Settings → *Your research* brings an older
+`research.db` in (as a copy; the file is untouched) and downloads a copy any time. Two jobs:
 
 - **`quran.db` is the reference material** — the Qur'an and everything known *about* its
   words: the text in every script, each word's root and form (morphology), the roots and
@@ -336,6 +340,7 @@ the launcher by absolute path; no `cwd` needed):
 | `REMOTE_URL` | the research server (default `http://localhost:8100`) |
 | `REMOTE_TOKEN` | your personal API token (revoke it in the app to cut the AI off) |
 | `MQ_CORPUS=local` | read `quran.db` instead of the research server — offline work; no token needed |
+| `MQ_RESEARCH=local` | use a `research.db` file for your research instead of your account — offline work |
 | `QF_RESEARCH_DB` / `QF_QURAN_DB` | override the research file / the local corpus file |
 
 When it can't read the corpus it tells the AI why, in words it can pass on: no or revoked token →
@@ -360,9 +365,11 @@ programmatically resolved **from its own location**, prints only to stderr, and 
 what to do if dependencies are missing. Databases are likewise resolved from the file's location,
 not the working directory.
 
-Your **research** stays local: the MCP opens the same `research.db` the app has open (it follows the
-app's current file, `databases.json`) and writes to it only through the guard below. The app's local
-server does **not** need to be running; the research server does, unless `MQ_CORPUS=local`.
+Your **research** is in your account: the MCP reads it, and writes proposals into it, through the
+research server with the same token — within the guard below, which the server also enforces for
+every token request (`mcp/src/research-client.ts`). `MQ_RESEARCH=local` uses a `research.db` file
+instead (the one the app's local server has open), for offline work and the tests.
+`server/test/mcp-remote-research.test.ts` runs the real tools against the cloud research.
 
 For running it by hand (not via a client), `npm run mcp` from the project root still works.
 

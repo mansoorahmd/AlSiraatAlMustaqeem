@@ -1,46 +1,46 @@
 {
   "$doc": "MQ Research Gate — architecture & monetization atlas. Machine-readable source of truth for AI chats. Human view: docs/atlas.html. Feedback log: docs/feedback.json.",
-  "updated": "2026-09-26",
-  "branch": "feature/corpus-postgres (stacked on feature/monetization-entitlements)",
+  "updated": "2026-09-27",
+  "branch": "feature/research-postgres (on main)",
   "app": {
     "name": "MQ Research Gate",
     "repoName": "AlSiraatAlMustaqeem",
     "arabic": "الصراط المستقيم",
     "oneLiner": "A detective's study for the Qur'an: meaning is earned from within the text (the organic Qur'anic methodology). Notice a word, open a case on its root family, gather every place the Book uses it, form a hypothesis, then weigh the classical dictionaries.",
-    "stack": "React + Vite + TypeScript SPA (app/) over a Hono + node:sqlite backend (server/). The research server (remote/, Hono + Postgres + Better Auth) now also serves the Qur'an corpus at /corpus. MCP server (mcp/) exposes corpus + research to an AI. Electron desktop wrapper (electron/)."
+    "stack": "React + Vite + TypeScript SPA (app/), run on the reader's machine (desktop, or npm start). The research server (remote/, Hono + Postgres + Better Auth) holds the Qur'an corpus, every account's private research, and the community. MCP server (mcp/) lets an AI study and propose, as its user. The local server (server/) remains for local tools, tests and bringing an old research.db in. Electron desktop wrapper (electron/)."
   },
   "principle": {
-    "core": "Features are ROLE-based (what you may do); resources are PLAN-based (what you may read). Your own research stays local and yours.",
-    "constraint": "You can only enforceably charge for what the server holds, never for what already sits on the reader's disk.",
-    "consequence": "The corpus and the community both live on the cloud and are plan-gated there (the admin can make either free). research.db stays on the reader's machine; the app and MCP read the corpus from the cloud."
+    "core": "Features are ROLE-based (what you may do); resources are PLAN-based (what you may read). Your research is private to your account; only what you publish is shared, only once approved, and only with the audience it names.",
+    "constraint": "You can only enforceably charge for what the server holds.",
+    "consequence": "Everything lives on the research server: the corpus, each account's research (its own Postgres schema), the community. The app and the MCP read and write it as the signed-in user."
   },
   "components": [
     {
       "id": "app",
       "name": "App",
-      "runtime": "React 18 + Vite SPA",
-      "role": "Reader + investigation UI. Reads the CORPUS from the research server (${REMOTE_URL}/corpus, with the session cookie), the reader's RESEARCH from the local server (/api/v1/research), and the community from the research server. Maintainers get an Admin tab.",
+      "runtime": "React 18 + Vite SPA (on the reader's machine)",
+      "role": "Reads the corpus (${REMOTE_URL}/corpus) and reads/writes the reader's research (${REMOTE_URL}/research) with the session cookie; the community likewise. Settings → Your research: download a copy, import a research.db, bring this computer's old research in. Maintainers get an Admin tab.",
       "path": "app/"
     },
     {
       "id": "server",
       "name": "Local server",
-      "runtime": "Hono on Node node:sqlite",
-      "role": "Owns research.db (read-write). Still serves quran.db at /api/v1 for local tools/tests, but the app no longer reads the corpus from it. Its corpus code is the SAME code the cloud runs (server/src/corpus-*.ts, two drivers).",
+      "runtime": "Hono on node:sqlite",
+      "role": "No longer where research lives. Serves the same corpus and research routes over local files — for tests, local tools, and GET /api/v1/research/file, which the app uploads to bring an old research.db into the account.",
       "path": "server/"
     },
     {
       "id": "mcp",
       "name": "MCP",
-      "runtime": "stdio MCP server (Node/tsx)",
-      "role": "Lets an AI study the corpus + the reader's research and propose notes/indications/board items (source='ai'). Corpus: remote by default (REMOTE_URL + REMOTE_TOKEN, reads as its user) or MQ_CORPUS=local (quran.db). Research: the local research.db the app has open, behind the write guard.",
+      "runtime": "stdio MCP server",
+      "role": "An AI studies the corpus and proposes into the reader's research, AS the reader (REMOTE_TOKEN). The server enforces the AI boundary on every token write. MQ_CORPUS=local / MQ_RESEARCH=local use local files instead.",
       "path": "mcp/"
     },
     {
       "id": "remote",
       "name": "Research server",
       "runtime": "Hono + Postgres + Better Auth",
-      "role": "The cloud: auth (cookie or personal API token), roles, plan tiers, resource access rules, the corpus at /corpus (Postgres), the community (claims, readings, divergences), publishing, and the Admin endpoints.",
+      "role": "Auth (cookie or API token), the role ladder, plan tiers, resource rules, the corpus (/corpus), each account's research (/research, one schema per account), the community with audiences, Admin endpoints. Deployed with Docker + Caddy (DEPLOY.md).",
       "path": "remote/",
       "port": 8100
     },
@@ -70,31 +70,35 @@
       "corrections": "Signed, versioned patch files (CORPUS.md)."
     },
     "research.db": {
+      "kind": "personal research (local file)",
+      "access": "read-write",
+      "location": "the reader's machine — before research moved to the account",
+      "holds": "The same tables. Now: what 'Bring it into my account' uploads (the file itself is never changed), the local driver for tests and MQ_RESEARCH=local, and the format of 'Download a copy'.",
+      "ownership": "A one-row owner table (name, email, uuidv5-of-email) — the same uuid the account's research carries, so imported work stays theirs."
+    },
+    "research (Postgres, one schema per account)": {
       "kind": "personal research",
-      "access": "read-write, self-migrating",
-      "location": "local; the one irreplaceable file",
-      "holds": "cases + board layout, form_research (established meanings) + form_revisions, trails, notes, word_indications (+ refinements), user_root_meanings, motifs, compare_sets, settings. Plus own-outbox derived_submissions / derived_proposed_claims.",
-      "ownership": "A one-row owner table (name, email, uuidv5-of-email) makes the file self-describing and portable.",
-      "aiWrites": "MCP proposals are tagged source='ai' and stay proposals until the reader accepts them in the app.",
-      "onCloud": false
+      "access": "private to its account; read-write by that account (and its AI, within the boundary)",
+      "location": "the research server — schema research_<account id>",
+      "holds": "cases + board layout, form_research + form_revisions, trails, notes, word_indications (+ refinements), user_root_meanings, motifs, comparisons, settings, and the outbox of what was published.",
+      "isolation": "Every request runs in one transaction with SET LOCAL search_path to the signed-in account's schema — taken only from the authenticated principal. No route reads another person's research; staff included.",
+      "shape": "Derived from the research.db DDL itself (INTEGER→BIGINT, TEXT→TEXT COLLATE \"C\"), so a file and a schema can't drift. Proven: 78 scripted research calls answer identically over both (research-cloud.test.ts).",
+      "transfer": "POST /research/import merges a research.db in (adds, never overwrites or deletes; twice adds nothing); GET /research/export downloads a complete research.db.",
+      "code": "server/src/research.ts (ResearchStore, async over ResearchDb), remote/src/research/{schema,pg-research,serve}.ts, server/src/research-transfer.ts"
     }
   },
   "accessModel": {
     "rule": "Features are role-based; resources are plan-based. Everything fails closed.",
     "roles": {
-      "ladder": [
-        "reader",
-        "researcher",
-        "moderator",
-        "maintainer"
-      ],
-      "meaning": "What you may DO. requireRole(min) in remote/src/roles.ts → 401 signed out, 403 too low.",
+      "ladder": "DATA: table role_levels (name, rank, label, fixed). Seeded reader 0 · student 10 · researcher 20 · scholar 30 · moderator 80 · maintainer 100. reader, moderator and maintainer are FIXED (the staff powers hang on them); learner rungs sit between (rank 1–79) and are the maintainer's to add, rename, re-rank or remove.",
+      "meaning": "A person's standing — what they may DO. A principal carries its role's rank (loaded at sign-in), so guards compare ranks; unknown roles rank below everyone.",
       "features": {
-        "pull the group's readings": "reader",
-        "submit work / propose claims": "researcher",
-        "approve / object": "moderator",
-        "establish, invite, administer (Admin tab)": "maintainer"
-      }
+        "read the community, keep research": "reader (+ the community plan rule)",
+        "publish (submit / propose)": "feature_access 'publish' — researcher by default, the maintainer's choice",
+        "review": "moderator (fixed)",
+        "establish, invite, administer": "maintainer (fixed, session only)"
+      },
+      "file": "remote/src/roles.ts (guards, no DB), remote/src/role-ladder.ts (ladder, requireFeature, audiences)"
     },
     "plans": {
       "ladder": "DATA: table plan_tiers (name, rank, label). Seeded free (0) < pro (100); a maintainer adds e.g. student 50, scholar 200 in the Admin tab. free is always rank 0.",
@@ -115,8 +119,13 @@
       "refusal": "requireResource(kind) → 401 {detail} if a sign-in is needed, 402 {detail, resource, plan} if a higher plan is.",
       "file": "remote/src/resource-access.ts (canRead, wholeMin, requireResource, itemFilter)"
     },
-    "edit": "In the app: Admin tab (maintainers). Also `npm run access -- show | tier | tier-remove | corpus | community | translation | lexicon` and `npm run set-plan -w @alsiraat/remote -- <email> <tier> [days]`.",
-    "billing": "Not wired yet. A maintainer grants plans in the Admin tab (or set-plan / POST /plan). That is the single seam a payment provider slots into."
+    "edit": "In the app: Admin → Roles (the ladder, 'What each role may do'), Plan tiers, Who can read, Translations, Dictionaries, People. Scripted: npm run access / set-plan.",
+    "billing": "Not wired yet. A maintainer grants plans in the Admin tab (or set-plan / POST /plan). That is the single seam a payment provider slots into.",
+    "audiences": {
+      "rule": "Every published result (claim version, submission) carries an audience: at least a role AND at least a plan (either may be empty). The author proposes it; the reviewer confirms or changes it when approving/establishing. Nothing is visible before approval except to its author and staff.",
+      "enforcement": "Every community read — claims, the group's reading, dissents, readings/chips, divergences and their count, the pull — filters by the viewer's role rank and plan. Authors always see their own; staff (moderator+) see everything, since they review it. The community resource rule (plan) still applies to all of it.",
+      "file": "remote/src/role-ladder.ts makeAudienceCheck; claims.ts / pull.ts take a CanSee"
+    }
   },
   "auth": {
     "cookie": "Better Auth session cookie — the app (credentials: 'include').",
@@ -249,8 +258,8 @@
     {
       "method": "POST",
       "path": "/submissions, /claims",
-      "role": "researcher",
-      "note": "features: role only"
+      "role": "feature 'publish'",
+      "note": "the publish rule; body.audience {minRole, minPlan}"
     },
     {
       "method": "POST",
@@ -267,6 +276,42 @@
       "path": "/invites/redeem",
       "role": null,
       "note": "the invite code is the credential"
+    },
+    {
+      "method": "GET|PUT|DELETE",
+      "path": "/research/*",
+      "role": "reader",
+      "note": "the signed-in account's own research — same paths/JSON as the local /api/v1/research (cases, notes, indications, motifs, comparisons, settings, outbox). Token requests get the AI boundary."
+    },
+    {
+      "method": "GET",
+      "path": "/research/export",
+      "role": "reader",
+      "note": "a complete research.db download"
+    },
+    {
+      "method": "POST",
+      "path": "/research/import",
+      "role": "reader",
+      "note": "merge a research.db in (session only; ≤100 MB)"
+    },
+    {
+      "method": "GET",
+      "path": "/roles",
+      "role": null,
+      "note": "public: the role ladder"
+    },
+    {
+      "method": "PUT|DELETE",
+      "path": "/roles/:name",
+      "role": "maintainer",
+      "note": "learner rungs (1–79); fixed rungs: label only"
+    },
+    {
+      "method": "GET|PUT",
+      "path": "/feature-access[/:feature]",
+      "role": "public / maintainer",
+      "note": "publishing's minimum role"
     }
   ],
   "phases": [
@@ -338,13 +383,40 @@
       "summary": "Verified locally end to end: image build, config refusal, migrations, corpus load in the container, HTTPS via Caddy, cross-site cookie, reset flow, backup."
     },
     {
+      "id": "research-cloud",
+      "title": "Research in Postgres, private per account",
+      "status": "done",
+      "summary": "One research codebase over a driver (SQLite/Postgres); each account its own schema; the app and the MCP read/write it as the user; import/export; the AI boundary enforced by the server."
+    },
+    {
+      "id": "roles-audience",
+      "title": "Roles as data; audiences on published results",
+      "status": "done",
+      "summary": "role_levels ladder (student, scholar, …), publishing's role configurable, every published result shown only to its audience (role + plan), proposed by the author and confirmed by the reviewer."
+    },
+    {
       "id": "next",
       "title": "Billing provider",
       "status": "todo",
-      "summary": "Slots into the plan grant (Admin tab / set-plan) with no rework of the gates."
+      "summary": "Slots into the plan grant with no rework of the gates."
     }
   ],
   "decisions": [
+    {
+      "id": "research-in-account",
+      "decision": "Research lives on the research server, private to each account, in its own Postgres schema.",
+      "why": "The maintainer's call, 2026-09-27. It follows the reader across devices and is backed up centrally; privacy by construction (schema-per-account, search_path from the principal only). Cost: studying needs the server; the operator can technically read the database, like any hosted app."
+    },
+    {
+      "id": "roles-are-standing",
+      "decision": "student and scholar are ROLES (standing), not plan tiers; plans stay about paying.",
+      "why": "The maintainer's call. A published result can then say 'scholar role or higher AND pro plan'."
+    },
+    {
+      "id": "audience-proposed-confirmed",
+      "decision": "The publisher proposes a result's audience; the reviewer confirms or changes it at approval.",
+      "why": "The maintainer's call. The author knows who it's for; the reviewer is accountable for what the community sees."
+    },
     {
       "id": "features-role-resources-plan",
       "decision": "Every feature is role-based; every resource is plan-based.",
@@ -359,11 +431,6 @@
       "id": "one-corpus-codebase",
       "decision": "One corpus code path over a driver interface, not a Postgres twin.",
       "why": "A twin drifts. With one codebase, parity is a property of SQL portability, proven by comparing the same routes over both drivers."
-    },
-    {
-      "id": "research-stays-local",
-      "decision": "research.db stays on the reader's machine; the MCP writes to it behind the guard.",
-      "why": "It is the reader's irreplaceable work, and the AI-proposes → app-reviews loop needs both to see the same file."
     },
     {
       "id": "admin-in-app",
@@ -500,6 +567,42 @@
     {
       "path": "INSTRUCTIONS.md, CORPUS.md, REMOTE.md",
       "purpose": "the deeper references"
+    },
+    {
+      "path": "server/src/research.ts, research-db.ts",
+      "purpose": "ResearchStore — async, one codebase over SQLite or Postgres"
+    },
+    {
+      "path": "server/src/research-boundary.ts",
+      "purpose": "the AI write boundary the server enforces for token requests"
+    },
+    {
+      "path": "server/src/research-transfer.ts",
+      "purpose": "copyResearch — import (merge) and export (a research.db)"
+    },
+    {
+      "path": "remote/src/research/{schema,pg-research,serve}.ts",
+      "purpose": "per-account schemas, the Postgres driver, /research with the per-request transaction"
+    },
+    {
+      "path": "remote/src/role-ladder.ts",
+      "purpose": "the role ladder, requireFeature, audiences"
+    },
+    {
+      "path": "remote/migrations/0009_roles_audience.sql",
+      "purpose": "role_levels, feature_access, audience columns"
+    },
+    {
+      "path": "mcp/src/research-client.ts",
+      "purpose": "the MCP's research over HTTP (or a local file)"
+    },
+    {
+      "path": "app/src/components/AudiencePicker.tsx",
+      "purpose": "who can see it once approved"
+    },
+    {
+      "path": "remote/test/{research-cloud,audience}.test.ts, server/test/mcp-remote-research.test.ts",
+      "purpose": "parity/privacy/boundary; ladder/publish/audiences; the MCP over cloud research"
     }
   ],
   "glossary": {
@@ -511,16 +614,18 @@
     "locally established": "A form meaning YOU established, in your own research.db.",
     "globally established": "The reading moderators accepted as the group's; lives on the cloud.",
     "dissent": "A recorded disagreement with a globally established reading, preserved not resolved.",
-    "divergence (⚖)": "A form you established whose meaning differs from the group's. Computed live on the remote."
+    "divergence (⚖)": "A form you established whose meaning differs from the group's. Computed live on the remote.",
+    "audience": "Who may see a published result: at least a role and at least a plan. Proposed by the author, confirmed by the reviewer.",
+    "role ladder": "reader < student < researcher < scholar < moderator < maintainer — data the maintainer edits; the three fixed rungs carry the staff powers."
   },
-  "notice": "The maintainer account (mansoor@wimetrix.com) is maintainer · FREE, while the corpus rule is pro — so it currently gets 'Reading this needs the pro plan'. Fix in the Admin tab (People → Change → Pro, or Who can read → corpus → Signed in), or `npm run set-plan -w @alsiraat/remote -- mansoor@wimetrix.com pro`.",
+  "notice": "The maintainer account (mansoor@wimetrix.com) is maintainer · free, and the corpus + community rules are pro — so the app will say reading needs the pro plan. Admin → People → Change → Pro, or Admin → Who can read. Their existing research is still in the local research.db: Settings → Your research → 'Bring it into my account' moves a copy into the account (the file stays as it is).",
   "openQuestions": [
     "Billing provider integration (the plan-grant seam) — next.",
-    "Should a maintainer bypass resource gates automatically? Today staff need a plan like anyone else (explicit, but easy to trip over).",
-    "Offline reading in the app: today it needs the research server. A signed local cache of the corpus is possible later if wanted.",
-    "Corpus patches: the signed patch channel still targets quran.db; a Postgres target is needed for corrections to reach the cloud copy.",
-    "Edit SHARED_RESEARCH.md to mark the superseded offline-community + derived-mirror decisions.",
-    "Upgrade vitest 2 → current (dev-only advisories; a major version)."
+    "Deleting an account: drop its research schema too (no delete-account feature yet).",
+    "Should maintainers bypass resource gates automatically?",
+    "Corpus patches: a Postgres target so corrections reach the cloud copy.",
+    "Submissions have an audience but no review UI in the app yet (claims do).",
+    "Upgrade vitest 2 → current (dev-only advisories)."
   ],
   "deployment": {
     "guide": "DEPLOY.md",

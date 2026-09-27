@@ -1,9 +1,9 @@
 # Deploying the research server
 
 The research server (`remote/`) is the one piece that runs in the cloud: it serves the Qur'an
-corpus to every reader's app and MCP, holds accounts, plans and the community. Each reader's
-**research stays on their own machine** — the app always runs locally (the desktop app, or
-`npm start`), and talks to this server over HTTPS.
+corpus to every reader's app and MCP, and holds **every reader's research** (private, one schema per
+account), accounts, roles, plans and the community. The app itself runs on the reader's machine (the
+desktop app, or `npm start`) and talks to this server over HTTPS.
 
 This guide puts it on **one Linux VPS with Docker**: Postgres, the server, and Caddy in front for
 automatic HTTPS. Everything is in [`deploy/`](deploy/).
@@ -12,9 +12,10 @@ automatic HTTPS. Everything is in [`deploy/`](deploy/).
 reader's machine                                  your VPS (docker compose)
 ┌──────────────────────┐   HTTPS (cookie or        ┌────────── Caddy :443 ──────────┐
 │ app  (localhost)     │ ── API token) ──────────▶ │  ↓                              │
-│ local server + your  │                           │  research server :8100          │
-│ research.db          │                           │  ↓                              │
-│ MCP (AI assistant)   │                           │  Postgres (corpus + community)  │
+│ MCP (AI assistant)   │                           │  research server :8100          │
+│                      │                           │  ↓                              │
+│                      │                           │  Postgres: corpus · each        │
+│                      │                           │  account's research · community │
 └──────────────────────┘                           └─────────────────────────────────┘
 ```
 
@@ -137,8 +138,10 @@ sign-in — use the desktop app, or allow cookies for the server's domain.
 
 ### Backups
 
-The one thing to protect is the Postgres volume (accounts, plans, the community's readings; the
-corpus can be reloaded from `quran.db`). A nightly compressed dump, kept 14 days:
+The one thing to protect is the Postgres volume: **every reader's research**, accounts, plans and
+the community's readings (the corpus can be reloaded from `quran.db`). Readers can also download their
+own copy at any time (Settings → *Your research* → Download a copy). A nightly compressed dump, kept
+14 days:
 
 ```bash
 chmod +x /opt/mqrg/deploy/backup.sh

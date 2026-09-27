@@ -1,13 +1,15 @@
 # Remote research channel (`remote/`)
 
-The invite-only research server: it serves the **Qur'an corpus** to the app and the MCP, and is
-where research is published, reviewed, and agreed (`SHARED_RESEARCH.md`). It is a **separate
-service** from the local API, which owns the reader's own `research.db` and never leaves their machine.
+The invite-only research server. It holds **everything**: the **Qur'an corpus**, **each account's own
+research** (private, one Postgres schema per account), and the **community**, where research is
+published, reviewed, and agreed (`SHARED_RESEARCH.md`). The app and the MCP read and write it as the
+signed-in user.
 
 Backed by **Postgres** (where a structured, multi-writer, transactional store earns its place —
-`SHARED_RESEARCH.md` §3). The corpus lives in its own schema, `corpus`, loaded from `quran.db` and
-proven identical (`CORPUS.md`). Access follows one rule: **features are role-based, resources are
-plan-based** (below).
+`SHARED_RESEARCH.md` §3). The corpus lives in schema `corpus`, loaded from `quran.db` and proven
+identical (`CORPUS.md`); each account's research in `research_<account id>`. Access follows one rule:
+**features are role-based, resources are plan-based**, and every published result is seen only by its
+**audience** (below).
 
 ## What's built (Phase 3)
 
@@ -141,9 +143,14 @@ reader's `localhost` — different sites — so over HTTPS the session cookie is
 | `GET /admin/resources` | maintainer — every translation and lexicon with its rule, unfiltered |
 | `GET\|POST /corpus/*` | resource `corpus` — the whole Qur'an corpus from Postgres (below) |
 | `GET /community/readings` · `POST /divergences` · `GET /claims` · `GET /pull` | reader+ and resource `community` |
-| `POST /submissions` · `POST /claims` | researcher+ — offer work upstream (a feature: role only) |
-| `GET /submissions` | researcher+ — your outbox |
-| `GET /submissions/:id` | researcher+ |
+| `POST /submissions` · `POST /claims` | the **publish** role (researcher by default) — `{…, audience: {minRole, minPlan}}` |
+| `GET /submissions` | any account — your outbox |
+| `GET /submissions/:id` | its author, or staff |
+| `POST /claims/:id/versions/:v/review` · `…/establish` | moderator · maintainer — `{…, audience}` confirms or changes who may see it |
+| `GET\|PUT\|DELETE /research/*` | any account — **your own research** (same paths and JSON as the local `/api/v1/research`) |
+| `GET /research/export` · `POST /research/import` | any account — download a research.db · merge one in (session only) |
+| `GET /roles` · `PUT\|DELETE /roles/:name` | public · maintainer — the role ladder |
+| `GET /feature-access` · `PUT /feature-access/:feature` | public · maintainer — publishing's minimum role |
 
 **Signing in.** The app uses the Better Auth session cookie. A headless client — the MCP — uses a
 **personal API token** instead: `Authorization: Bearer mqrg_…`. Tokens are made in the app (Account →
@@ -154,19 +161,40 @@ exactly as its user, roles and plan included (`src/api-tokens.ts`, `src/session.
 
 Two independent axes, one question each:
 
-- **Features** — what you may **do** — are gated by **role** (`requireRole`, `src/roles.ts`):
-  publishing needs `researcher`, review `moderator`, establishing, inviting and administering
-  `maintainer`. Below it: 401 (signed out) or 403 (role too low).
+- **Features** — what you may **do** — are gated by **role** (`requireRole` / `requireFeature`,
+  `src/roles.ts`, `src/role-ladder.ts`): keeping research needs any account; publishing needs the role
+  the maintainer chose (researcher by default); review `moderator`; establishing, inviting and
+  administering `maintainer`. Below it: 401 (signed out) or 403 (role too low).
 - **Resources** — what you may **read** — are gated by **plan** (`requireResource`,
   `src/resource-access.ts`). Below it: 401 if a sign-in is needed, **402** `{detail, resource, plan}`
   if a higher plan is.
 
+### The role ladder
+
+Roles are a person's **standing**, and the ladder is **data** (`role_levels`):
+`reader 0 · student 10 · researcher 20 · scholar 30 · moderator 80 · maintainer 100`. Three rungs are
+**fixed** because the staff powers hang on them: reader (the bottom), moderator (review) and
+maintainer (administer). Between reader and moderator a maintainer adds, renames, re-ranks or removes
+learner rungs (rank 1–79). A higher rank can do everything a lower one can. A principal carries its
+role's rank (loaded at sign-in), so every guard is a comparison; an unknown role ranks below everyone.
+Which role **publishing** needs is the maintainer's choice (`feature_access`, researcher by default).
+
+### Audiences: who sees a published result
+
+Every published result (a claim version, a submission) carries an **audience**: at least a role
+**and** at least a plan (either may be empty), e.g. *scholars and above, on Pro*. The **author
+proposes** it when publishing; the **reviewer confirms or changes** it when approving or establishing.
+Every read of the community (claims, the group's reading, dissents, reading chips, ⚖ divergence and
+its count, the pull) shows a viewer only what their role *and* plan reach. Authors always see their
+own; moderators and maintainers see everything, since they review it. The community resource rule
+(below) still applies to all of it.
+
 ### The plan ladder
 
 The ladder is **data**, in `plan_tiers` — each tier a name, a **rank** and a label — so a
-maintainer defines it at runtime, e.g. `free (0) < student (50) < pro (100) < scholar (200)`. A higher
-rank unlocks everything a lower one does. `free` is always rank 0. Tier names are free-form: you can
-call one "researcher" or "admin", but a tier is only ever *what's paid for* — the power to administer
+maintainer defines it at runtime, e.g. `free (0) < pro (100) < premium (200)`. A higher rank unlocks
+everything a lower one does. `free` is always rank 0. Tier names are free-form, but a tier is only
+ever *what's paid for*: standing (student, scholar) is a **role**, and the power to administer
 is the `maintainer` **role**.
 
 Every rule fails **closed**: an unknown tier never passes, and a **lapsed** plan (`plan_expires_at` in
@@ -217,6 +245,34 @@ provider slots into. `GET /me` returns `plan`, `planLabel`, `planRank`, `planExp
 
 **Staff need a plan too.** A maintainer on `free` can administer everything but still gets 402 on a
 `pro` resource — grant yourself a tier (or open the resource) if that's not what you want.
+
+## Your research, in your account
+
+Each account's research (cases and boards, notes and questions, indications and refinements, motifs,
+comparisons, settings, and the outbox of what was published) lives in its **own Postgres schema**,
+`research_<account id>`, created on first use (`src/research/schema.ts`). Its tables are derived from
+the research.db DDL itself, so a file and a schema can't drift.
+
+**Private by construction.** Every `/research` request runs in one transaction on one connection with
+`SET LOCAL search_path` to the signed-in account's schema, taken only from the authenticated
+principal, never from the request. The shared research code never names a schema, so it can only
+ever see that person's tables. No route reads another person's research, for staff either.
+
+**The same code as a file.** `ResearchStore` (`server/src/research.ts`) is async over a small driver
+interface: SQLite for a research.db, Postgres here (`src/research/pg-research.ts`). The routes are the
+local server's own (`server/src/routes/research.ts`). `remote/test/research-cloud.test.ts` runs 78
+scripted research calls against both and requires identical answers.
+
+**The AI boundary, on the server.** A request made with an API token (the MCP) may only propose:
+records are tagged `ai` and are never primary; nothing is deleted or overwritten; on a case (even
+yours) it may add its own items but never touch yours, the verdict, the status or established
+meanings; it can't publish, accept its own proposals, or change settings
+(`server/src/research-boundary.ts`).
+
+**In and out.** `POST /research/import` merges a research.db into the account: it adds what isn't
+there, never overwrites or deletes, is atomic, and accepts up to 100 MB; importing twice adds nothing.
+The app offers it as *Bring it into my account* (reading the local server's research.db, which is left
+untouched) and *Import a research.db…*. `GET /research/export` downloads a complete research.db.
 
 ## The corpus, served from the cloud
 

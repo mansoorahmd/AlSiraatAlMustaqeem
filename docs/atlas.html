@@ -214,7 +214,7 @@
       <li><a href="#money">Features &amp; resources</a></li>
       <li><a href="#gate">The gates</a></li>
       <li><a href="#community">Community</a></li>
-      <li><a href="#publishing">Publishing</a></li>
+      <li><a href="#publishing">Publishing &amp; audience</a></li>
       <li><a href="#mcp">The MCP</a></li>
       <li><a href="#admin">Admin</a></li>
       <li><a href="#roadmap">Roadmap &amp; status</a></li>
@@ -235,21 +235,20 @@
         back and reply in the same threads, marked <span style="color:var(--lapis);font-weight:600">Claude</span>.
         The <a href="#log">Communication log</a> at the end shows everything in one place.
       </div>
-      <p style="font-size:13px;color:var(--ink-soft)">The one rule to hold onto: <strong>features are role-based,
-        resources are plan-based.</strong> A <em>role</em> says what you may <em>do</em> (publish, review, administer);
-        a <em>plan</em> says what you may <em>read</em> (the corpus, the community, each translation and dictionary).
-        Your own research stays on your machine and is always yours. Behind it, one constraint: <em>you can only charge
-        for what the server holds</em> — which is why the corpus now lives on the research server.</p>
+      <p style="font-size:13px;color:var(--ink-soft)">The one rule to hold onto: <strong>features are role-based, resources are plan-based</strong> — and your
+        research is <em>yours</em>: private in your account until you publish it, and then seen only by the audience it
+        names, once a reviewer approves it.</p>
     </section>
 
     <section id="system">
       <h2><span class="num">01</span>System map</h2>
-      <p>Your <strong>research</strong> lives on your machine. The <strong>Qur'an corpus</strong> and the
-        <strong>community</strong> live on the research server, and both the app and the AI read them from there —
-        the app with your sign-in, the AI with a token that acts as you. Every read passes the same gates.</p>
+      <p>Everything lives on the <strong>research server</strong>: the Qur'an corpus, <strong>your research</strong>
+        (private, in your own schema) and the community. The app on your machine and the AI (through the MCP) read and
+        write it as you — the app with your sign-in, the AI with a token that acts as you. Every request passes the same
+        gates.</p>
       <figure>
         <div class="figbody">
-          <svg viewBox="0 0 940 480" role="img" aria-label="On your machine: the app, the local server and research.db, the MCP, and a local copy of quran.db. On the cloud: the research server with sign-in, gates, the admin tab, the corpus in Postgres and the community. The app reads the corpus and community from the cloud with its session; the MCP reads the corpus with an API token; both write research locally.">
+          <svg viewBox="0 0 940 480" role="img" aria-label="On your machine: the app, the MCP, and an older research.db that can be brought in. On the cloud: the research server with sign-in, the gates, admin, the corpus, each account's private research, and the community. The app and MCP reach it over the network with a session or token.">
             <defs>
               <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M0 0L10 5L0 10z" fill="currentColor"/>
@@ -261,120 +260,105 @@
                 <path d="M0 0L10 5L0 10z" fill="var(--gold)"/>
               </marker>
             </defs>
-            <!-- regions -->
-            <rect x="16" y="40" width="444" height="420" rx="14" fill="var(--surface-2)" stroke="var(--free)" stroke-width="1.5"/>
-            <text x="30" y="30" font-family="var(--mono)" font-size="13" fill="var(--free)">YOUR MACHINE · your research</text>
-            <rect x="500" y="40" width="424" height="420" rx="14" fill="var(--surface-2)" stroke="var(--lapis)" stroke-width="1.5"/>
-            <text x="514" y="30" font-family="var(--mono)" font-size="13" fill="var(--lapis)">THE CLOUD · research server</text>
-            <line x1="480" y1="26" x2="480" y2="470" stroke="var(--gold)" stroke-width="1.5" stroke-dasharray="3 5"/>
-            <text x="480" y="477" text-anchor="middle" font-family="var(--mono)" font-size="10.5" fill="var(--gold)">network · role &amp; plan gates</text>
+            <rect x="16" y="40" width="404" height="420" rx="14" fill="var(--surface-2)" stroke="var(--free)" stroke-width="1.5"/>
+            <text x="30" y="30" font-family="var(--mono)" font-size="13" fill="var(--free)">YOUR MACHINE</text>
+            <rect x="470" y="40" width="454" height="420" rx="14" fill="var(--surface-2)" stroke="var(--lapis)" stroke-width="1.5"/>
+            <text x="484" y="30" font-family="var(--mono)" font-size="13" fill="var(--lapis)">THE CLOUD · research server</text>
+            <line x1="445" y1="26" x2="445" y2="470" stroke="var(--gold)" stroke-width="1.5" stroke-dasharray="3 5"/>
+            <text x="445" y="477" text-anchor="middle" font-family="var(--mono)" font-size="10.5" fill="var(--gold)">network · role &amp; plan gates</text>
 
-            <!-- local -->
             <g font-family="var(--sans)" font-size="14">
-              <rect x="52" y="70" width="150" height="52" rx="9" fill="var(--surface)" stroke="currentColor"/>
-              <text x="127" y="92" text-anchor="middle" font-weight="600">App</text>
-              <text x="127" y="109" text-anchor="middle" font-size="11" fill="var(--ink-soft)">React SPA</text>
+              <rect x="52" y="80" width="170" height="56" rx="9" fill="var(--surface)" stroke="currentColor"/>
+              <text x="137" y="104" text-anchor="middle" font-weight="600">App</text>
+              <text x="137" y="122" text-anchor="middle" font-size="11" fill="var(--ink-soft)">desktop or npm start</text>
 
-              <rect x="52" y="176" width="150" height="52" rx="9" fill="var(--surface)" stroke="currentColor"/>
-              <text x="127" y="198" text-anchor="middle" font-weight="600">Local server</text>
-              <text x="127" y="215" text-anchor="middle" font-size="11" fill="var(--ink-soft)">Hono · your research</text>
+              <rect x="52" y="250" width="170" height="56" rx="9" fill="var(--surface)" stroke="currentColor"/>
+              <text x="137" y="274" text-anchor="middle" font-weight="600">MCP</text>
+              <text x="137" y="292" text-anchor="middle" font-size="11" fill="var(--ink-soft)">AI study · stdio</text>
 
-              <rect x="250" y="180" width="180" height="46" rx="9" fill="var(--surface)" stroke="currentColor"/>
-              <text x="264" y="201" font-weight="600" font-size="13">research.db</text>
-              <text x="264" y="217" font-size="11" fill="var(--ink-soft)">your work · read + write</text>
-
-              <rect x="52" y="320" width="150" height="52" rx="9" fill="var(--surface)" stroke="currentColor"/>
-              <text x="127" y="342" text-anchor="middle" font-weight="600">MCP</text>
-              <text x="127" y="359" text-anchor="middle" font-size="11" fill="var(--ink-soft)">AI study · stdio</text>
-
-              <rect x="250" y="396" width="180" height="42" rx="9" fill="var(--surface)" stroke="var(--gold)" stroke-dasharray="4 4"/>
-              <text x="264" y="414" font-weight="600" font-size="12.5">quran.db</text>
-              <text x="264" y="430" font-size="10.5" fill="var(--ink-soft)">local copy · offline, tests</text>
+              <rect x="52" y="378" width="200" height="50" rx="9" fill="var(--surface)" stroke="var(--gold)" stroke-dasharray="4 4"/>
+              <text x="66" y="398" font-weight="600" font-size="12.5">research.db (from before)</text>
+              <text x="66" y="415" font-size="10.5" fill="var(--ink-soft)">brought in once · left as it is</text>
             </g>
-            <g stroke="currentColor" stroke-width="1.6" fill="none">
-              <line x1="127" y1="122" x2="127" y2="174" marker-end="url(#ah)" marker-start="url(#ah)"/>
-              <line x1="202" y1="203" x2="248" y2="203" marker-end="url(#ah)" marker-start="url(#ah)"/>
-              <line x1="180" y1="320" x2="290" y2="228" marker-end="url(#ah)" marker-start="url(#ah)"/>
-            </g>
-            <text x="135" y="152" font-size="10.5" fill="var(--ink-soft)" font-family="var(--mono)">/api/v1/research</text>
-            <line x1="127" y1="372" x2="248" y2="414" stroke="var(--gold)" stroke-width="1.4" fill="none" stroke-dasharray="4 4" marker-end="url(#ahG)"/>
-            <text x="60" y="400" font-size="10.5" fill="var(--gold)" font-family="var(--mono)">MQ_CORPUS=local</text>
 
-            <!-- cloud -->
             <g font-family="var(--sans)">
-              <rect x="520" y="70" width="384" height="370" rx="10" fill="var(--surface)" stroke="var(--lapis)"/>
-              <text x="712" y="94" text-anchor="middle" font-weight="600" font-size="15">Research server</text>
-              <text x="712" y="111" text-anchor="middle" font-size="11" fill="var(--ink-soft)">Hono · Postgres · Better Auth</text>
-              <rect x="536" y="126" width="352" height="50" rx="8" fill="var(--surface-2)" stroke="currentColor"/>
-              <text x="548" y="146" font-size="12.5" font-weight="600">Sign-in</text>
-              <text x="548" y="164" font-size="11" fill="var(--ink-soft)">session cookie (app) · API token mqrg_… (MCP)</text>
-              <rect x="536" y="188" width="352" height="58" rx="8" fill="var(--surface-2)" stroke="var(--paid)"/>
-              <text x="548" y="209" font-size="12.5" font-weight="600" fill="var(--paid)">The gates</text>
-              <text x="548" y="228" font-size="11" fill="var(--ink-soft)">features → role (requireRole) · resources → plan (requireResource)</text>
-              <rect x="536" y="258" width="352" height="54" rx="8" fill="var(--surface-2)" stroke="currentColor"/>
-              <text x="548" y="279" font-size="12.5" font-weight="600">Admin · maintainers</text>
-              <text x="548" y="297" font-size="11" fill="var(--ink-soft)">plan tiers · who can read what · people</text>
-              <rect x="536" y="324" width="170" height="100" rx="8" fill="var(--surface-2)" stroke="var(--gold)"/>
-              <text x="548" y="346" font-size="12.5" font-weight="600" fill="var(--gold)">Corpus</text>
-              <text x="548" y="364" font-size="11" fill="var(--ink-soft)">Postgres · /corpus</text>
-              <text x="548" y="380" font-size="11" fill="var(--ink-soft)">text · words · roots</text>
-              <text x="548" y="396" font-size="11" fill="var(--ink-soft)">lexicons · search</text>
-              <rect x="718" y="324" width="170" height="100" rx="8" fill="var(--surface-2)" stroke="var(--lapis)"/>
-              <text x="730" y="346" font-size="12.5" font-weight="600" fill="var(--lapis)">Community</text>
-              <text x="730" y="364" font-size="11" fill="var(--ink-soft)">claims · reviews</text>
-              <text x="730" y="380" font-size="11" fill="var(--ink-soft)">readings · dissent</text>
-              <text x="730" y="396" font-size="11" fill="var(--ink-soft)">⚖ divergence</text>
+              <rect x="490" y="70" width="414" height="370" rx="10" fill="var(--surface)" stroke="var(--lapis)"/>
+              <text x="697" y="94" text-anchor="middle" font-weight="600" font-size="15">Research server</text>
+              <text x="697" y="111" text-anchor="middle" font-size="11" fill="var(--ink-soft)">Hono · Postgres · Better Auth</text>
+              <rect x="506" y="124" width="382" height="46" rx="8" fill="var(--surface-2)" stroke="currentColor"/>
+              <text x="518" y="143" font-size="12.5" font-weight="600">Sign-in</text>
+              <text x="518" y="160" font-size="11" fill="var(--ink-soft)">session cookie (app) · API token mqrg_… (MCP)</text>
+              <rect x="506" y="178" width="382" height="52" rx="8" fill="var(--surface-2)" stroke="var(--paid)"/>
+              <text x="518" y="198" font-size="12.5" font-weight="600" fill="var(--paid)">The gates</text>
+              <text x="518" y="216" font-size="11" fill="var(--ink-soft)">features → role (ladder) · resources → plan · results → audience</text>
+              <rect x="506" y="238" width="382" height="44" rx="8" fill="var(--surface-2)" stroke="currentColor"/>
+              <text x="518" y="257" font-size="12.5" font-weight="600">Admin · maintainers</text>
+              <text x="518" y="273" font-size="11" fill="var(--ink-soft)">roles · plan tiers · who can read what · people</text>
+              <rect x="506" y="292" width="122" height="134" rx="8" fill="var(--surface-2)" stroke="var(--gold)"/>
+              <text x="516" y="313" font-size="12.5" font-weight="600" fill="var(--gold)">Corpus</text>
+              <text x="516" y="331" font-size="10.5" fill="var(--ink-soft)">/corpus</text>
+              <text x="516" y="347" font-size="10.5" fill="var(--ink-soft)">text · roots</text>
+              <text x="516" y="363" font-size="10.5" fill="var(--ink-soft)">lexicons</text>
+              <text x="516" y="379" font-size="10.5" fill="var(--ink-soft)">search</text>
+              <rect x="636" y="292" width="122" height="134" rx="8" fill="var(--surface-2)" stroke="var(--free)"/>
+              <text x="646" y="313" font-size="12.5" font-weight="600" fill="var(--free)">Your research</text>
+              <text x="646" y="331" font-size="10.5" fill="var(--ink-soft)">/research</text>
+              <text x="646" y="347" font-size="10.5" fill="var(--ink-soft)">private: one</text>
+              <text x="646" y="363" font-size="10.5" fill="var(--ink-soft)">schema per</text>
+              <text x="646" y="379" font-size="10.5" fill="var(--ink-soft)">account</text>
+              <rect x="766" y="292" width="122" height="134" rx="8" fill="var(--surface-2)" stroke="var(--lapis)"/>
+              <text x="776" y="313" font-size="12.5" font-weight="600" fill="var(--lapis)">Community</text>
+              <text x="776" y="331" font-size="10.5" fill="var(--ink-soft)">published,</text>
+              <text x="776" y="347" font-size="10.5" fill="var(--ink-soft)">reviewed,</text>
+              <text x="776" y="363" font-size="10.5" fill="var(--ink-soft)">each with its</text>
+              <text x="776" y="379" font-size="10.5" fill="var(--ink-soft)">audience</text>
             </g>
 
-            <!-- crossings -->
-            <path d="M202 92 C 330 50, 430 90, 534 146" stroke="var(--lapis)" stroke-width="2.4" fill="none" marker-end="url(#ahL)"/>
-            <text x="360" y="62" text-anchor="middle" font-size="11" fill="var(--lapis)" font-family="var(--mono)">corpus + community · your sign-in</text>
-            <path d="M202 334 C 300 300, 420 200, 534 168" stroke="var(--lapis)" stroke-width="2" fill="none" marker-end="url(#ahL)"/>
-            <text x="300" y="318" font-size="11" fill="var(--lapis)" font-family="var(--mono)">corpus · as you (token)</text>
-            <line x1="430" y1="410" x2="534" y2="384" stroke="var(--gold)" stroke-width="1.4" fill="none" stroke-dasharray="4 4" marker-end="url(#ahG)"/>
-            <text x="492" y="453" font-size="10.5" fill="var(--gold)" font-family="var(--mono)">corpus:migrate</text>
+            <path d="M222 100 C 330 70, 400 110, 504 140" stroke="var(--lapis)" stroke-width="2.4" fill="none" marker-end="url(#ahL)"/>
+            <text x="300" y="74" text-anchor="middle" font-size="11" fill="var(--lapis)" font-family="var(--mono)">everything · your sign-in</text>
+            <path d="M222 272 C 320 250, 400 190, 504 160" stroke="var(--lapis)" stroke-width="2" fill="none" marker-end="url(#ahL)"/>
+            <text x="240" y="302" font-size="11" fill="var(--lapis)" font-family="var(--mono)">as you, by token</text>
+            <path d="M252 400 C 360 420, 560 460, 690 428" stroke="var(--gold)" stroke-width="1.4" fill="none" stroke-dasharray="4 4" marker-end="url(#ahG)"/>
+            <text x="482" y="453" font-size="10.5" fill="var(--gold)" font-family="var(--mono)">"bring it into my account" — a copy</text>
           </svg>
         </div>
-        <figcaption><b>The whole system.</b> The app reads the <b>corpus</b> and the <b>community</b> from the
-          research server with your session; it reads and writes your <b>research</b> through the local server. The MCP
-          reads the corpus as you (a personal API token) and writes its proposals into the same local
-          <code>research.db</code> the app has open. <code>quran.db</code> remains as the source the cloud copy was
-          loaded from, and for offline AI work (<code>MQ_CORPUS=local</code>).</figcaption>
+        <figcaption><b>The whole system.</b> The app and the MCP hold nothing of their own: the corpus, your research
+          and the community are all on the research server, reached with your sign-in (or a token that acts as you). Your
+          research sits in your own Postgres schema — nobody else's request can reach it. An older <code>research.db</code>
+          on this computer is brought in once, as a copy; the file itself is never changed.</figcaption>
       </figure>
       <div class="thread" data-section="system"></div>
     </section>
 
     <section id="data">
       <h2><span class="num">02</span>The databases</h2>
-      <p>Reference material on the cloud; your own work on your machine.</p>
+      <p>All on the research server, in one Postgres.</p>
       <div class="grid2">
         <div class="card">
-          <h4>📖 The corpus <span class="tag paid">cloud</span></h4>
+          <h4>📖 The corpus <span class="tag paid">plan-gated</span></h4>
           <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">The Book and everything known about its
-            words — Postgres schema <code>corpus</code>.</p>
+            words — schema <code>corpus</code>.</p>
           <ul class="checks">
-            <li>Text in four scripts, per-word morphology, roots, ~10 classical lexicons, translations</li>
-            <li><strong>Read-only</strong>; loaded from <code>quran.db</code> by <code>npm run corpus:migrate</code> and verified exact, row for row</li>
-            <li>Served at <code>/corpus</code> by the <em>same code</em> as the local server — one codebase, two drivers</li>
-            <li>Proven: <code>corpus:parity</code> compared <strong>77,439</strong> requests — every chapter, verse, root, word and search — all identical</li>
+            <li>Text in four scripts, morphology, roots, ~10 classical lexicons, translations</li>
+            <li>Loaded from <code>quran.db</code> and verified exact; served by the same code as the local server</li>
+            <li>Proven: <strong>77,439</strong> requests compared with the local copy — all identical</li>
           </ul>
         </div>
         <div class="card">
-          <h4>✒️ <code>research.db</code> <span class="tag free">local</span></h4>
-          <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">What you build on top — your earned
-            understanding.</p>
+          <h4>✒️ Your research <span class="tag free">private</span></h4>
+          <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">What you build — your earned
+            understanding. One schema per account: <code>research_&lt;your id&gt;</code>.</p>
           <ul class="checks">
-            <li>Cases &amp; board, established meanings, trails, notes, indications, motifs</li>
-            <li><strong>Read + write</strong>, self-migrating, the one irreplaceable file</li>
-            <li>Self-describing: a one-row <code>owner</code> table says whose work it is</li>
-            <li>The AI's proposals land here, tagged <code>source='ai'</code>, for you to accept</li>
+            <li>Cases &amp; board, established meanings, trails, notes, indications, motifs, comparisons</li>
+            <li>Every request is pinned to <em>your</em> schema — nobody else's request can reach it, staff included</li>
+            <li>Same tables as a <code>research.db</code> file (derived from it): <strong>Download a copy</strong> any time, or import one</li>
+            <li>The AI's proposals land here, tagged <code>ai</code>, for you to accept</li>
           </ul>
         </div>
       </div>
-      <div class="callout"><span class="h">Why this matters for money.</span> While the corpus sat in a file on the
-        reader's disk, it couldn't be charged for. On the research server it is a <em>resource</em>: the admin can gate
-        it by plan — or make it free, or open it to anyone signed in — at any time. Your research stays local and is
-        never gated.</div>
+      <div class="callout"><span class="h">Private unless published.</span> Nothing in your research is visible to anyone
+        else. Publishing makes a <em>frozen copy</em> for review; it becomes the group's only once approved — and even
+        then only for the audience it names (§04).</div>
       <div class="thread" data-section="data"></div>
     </section>
 
@@ -384,24 +368,23 @@
       <div class="grid2">
         <div class="card role">
           <h4>Features <span class="tag role">role</span></h4>
-          <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">What you may <strong>do</strong>.
-            <code>reader ‹ researcher ‹ moderator ‹ maintainer</code></p>
+          <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">What you may <strong>do</strong>. A ladder you edit:
+            <code>reader ‹ student ‹ researcher ‹ scholar ‹ moderator ‹ maintainer</code></p>
           <ul class="checks">
-            <li>Publish — submit notes, propose claims · <code>researcher</code></li>
-            <li>Review — approve / object · <code>moderator</code></li>
-            <li>Establish, invite, the Admin tab · <code>maintainer</code></li>
-            <li>Connect an AI assistant (API tokens) · any account</li>
+            <li>Keep your own research · any account</li>
+            <li>Publish — submit notes, propose readings · <em>the role you choose</em> (researcher by default)</li>
+            <li>Review — approve / object · <code>moderator</code> (fixed)</li>
+            <li>Establish, invite, the Admin tab · <code>maintainer</code> (fixed)</li>
           </ul>
         </div>
         <div class="card paid">
           <h4>Resources <span class="tag paid">plan</span></h4>
           <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">What you may <strong>read</strong>.
-            e.g. <code>free (0) ‹ student (50) ‹ pro (100) ‹ scholar (200)</code></p>
+            e.g. <code>free (0) ‹ pro (100) ‹ …</code></p>
           <ul class="checks">
             <li>The Qur'an corpus — text, words, roots, dictionaries, search</li>
             <li>The community — readings, dissent, ⚖ divergence, chips</li>
-            <li>Each translation — can need more than the corpus; below it, left out</li>
-            <li>Each dictionary — the same, per lexicon</li>
+            <li>Each translation, each dictionary — can need more than the corpus</li>
           </ul>
         </div>
       </div>
@@ -410,20 +393,18 @@
       <table class="matrix">
         <thead><tr><th>Action</th><th>Kind</th><th>Needs</th></tr></thead>
         <tbody>
-          <tr><td>Your own research — cases, notes, establishing meanings</td><td>local</td><td><span class="pill n">nothing · yours</span></td></tr>
-          <tr><td>Read the Qur'an corpus</td><td>resource <code>corpus</code></td><td><span class="pill y">its rule</span> default pro — or free / signed in</td></tr>
-          <tr><td>See a translation / a dictionary's entries</td><td>resource <code>translation</code> · <code>lexicon</code></td><td><span class="pill y">its own tier</span> or, with no rule, what the corpus needs</td></tr>
-          <tr><td>Community readings, dissent, ⚖ divergence</td><td>resource <code>community</code></td><td><span class="pill y">its rule</span> default pro (+ a <code>reader</code> account)</td></tr>
-          <tr><td>Publish (submit / propose claims)</td><td>feature</td><td><code>researcher</code></td></tr>
-          <tr><td>Approve / object (review)</td><td>feature</td><td><code>moderator</code></td></tr>
+          <tr><td>Your own research — cases, notes, meanings</td><td>feature</td><td>any account · private to you</td></tr>
+          <tr><td>Read the Qur'an corpus</td><td>resource <code>corpus</code></td><td><span class="pill y">its rule</span> default pro</td></tr>
+          <tr><td>A translation / a dictionary's entries</td><td>resource</td><td><span class="pill y">its own tier</span> or the corpus's</td></tr>
+          <tr><td>Community readings, dissent, divergence</td><td>resource <code>community</code></td><td><span class="pill y">its rule</span> + each result's <em>audience</em></td></tr>
+          <tr><td>Publish (submit / propose)</td><td>feature</td><td>the publish role (researcher by default)</td></tr>
+          <tr><td>Review</td><td>feature</td><td><code>moderator</code></td></tr>
           <tr><td>Establish, invite, administer</td><td>feature</td><td><code>maintainer</code></td></tr>
         </tbody>
       </table>
       </div>
-      <p style="font-size:13.5px">A resource's rule is a tier, <code>free</code> (any signed-in account) or
-        <em>public</em> (no sign-in at all). Tiers are data the maintainer edits; a higher rank unlocks everything a
-        lower one does. Role and plan are independent — a moderator on free can moderate; a tier called “admin” is
-        only what's been paid for.</p>
+      <p style="font-size:13.5px">Roles and plans are independent: a scholar on free can do what scholars do, but reads only
+        what free reaches; a paying reader reads more but can't publish until their role allows it.</p>
       <div class="thread" data-section="money"></div>
     </section>
 
@@ -552,105 +533,112 @@
     </section>
 
     <section id="publishing">
-      <h2><span class="num">06</span>Publishing</h2>
-      <p>Offering your work upstream — a note submission or a proposed claim — is a <strong>feature</strong>, so it
-        asks one thing: your role. <code>POST /submissions</code> and <code>POST /claims</code> need
-        <code>researcher</code>; review needs <code>moderator</code>; establishing needs <code>maintainer</code>. None of
-        them asks for a plan any more.</p>
-      <p style="font-size:13.5px;color:var(--ink-soft)">What <em>is</em> plan-based is reading what others have
-        published — that's the <code>community</code> resource (§05). So a researcher on free can still offer work;
-        seeing the group's readings is what a plan buys.</p>
+      <h2><span class="num">06</span>Publishing — and who sees it</h2>
+      <p>Publishing is a <strong>feature</strong>: you need the role the maintainer set for it (researcher by default;
+        it could be student). Every published result then carries an <strong>audience</strong>: at least a role
+        <em>and</em> at least a plan — e.g. <em>scholars and above, on Pro</em>.</p>
+      <div class="grid2">
+        <div class="card">
+          <h4>Who decides</h4>
+          <ul class="checks">
+            <li>The <strong>author proposes</strong> the audience when publishing</li>
+            <li>The <strong>reviewer confirms or changes it</strong> when approving</li>
+            <li>Nothing is visible before approval — except to its author and the reviewers</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Where it applies</h4>
+          <ul class="checks">
+            <li>Every community read: readings, the group's reading, dissents, chips, ⚖ divergence, the pull</li>
+            <li>Below the audience, a result simply isn't there for you</li>
+            <li>Authors always see their own; moderators and maintainers see everything</li>
+          </ul>
+        </div>
+      </div>
       <div class="thread" data-section="publishing"></div>
     </section>
 
     <section id="mcp">
-      <h2><span class="num">07</span>The MCP — reads the Book as you, writes to your research</h2>
-      <p>The MCP lets an AI study the Book <em>with</em> you. Its corpus tools — <code>read_ayah</code>,
-        <code>study_root</code>, <code>trace_word</code>, <code>search_quran</code> and the rest — now read the corpus
-        from the research server, <strong>as you</strong>: it signs in with a personal API token, so it sees exactly
-        what your plan allows. Its proposals still go into your local <code>research.db</code>, tagged
-        <code>source='ai'</code>, for you to accept in the app.</p>
+      <h2><span class="num">07</span>The MCP — studies as you, proposes into your research</h2>
+      <p>The MCP lets an AI study the Book <em>with</em> you. It reads the corpus <strong>and your research</strong> from the
+        research server as you (a personal API token), and writes only <strong>proposals</strong> into your research —
+        tagged <code>ai</code>, for you to accept in the app.</p>
       <div class="grid2">
         <div class="card">
-          <h4>Connecting it</h4>
+          <h4>The boundary — enforced by the server</h4>
           <ul class="checks">
-            <li>App → Account → <strong>Connect an AI assistant</strong> → Create token</li>
-            <li>The token is shown <em>once</em>, inside a ready-to-paste MCP config</li>
-            <li>Revoke it there any time — the AI is cut off at once</li>
+            <li>May add notes, indications, motifs, cases, and its own items on your cases</li>
+            <li>Never overwrites or deletes your records; never sets your primary gloss</li>
+            <li>Never touches your verdicts, status or established meanings; can't publish or change settings</li>
+            <li>A token can't administer or mint tokens — revoke it to cut the AI off</li>
           </ul>
         </div>
         <div class="card">
           <h4>Its environment</h4>
           <ul class="checks">
-            <li><code>REMOTE_URL</code> — the research server (default <code>http://localhost:8100</code>)</li>
-            <li><code>REMOTE_TOKEN</code> — the token</li>
-            <li><code>MQ_CORPUS=local</code> — read <code>quran.db</code> instead (offline)</li>
+            <li><code>REMOTE_URL</code> — the research server</li>
+            <li><code>REMOTE_TOKEN</code> — from Account → <em>Connect an AI assistant</em></li>
+            <li><code>MQ_CORPUS=local</code> / <code>MQ_RESEARCH=local</code> — local files instead (offline)</li>
           </ul>
         </div>
       </div>
-      <div class="callout"><span class="h">When it can't read,</span> it says why in words the AI can pass on:
-        no token → <em>create one in the app</em>; below the corpus tier → <em>needs the pro plan</em>; server down →
-        <em>set REMOTE_URL, or MQ_CORPUS=local</em>. A test runs every corpus tool both ways — over HTTP and
-        locally — and requires byte-identical answers.</div>
+      <div class="callout"><span class="h">Belt and braces.</span> The MCP keeps its own guard, and the server applies the
+        same rules to every token request — so they hold even if something calls the API directly. A test runs the real
+        tools against the cloud research and checks both.</div>
       <div class="thread" data-section="mcp"></div>
     </section>
 
     <section id="admin">
       <h2><span class="num">08</span>Admin — in the app, for maintainers</h2>
-      <p>Signed in as a maintainer, an <strong>Admin</strong> tab appears beside Home, Read and Investigate. Every
-        value reads as text with one <em>Change</em>; changes apply at once, and the server enforces all of it again.</p>
+      <p>Signed in as a maintainer, an <strong>Admin</strong> tab appears. Every value reads as text with one
+        <em>Change</em>; changes apply at once, and the server enforces all of it again.</p>
       <div class="grid2">
         <div class="card">
-          <h4>Plan tiers</h4>
+          <h4>Roles</h4>
           <ul class="checks">
-            <li>The ladder: rename, re-rank, add (e.g. student 50, scholar 200)</li>
-            <li><code>free</code> is always rank 0; a tier held by someone or required by a resource can't be removed</li>
+            <li>The ladder: add learner rungs (student, scholar, …) between reader and moderator, rename, re-rank, remove</li>
+            <li><em>What each role may do</em>: the role publishing needs</li>
           </ul>
         </div>
         <div class="card">
-          <h4>Who can read</h4>
+          <h4>Plan tiers · Who can read</h4>
           <ul class="checks">
-            <li>The corpus and the community: <em>anyone</em>, <em>signed in</em>, or <em>a tier or higher</em></li>
-            <li>Each translation and each dictionary: its own tier, or <em>same as the corpus</em></li>
+            <li>The plan ladder; the corpus and the community: anyone / signed in / a tier</li>
+            <li>Each translation and dictionary: its own tier, or the corpus's</li>
           </ul>
         </div>
         <div class="card">
           <h4>People</h4>
           <ul class="checks">
-            <li>Everyone's role (features) and plan (resources), with an optional expiry in days</li>
+            <li>Everyone's role (standing) and plan (paid), with an optional expiry</li>
             <li>The last maintainer can't be demoted</li>
           </ul>
         </div>
         <div class="card">
           <h4>Also scriptable</h4>
           <ul class="checks">
-            <li><code>npm run access -- show | tier | corpus | community | translation | lexicon</code></li>
-            <li><code>npm run set-plan -w @alsiraat/remote -- email tier [days]</code></li>
+            <li><code>npm run access -- …</code>, <code>npm run set-plan -- …</code></li>
+            <li>On the VPS: <code>docker compose run --rm remote access show</code></li>
           </ul>
         </div>
       </div>
-      <div class="callout"><span class="h">Heads-up for you.</span> Your account is <em>maintainer · free</em>, and
-        the corpus rule is <em>pro</em> — so today the app says <em>Reading this needs the pro plan</em> for you too. Fix
-        it in Admin → People → Change → Pro, or Admin → Who can read → the corpus → <em>Signed in</em>. (Whether
-        maintainers should bypass resource gates is an open question.)</div>
+      <div class="callout"><span class="h">Heads-up for you.</span> Your research is still in the <code>research.db</code>
+        on your computer. Open Settings → <em>Your research</em> → <strong>Bring it into my account</strong> to copy it in (the
+        file stays as it is). And your account is <em>maintainer · free</em> while the corpus rule is <em>pro</em> — grant
+        yourself Pro in Admin → People, or open the corpus in Who can read.</div>
       <div class="thread" data-section="admin"></div>
     </section>
 
     <section id="roadmap">
       <h2><span class="num">09</span>Roadmap &amp; status</h2>
-      <p>Branch <code>feature/corpus-postgres</code>, stacked on <code>feature/monetization-entitlements</code>.
-        Merged to <code>main</code>. Everything typechecks; server 172/172, remote 199/199; the corpus parity sweep is 77,439/77,439.</p>
+      <p>Server 178/178, remote 225/225 tests; the corpus parity sweep 77,439/77,439; research parity 78/78 calls.</p>
       <div class="road">
-        <div class="step"><span class="st done">A–D · done</span><div><h4>Monetization groundwork</h4><p>The plan axis and 402, the community read live with the local mirror removed, upgrade nudges.</p></div></div>
-        <div class="step"><span class="st done">corpus 1 · done</span><div><h4>Corpus → Postgres: move &amp; verify the data</h4><p><code>npm run corpus:migrate</code> — 294,804 rows in 18 s, one transaction, verified exact. Text <code>COLLATE "C"</code> so Arabic sorts as in SQLite.</p></div></div>
-        <div class="step"><span class="st done">access · done</span><div><h4>Features by role, resources by plan</h4><p>Tiers as data; <code>resource_access</code> for the corpus, the community, each translation and each dictionary; publishing is role-only.</p></div></div>
-        <div class="step"><span class="st done">corpus 2 · done</span><div><h4>The cloud serves the whole corpus</h4><p>One corpus codebase over a driver interface (SQLite / Postgres); the research server mounts the same routes at <code>/corpus</code>. Parity: 77,439 requests identical.</p></div></div>
-        <div class="step"><span class="st done">tokens · done</span><div><h4>Personal API tokens</h4><p><code>mqrg_…</code>, stored hashed, shown once, revocable — how a headless client acts as its user.</p></div></div>
-        <div class="step"><span class="st done">app · done</span><div><h4>The app reads the corpus from the cloud</h4><p>With a single banner explaining offline / sign in / needs a plan.</p></div></div>
-        <div class="step"><span class="st done">MCP · done</span><div><h4>The MCP reads the corpus as its user</h4><p>Research stays local; <em>Connect an AI assistant</em> in the Account panel.</p></div></div>
-        <div class="step"><span class="st done">admin · done</span><div><h4>Admin tab</h4><p>Tiers, who can read what, people. Checked in a browser end to end.</p></div></div>
-        <div class="step"><span class="st done">deploy · ready</span><div><h4>Deployable to a VPS</h4><p>Docker compose — Postgres, the research server, Caddy for automatic HTTPS; a startup check that refuses unsafe settings; password reset by email (SMTP); nightly backups. Runbook: <code>DEPLOY.md</code>. Tested end to end locally; waiting on a server and a domain.</p></div></div>
-        <div class="step"><span class="st defer">next</span><div><h4>Billing provider</h4><p>Slots into the plan grant with no rework of the gates. Also open: corpus patches targeting Postgres; offline reading in the app.</p></div></div>
+        <div class="step"><span class="st done">corpus · done</span><div><h4>The corpus on the research server</h4><p>Loaded and proven identical; the app and MCP read it from <code>/corpus</code>.</p></div></div>
+        <div class="step"><span class="st done">access · done</span><div><h4>Features by role, resources by plan</h4><p>Resource rules for the corpus, the community, each translation and dictionary; the Admin tab.</p></div></div>
+        <div class="step"><span class="st done">deploy · ready</span><div><h4>Deployable to a VPS</h4><p>Docker + Caddy HTTPS + SMTP password reset + backups (<code>DEPLOY.md</code>). Waiting on a server and a domain.</p></div></div>
+        <div class="step"><span class="st done">research · done</span><div><h4>Your research in your account</h4><p>One research codebase over SQLite or Postgres; a private schema per account; the app and the MCP read and write it as you; bring your old <code>research.db</code> in; download a copy any time.</p></div></div>
+        <div class="step"><span class="st done">roles · done</span><div><h4>Roles as data; audiences on results</h4><p>reader ‹ student ‹ researcher ‹ scholar ‹ moderator ‹ maintainer; publishing's role is yours to set; each published result is seen only by its audience — proposed by its author, confirmed by the reviewer.</p></div></div>
+        <div class="step"><span class="st defer">next</span><div><h4>Billing provider</h4><p>Slots into the plan grant with no rework of the gates. Also open: deleting an account (and its research), a review screen for submissions.</p></div></div>
       </div>
       <div class="thread" data-section="roadmap"></div>
     </section>
