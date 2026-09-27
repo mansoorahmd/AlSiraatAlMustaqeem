@@ -639,7 +639,7 @@
     <section id="roadmap">
       <h2><span class="num">09</span>Roadmap &amp; status</h2>
       <p>Branch <code>feature/corpus-postgres</code>, stacked on <code>feature/monetization-entitlements</code>.
-        Everything typechecks; the remote suite is 186/186; the corpus parity sweep is 77,439/77,439.</p>
+        Merged to <code>main</code>. Everything typechecks; server 172/172, remote 199/199; the corpus parity sweep is 77,439/77,439.</p>
       <div class="road">
         <div class="step"><span class="st done">A–D · done</span><div><h4>Monetization groundwork</h4><p>The plan axis and 402, the community read live with the local mirror removed, upgrade nudges.</p></div></div>
         <div class="step"><span class="st done">corpus 1 · done</span><div><h4>Corpus → Postgres: move &amp; verify the data</h4><p><code>npm run corpus:migrate</code> — 294,804 rows in 18 s, one transaction, verified exact. Text <code>COLLATE "C"</code> so Arabic sorts as in SQLite.</p></div></div>
@@ -649,6 +649,7 @@
         <div class="step"><span class="st done">app · done</span><div><h4>The app reads the corpus from the cloud</h4><p>With a single banner explaining offline / sign in / needs a plan.</p></div></div>
         <div class="step"><span class="st done">MCP · done</span><div><h4>The MCP reads the corpus as its user</h4><p>Research stays local; <em>Connect an AI assistant</em> in the Account panel.</p></div></div>
         <div class="step"><span class="st done">admin · done</span><div><h4>Admin tab</h4><p>Tiers, who can read what, people. Checked in a browser end to end.</p></div></div>
+        <div class="step"><span class="st done">deploy · ready</span><div><h4>Deployable to a VPS</h4><p>Docker compose — Postgres, the research server, Caddy for automatic HTTPS; a startup check that refuses unsafe settings; password reset by email (SMTP); nightly backups. Runbook: <code>DEPLOY.md</code>. Tested end to end locally; waiting on a server and a domain.</p></div></div>
         <div class="step"><span class="st defer">next</span><div><h4>Billing provider</h4><p>Slots into the plan grant with no rework of the gates. Also open: corpus patches targeting Postgres; offline reading in the app.</p></div></div>
       </div>
       <div class="thread" data-section="roadmap"></div>
