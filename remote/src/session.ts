@@ -32,7 +32,7 @@ export const sessionMiddleware = createMiddleware<Env>(async (c, next) => {
     const principal = await loadPrincipal(pgRunner, userId);
     if (principal) {
       c.set("user", {
-        id: principal.id, role: principal.role,
+        id: principal.id, role: principal.role, roleRank: principal.roleRank,
         plan: principal.plan, planExpiresAt: principal.planExpiresAt, via,
       });
     }

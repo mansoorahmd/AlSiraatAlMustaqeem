@@ -30,8 +30,19 @@ export interface Me {
   planRank?: number;
   planExpiresAt?: string | null;
   planActive?: boolean;
+  // The role axis — a ladder of data (remote role_levels): reader < student < … < moderator <
+  // maintainer. `canPublish` is the server's answer for publishing (its minimum role is the
+  // maintainer's choice, `publishRole`); never infer it from the role's name.
+  roleRank?: number | null;
+  roleLabel?: string;
+  canPublish?: boolean;
+  publishRole?: string;
 }
-export type Role = "reader" | "researcher" | "moderator" | "maintainer";
+/** A rung on the role ladder (e.g. "student", "scholar"). */
+export type Role = string;
+export interface RoleLevel { name: string; rank: number; label: string; fixed: boolean }
+/** Who may see a published result once approved: at least this role and this plan (null = no extra need). */
+export interface Audience { minRole: string | null; minPlan: string | null }
 /** A tier name from the remote's plan ladder (e.g. "free", "pro", "scholar"). */
 export type Plan = string;
 
@@ -176,6 +187,15 @@ export const remote = {
     return call("/invites/redeem", { method: "POST", body: JSON.stringify(opts) });
   },
 
+  /** The role ladder, lowest first — public, so the app can name rungs and requirements. */
+  roles(): Promise<RoleLevel[]> {
+    return call<RoleLevel[]>("/roles");
+  },
+  /** The plan ladder (name, rank, label) — public. */
+  planTiers(): Promise<{ name: string; rank: number; label: string }[]> {
+    return call("/plan-tiers");
+  },
+
   /** Issue an invite (maintainer only). */
   createInvite(opts: { role: Role; expiresInDays?: number }): Promise<InviteOut> {
     return call<InviteOut>("/invites", { method: "POST", body: JSON.stringify(opts) });
@@ -212,10 +232,10 @@ export const remote = {
    * record afterwards doesn't change what was submitted. Submitting the identical bundle twice
    * is idempotent — it returns the same submission rather than creating a duplicate.
    */
-  submit(items: SubmissionItem[], supersedes?: string): Promise<Submission> {
+  submit(items: SubmissionItem[], supersedes?: string, audience?: Audience): Promise<Submission> {
     return call<Submission>("/submissions", {
       method: "POST",
-      body: JSON.stringify({ items, supersedes: supersedes ?? null }),
+      body: JSON.stringify({ items, supersedes: supersedes ?? null, audience }),
     });
   },
 
@@ -259,6 +279,8 @@ export const remote = {
       label?: string; meaning: string; argument?: string; caseId?: string; evidence?: unknown[];
       refinements?: { lemma: string; label: string; meaning: string }[];
     };
+    /** who may see it once approved — the reviewer confirms or changes it */
+    audience?: Audience;
   }): Promise<ClaimVersion> {
     return call<ClaimVersion>("/claims", { method: "POST", body: JSON.stringify(opts) });
   },
@@ -275,6 +297,8 @@ export const remote = {
    *  already-established reading it is filed as a dissent, kept permanently. */
   review(claimId: string, version: number, opts: {
     decision: "approve" | "object"; comment?: string; payload?: unknown;
+    /** approving may confirm or change who can see it */
+    audience?: Audience;
   }): Promise<{ approvals: number; objections: number; established: boolean }> {
     return call(`/claims/${encodeURIComponent(claimId)}/versions/${version}/review`, {
       method: "POST", body: JSON.stringify(opts),
@@ -282,9 +306,9 @@ export const remote = {
   },
 
   /** Establish directly (maintainer only) — recorded as the maintainer's act. */
-  establish(claimId: string, version: number, comment?: string): Promise<{ ok: boolean }> {
+  establish(claimId: string, version: number, comment?: string, audience?: Audience): Promise<{ ok: boolean }> {
     return call(`/claims/${encodeURIComponent(claimId)}/versions/${version}/establish`, {
-      method: "POST", body: JSON.stringify({ comment }),
+      method: "POST", body: JSON.stringify({ comment, audience }),
     });
   },
 };
@@ -297,6 +321,7 @@ export interface ClaimVersion {
   subjectValue: string;
   payload: { meaning?: string; argument?: string; caseId?: string; evidence?: unknown[] } | null;
   establishedAt: string | null;
+  audience?: Audience;
 }
 
 /** Desktop bridge, when running inside Electron. */

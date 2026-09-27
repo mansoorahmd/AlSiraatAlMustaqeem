@@ -10,12 +10,12 @@
 // by the server, which refuses anyone else.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { admin, type Tier, type Rule, type AdminUser, type AdminResources, type Role } from "../api/admin";
+import { admin, type Tier, type Rule, type AdminUser, type AdminResources, type Role, type RoleLevel } from "../api/admin";
 import { useMe, refreshMe } from "../hooks/useMe";
 
-const ROLES: Role[] = ["reader", "researcher", "moderator", "maintainer"];
-const ROLE_HINT: Record<Role, string> = {
-  reader: "reads", researcher: "reads · publishes", moderator: "… · reviews", maintainer: "… · administers",
+/** What the fixed rungs do — the learner rungs between them are the maintainer's to define. */
+const FIXED_HINT: Record<string, string> = {
+  reader: "reads", moderator: "reviews", maintainer: "administers",
 };
 
 /** "none" = no per-item rule (the item needs only what the corpus needs). */
@@ -145,11 +145,11 @@ function AddTier({ onAdded }: { onAdded: () => Promise<void> }) {
   return (
     <div className="admin-add">
       <label className="admin-field"><span>Name</span>
-        <input className="board-input" placeholder="scholar" value={name} onChange={(e) => setName(e.target.value)} /></label>
+        <input className="board-input" placeholder="premium" value={name} onChange={(e) => setName(e.target.value)} /></label>
       <label className="admin-field"><span>Rank</span>
         <input className="board-input" type="number" min={1} placeholder="200" value={rank} onChange={(e) => setRank(e.target.value)} /></label>
       <label className="admin-field grow"><span>Label</span>
-        <input className="board-input" placeholder="Scholar" value={label} onChange={(e) => setLabel(e.target.value)} /></label>
+        <input className="board-input" placeholder="Premium" value={label} onChange={(e) => setLabel(e.target.value)} /></label>
       <div className="admin-actions">
         <button className="ctl primary" disabled={!name.trim() || !rank} onClick={add}>Add tier</button>
       </div>
@@ -158,9 +158,120 @@ function AddTier({ onAdded }: { onAdded: () => Promise<void> }) {
   );
 }
 
+// ---- roles: the ladder (a person's standing — what they may DO) ------------------------
+
+function RoleRow({ role, onSaved }: { role: RoleLevel; onSaved: () => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  const [rank, setRank] = useState(String(role.rank));
+  const [label, setLabel] = useState(role.label);
+  const [err, setErr] = useState<string | null>(null);
+  const save = async () => {
+    setErr(null);
+    try {
+      await admin.saveRole({ name: role.name, rank: role.fixed ? undefined : Number(rank), label });
+      setEditing(false); await onSaved();
+    } catch (e) { setErr((e as Error).message); }
+  };
+  const remove = async () => {
+    setErr(null);
+    try { await admin.removeRole(role.name); await onSaved(); } catch (e) { setErr((e as Error).message); }
+  };
+  return (
+    <li className="admin-row">
+      {editing ? (
+        <div className="admin-edit">
+          <label className="admin-field"><span>Rank</span>
+            <input className="board-input" type="number" min={1} max={79} value={rank} disabled={role.fixed}
+              onChange={(e) => setRank(e.target.value)} /></label>
+          <label className="admin-field grow"><span>Label</span>
+            <input className="board-input" value={label} onChange={(e) => setLabel(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void save(); if (e.key === "Escape") setEditing(false); }} /></label>
+          <div className="admin-actions">
+            <button className="ctl primary" onClick={save}>Save</button>
+            <button className="ctl" onClick={() => setEditing(false)}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <span className="admin-rank">{role.rank}</span>
+          <span className="admin-name"><strong>{role.label || role.name}</strong> <code>{role.name}</code>
+            {FIXED_HINT[role.name] && <span className="admin-sub">fixed — {FIXED_HINT[role.name]}</span>}</span>
+          <div className="admin-actions">
+            <button className="ctl" onClick={() => setEditing(true)}>Edit</button>
+            {!role.fixed && <button className="ctl" onClick={remove}>Remove</button>}
+          </div>
+        </>
+      )}
+      {err && <p className="acct-error" role="alert">{err}</p>}
+    </li>
+  );
+}
+
+function AddRole({ onAdded }: { onAdded: () => Promise<void> }) {
+  const [name, setName] = useState("");
+  const [rank, setRank] = useState("");
+  const [label, setLabel] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const add = async () => {
+    setErr(null);
+    try {
+      await admin.saveRole({ name: name.trim().toLowerCase(), rank: Number(rank), label: label.trim() });
+      setName(""); setRank(""); setLabel(""); await onAdded();
+    } catch (e) { setErr((e as Error).message); }
+  };
+  return (
+    <div className="admin-add">
+      <label className="admin-field"><span>Name</span>
+        <input className="board-input" placeholder="senior-scholar" value={name} onChange={(e) => setName(e.target.value)} /></label>
+      <label className="admin-field"><span>Rank (1–79)</span>
+        <input className="board-input" type="number" min={1} max={79} placeholder="40" value={rank} onChange={(e) => setRank(e.target.value)} /></label>
+      <label className="admin-field grow"><span>Label</span>
+        <input className="board-input" placeholder="Senior scholar" value={label} onChange={(e) => setLabel(e.target.value)} /></label>
+      <div className="admin-actions">
+        <button className="ctl primary" disabled={!name.trim() || !rank} onClick={add}>Add role</button>
+      </div>
+      {err && <p className="acct-error" role="alert">{err}</p>}
+    </div>
+  );
+}
+
+/** Which role publishing needs — shown as text, changed with one picker. */
+function PublishRule({ roles, current, onSaved }: { roles: RoleLevel[]; current: string | undefined; onSaved: () => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(current ?? "");
+  const [err, setErr] = useState<string | null>(null);
+  const label = (n?: string) => roles.find((r) => r.name === n)?.label || n || "…";
+  const save = async () => {
+    setErr(null);
+    try { await admin.setFeature("publish", draft); setEditing(false); await onSaved(); }
+    catch (e) { setErr((e as Error).message); }
+  };
+  return (
+    <li className="admin-row">
+      <span className="admin-name"><strong>Publishing</strong>
+        <span className="admin-sub">submitting work and proposing readings to the community</span></span>
+      {editing ? (
+        <div className="admin-access editing">
+          <select className="board-input" value={draft} onChange={(e) => setDraft(e.target.value)}>
+            {roles.map((r) => <option key={r.name} value={r.name}>{r.label || r.name} or higher</option>)}
+          </select>
+          <button className="ctl primary" disabled={!draft} onClick={save}>Save</button>
+          <button className="ctl" onClick={() => setEditing(false)}>Cancel</button>
+        </div>
+      ) : (
+        <div className="admin-access">
+          <span className="admin-access-value">{label(current)} or higher</span>
+          <button className="ctl" disabled={!current} onClick={() => { setDraft(current ?? ""); setEditing(true); }}>Change</button>
+        </div>
+      )}
+      {err && <p className="acct-error" role="alert">{err}</p>}
+    </li>
+  );
+}
+
 // ---- people -----------------------------------------------------------------------
 
-function UserRow({ u, tiers, meId, onSaved }: { u: AdminUser; tiers: Tier[]; meId: string; onSaved: () => Promise<void> }) {
+function UserRow({ u, tiers, roles, meId, onSaved }: { u: AdminUser; tiers: Tier[]; roles: RoleLevel[]; meId: string; onSaved: () => Promise<void> }) {
   const [editing, setEditing] = useState(false);
   const [role, setRole] = useState<Role>(u.role);
   const [plan, setPlan] = useState(u.plan);
@@ -190,7 +301,7 @@ function UserRow({ u, tiers, meId, onSaved }: { u: AdminUser; tiers: Tier[]; meI
         <div className="admin-edit">
           <label className="admin-field"><span>Role</span>
             <select className="board-input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-              {ROLES.map((r) => <option key={r} value={r}>{r} — {ROLE_HINT[r]}</option>)}
+              {roles.map((r) => <option key={r.name} value={r.name}>{r.label || r.name}{FIXED_HINT[r.name] ? ` — ${FIXED_HINT[r.name]}` : ""}</option>)}
             </select></label>
           <label className="admin-field"><span>Plan</span>
             <select className="board-input" value={plan} onChange={(e) => setPlan(e.target.value)}>
@@ -228,6 +339,8 @@ export function Admin() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [res, setRes] = useState<AdminResources | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [roles, setRoles] = useState<RoleLevel[]>([]);
+  const [publishRole, setPublishRole] = useState<string | undefined>(undefined);
   const [err, setErr] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
 
@@ -236,12 +349,16 @@ export function Admin() {
   const load = useCallback(async () => {
     setErr(null);
     // each part loads on its own, so one failure doesn't blank (or mislabel) the rest
-    const [t, r, x, u] = await Promise.allSettled([admin.tiers(), admin.rules(), admin.resources(), admin.users()]);
+    const [t, r, x, u, rl, f] = await Promise.allSettled([
+      admin.tiers(), admin.rules(), admin.resources(), admin.users(), admin.roles(), admin.features(),
+    ]);
     if (t.status === "fulfilled") setTiers(t.value);
     if (r.status === "fulfilled") setRules(r.value);
     if (x.status === "fulfilled") setRes(x.value);
     if (u.status === "fulfilled") setUsers(u.value);
-    const failed = [t, r, x, u].find((p) => p.status === "rejected") as PromiseRejectedResult | undefined;
+    if (rl.status === "fulfilled") setRoles(rl.value);
+    if (f.status === "fulfilled") setPublishRole(f.value.find((x) => x.feature === "publish")?.minRole);
+    const failed = [t, r, x, u, rl, f].find((p) => p.status === "rejected") as PromiseRejectedResult | undefined;
     if (failed) setErr((failed.reason as Error)?.message ?? "couldn't load everything");
   }, []);
   useEffect(() => { if (isAdmin) void load(); }, [isAdmin, load]);
@@ -285,6 +402,23 @@ export function Admin() {
         </p>
         {err && <p className="acct-error" role="alert">{err}</p>}
       </header>
+
+      <section className="home-card">
+        <h2 className="home-card-title">Roles</h2>
+        <p className="acct-hint">A person's standing — what they may <em>do</em>. Reader, moderator (review) and
+          maintainer (administer) are fixed; add learner rungs such as student or scholar between them (rank 1–79).
+          A higher rank can do everything a lower one can.</p>
+        <ul className="admin-list">
+          {roles.map((r) => <RoleRow key={r.name} role={r} onSaved={load} />)}
+        </ul>
+        <AddRole onAdded={load} />
+        <h3 className="admin-subhead">What each role may do</h3>
+        <ul className="admin-list">
+          <PublishRule roles={roles} current={publishRole} onSaved={load} />
+        </ul>
+        <p className="acct-hint">Each published result also carries its own audience — who may see it (a role and a plan) —
+          proposed by its author and confirmed by the reviewer.</p>
+      </section>
 
       <section className="home-card">
         <h2 className="home-card-title">Plan tiers</h2>
@@ -352,7 +486,7 @@ export function Admin() {
         <p className="acct-hint">Role is what someone may do; plan is what they've paid for. New people join
           by invite (Account → Invite a researcher).</p>
         <ul className="admin-list">
-          {users.map((u) => <UserRow key={u.id} u={u} tiers={tiers} meId={me!.id} onSaved={load} />)}
+          {users.map((u) => <UserRow key={u.id} u={u} tiers={tiers} roles={roles} meId={me!.id} onSaved={load} />)}
         </ul>
       </section>
     </div>

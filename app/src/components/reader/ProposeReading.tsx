@@ -9,7 +9,8 @@
 // point the reader at Sync, rather than pretending the community list updated.
 
 import { useState } from "react";
-import { remote, RemoteOffline, RemoteError } from "../../api/remote";
+import { remote, RemoteOffline, RemoteError, type Audience } from "../../api/remote";
+import { AudiencePicker, EVERYONE } from "../AudiencePicker";
 import { useMe } from "../../hooks/useMe";
 import { proposals, readingHash, type Refinement } from "../../persistence/db";
 
@@ -34,7 +35,8 @@ interface Props {
 export function ProposeReading({
   subjectKind, subjectValue, defaultLabel, defaultMeaning, refinements = [], missingForms = [], caseId, onClose,
 }: Props) {
-  const { me, loading, isPro } = useMe();
+  const { me, loading, canPublish } = useMe();
+  const [audience, setAudience] = useState<Audience>(EVERYONE);
   const [label, setLabel] = useState(defaultLabel ?? "");
   const [meaning, setMeaning] = useState(defaultMeaning ?? "");
   const [argument, setArgument] = useState("");
@@ -56,6 +58,7 @@ export function ProposeReading({
           label: label.trim() || undefined, meaning: meaning.trim(),
           argument: argument.trim() || undefined, caseId, refinements,
         },
+        audience,
       });
       await proposals.record(subjectKind, subjectValue, readingHash(label, meaning, refinements)).catch(() => {});
       setDone(true);
@@ -63,7 +66,7 @@ export function ProposeReading({
       setErr(
         e instanceof RemoteOffline ? "The research server isn't reachable — you may be offline, or not signed in."
         : e instanceof RemoteError && e.status === 401 ? "Sign in to the research community first."
-        : e instanceof RemoteError && e.status === 402 ? "Proposing to the community needs an active plan — upgrade to publish your reading."
+        : e instanceof RemoteError && e.status === 403 ? (e.message || "Publishing needs a higher role — ask a maintainer.")
         : (e as Error).message);
     } finally { setBusy(false); }
   };
@@ -97,11 +100,11 @@ export function ProposeReading({
             <p className="acct-error">Sign in to the research community to propose a reading.</p>
             <div className="propose-actions"><button className="ctl" onClick={onClose}>Close</button></div>
           </div>
-        ) : !loading && me && !isPro ? (
+        ) : !loading && me && !canPublish ? (
           <div className="propose-body">
             <p className="acct-error">
-              Proposing a reading to the community is part of the research plan. Upgrade to publish
-              your work; studying and establishing your own readings stays free and offline.
+              Publishing to the community needs the {me.publishRole ?? "researcher"} role or higher —
+              ask a maintainer. Your own research, and establishing your own readings, stay yours.
             </p>
             <div className="propose-actions"><button className="ctl" onClick={onClose}>Close</button></div>
           </div>
@@ -153,6 +156,9 @@ export function ProposeReading({
                 </p>
               )
             )}
+
+            <AudiencePicker value={audience} onChange={setAudience} />
+            <p className="acct-hint">Nothing is visible to anyone until a reviewer approves it — and they may change who can see it.</p>
 
             {err && <p className="acct-error" role="alert">{err}</p>}
             <div className="propose-actions">

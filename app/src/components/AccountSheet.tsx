@@ -9,15 +9,15 @@
 // working offline, which is the whole premise (SHARED_RESEARCH.md §2).
 
 import { useCallback, useEffect, useState } from "react";
-import { remote, RemoteOffline, type Me, type Role, type InviteOut, type ApiToken } from "../api/remote";
+import { remote, RemoteOffline, type Me, type Role, type RoleLevel, type InviteOut, type ApiToken } from "../api/remote";
 import { cachedMe, refreshMe } from "../hooks/useMe";
 
 type Status = "loading" | "offline" | "blocked" | "signed-out" | "signed-in";
 
-const ROLE_HELP: Record<Role, string> = {
-  reader: "can pull the group's readings",
-  researcher: "can submit work for review",
-  moderator: "can approve submissions",
+/** What the fixed rungs mean; the learner rungs between them (student, scholar, …) are the ladder's. */
+const ROLE_HELP: Record<string, string> = {
+  reader: "reads the community's work",
+  moderator: "reviews what's published",
   maintainer: "full authority, can invite",
 };
 
@@ -141,6 +141,8 @@ export function AccountSheet() {
   const [nameDraft, setNameDraft] = useState("");
   // invites
   const [newRole, setNewRole] = useState<Role>("researcher");
+  const [ladder, setLadder] = useState<RoleLevel[]>([]);
+  useEffect(() => { remote.roles().then(setLadder).catch(() => {}); }, []);
   const [issued, setIssued] = useState<InviteOut | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -336,7 +338,7 @@ export function AccountSheet() {
                 </div>
               )}
               <span className="acct-email">{me.email}</span>
-              <span className={`role-pill role-${me.role}`} title={ROLE_HELP[me.role]}>{me.role}</span>
+              <span className={`role-pill role-${me.role}`} title={ROLE_HELP[me.role] ?? ""}>{me.roleLabel || me.role}</span>
             </div>
           </header>
 
@@ -353,8 +355,8 @@ export function AccountSheet() {
               <div className="acct-field">
                 <label htmlFor="acct-role">They can</label>
                 <select id="acct-role" value={newRole} onChange={(e) => setNewRole(e.target.value as Role)}>
-                  {(Object.keys(ROLE_HELP) as Role[]).map((r) => (
-                    <option key={r} value={r}>{r} — {ROLE_HELP[r]}</option>
+                  {ladder.map((r) => (
+                    <option key={r.name} value={r.name}>{r.label || r.name}{ROLE_HELP[r.name] ? ` — ${ROLE_HELP[r.name]}` : ""}</option>
                   ))}
                 </select>
               </div>

@@ -9,7 +9,8 @@
 // demoted (that would lock everyone out of administering the community).
 
 import type { SqlRunner } from "./migrate.js";
-import { isRole, type Role } from "./roles.js";
+import type { Role } from "./roles.js";
+import { roleExists } from "./role-ladder.js";
 import { listRules } from "./resource-access.js";
 
 export class AdminError extends Error {
@@ -38,7 +39,7 @@ export const isUserId = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 
 /** Change a user's role. Refuses to leave the community without a maintainer. */
 export async function setRole(r: SqlRunner, userId: string, role: string): Promise<void> {
-  if (!isRole(role)) throw new AdminError("role must be reader, researcher, moderator or maintainer", 422);
+  if (!(await roleExists(r, role))) throw new AdminError(`no such role: ${role} — add it to the ladder first`, 422);
   if (!isUserId(userId)) throw new AdminError("no such user", 404);
   // One statement that first LOCKS every maintainer row: two maintainers demoting each other at
   // the same moment would otherwise both count "2 maintainers" and leave none. With the lock the

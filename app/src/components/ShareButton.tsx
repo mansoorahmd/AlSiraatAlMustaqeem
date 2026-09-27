@@ -51,7 +51,7 @@ export function ShareButton({ localRef, kind, payload, subjectKind, subjectValue
     // research (a colleague's file, or a backup you opened) under your own name.
     Promise.all([remote.me().catch(() => null), fetchIdentity().catch(() => null)])
       .then(([me, id]) => {
-        if (!me || me.role === "reader") return setAllowed(false);
+        if (!me || me.canPublish !== true) return setAllowed(false);   // the server's rule, not a role name
         const ownerEmail = id?.owner?.email;
         if (ownerEmail && ownerEmail !== me.email) {
           setMismatch(`This database belongs to ${ownerEmail}, but you're signed in as ${me.email}.`);

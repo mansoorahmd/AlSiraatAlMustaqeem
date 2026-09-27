@@ -45,6 +45,8 @@ export interface MeState {
   canReview: boolean;
   /** convenience: can this account establish directly? */
   canEstablish: boolean;
+  /** convenience: may this account publish (the server's answer — its minimum role is configurable)? */
+  canPublish: boolean;
   /** convenience: does this account have an active paid plan? Gates the community layer. */
   isPro: boolean;
 }
@@ -63,8 +65,10 @@ export function useMe(): MeState {
   return {
     me,
     loading,
-    canReview: me?.role === "moderator" || me?.role === "maintainer",
+    // staff powers hang on the fixed rungs (moderator 80, maintainer 100)
+    canReview: (me?.roleRank ?? (me?.role === "moderator" || me?.role === "maintainer" ? 80 : -1)) >= 80,
     canEstablish: me?.role === "maintainer",
+    canPublish: me?.canPublish === true,
     isPro: me?.planActive === true,
   };
 }

@@ -14,7 +14,11 @@ import { auth } from "./auth.js";
 import { config } from "./config.js";
 import { pgRunner } from "./db.js";
 import { sessionMiddleware } from "./session.js";
-import { requireRole, requireSession, type Env } from "./roles.js";
+import { requireRole, requireSession, isStaff, type Env } from "./roles.js";
+import {
+  requireFeature, validAudience, makeAudienceCheck, listRoles, setRoleLevel, removeRoleLevel,
+  listFeatures, setFeatureMinRole, roleRank, featureMinRole,
+} from "./role-ladder.js";
 import { loadTiers, rankOf, setTier, removeTier, TierError, FREE } from "./plans.js";
 import {
   requireResource, wholeMin, canRead, listRules, setRule, removeRule, isResourceKind,
@@ -41,6 +45,7 @@ import {
 } from "./submissions.js";
 import {
   proposeClaim, review, claimsFor, globalReading, dissentsFor, establishAsMaintainer,
+  setAudience,
   divergencesAgainstGlobal, communityReadingsFor, ClaimError, type SubjectKind, type Decision,
 } from "./claims.js";
 import { pullSince, STREAMS, type Cursors } from "./pull.js";
@@ -100,6 +105,11 @@ export function createApp(): Hono<Env> {
       planRank: rankOf(tiers, plan),
       planExpiresAt: me.planExpiresAt ?? null,
       planActive: canRead(me, await wholeMin(pgRunner, "community"), tiers),
+      // the role axis: its place on the ladder, and whether publishing is open to it
+      roleRank: p?.roleRank ?? null,
+      roleLabel: (await listRoles(pgRunner)).find((x) => x.name === me.role)?.label || me.role,
+      canPublish: (p?.roleRank ?? -1) >= (await roleRank(pgRunner, await featureMinRole(pgRunner, "publish"))),
+      publishRole: await featureMinRole(pgRunner, "publish"),
     });
   });
 
@@ -168,6 +178,39 @@ export function createApp(): Hono<Env> {
     if (!isResourceKind(kind)) return c.json({ detail: `unknown resource kind: ${kind}` }, 422);
     try {
       await removeRule(pgRunner, kind, c.req.param("key"));
+      return c.json({ ok: true });
+    } catch (e) {
+      if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+
+  // --- the role ladder (role-ladder.ts): data, like the plan tiers ---
+  app.get("/roles", async (c) => c.json(await listRoles(pgRunner)));
+  app.put("/roles/:name", requireRole("maintainer"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { rank?: number; label?: string };
+    try {
+      return c.json(await setRoleLevel(pgRunner, { name: c.req.param("name"), rank: body.rank, label: body.label }));
+    } catch (e) {
+      if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+  app.delete("/roles/:name", requireRole("maintainer"), async (c) => {
+    try {
+      await removeRoleLevel(pgRunner, c.req.param("name"));
+      return c.json({ ok: true });
+    } catch (e) {
+      if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
+      throw e;
+    }
+  });
+  /** Which role each configurable feature needs (today: publishing). */
+  app.get("/feature-access", async (c) => c.json(await listFeatures(pgRunner)));
+  app.put("/feature-access/:feature", requireRole("maintainer"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { minRole?: string };
+    try {
+      await setFeatureMinRole(pgRunner, c.req.param("feature"), String(body.minRole ?? ""));
       return c.json({ ok: true });
     } catch (e) {
       if (e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
@@ -253,47 +296,54 @@ export function createApp(): Hono<Env> {
   });
 
   // --- submissions: local research offered upstream (Phase 4, additive kinds only) ---
-  // Publishing is a FEATURE, so it is role-based alone: researcher and above.
-  app.post("/submissions", requireRole("researcher"), async (c) => {
+  // Publishing is a FEATURE, so it is role-based: at least the role the maintainer set for it
+  // (feature_access; researcher by default). The publisher proposes who may see it (audience).
+  const publish = requireFeature("publish", pgRunner);
+  app.post("/submissions", requireRole("reader"), publish, async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
-      { items?: SubmissionItemInput[]; supersedes?: string | null };
+      { items?: SubmissionItemInput[]; supersedes?: string | null; audience?: unknown };
     try {
       const out = await createSubmission(pgRunner, {
         authorId: c.get("user")!.id,
         items: body.items ?? [],
         supersedes: body.supersedes ?? null,
+        audience: await validAudience(pgRunner, body.audience),
       });
       return c.json(out, 201);
     } catch (e) {
-      if (e instanceof SubmissionError) return c.json({ detail: e.message }, e.status as 400);
+      if (e instanceof SubmissionError || e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
       throw e;
     }
   });
 
-  app.get("/submissions", requireRole("researcher"), async (c) =>
+  // your own outbox — anyone who has published can see what they sent
+  app.get("/submissions", requireRole("reader"), async (c) =>
     c.json(await listMine(pgRunner, c.get("user")!.id)));
 
-  app.get("/submissions/:id", requireRole("researcher"), async (c) => {
+  app.get("/submissions/:id", requireRole("reader"), async (c) => {
     const found = await getSubmission(pgRunner, c.req.param("id"));
-    if (!found) return c.json({ detail: "submission not found" }, 404);
+    const me = c.get("user")!;
+    // yours, or staff reviewing it — a submission isn't anyone else's to read before approval
+    if (!found || (found.authorId !== me.id && !isStaff(me))) return c.json({ detail: "submission not found" }, 404);
     return c.json(found);
   });
 
   // --- claims: contending readings, review, establishment, dissent (Phase 5) ---
 
   /** Offer your reading of a form or root. Must carry its argument (§12.1). A feature → role. */
-  app.post("/claims", requireRole("researcher"), async (c) => {
+  app.post("/claims", requireRole("reader"), publish, async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
-      { subjectKind?: SubjectKind; subjectValue?: string; payload?: never };
+      { subjectKind?: SubjectKind; subjectValue?: string; payload?: never; audience?: unknown };
     try {
       return c.json(await proposeClaim(pgRunner, {
         authorId: c.get("user")!.id,
         subjectKind: body.subjectKind ?? "form",
         subjectValue: body.subjectValue ?? "",
         payload: body.payload ?? {},
+        audience: await validAudience(pgRunner, body.audience),
       }), 201);
     } catch (e) {
-      if (e instanceof ClaimError) return c.json({ detail: e.message }, e.status as 400);
+      if (e instanceof ClaimError || e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
       throw e;
     }
   });
@@ -303,17 +353,29 @@ export function createApp(): Hono<Env> {
   const community = requireResource("community", pgRunner);
 
   /** Every reading of a subject, and the group's current one — what a reader compares. */
+  // Each published result has an audience (a minimum role and plan); every read below shows the
+  // viewer only what they may see. Staff see everything — they review it; authors see their own.
+  const canSee = async (c: { get(k: "user"): Env["Variables"]["user"] }) => makeAudienceCheck(pgRunner, c.get("user"));
+
   app.get("/claims", community, async (c) => {
     const kind = (c.req.query("subjectKind") ?? "form") as SubjectKind;
     const value = c.req.query("subjectValue") ?? "";
+    const see = await canSee(c);
     return c.json({
-      claims: await claimsFor(pgRunner, kind, value),
-      global: await globalReading(pgRunner, kind, value),
+      claims: await claimsFor(pgRunner, kind, value, see),
+      global: await globalReading(pgRunner, kind, value, see),
     });
   });
 
-  app.get("/claims/:id/dissents", community, async (c) =>
-    c.json(await dissentsFor(pgRunner, c.req.param("id"))));
+  app.get("/claims/:id/dissents", community, async (c) => {
+    // a dissent belongs to its reading: hidden with it
+    const see = await canSee(c);
+    const versions = await pgRunner.query(
+      `SELECT cv.audience_role, cv.audience_plan, c.author_id FROM claim_versions cv JOIN claims c ON c.id = cv.claim_id
+        WHERE cv.claim_id = $1`, [c.req.param("id")]);
+    if (!versions.length || !versions.some(see)) return c.json([]);
+    return c.json(await dissentsFor(pgRunner, c.req.param("id")));
+  });
 
   /**
    * ⚖ Where I stand apart — computed LIVE, the remote-only replacement for the old local
@@ -333,7 +395,7 @@ export function createApp(): Hono<Env> {
       return c.json({ detail: "forms must be a list of {subjectValue, meaning, subjectKind?: form|root}" }, 422);
     }
     if (forms.length > 5000) return c.json({ detail: "at most 5000 forms per request" }, 413);
-    return c.json(await divergencesAgainstGlobal(pgRunner, forms));
+    return c.json(await divergencesAgainstGlobal(pgRunner, forms, await canSee(c)));
   });
 
   /**
@@ -344,7 +406,7 @@ export function createApp(): Hono<Env> {
     c.json(await communityReadingsFor(pgRunner, {
       root: c.req.query("root") || null,
       lemma: c.req.query("lemma") || null,
-    })));
+    }, await canSee(c))));
 
   /**
    * The pull (Phase 6). A cursor walk over append-only streams: give me everything with
@@ -360,7 +422,7 @@ export function createApp(): Hono<Env> {
     const since = Object.fromEntries(
       STREAMS.map((s) => [s, Number(c.req.query(s) ?? 0) || 0]),
     ) as Cursors;
-    return c.json(await pullSince(pgRunner, since, limit));
+    return c.json(await pullSince(pgRunner, since, limit, await canSee(c)));
   });
 
   /**
@@ -370,27 +432,34 @@ export function createApp(): Hono<Env> {
    */
   app.post("/claims/:id/versions/:version/review", requireRole("moderator"), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
-      { decision?: Decision; comment?: string; payload?: unknown };
+      { decision?: Decision; comment?: string; payload?: unknown; audience?: unknown };
     if (body.decision !== "approve" && body.decision !== "object") {
       return c.json({ detail: "decision must be approve or object" }, 422);
     }
     const me = c.get("user")!;
     try {
+      // approving may confirm or change who can see it (the publisher only proposed it)
+      if (body.decision === "approve" && body.audience !== undefined) {
+        await setAudience(pgRunner, c.req.param("id"), Number(c.req.param("version")), await validAudience(pgRunner, body.audience));
+      }
       return c.json(await review(pgRunner, {
         claimId: c.req.param("id"), version: Number(c.req.param("version")),
         moderatorId: me.id, moderatorRole: me.role,
         decision: body.decision, comment: body.comment, payload: body.payload,
       }));
     } catch (e) {
-      if (e instanceof ClaimError) return c.json({ detail: e.message }, e.status as 400);
+      if (e instanceof ClaimError || e instanceof TierError) return c.json({ detail: e.message }, e.status as 400);
       throw e;
     }
   });
 
   /** A maintainer establishing directly — §4 grants the authority; it's recorded as their act. */
   app.post("/claims/:id/versions/:version/establish", requireRole("maintainer"), async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { comment?: string };
+    const body = (await c.req.json().catch(() => ({}))) as { comment?: string; audience?: unknown };
     try {
+      if (body.audience !== undefined) {
+        await setAudience(pgRunner, c.req.param("id"), Number(c.req.param("version")), await validAudience(pgRunner, body.audience));
+      }
       await establishAsMaintainer(pgRunner, {
         claimId: c.req.param("id"), version: Number(c.req.param("version")),
         maintainerId: c.get("user")!.id, comment: body.comment,

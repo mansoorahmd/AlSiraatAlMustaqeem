@@ -27,7 +27,8 @@ const send = (method: string, body?: unknown): RequestInit =>
 export interface Tier { name: string; rank: number; label: string }
 export type ResourceKind = "corpus" | "community" | "translation" | "lexicon";
 export interface Rule { kind: ResourceKind; key: string; minPlan: string | null }
-export type Role = "reader" | "researcher" | "moderator" | "maintainer";
+export type Role = string;
+export interface RoleLevel { name: string; rank: number; label: string; fixed: boolean }
 export interface AdminUser {
   id: string; email: string; displayName: string; role: Role;
   plan: string; planExpiresAt: string | null; createdAt: string;
@@ -49,6 +50,14 @@ export const admin = {
   removeRule: (kind: ResourceKind, key: string) =>
     call<{ ok: boolean }>(`/resource-access/${kind}/${encodeURIComponent(key)}`, send("DELETE")),
   resources: () => call<AdminResources>("/admin/resources"),
+
+  roles: () => call<RoleLevel[]>("/roles"),
+  saveRole: (x: { name: string; rank?: number; label: string }) =>
+    call<RoleLevel>(`/roles/${encodeURIComponent(x.name)}`, send("PUT", { rank: x.rank, label: x.label })),
+  removeRole: (name: string) => call<{ ok: boolean }>(`/roles/${encodeURIComponent(name)}`, send("DELETE")),
+  features: () => call<{ feature: "publish"; minRole: string }[]>("/feature-access"),
+  setFeature: (feature: "publish", minRole: string) =>
+    call<{ ok: boolean }>(`/feature-access/${feature}`, send("PUT", { minRole })),
 
   users: () => call<AdminUser[]>("/admin/users"),
   setUserRole: (id: string, role: Role) => call<{ ok: boolean }>(`/admin/users/${id}/role`, send("PUT", { role })),

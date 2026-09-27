@@ -3578,3 +3578,10 @@ a { color: var(--lapis); }
   border-radius: 8px; border: 1px solid color-mix(in srgb, var(--lapis) 30%, transparent);
   background: color-mix(in srgb, var(--lapis) 6%, transparent); }
 .settings-callout strong { font-weight: 600; font-size: var(--fs-small); }
+
+/* who may see a published result (AudiencePicker) */
+.audience { display: flex; flex-direction: column; gap: 0.3rem; }
+.audience-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.audience-row .board-input { flex: 1 1 10rem; width: auto; }
+.review-actions .audience { flex-basis: 100%; }
+.admin-subhead { margin: 0.9rem 0.6rem 0.2rem; font-size: var(--fs-small); font-weight: 600; color: var(--ink); }

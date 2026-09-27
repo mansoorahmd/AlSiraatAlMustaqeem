@@ -11,7 +11,8 @@ import { useAsync } from "../../hooks/useAsync";
 import type { RootIndicationWithRefinement, WordIndication, PeerIndication } from "../../api/types";
 import { IndicationPromptPanel } from "./IndicationPromptPanel";
 import { ProposeReading } from "./ProposeReading";
-import { remote } from "../../api/remote";
+import { remote, type Audience } from "../../api/remote";
+import { AudiencePicker, EVERYONE } from "../AudiencePicker";
 import { useMe } from "../../hooks/useMe";
 import { proposals, readingHash, type Refinement } from "../../persistence/db";
 import { tokenizeVerse } from "./format";
@@ -275,6 +276,8 @@ const STATUS_HINT: Record<PeerIndication["status"], string> = {
  */
 function ReviewControls({ reading }: { reading: PeerIndication }) {
   const { me, canReview, canEstablish } = useMe();
+  // the author proposed who may see it; approving confirms or changes it
+  const [audience, setAudience] = useState<Audience>(reading.audience ?? EVERYONE);
   const [busy, setBusy] = useState<null | "approve" | "object" | "establish">(null);
   const [note, setNote] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -287,10 +290,11 @@ function ReviewControls({ reading }: { reading: PeerIndication }) {
     setBusy(kind); setErr(null); setNote(null);
     try {
       if (kind === "establish") {
-        await remote.establish(reading.claimId, reading.version);
+        await remote.establish(reading.claimId, reading.version, undefined, audience);
         setNote("Established. Sync to see it as the group's reading.");
       } else {
-        const t = await remote.review(reading.claimId, reading.version, { decision: kind });
+        const t = await remote.review(reading.claimId, reading.version,
+          kind === "approve" ? { decision: kind, audience } : { decision: kind });
         setNote(kind === "approve"
           ? (t.established ? "Approved — it carried a majority and is now established. Sync to see it."
                            : `Approved. ${t.approvals} approval${t.approvals === 1 ? "" : "s"} · ${t.objections} objection${t.objections === 1 ? "" : "s"}.`)
@@ -307,6 +311,9 @@ function ReviewControls({ reading }: { reading: PeerIndication }) {
         <p className="acct-hint">This is your own reading — you can't approve it yourself.</p>
       ) : (
         <div className="review-actions">
+          {reading.status !== "established" && (
+            <AudiencePicker value={audience} onChange={setAudience} label="Who can see it, if approved" />
+          )}
           <button className="ctl" disabled={!!busy} onClick={() => act("approve")}>
             {busy === "approve" ? "…" : "✓ Approve"}
           </button>

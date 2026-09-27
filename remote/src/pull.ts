@@ -9,6 +9,7 @@
 // (SHARED_RESEARCH.md §9).
 
 import type { SqlRunner } from "./migrate.js";
+import type { CanSee } from "./claims.js";
 import { SCHEMA_VERSION } from "./submissions.js";
 
 /** The streams a client walks. Each has its OWN sequence and so its own cursor. */
@@ -51,13 +52,13 @@ export interface PullPage {
  * because the client upserts by primary key.
  */
 export async function pullSince(
-  r: SqlRunner, since: Partial<Cursors> = {}, limit = 500,
+  r: SqlRunner, since: Partial<Cursors> = {}, limit = 500, canSee: CanSee = () => true,
 ): Promise<PullPage> {
   const from: Cursors = { ...ZERO_CURSORS, ...since };
 
   const globalForms = await r.query(
     `SELECT g.subject_kind, g.subject_value, g.claim_id, g.version, g.established_at, g.seq,
-            cv.payload_json, c.author_id, cv.schema_version
+            cv.payload_json, c.author_id, cv.schema_version, cv.audience_role, cv.audience_plan
        FROM global_forms g
        JOIN claim_versions cv ON cv.claim_id = g.claim_id AND cv.version = g.version
        JOIN claims c ON c.id = g.claim_id
@@ -66,10 +67,13 @@ export async function pullSince(
       LIMIT $2`, [from.globalForms, limit]);
 
   const dissents = await r.query(
-    `SELECT id, claim_id, claim_version, author_id, payload_json, created_at, seq
-       FROM dissents
-      WHERE seq > $1
-      ORDER BY seq
+    `SELECT d.id, d.claim_id, d.claim_version, d.author_id, d.payload_json, d.created_at, d.seq,
+            cv.audience_role, cv.audience_plan, c.author_id AS claim_author_id
+       FROM dissents d
+       JOIN claim_versions cv ON cv.claim_id = d.claim_id AND cv.version = d.claim_version
+       JOIN claims c ON c.id = d.claim_id
+      WHERE d.seq > $1
+      ORDER BY d.seq
       LIMIT $2`, [from.dissents, limit]);
 
   // Every version of every claim. `status` is derived rather than stored: established when the
@@ -78,6 +82,7 @@ export async function pullSince(
   // on the next pull without needing a rewrite of history upstream.
   const peers = await r.query(
     `SELECT cv.claim_id, cv.version, cv.payload_json, cv.created_at, cv.schema_version, cv.seq,
+            cv.audience_role, cv.audience_plan,
             c.author_id, c.subject_kind, c.subject_value, c.current_version,
             (g.claim_id IS NOT NULL) AS is_global,
             -- who submitted it: display name if set — never the email (it can be read beyond members)
@@ -111,7 +116,9 @@ export async function pullSince(
     },
     more: globalForms.length === limit || dissents.length === limit || peers.length === limit,
     schemaVersion: SCHEMA_VERSION,
-    globalForms: globalForms.map((g) => ({
+    // each cursor advanced past EVERY row above (hidden ones included, so they never block the
+    // stream); only the rows this viewer may see are delivered
+    globalForms: globalForms.filter(canSee).map((g) => ({
       subjectKind: g.subject_kind, subjectValue: g.subject_value,
       claimId: g.claim_id, version: Number(g.version),
       authorId: g.author_id,
@@ -122,7 +129,7 @@ export async function pullSince(
       schemaVersion: Number(g.schema_version ?? SCHEMA_VERSION),
       seq: Number(g.seq),
     })),
-    peerIndications: peers.map((p) => {
+    peerIndications: peers.filter(canSee).map((p) => {
       const payload = p.payload_json as { meaning?: string; label?: string } | null;
       return {
         claimId: p.claim_id, version: Number(p.version), authorId: p.author_id,
@@ -140,7 +147,7 @@ export async function pullSince(
         seq: Number(p.seq),
       };
     }),
-    dissents: dissents.map((d) => ({
+    dissents: dissents.filter((d) => canSee({ ...d, author_id: d.claim_author_id })).map((d) => ({
       id: d.id, claimId: d.claim_id, claimVersion: Number(d.claim_version),
       authorId: d.author_id, payload: d.payload_json,
       createdAt: new Date(d.created_at as string).toISOString(),

@@ -38,6 +38,9 @@ export interface SubmissionOut {
   createdAt: string;
   supersedes: string | null;
   items: number;
+  authorId: string;
+  /** who may see it once approved */
+  audience: { minRole: string | null; minPlan: string | null };
 }
 
 export class SubmissionError extends Error {
@@ -55,7 +58,11 @@ const isAdditive = (k: unknown): k is AdditiveKind =>
  */
 export async function createSubmission(
   r: SqlRunner,
-  opts: { authorId: string; items: SubmissionItemInput[]; supersedes?: string | null },
+  opts: {
+    authorId: string; items: SubmissionItemInput[]; supersedes?: string | null;
+    /** who may see it once approved (validated by the caller); a reviewer may change it */
+    audience?: { minRole: string | null; minPlan: string | null };
+  },
 ): Promise<SubmissionOut> {
   const items = opts.items ?? [];
   if (items.length === 0) throw new SubmissionError("a submission needs at least one item", 422);
@@ -84,9 +91,9 @@ export async function createSubmission(
   const existing = await r.query("SELECT id FROM submissions WHERE id = $1", [id]);
   if (!existing[0]) {
     await r.query(
-      `INSERT INTO submissions (id, author_id, target_kind, status, supersedes)
-       VALUES ($1, $2, 'additive', 'submitted', $3)`,
-      [id, opts.authorId, opts.supersedes ?? null],
+      `INSERT INTO submissions (id, author_id, target_kind, status, supersedes, audience_role, audience_plan)
+       VALUES ($1, $2, 'additive', 'submitted', $3, $4, $5)`,
+      [id, opts.authorId, opts.supersedes ?? null, opts.audience?.minRole ?? null, opts.audience?.minPlan ?? null],
     );
     for (const [i, it] of items.entries()) {
       await r.query(
@@ -103,8 +110,8 @@ export async function createSubmission(
 
 export async function getSubmission(r: SqlRunner, id: string): Promise<SubmissionOut | null> {
   const rows = await r.query(
-    `SELECT s.id, s.status, s.target_kind, s.created_at, s.supersedes,
-            COUNT(i.id)::int AS items
+    `SELECT s.id, s.status, s.target_kind, s.created_at, s.supersedes, s.author_id,
+            s.audience_role, s.audience_plan, COUNT(i.id)::int AS items
        FROM submissions s LEFT JOIN submission_items i ON i.submission_id = s.id
       WHERE s.id = $1
       GROUP BY s.id`, [id]);
@@ -115,8 +122,8 @@ export async function getSubmission(r: SqlRunner, id: string): Promise<Submissio
 /** Everything this author has sent, newest first — the outbox. */
 export async function listMine(r: SqlRunner, authorId: string): Promise<SubmissionOut[]> {
   const rows = await r.query(
-    `SELECT s.id, s.status, s.target_kind, s.created_at, s.supersedes,
-            COUNT(i.id)::int AS items
+    `SELECT s.id, s.status, s.target_kind, s.created_at, s.supersedes, s.author_id,
+            s.audience_role, s.audience_plan, COUNT(i.id)::int AS items
        FROM submissions s LEFT JOIN submission_items i ON i.submission_id = s.id
       WHERE s.author_id = $1
       GROUP BY s.id ORDER BY s.created_at DESC`, [authorId]);
@@ -131,5 +138,10 @@ function shape(s: Record<string, unknown>): SubmissionOut {
     createdAt: new Date(s.created_at as string).toISOString(),
     supersedes: (s.supersedes as string | null) ?? null,
     items: Number(s.items ?? 0),
+    authorId: String(s.author_id ?? ""),
+    audience: {
+      minRole: s.audience_role == null ? null : String(s.audience_role),
+      minPlan: s.audience_plan == null ? null : String(s.audience_plan),
+    },
   };
 }

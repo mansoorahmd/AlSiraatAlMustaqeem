@@ -127,6 +127,8 @@ export interface PeerIndication {
   approvers: string[];
   /** objections filed against this exact version */
   dissents: number;
+  /** who may see it once approved (the author proposed it; a reviewer may change it) */
+  audience?: { minRole: string | null; minPlan: string | null };
   createdAt: number;
 }
 /** What an AI proposed through the MCP server, awaiting the reader's review. */

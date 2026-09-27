@@ -37,7 +37,26 @@ export interface ClaimVersion {
   subjectValue: string;
   payload: unknown;
   establishedAt: string | null;
+  /** who may see it once published: at least this role and this plan (null = no extra need) */
+  audience: { minRole: string | null; minPlan: string | null };
 }
+
+/** Decides whether the viewer may see a published result (role-ladder.ts makeAudienceCheck). */
+export type CanSee = (row: { audience_role?: unknown; audience_plan?: unknown; author_id?: unknown }) => boolean;
+const everyone: CanSee = () => true;
+
+const toVersion = (v: Record<string, unknown>): ClaimVersion => ({
+  claimId: String(v.claim_id), version: Number(v.version), authorId: String(v.author_id),
+  subjectKind: v.subject_kind as SubjectKind, subjectValue: String(v.subject_value),
+  payload: v.payload_json,
+  establishedAt: v.established_at ? new Date(v.established_at as string).toISOString() : null,
+  audience: {
+    minRole: v.audience_role == null ? null : String(v.audience_role),
+    minPlan: v.audience_plan == null ? null : String(v.audience_plan),
+  },
+});
+const VERSION_COLS = `cv.claim_id, cv.version, cv.payload_json, cv.established_at, cv.audience_role, cv.audience_plan,
+            c.author_id, c.subject_kind, c.subject_value`;
 
 /**
  * Record an author's reading of a subject. The first is version 1; a later reading by the same
@@ -52,6 +71,8 @@ export async function proposeClaim(
   opts: {
     authorId: string; subjectKind: SubjectKind; subjectValue: string;
     payload: { meaning?: string; argument?: unknown; evidence?: unknown[]; caseId?: string };
+    /** the publisher's proposed audience (validated by the caller); the reviewer confirms it */
+    audience?: { minRole: string | null; minPlan: string | null };
   },
 ): Promise<ClaimVersion> {
   const subject = opts.subjectValue?.trim();
@@ -79,9 +100,10 @@ export async function proposeClaim(
   const version = Number((prev[0] as { v: number | string }).v) + 1;
 
   await r.query(
-    `INSERT INTO claim_versions (claim_id, version, payload_json, supersedes_version, schema_version)
-     VALUES ($1, $2, $3::jsonb, $4, $5)`,
-    [id, version, JSON.stringify(opts.payload), version > 1 ? version - 1 : null, SCHEMA_VERSION],
+    `INSERT INTO claim_versions (claim_id, version, payload_json, supersedes_version, schema_version, audience_role, audience_plan)
+     VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7)`,
+    [id, version, JSON.stringify(opts.payload), version > 1 ? version - 1 : null, SCHEMA_VERSION,
+     opts.audience?.minRole ?? null, opts.audience?.minPlan ?? null],
   );
   await r.query("UPDATE claims SET current_version = $1 WHERE id = $2", [version, id]);
 
@@ -92,35 +114,33 @@ export async function getVersion(
   r: SqlRunner, id: string, version: number,
 ): Promise<ClaimVersion | null> {
   const rows = await r.query(
-    `SELECT cv.claim_id, cv.version, cv.payload_json, cv.established_at,
-            c.author_id, c.subject_kind, c.subject_value
+    `SELECT ${VERSION_COLS}
        FROM claim_versions cv JOIN claims c ON c.id = cv.claim_id
       WHERE cv.claim_id = $1 AND cv.version = $2`, [id, version]);
   const v = rows[0] as Record<string, unknown> | undefined;
-  return v ? {
-    claimId: String(v.claim_id), version: Number(v.version), authorId: String(v.author_id),
-    subjectKind: v.subject_kind as SubjectKind, subjectValue: String(v.subject_value),
-    payload: v.payload_json,
-    establishedAt: v.established_at ? new Date(v.established_at as string).toISOString() : null,
-  } : null;
+  return v ? toVersion(v) : null;
 }
 
-/** Every reading of a subject, whoever holds it — what the reader compares. */
+/** Confirm or change who may see a version — the reviewer's call when approving. */
+export async function setAudience(
+  r: SqlRunner, id: string, version: number, audience: { minRole: string | null; minPlan: string | null },
+): Promise<void> {
+  const done = await r.query(
+    "UPDATE claim_versions SET audience_role = $1, audience_plan = $2 WHERE claim_id = $3 AND version = $4 RETURNING claim_id",
+    [audience.minRole, audience.minPlan, id, version]);
+  if (!done.length) throw new ClaimError("no such claim version", 404);
+}
+
+/** Every reading of a subject the viewer may see, whoever holds it — what the reader compares. */
 export async function claimsFor(
-  r: SqlRunner, subjectKind: SubjectKind, subjectValue: string,
+  r: SqlRunner, subjectKind: SubjectKind, subjectValue: string, canSee: CanSee = everyone,
 ): Promise<ClaimVersion[]> {
   const rows = await r.query(
-    `SELECT cv.claim_id, cv.version, cv.payload_json, cv.established_at,
-            c.author_id, c.subject_kind, c.subject_value
+    `SELECT ${VERSION_COLS}
        FROM claim_versions cv JOIN claims c ON c.id = cv.claim_id
       WHERE c.subject_kind = $1 AND c.subject_value = $2
       ORDER BY cv.claim_id, cv.version`, [subjectKind, subjectValue]);
-  return rows.map((v) => ({
-    claimId: String(v.claim_id), version: Number(v.version), authorId: String(v.author_id),
-    subjectKind: v.subject_kind as SubjectKind, subjectValue: String(v.subject_value),
-    payload: v.payload_json,
-    establishedAt: v.established_at ? new Date(v.established_at as string).toISOString() : null,
-  }));
+  return rows.filter(canSee).map(toVersion);
 }
 
 export interface Tally { approvals: number; objections: number; established: boolean }
@@ -232,13 +252,15 @@ export async function establishAsMaintainer(
 
 /** The group's current reading of a subject, if it has one. */
 export async function globalReading(
-  r: SqlRunner, subjectKind: SubjectKind, subjectValue: string,
+  r: SqlRunner, subjectKind: SubjectKind, subjectValue: string, canSee: CanSee = everyone,
 ): Promise<ClaimVersion | null> {
   const rows = await r.query(
     "SELECT claim_id, version FROM global_forms WHERE subject_kind = $1 AND subject_value = $2",
     [subjectKind, subjectValue]);
   const g = rows[0] as { claim_id: string; version: number } | undefined;
-  return g ? getVersion(r, g.claim_id, Number(g.version)) : null;
+  const v = g ? await getVersion(r, g.claim_id, Number(g.version)) : null;
+  // a reading outside the viewer's audience is, for them, not there
+  return v && canSee({ audience_role: v.audience.minRole, audience_plan: v.audience.minPlan, author_id: v.authorId }) ? v : null;
 }
 
 export interface PeerReading {
@@ -256,6 +278,8 @@ export interface PeerReading {
   refinements: { lemma: string; label: string; meaning: string }[];
   approvers: string[];
   dissents: number;
+  /** who may see it (the author proposed it; a reviewer may change it) */
+  audience: { minRole: string | null; minPlan: string | null };
 }
 
 const STATUS_ORDER = { established: 0, proposed: 1, superseded: 2 } as const;
@@ -268,12 +292,12 @@ const STATUS_ORDER = { established: 0, proposed: 1, superseded: 2 } as const;
  * itself with no history rewrite. Ordered established → proposed → superseded, newest first.
  */
 async function readingsForSubject(
-  r: SqlRunner, subjectKind: SubjectKind, subjectValue: string,
+  r: SqlRunner, subjectKind: SubjectKind, subjectValue: string, canSee: CanSee,
 ): Promise<PeerReading[]> {
   const subject = subjectValue?.trim();
   if (!subject) return [];
   const rows = await r.query(
-    `SELECT cv.claim_id, cv.version, cv.payload_json, cv.created_at,
+    `SELECT cv.claim_id, cv.version, cv.payload_json, cv.created_at, cv.audience_role, cv.audience_plan,
             c.author_id, c.subject_kind, c.subject_value, c.current_version,
             (g.claim_id IS NOT NULL) AS is_global,
             COALESCE(NULLIF(au.display_name, ''), 'a researcher') AS author_name,
@@ -292,7 +316,7 @@ async function readingsForSubject(
       WHERE c.subject_kind = $1 AND c.subject_value = $2
       ORDER BY cv.created_at DESC`, [subjectKind, subject]);
 
-  const mapped: PeerReading[] = rows.map((p) => {
+  const mapped: PeerReading[] = rows.filter(canSee).map((p) => {
     const payload = p.payload_json as
       { meaning?: string; label?: string; refinements?: PeerReading["refinements"] } | null;
     const status: PeerReading["status"] = p.is_global
@@ -310,6 +334,10 @@ async function readingsForSubject(
       refinements: Array.isArray(payload?.refinements) ? payload!.refinements : [],
       approvers: (p.approvers as string[] | null) ?? [],
       dissents: Number(p.dissents ?? 0),
+      audience: {
+        minRole: p.audience_role == null ? null : String(p.audience_role),
+        minPlan: p.audience_plan == null ? null : String(p.audience_plan),
+      },
     };
   });
   // stable sort (created_at DESC already applied within each status group)
@@ -321,11 +349,11 @@ async function readingsForSubject(
  * chips. Live and gated; the group's readings never touch the client's disk.
  */
 export async function communityReadingsFor(
-  r: SqlRunner, opts: { root?: string | null; lemma?: string | null },
+  r: SqlRunner, opts: { root?: string | null; lemma?: string | null }, canSee: CanSee = everyone,
 ): Promise<{ communityRoot: PeerReading[]; communityLemma: PeerReading[] }> {
   return {
-    communityRoot: opts.root ? await readingsForSubject(r, "root", opts.root) : [],
-    communityLemma: opts.lemma ? await readingsForSubject(r, "form", opts.lemma) : [],
+    communityRoot: opts.root ? await readingsForSubject(r, "root", opts.root, canSee) : [],
+    communityLemma: opts.lemma ? await readingsForSubject(r, "form", opts.lemma, canSee) : [],
   };
 }
 
@@ -352,6 +380,7 @@ export interface DivergenceRow {
 export async function divergencesAgainstGlobal(
   r: SqlRunner,
   mine: { subjectKind?: SubjectKind; subjectValue: string; meaning: string }[],
+  canSee: CanSee = everyone,
 ): Promise<{ divergences: DivergenceRow[]; overlap: number; globalTotal: number }> {
   const out: DivergenceRow[] = [];
   let overlap = 0;
@@ -359,7 +388,7 @@ export async function divergencesAgainstGlobal(
     const kind = m.subjectKind ?? "form";
     const subject = m.subjectValue?.trim();
     if (!subject) continue;
-    const g = await globalReading(r, kind, subject);
+    const g = await globalReading(r, kind, subject, canSee);
     if (!g) continue; // the group hasn't settled this form — nothing to diverge from
     overlap++;
     const theirs = String((g.payload as { meaning?: string } | null)?.meaning ?? "").trim();
@@ -372,8 +401,12 @@ export async function divergencesAgainstGlobal(
       });
     }
   }
-  const gt = await r.query("SELECT COUNT(*)::int AS n FROM global_forms");
-  const globalTotal = Number((gt[0] as { n: number })?.n ?? 0);
+  // how many readings the group holds — that this viewer may see
+  const gt = await r.query(
+    `SELECT cv.audience_role, cv.audience_plan, c.author_id FROM global_forms g
+       JOIN claim_versions cv ON cv.claim_id = g.claim_id AND cv.version = g.version
+       JOIN claims c ON c.id = g.claim_id`);
+  const globalTotal = gt.filter(canSee).length;
   return { divergences: out, overlap, globalTotal };
 }
 

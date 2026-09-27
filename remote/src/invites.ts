@@ -12,7 +12,8 @@
 
 import { randomBytes } from "node:crypto";
 import type { SqlRunner } from "./migrate.js";
-import { isRole, type Role } from "./roles.js";
+import type { Role } from "./roles.js";
+import { roleExists } from "./role-ladder.js";
 import { FREE, loadTiers, TierError } from "./plans.js";
 
 export interface Invite {
@@ -43,7 +44,7 @@ export async function createInvite(
   opts: { issuedBy: string; role?: Role; expiresInDays?: number; code?: string },
 ): Promise<Invite> {
   const role: Role = opts.role ?? "researcher";
-  if (!isRole(role)) throw new Error(`unknown role: ${role}`);
+  if (!(await roleExists(r, role))) throw new InviteError(`unknown role: ${role}`, 422);
   const code = opts.code ?? newInviteCode();
   const days = expiryDays(opts.expiresInDays);
   const rows = await r.query(
@@ -107,19 +108,21 @@ export async function loadPrincipal(
   r: SqlRunner,
   userId: string,
 ): Promise<{
-  id: string; role: Role; localId: string | null; email: string; displayName: string;
+  id: string; role: Role; roleRank: number; localId: string | null; email: string; displayName: string;
   plan: string; planExpiresAt: string | null;
 } | null> {
+  // the role's rank comes with it, so every guard afterwards is a comparison (roles.ts)
   const rows = await r.query(
-    "SELECT id, role, local_id, email, display_name, plan, plan_expires_at FROM users WHERE id = $1",
+    `SELECT u.id, u.role, rl.rank AS role_rank, u.local_id, u.email, u.display_name, u.plan, u.plan_expires_at
+       FROM users u JOIN role_levels rl ON rl.name = u.role WHERE u.id = $1`,
     [userId]);
   const u = rows[0] as {
-    id: string; role: string; local_id: string | null; email: string; display_name: string | null;
+    id: string; role: string; role_rank: number; local_id: string | null; email: string; display_name: string | null;
     plan: string; plan_expires_at: string | Date | null;
   } | undefined;
-  if (!u || !isRole(u.role)) return null;
+  if (!u) return null;
   return {
-    id: u.id, role: u.role, localId: u.local_id,
+    id: u.id, role: u.role, roleRank: Number(u.role_rank), localId: u.local_id,
     email: u.email, displayName: u.display_name ?? "",
     // users.plan is a foreign key into plan_tiers, so it is always a real tier
     plan: u.plan || FREE,

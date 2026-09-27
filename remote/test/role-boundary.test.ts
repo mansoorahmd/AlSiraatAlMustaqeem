@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
-import { requireRole, atLeast, ROLES, type Env } from "../src/roles.js";
+import { requireRole, atLeast, FIXED_ROLES, rankOf, type Env } from "../src/roles.js";
 
 // a tiny app: a test-only middleware injects the principal from an x-test-role header,
 // then routes are guarded at different rungs.
@@ -22,13 +22,19 @@ function makeApp() {
 }
 
 describe("role ladder", () => {
-  it("orders the four roles low → high", () => {
-    expect([...ROLES]).toEqual(["reader", "researcher", "moderator", "maintainer"]);
+  it("the fixed rungs: reader < moderator < maintainer", () => {
+    expect(FIXED_ROLES).toEqual({ reader: 0, moderator: 80, maintainer: 100 });
   });
-  it("atLeast compares rungs", () => {
-    expect(atLeast("moderator", "reader")).toBe(true);
-    expect(atLeast("moderator", "moderator")).toBe(true);
-    expect(atLeast("researcher", "moderator")).toBe(false);
+  it("atLeast compares ranks — a principal's own, or the seeded one", () => {
+    expect(atLeast({ role: "moderator" }, "reader")).toBe(true);
+    expect(atLeast({ role: "moderator" }, "moderator")).toBe(true);
+    expect(atLeast({ role: "researcher" }, "moderator")).toBe(false);
+    // a rung a maintainer added carries its rank on the principal
+    expect(atLeast({ role: "senior-scholar", roleRank: 60 }, "moderator")).toBe(false);
+    expect(rankOf({ role: "senior-scholar", roleRank: 60 })).toBe(60);
+  });
+  it("an unknown role ranks below everyone (fail closed)", () => {
+    expect(rankOf({ role: "wizard" })).toBe(-1);
   });
 });
 
