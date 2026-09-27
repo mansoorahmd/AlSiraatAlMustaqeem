@@ -10,22 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { remote, RemoteOffline, type Me, type Role, type InviteOut, type ApiToken } from "../api/remote";
-import { fetchIdentity, owner as ownerApi } from "../persistence/db";
 import { cachedMe, refreshMe } from "../hooks/useMe";
-
-/**
- * Tie the open database to this account. If the file has no owner yet, claim it for this email;
- * if it already belongs to someone else we leave it alone — that's a real situation (you opened
- * a colleague's file) and the share controls will refuse to publish it as yours.
- *
- * Best-effort: this must never block signing in.
- */
-async function claimProfile(email: string, name?: string): Promise<void> {
-  try {
-    const id = await fetchIdentity();
-    if (!id.owner) await ownerApi.set(email, name);
-  } catch { /* keep working in the current database */ }
-}
 
 type Status = "loading" | "offline" | "blocked" | "signed-out" | "signed-in";
 
@@ -142,7 +127,6 @@ function AiAssistantSection() {
 export function AccountSheet() {
   const [status, setStatus] = useState<Status>("loading");
   const [me, setMe] = useState<Me | null>(null);
-  const [localId, setLocalId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -183,7 +167,6 @@ export function AccountSheet() {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
-  useEffect(() => { fetchIdentity().then((i) => setLocalId(i.localId)).catch(() => {}); }, []);
 
   const guard = async (fn: () => Promise<void>) => {
     setBusy(true); setErr(null);
@@ -196,16 +179,14 @@ export function AccountSheet() {
     // Your research follows YOU: claim the local database for this account. If it was
     // unclaimed, the work you've already done is adopted in place; if this account already
     // has a database on this machine, that one is opened instead.
-    await claimProfile(email.trim());
     await refresh();
   });
 
   const doRedeem = () => guard(async () => {
     await remote.redeem({
-      code: code.trim(), email: email.trim(), password, localId: localId ?? undefined,
+      code: code.trim(), email: email.trim(), password,
     });
     await remote.signIn(email.trim(), password);
-    await claimProfile(email.trim());
     setShowRedeem(false); setCode(""); setPassword("");
     await refresh();
   });
@@ -276,7 +257,6 @@ export function AccountSheet() {
                 id="acct-code" placeholder="paste the code you were sent"
                 value={code} onChange={(e) => setCode(e.target.value)}
               />
-              {localId && <span className="acct-hint">This device’s research will be linked to the new account.</span>}
             </div>
           )}
 
@@ -362,22 +342,8 @@ export function AccountSheet() {
 
           <dl className="acct-rows">
             <div className="acct-row">
-              <dt>This device</dt>
-              <dd>
-                {me.localId ? (
-                  <span className="acct-ok">Linked <code>{me.localId.slice(0, 8)}…</code></span>
-                ) : (
-                  <>
-                    <span className="acct-muted">Not linked</span>
-                    {localId && (
-                      <button className="ctl" disabled={busy}
-                        onClick={() => guard(async () => { await remote.bindLocalId(localId); await refresh(); })}>
-                        Link this device
-                      </button>
-                    )}
-                  </>
-                )}
-              </dd>
+              <dt>Your research</dt>
+              <dd><span className="acct-muted">kept privately in your account — only what you publish is shared</span></dd>
             </div>
           </dl>
 

@@ -9,6 +9,9 @@
 
 import { Hono, type Context } from "hono";
 import { reopenResearch, type AppState } from "../state.js";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { backupResearch, defaultBackupPath } from "../backup.js";
 import type { ResearchStore } from "../research.js";
 
@@ -373,6 +376,24 @@ export function researchFileRoutes(state: AppState): Hono {
     } catch (e) {
       try { await reopenResearch(state, previous); } catch { /* nothing more to do */ }
       return c.json({ detail: (e as Error).message }, 400);
+    }
+  });
+
+  /**
+   * The open research.db itself, as one clean file (WAL folded in) — what the app uploads to
+   * the research server to bring this computer's research into the reader's account. The file
+   * on disk is left exactly as it is.
+   */
+  r.get("/research/file", async (c) => {
+    const dir = mkdtempSync(join(tmpdir(), "alsiraat-file-"));
+    try {
+      const copy = join(dir, "research.db");
+      backupResearch(state.researchDb, copy);
+      return c.body(readFileSync(copy), 200, {
+        "content-type": "application/vnd.sqlite3", "cache-control": "no-store",
+      });
+    } finally {
+      try { rmSync(dir, { recursive: true, force: true, maxRetries: 3 }); } catch { /* temp */ }
     }
   });
 

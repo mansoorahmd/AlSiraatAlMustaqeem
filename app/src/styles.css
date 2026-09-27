@@ -3572,3 +3572,9 @@ a { color: var(--lapis); }
   .admin-access, .admin-actions { margin-inline-start: 0; }
   .admin-access.editing .board-input { min-width: 0; width: 100%; }
 }
+
+/* Settings → Your research: the one-time "bring this computer's research in" offer */
+.settings-callout { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.7rem 0.8rem;
+  border-radius: 8px; border: 1px solid color-mix(in srgb, var(--lapis) 30%, transparent);
+  background: color-mix(in srgb, var(--lapis) 6%, transparent); }
+.settings-callout strong { font-weight: 600; font-size: var(--fs-small); }

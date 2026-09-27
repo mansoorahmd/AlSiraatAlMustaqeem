@@ -251,3 +251,82 @@ describe("the AI boundary: a token may only propose", () => {
     expect((await put("/research/motifs/m_me", { id: "m_me", name: "renamed by ai" })).status).toBe(403);
   });
 });
+
+describe("bringing research in, and taking a copy out", () => {
+  const post = (app: Hono<any>, bytes: Uint8Array) =>
+    app.request("/research/import", { method: "POST", headers: { "content-type": "application/octet-stream" }, body: bytes });
+
+  /** A research.db as the local app would have it, owned by Amina. */
+  async function fileWith(fill: (s: ResearchStore) => Promise<void>): Promise<Uint8Array> {
+    const path = join(mkdtempSync(join(tmpdir(), "alsiraat-import-")), "research.db");
+    const db = new Db(path);
+    const s = await ResearchStore.open(sqliteResearch(db));
+    await s.setOwner(AMINA.email, AMINA.name);
+    await fill(s);
+    db.exec("PRAGMA journal_mode = DELETE");
+    db.close();
+    const { readFileSync } = await import("node:fs");
+    return new Uint8Array(readFileSync(path));
+  }
+
+  it("imports a research.db into a new account: everything arrives", async () => {
+    const CARA = { id: "33333333-3333-4333-8333-333333333333", email: "cara@example.org", name: "Cara" };
+    profiles.set(CARA.id, CARA);
+    const bytes = await fileWith(async (s) => {
+      await s.saveCase({ id: "k1", subject: { type: "root", value: "صبر" }, title: "patience",
+        formResearch: { "صَبْر": { status: "established", meaning: "holding firm" } } });
+      await s.saveNote({ id: "kn1", verseKey: "2:153", text: "with the patient" });
+      await s.saveIndication({ id: "ki1", root: "صبر", label: "hold firm" });
+      await s.saveMotif({ id: "km1", name: "steadfastness" });
+      await s.addMotifRoot("km1", "صبر");
+      await s.setSetting("reading", { size: 2 });
+    });
+    const res = await post(cloudAs(CARA), bytes);
+    expect(res.status).toBe(200);
+    const out = await res.json() as { copied: number };
+    expect(out.copied).toBeGreaterThanOrEqual(7);
+    const cara = cloudAs(CARA);
+    expect((await (await cara.request("/research/cases/k1")).json() as { title: string }).title).toBe("patience");
+    expect(await (await cara.request("/research/form-status")).json()).toHaveLength(1);
+    expect((await (await cara.request("/research/motifs/km1")).json() as { roots: string[] }).roots).toEqual(["صبر"]);
+    expect((await (await cara.request("/research/settings/reading")).json() as { value: unknown }).value).toEqual({ size: 2 });
+    // importing the same file again adds nothing
+    expect((await (await post(cara, bytes)).json() as { copied: number }).copied).toBe(0);
+  });
+
+  it("merges into an account that already has research — never overwriting it", async () => {
+    const bytes = await fileWith(async (s) => {
+      await s.saveNote({ id: "q1", verseKey: "55:13", text: "an OLD version from the file" });   // same id as the cloud's
+      await s.saveNote({ id: "from_file", verseKey: "3:3", text: "only in the file" });
+    });
+    const res = await post(cloudAs(AMINA), bytes);
+    expect((await res.json() as { tables: Record<string, { copied: number; alreadyThere: number }> }).tables.notes)
+      .toEqual({ copied: 1, alreadyThere: 1 });
+    const notes = await (await cloudAs(AMINA).request("/research/notes")).json() as { id: string; text: string }[];
+    expect(notes.find((n) => n.id === "q1")!.text).toBe("meaning?");            // the account's version kept
+    expect(notes.map((n) => n.id)).toContain("from_file");
+  });
+
+  it("refuses what isn't a research file, and refuses a token", async () => {
+    expect((await post(cloudAs(AMINA), new TextEncoder().encode("not a database"))).status).toBe(422);
+    const bytes = await fileWith(async () => {});
+    expect((await post(cloudAs(AMINA, "token"), bytes)).status).toBe(403);
+  });
+
+  it("exports the account's research as a research.db that opens and re-imports", async () => {
+    const res = await cloudAs(AMINA).request("/research/export");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-disposition")).toMatch(/attachment; filename="research-\d{8}\.db"/);
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const { writeFileSync } = await import("node:fs");
+    const path = join(mkdtempSync(join(tmpdir(), "alsiraat-export-")), "research.db");
+    writeFileSync(path, bytes);
+    const store = await ResearchStore.open(sqliteResearch(new Db(path)));
+    expect((await store.getOwner())!.email).toBe(AMINA.email);
+    const cloudNotes = await (await cloudAs(AMINA).request("/research/notes")).json() as { id: string }[];
+    expect((await store.listNotes()).map((n) => n.id)).toEqual(cloudNotes.map((n) => n.id));
+    expect((await store.glossData()).roots).toHaveLength(1);
+    // and taking it back in is a no-op
+    expect((await (await post(cloudAs(AMINA), bytes)).json() as { copied: number }).copied).toBe(0);
+  });
+});

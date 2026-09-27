@@ -52,7 +52,7 @@ export function CorpusAccessBanner() {
 
   const title =
     state.kind === "offline" ? "The Qur'an text can't be loaded"
-    : state.kind === "signin" ? "Sign in to read"
+    : state.kind === "signin" ? "Sign in to read and study — your research is in your account"
     : `Reading this needs the ${state.plan ?? "right"} plan`;
 
   return (

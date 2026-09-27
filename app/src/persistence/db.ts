@@ -1,14 +1,20 @@
-// Persistence layer. All research (cases, trails, notes, indications, comparisons,
-// motifs) and device-independent UI prefs live in research.db on the backend, reached
-// through the /research/* routes — a real SQLite file the user can back up by copying.
-// The client is a thin fetch wrapper; there is no browser-side storage.
+// Persistence layer. All research (cases, trails, notes, indications, comparisons, motifs) and
+// device-independent UI prefs live on the research server, in the signed-in account's own
+// private Postgres schema, reached through /research/* with the session cookie. Nothing of it
+// is shared unless the reader publishes it. There is no browser-side storage.
+//
+// (The same routes are still served by the local server over a research.db file — that is what
+// "bring research from this computer" reads from, see migrate below.)
 
 import type { CaseRecord, TrailRecord, NoteRecord, UserRootMeaning, Motif } from "./types";
 import type { CompareSet, CompareItemRow, WordIndication, IndicationsForWord, IndicationGloss, Proposed } from "../api/types";
-import { remote } from "../api/remote";
+import { remote, REMOTE_URL } from "../api/remote";
+import { announceAccess } from "../api/client";
 import { cachedMe } from "../hooks/useMe";
 
-const API = "/api/v1/research";
+const API = `${REMOTE_URL}/research`;
+/** The local server's research.db, for bringing an existing file into the account. */
+const LOCAL_API = "/api/v1/research";
 
 export function newId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -16,40 +22,48 @@ export function newId(prefix: string): string {
 
 // ---- server helpers ----------------------------------------------------------
 
+/** Every research call: the session cookie says whose research; failures explain themselves. */
+async function research(path: string, init: RequestInit = {}): Promise<Response> {
+  let res: Response;
+  try {
+    res = await fetch(`${API}${path}`, { ...init, credentials: "include" });
+  } catch {
+    announceAccess({ kind: "offline", message: "Your research is kept on the research server, which can't be reached — you may be offline." });
+    throw new Error(`cannot reach the research server at ${REMOTE_URL}`);
+  }
+  if (res.status === 401) {
+    announceAccess({ kind: "signin", plan: null, message: "Sign in to see and save your research." });
+  }
+  return res;
+}
+async function fail(res: Response, what: string): Promise<never> {
+  const detail = await res.json().then((b) => (b as { detail?: string }).detail).catch(() => undefined);
+  throw new Error(detail ?? `${what} → ${res.status}`);
+}
+const json = (method: string, body: unknown): RequestInit =>
+  ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
 async function srvGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${API}${path}`);
-  if (!res.ok) throw new Error(`GET ${path} → ${res.status}`);
+  const res = await research(path);
+  if (!res.ok) return fail(res, `GET ${path}`);
   return res.json() as Promise<T>;
 }
 async function srvPut<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`PUT ${path} → ${res.status}`);
+  const res = await research(path, json("PUT", body));
+  if (!res.ok) return fail(res, `PUT ${path}`);
   return res.json() as Promise<T>;
 }
 async function srvPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const detail = await res.json().then((b) => (b as { detail?: string }).detail).catch(() => undefined);
-    throw new Error(detail ?? `POST ${path} → ${res.status}`);
-  }
+  const res = await research(path, json("POST", body));
+  if (!res.ok) return fail(res, `POST ${path}`);
   return res.json() as Promise<T>;
 }
 async function srvDelete(path: string): Promise<void> {
-  const res = await fetch(`${API}${path}`, { method: "DELETE" });
-  if (!res.ok && res.status !== 404) throw new Error(`DELETE ${path} → ${res.status}`);
+  const res = await research(path, { method: "DELETE" });
+  if (!res.ok && res.status !== 404) return fail(res, `DELETE ${path}`);
 }
 
-// ---- backup --------------------------------------------------------------------
-
-export interface BackupResult { path: string; bytes: number; at: number }
+// ---- your research as a whole: whose it is, a copy out, research brought in --------
 
 export interface Owner {
   name: string;
@@ -58,39 +72,72 @@ export interface Owner {
   claimedAt: number;
   updatedAt: number;
 }
-export interface RecentDb { path: string; label: string; lastOpenedAt: number }
 
-/** The open database: its path, and whose research it is (read from inside the file). */
+/** Whose research this is — the signed-in account. */
 export async function fetchIdentity(): Promise<{
-  localId: string; databasePath?: string; owner: Owner | null;
+  localId: string; databasePath?: string | null; owner: Owner | null;
 }> {
   return srvGet("/identity");
 }
 
-/**
- * Whose research this database is. The answer lives INSIDE the file, so it travels with it —
- * copy the file to another machine and it is still yours. The uuid is derived from the email,
- * and is what a remote account binds to.
- */
-export const owner = {
-  /** Claim this database, or re-assign it (you hold the file, so you may correct it). */
-  set(email: string, name?: string): Promise<Owner> {
-    return srvPut<Owner>("/owner", { email, name });
-  },
-};
+/** What an import added, per table. */
+export interface ImportReport {
+  copied: number;
+  tables: Record<string, { copied: number; alreadyThere: number }>;
+}
 
-/** Which database file is open. Identity lives in each file; this is just the choosing. */
-export const databases = {
-  list(): Promise<{ current: { path: string; owner: Owner | null }; recent: RecentDb[] }> {
-    return srvGet("/databases");
+export const myResearch = {
+  /** A complete copy of your research as a research.db file (opens in DB Browser; re-importable). */
+  async download(): Promise<{ blob: Blob; filename: string }> {
+    const res = await research("/export");
+    if (!res.ok) return fail(res, "download");
+    const cd = res.headers.get("content-disposition") ?? "";
+    return { blob: await res.blob(), filename: cd.match(/filename="([^"]+)"/)?.[1] ?? "research.db" };
   },
+
   /**
-   * Open another database. It is COPIED to the working location and you edit the copy, so a
-   * backup stays an untouched backup; any database already open is moved aside (never
-   * overwritten) and reported as `replaced`.
+   * Bring a research.db into your account — the file from this computer, a backup, an earlier
+   * download. Merges: adds what isn't there yet, never overwrites or deletes; twice adds nothing.
    */
-  open(path: string, inPlace = false): Promise<{ path: string; owner: Owner | null; replaced: string | null }> {
-    return srvPost("/databases/open", { path, inPlace });
+  /** Remember that this computer's file has been brought in, so it isn't offered again. */
+  markBroughtIn(path: string): Promise<unknown> {
+    return srvPut("/settings/local_file_brought_in", { value: path });
+  },
+
+  async importFile(file: Blob): Promise<ImportReport> {
+    const res = await research("/import", {
+      method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file,
+    });
+    if (!res.ok) return fail(res, "import");
+    return res.json() as Promise<ImportReport>;
+  },
+
+  /**
+   * The research.db this computer's local server has open (the app's research before it moved
+   * to the account), or null when there's no local server or nothing in it. Read-only: the file
+   * stays exactly as it is.
+   */
+  async localFile(): Promise<{ owner: Owner | null; path: string; read: () => Promise<Blob> } | null> {
+    try {
+      const idRes = await fetch(`${LOCAL_API}/identity`);
+      if (!idRes.ok) return null;
+      const id = (await idRes.json()) as { owner: Owner | null; databasePath: string };
+      const cases = await fetch(`${LOCAL_API}/cases`).then((r) => (r.ok ? r.json() : [])) as unknown[];
+      const notes = await fetch(`${LOCAL_API}/notes`).then((r) => (r.ok ? r.json() : [])) as unknown[];
+      const gloss = await fetch(`${LOCAL_API}/indications/gloss`).then((r) => (r.ok ? r.json() : { roots: [] })) as { roots: unknown[] };
+      if (!cases.length && !notes.length && !gloss.roots.length) return null;   // nothing worth bringing
+      // already brought in (the account remembers which file): don't keep offering
+      const done = await srvGet<{ value: unknown }>("/settings/local_file_brought_in").catch(() => ({ value: null }));
+      if (done.value === id.databasePath) return null;
+      return {
+        owner: id.owner, path: id.databasePath,
+        read: async () => {
+          const res = await fetch(`${LOCAL_API}/file`);
+          if (!res.ok) throw new Error(`couldn't read this computer's research.db → ${res.status}`);
+          return res.blob();
+        },
+      };
+    } catch { return null; }
   },
 };
 
@@ -227,24 +274,6 @@ export const submissionLog = {
     return srvPut<SubmissionRecord>(`/submission-log/${encodeURIComponent(localRef)}`, doc);
   },
 };
-
-/**
- * Back up research.db — the one irreplaceable file. On the desktop we ask the native
- * shell for a save location (a real folder the user picks); on the web build we let the
- * server write a timestamped copy into a sibling backups/ folder and report the path.
- * Either way the copy is complete (WAL folded in) and safe to take while working.
- */
-export async function backupResearch(): Promise<BackupResult | { canceled: true }> {
-  const desktop = (window as unknown as { desktop?: { backupResearch(): Promise<BackupResult | { canceled: true }> } }).desktop;
-  if (desktop?.backupResearch) return desktop.backupResearch();
-  const res = await fetch(`${API}/backup`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: "{}",
-  });
-  if (!res.ok) throw new Error(`backup failed → ${res.status}`);
-  return res.json() as Promise<BackupResult>;
-}
 
 // ---- typed access ---------------------------------------------------------------
 

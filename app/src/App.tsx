@@ -14,9 +14,6 @@ import { CommandPalette } from "./components/CommandPalette";
 import { ExpressionBar } from "./components/ExpressionBar";
 import { Toast } from "./components/Toast";
 import { AppProvider, useAppState } from "./state/store";
-import { useEffect, useState } from "react";
-import { OwnerGate } from "./components/OwnerGate";
-import { fetchIdentity } from "./persistence/db";
 import { CorpusAccessBanner } from "./components/CorpusAccessBanner";
 
 function Screen() {
@@ -34,18 +31,8 @@ function Screen() {
 }
 
 export default function App() {
-  // Ask whose research this is before anything else, so nothing is ever written
-  // un-attributed. Undecided → render nothing rather than flashing the app then the gate.
-  const [claimed, setClaimed] = useState<boolean | null>(null);
-  useEffect(() => {
-    fetchIdentity()
-      .then((id) => setClaimed(!!id.owner))
-      .catch(() => setClaimed(true)); // server unreachable: don't block the reader with a gate
-  }, []);
-
-  if (claimed === null) return null;
-  if (!claimed) return <OwnerGate onClaimed={() => setClaimed(true)} />;
-
+  // Your research is your account's (on the research server), so there is no local file to
+  // claim first: signed out, the banner under the top bar says so and offers to sign in.
   return (
     <AppProvider>
       <Shortcuts />

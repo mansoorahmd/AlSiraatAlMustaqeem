@@ -51,7 +51,8 @@ export function createApp(): Hono<Env> {
   // Credentialed CORS for the app's origins (must be an explicit list, never "*"). This has to
   // cover EVERY route the app calls — /me and /invites too, not just the auth endpoints — or the
   // browser blocks the request and the app can't tell that apart from the server being down.
-  app.use("*", cors({ origin: config.trustedOrigins, credentials: true }));
+  // exposeHeaders: the app reads a download's filename (research export) across origins
+  app.use("*", cors({ origin: config.trustedOrigins, credentials: true, exposeHeaders: ["Content-Disposition"] }));
 
   // Registration is invite-only, so the public sign-up endpoint is closed. Email+password is
   // enabled for SIGN-IN, and the only thing allowed to create an account is /invites/redeem,

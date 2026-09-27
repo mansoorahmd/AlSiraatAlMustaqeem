@@ -35,6 +35,8 @@ export type CorpusAccessState =
 
 export const CORPUS_ACCESS_EVENT = "corpus-access";
 let last: CorpusAccessState["kind"] = "ok";
+/** Also used by the research client (persistence/db.ts) for sign-in / offline — never for "ok". */
+export function announceAccess(state: CorpusAccessState): void { announce(state); }
 function announce(state: CorpusAccessState): void {
   if (state.kind === last && state.kind === "ok") return;   // don't spam a stream of successes
   last = state.kind;

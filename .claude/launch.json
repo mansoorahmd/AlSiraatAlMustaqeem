@@ -12,6 +12,15 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "-w", "app"],
       "port": 5174
+    },
+    {
+      "name": "api-test",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "-w", "server"],
+      "env": {
+        "QF_RESEARCH_DB": "C:/Users/baapo/AppData/Local/Temp/claude/C--Users-baapo-Claude-Projects-AlSiraatAlMustaqeem/69aa1ea0-329c-410e-ae1e-354ca9c870cc/scratchpad/localtest/research.db"
+      },
+      "port": 8000
     }
   ]
 }
