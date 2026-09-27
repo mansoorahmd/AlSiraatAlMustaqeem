@@ -12,7 +12,7 @@
   "principle": {
     "core": "Features are ROLE-based (what you may do); resources are PLAN-based (what you may read). Your research is private to your account; only what you publish is shared, only once approved, and only with the audience it names.",
     "constraint": "You can only enforceably charge for what the server holds.",
-    "consequence": "Everything lives on the research server: the corpus, each account's research (its own Postgres schema), the community. The app and the MCP read and write it as the signed-in user."
+    "consequence": "Everything lives on the research server: the corpus, every account's research (one schema, row-level security), the community. The app and the MCP read and write it as the signed-in user."
   },
   "components": [
     {
@@ -40,7 +40,7 @@
       "id": "remote",
       "name": "Research server",
       "runtime": "Hono + Postgres + Better Auth",
-      "role": "Auth (cookie or API token), the role ladder, plan tiers, resource rules, the corpus (/corpus), each account's research (/research, one schema per account), the community with audiences, Admin endpoints. Deployed with Docker + Caddy (DEPLOY.md).",
+      "role": "Auth (cookie or API token), the role ladder, plan tiers, resource rules, the corpus (/corpus), every account's research (/research, row-level security), the community with audiences, Admin endpoints. Deployed with Docker + Caddy (DEPLOY.md).",
       "path": "remote/",
       "port": 8100
     },
@@ -76,15 +76,16 @@
       "holds": "The same tables. Now: what 'Bring it into my account' uploads (the file itself is never changed), the local driver for tests and MQ_RESEARCH=local, and the format of 'Download a copy'.",
       "ownership": "A one-row owner table (name, email, uuidv5-of-email) — the same uuid the account's research carries, so imported work stays theirs."
     },
-    "research (Postgres, one schema per account)": {
+    "research (Postgres, row-level security)": {
       "kind": "personal research",
       "access": "private to its account; read-write by that account (and its AI, within the boundary)",
-      "location": "the research server — schema research_<account id>",
+      "location": "the research server — schema `research`, shared, every row carrying its user_id",
       "holds": "cases + board layout, form_research + form_revisions, trails, notes, word_indications (+ refinements), user_root_meanings, motifs, comparisons, settings, and the outbox of what was published.",
-      "isolation": "Every request runs in one transaction with SET LOCAL search_path to the signed-in account's schema — taken only from the authenticated principal. No route reads another person's research; staff included.",
-      "shape": "Derived from the research.db DDL itself (INTEGER→BIGINT, TEXT→TEXT COLLATE \"C\"), so a file and a schema can't drift. Proven: 78 scripted research calls answer identically over both (research-cloud.test.ts).",
+      "isolation": "Row-level security, enabled and FORCED on every table, one policy: user_id = the request's user (app.user_id), for reads and writes. Requests SET LOCAL ROLE mqrg_research (not a superuser, no BYPASSRLS), set app.user_id via set_config with a bound parameter from the principal, and search_path to research — all LOCAL to the transaction. No user bound = nothing visible, nothing writable. A draft is reachable only by its owner (and their own AI); staff included. Deleting an account cascades to its research.",
+      "shape": "The research.db columns plus user_id, which leads every key (migrations/0010_research_rls.sql). The driver adds user_id to each ON CONFLICT target, so the shared SQL is unchanged. Tests: 78 calls identical to a file; cross-account SQL refused; column drift checked.",
       "transfer": "POST /research/import merges a research.db in (adds, never overwrites or deletes; twice adds nothing); GET /research/export downloads a complete research.db.",
-      "code": "server/src/research.ts (ResearchStore, async over ResearchDb), remote/src/research/{schema,pg-research,serve}.ts, server/src/research-transfer.ts"
+      "code": "server/src/research.ts, remote/src/research/{schema,pg-research,serve}.ts, migrations/0010_research_rls.sql",
+      "notProtectedAgainst": "A database superuser (the operator) can read the tables directly, as in any hosted app."
     }
   },
   "accessModel": {
@@ -386,7 +387,7 @@
       "id": "research-cloud",
       "title": "Research in Postgres, private per account",
       "status": "done",
-      "summary": "One research codebase over a driver (SQLite/Postgres); each account its own schema; the app and the MCP read/write it as the user; import/export; the AI boundary enforced by the server."
+      "summary": "One research codebase over a driver (SQLite/Postgres); one shared schema under row-level security; the app and the MCP read/write it as the user; import/export; the AI boundary enforced by the server."
     },
     {
       "id": "roles-audience",
@@ -404,8 +405,8 @@
   "decisions": [
     {
       "id": "research-in-account",
-      "decision": "Research lives on the research server, private to each account, in its own Postgres schema.",
-      "why": "The maintainer's call, 2026-09-27. It follows the reader across devices and is backed up centrally; privacy by construction (schema-per-account, search_path from the principal only). Cost: studying needs the server; the operator can technically read the database, like any hosted app."
+      "decision": "Research lives on the research server, private to each account — one shared schema under row-level security.",
+      "why": "The maintainer's call, 2026-09-27 (first built schema-per-account, then switched to RLS at their request): one set of tables whatever the number of accounts, one migration, queries across people possible for staff tooling. A draft is its owner's alone. Cost: studying needs the server; a database superuser can read the tables, as in any hosted app."
     },
     {
       "id": "roles-are-standing",
@@ -582,7 +583,7 @@
     },
     {
       "path": "remote/src/research/{schema,pg-research,serve}.ts",
-      "purpose": "per-account schemas, the Postgres driver, /research with the per-request transaction"
+      "purpose": "binding a request to its user (role, app.user_id, search_path), the Postgres driver, /research with the per-request transaction"
     },
     {
       "path": "remote/src/role-ladder.ts",
@@ -603,6 +604,10 @@
     {
       "path": "remote/test/{research-cloud,audience}.test.ts, server/test/mcp-remote-research.test.ts",
       "purpose": "parity/privacy/boundary; ladder/publish/audiences; the MCP over cloud research"
+    },
+    {
+      "path": "remote/migrations/0010_research_rls.sql",
+      "purpose": "the research schema, row-level security, the mqrg_research role"
     }
   ],
   "glossary": {
@@ -621,7 +626,6 @@
   "notice": "The maintainer account (mansoor@wimetrix.com) is maintainer · free, and the corpus + community rules are pro — so the app will say reading needs the pro plan. Admin → People → Change → Pro, or Admin → Who can read. Their existing research is still in the local research.db: Settings → Your research → 'Bring it into my account' moves a copy into the account (the file stays as it is).",
   "openQuestions": [
     "Billing provider integration (the plan-grant seam) — next.",
-    "Deleting an account: drop its research schema too (no delete-account feature yet).",
     "Should maintainers bypass resource gates automatically?",
     "Corpus patches: a Postgres target so corrections reach the cloud copy.",
     "Submissions have an audience but no review UI in the app yet (claims do).",

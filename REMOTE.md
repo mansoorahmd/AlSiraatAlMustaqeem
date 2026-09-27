@@ -1,13 +1,13 @@
 # Remote research channel (`remote/`)
 
 The invite-only research server. It holds **everything**: the **Qur'an corpus**, **each account's own
-research** (private, one Postgres schema per account), and the **community**, where research is
+research** (private to each account, by row-level security), and the **community**, where research is
 published, reviewed, and agreed (`SHARED_RESEARCH.md`). The app and the MCP read and write it as the
 signed-in user.
 
 Backed by **Postgres** (where a structured, multi-writer, transactional store earns its place —
 `SHARED_RESEARCH.md` §3). The corpus lives in schema `corpus`, loaded from `quran.db` and proven
-identical (`CORPUS.md`); each account's research in `research_<account id>`. Access follows one rule:
+identical (`CORPUS.md`); every account's research in schema `research`, under row-level security. Access follows one rule:
 **features are role-based, resources are plan-based**, and every published result is seen only by its
 **audience** (below).
 
@@ -248,15 +248,33 @@ provider slots into. `GET /me` returns `plan`, `planLabel`, `planRank`, `planExp
 
 ## Your research, in your account
 
-Each account's research (cases and boards, notes and questions, indications and refinements, motifs,
-comparisons, settings, and the outbox of what was published) lives in its **own Postgres schema**,
-`research_<account id>`, created on first use (`src/research/schema.ts`). Its tables are derived from
-the research.db DDL itself, so a file and a schema can't drift.
+Every account's research (cases and boards, notes and questions, indications and refinements,
+motifs, comparisons, settings, and the outbox of what was published) lives in **one schema,
+`research`**, kept apart by **row-level security** (`migrations/0010_research_rls.sql`):
 
-**Private by construction.** Every `/research` request runs in one transaction on one connection with
-`SET LOCAL search_path` to the signed-in account's schema, taken only from the authenticated
-principal, never from the request. The shared research code never names a schema, so it can only
-ever see that person's tables. No route reads another person's research, for staff either.
+- every row carries its `user_id`, which leads every key and defaults from the request's user;
+  deleting an account deletes its research (`ON DELETE CASCADE`)
+- RLS is **enabled and forced** on every table, with one policy: a row is visible, and may be
+  written, only when its `user_id` is the request's user. With no user bound, nothing is visible
+  and nothing can be written.
+- requests run as **`mqrg_research`**, a role that is not a superuser and can't bypass RLS (a
+  superuser bypasses every policy, forced or not, and the Docker image's database user is one)
+
+**A draft is yours alone.** Unpublished research is reachable only by its owner (and their own AI
+assistant, which acts as them with their token). No route reads another person's research, for
+moderators and maintainers either; publishing creates a separate, frozen copy for review.
+
+**Binding a request.** Each `/research` request runs in one transaction on one connection:
+`SET LOCAL ROLE mqrg_research`, `set_config('app.user_id', <id>, true)` with the id as a bound
+parameter taken only from the authenticated principal, and `SET LOCAL search_path TO research`
+(`src/research/schema.ts`). All three end with the transaction, so a pooled connection can't carry
+them into someone else's request. `research-cloud.test.ts` tries SQL written to reach across accounts
+(explicit `WHERE user_id = <other>`, planting or moving rows, `row_security = off`) and every attempt
+is refused. A drift test checks the Postgres columns equal a research.db file's, plus `user_id`.
+
+**What it doesn't stop.** Whoever runs the database server with a superuser login can read the
+tables directly, as with any hosted app. Protecting against that would need encryption the server
+can't read, which rules out server-side search and the AI boundary on your research.
 
 **The same code as a file.** `ResearchStore` (`server/src/research.ts`) is async over a small driver
 interface: SQLite for a research.db, Postgres here (`src/research/pg-research.ts`). The routes are the

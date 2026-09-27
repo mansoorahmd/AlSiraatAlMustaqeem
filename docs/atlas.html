@@ -243,7 +243,7 @@
     <section id="system">
       <h2><span class="num">01</span>System map</h2>
       <p>Everything lives on the <strong>research server</strong>: the Qur'an corpus, <strong>your research</strong>
-        (private, in your own schema) and the community. The app on your machine and the AI (through the MCP) read and
+        (private to you — row-level security) and the community. The app on your machine and the AI (through the MCP) read and
         write it as you — the app with your sign-in, the AI with a token that acts as you. Every request passes the same
         gates.</p>
       <figure>
@@ -303,9 +303,9 @@
               <rect x="636" y="292" width="122" height="134" rx="8" fill="var(--surface-2)" stroke="var(--free)"/>
               <text x="646" y="313" font-size="12.5" font-weight="600" fill="var(--free)">Your research</text>
               <text x="646" y="331" font-size="10.5" fill="var(--ink-soft)">/research</text>
-              <text x="646" y="347" font-size="10.5" fill="var(--ink-soft)">private: one</text>
-              <text x="646" y="363" font-size="10.5" fill="var(--ink-soft)">schema per</text>
-              <text x="646" y="379" font-size="10.5" fill="var(--ink-soft)">account</text>
+              <text x="646" y="347" font-size="10.5" fill="var(--ink-soft)">private: each</text>
+              <text x="646" y="363" font-size="10.5" fill="var(--ink-soft)">row its owner's</text>
+              <text x="646" y="379" font-size="10.5" fill="var(--ink-soft)">(row-level security)</text>
               <rect x="766" y="292" width="122" height="134" rx="8" fill="var(--surface-2)" stroke="var(--lapis)"/>
               <text x="776" y="313" font-size="12.5" font-weight="600" fill="var(--lapis)">Community</text>
               <text x="776" y="331" font-size="10.5" fill="var(--ink-soft)">published,</text>
@@ -324,7 +324,7 @@
         </div>
         <figcaption><b>The whole system.</b> The app and the MCP hold nothing of their own: the corpus, your research
           and the community are all on the research server, reached with your sign-in (or a token that acts as you). Your
-          research sits in your own Postgres schema — nobody else's request can reach it. An older <code>research.db</code>
+          research is kept apart by row-level security — every row carries your account, and nobody else's request can reach it. An older <code>research.db</code>
           on this computer is brought in once, as a copy; the file itself is never changed.</figcaption>
       </figure>
       <div class="thread" data-section="system"></div>
@@ -347,10 +347,10 @@
         <div class="card">
           <h4>✒️ Your research <span class="tag free">private</span></h4>
           <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">What you build — your earned
-            understanding. One schema per account: <code>research_&lt;your id&gt;</code>.</p>
+            understanding. One shared schema, <code>research</code>, kept apart by row-level security.</p>
           <ul class="checks">
             <li>Cases &amp; board, established meanings, trails, notes, indications, motifs, comparisons</li>
-            <li>Every request is pinned to <em>your</em> schema — nobody else's request can reach it, staff included</li>
+            <li>Every row carries your account; the database itself shows each request only its own user's rows — a draft is yours alone, staff included</li>
             <li>Same tables as a <code>research.db</code> file (derived from it): <strong>Download a copy</strong> any time, or import one</li>
             <li>The AI's proposals land here, tagged <code>ai</code>, for you to accept</li>
           </ul>
@@ -636,7 +636,7 @@
         <div class="step"><span class="st done">corpus · done</span><div><h4>The corpus on the research server</h4><p>Loaded and proven identical; the app and MCP read it from <code>/corpus</code>.</p></div></div>
         <div class="step"><span class="st done">access · done</span><div><h4>Features by role, resources by plan</h4><p>Resource rules for the corpus, the community, each translation and dictionary; the Admin tab.</p></div></div>
         <div class="step"><span class="st done">deploy · ready</span><div><h4>Deployable to a VPS</h4><p>Docker + Caddy HTTPS + SMTP password reset + backups (<code>DEPLOY.md</code>). Waiting on a server and a domain.</p></div></div>
-        <div class="step"><span class="st done">research · done</span><div><h4>Your research in your account</h4><p>One research codebase over SQLite or Postgres; a private schema per account; the app and the MCP read and write it as you; bring your old <code>research.db</code> in; download a copy any time.</p></div></div>
+        <div class="step"><span class="st done">research · done</span><div><h4>Your research in your account</h4><p>One research codebase over SQLite or Postgres; private to each account by row-level security; the app and the MCP read and write it as you; bring your old <code>research.db</code> in; download a copy any time.</p></div></div>
         <div class="step"><span class="st done">roles · done</span><div><h4>Roles as data; audiences on results</h4><p>reader ‹ student ‹ researcher ‹ scholar ‹ moderator ‹ maintainer; publishing's role is yours to set; each published result is seen only by its audience — proposed by its author, confirmed by the reviewer.</p></div></div>
         <div class="step"><span class="st defer">next</span><div><h4>Billing provider</h4><p>Slots into the plan grant with no rework of the gates. Also open: deleting an account (and its research), a review screen for submissions.</p></div></div>
       </div>

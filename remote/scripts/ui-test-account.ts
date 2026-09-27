@@ -7,7 +7,6 @@ import { randomBytes } from "node:crypto";
 import { createApp } from "../src/app.js";
 import { pool, corpusPool, pgRunner } from "../src/db.js";
 import { createInvite } from "../src/invites.js";
-import { schemaFor } from "../src/research/schema.js";
 
 const EMAIL = "ui-test-maintainer@example.test";
 const [cmd, out] = process.argv.slice(2);
@@ -35,8 +34,7 @@ try {
       await pgRunner.query("DELETE FROM invites WHERE redeemed_by = $1 OR issued_by = $1", [u.id]);
       await pgRunner.query("DELETE FROM sync_cursors WHERE user_id = $1", [u.id]);
       await pgRunner.query("UPDATE resource_access SET updated_by = NULL WHERE updated_by = $1", [u.id]);
-      await pgRunner.query(`DROP SCHEMA IF EXISTS "${schemaFor(String(u.id))}" CASCADE`);   // its research
-      await pgRunner.query("DELETE FROM users WHERE id = $1", [u.id]);
+      await pgRunner.query("DELETE FROM users WHERE id = $1", [u.id]);   // its research goes with it (ON DELETE CASCADE)
     }
     console.log(`removed ${u ? 1 : 0} account(s)`);
   } else {

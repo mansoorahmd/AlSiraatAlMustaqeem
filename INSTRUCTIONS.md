@@ -201,7 +201,7 @@ mobile app can call `/api/v1` directly.
 **In plain terms.** The app is one web build (optionally wrapped in a desktop window). It
 **reads** the fixed Qur'an corpus from the research server (Postgres, loaded from `quran.db` and
 proven identical), and **reads and writes** the reader's personal research **in their account** on
-the same server — a private Postgres schema per account, with the same tables a `research.db` file
+the same server — private to each account by row-level security, with the same tables a `research.db` file
 has (REMOTE.md, "Your research, in your account"). Settings → *Your research* brings an older
 `research.db` in (as a copy; the file is untouched) and downloads a copy any time. Two jobs:
 

@@ -2,8 +2,10 @@
 //
 //  1. PARITY — the research server answers every research call exactly as a research.db file
 //     does: one scripted session is run against both (the same shared routes, SQLite vs the
-//     user's Postgres schema on PGlite) and every response is compared, timestamps aside.
-//  2. PRIVACY — each account sees only its own research; nothing is shared unless published.
+//     shared `research` schema under row-level security, on PGlite) and every response is
+//     compared, timestamps aside.
+//  2. PRIVACY — each account sees only its own research: a draft is reachable by its owner alone,
+//     and row-level security holds even against SQL written to reach across accounts.
 //  3. THE AI BOUNDARY — a request made with an API token may only propose: tagged 'ai', never
 //     primary, never deleting, never touching the reader's own records or conclusions.
 
@@ -11,7 +13,8 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { Db } from "../../server/src/db.js";
 import { sqliteResearch } from "../../server/src/research-db.js";
@@ -19,7 +22,10 @@ import { ResearchStore } from "../../server/src/research.js";
 import { researchDataRoutes } from "../../server/src/routes/research.js";
 import type { Env, Principal } from "../src/roles.js";
 import { researchApp, type ResearchPool } from "../src/research/serve.js";
-import { forgetReadySchemas, schemaFor } from "../src/research/schema.js";
+import { forgetOwners, bindResearchUser } from "../src/research/schema.js";
+import { runMigrations } from "../src/migrate.js";
+
+const MIGR = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 
 const AMINA = { id: "11111111-1111-4111-8111-111111111111", email: "amina@example.org", name: "Amina" };
 const BILAL = { id: "22222222-2222-4222-8222-222222222222", email: "bilal@example.org", name: "Bilal" };
@@ -51,9 +57,19 @@ const pool: ResearchPool = {
   }),
 };
 
+/** A research row references its account, so every test account is a real user. */
+const addUser = (u: { id: string; email: string; name: string }) =>
+  pglite.query("INSERT INTO users (id, email, display_name) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING", [u.id, u.email, u.name]);
+
 beforeAll(async () => {
   pglite = new PGlite();
-  forgetReadySchemas();
+  const runner = {
+    exec: async (sql: string) => { await pglite.exec(sql); },
+    query: async (sql: string, params: unknown[] = []) => (await pglite.query(sql, params)).rows as Record<string, unknown>[],
+  };
+  await runMigrations(runner, MIGR);
+  await addUser(AMINA); await addUser(BILAL);
+  forgetOwners();
   const file = new Db(join(mkdtempSync(join(tmpdir(), "alsiraat-rcloud-")), "research.db"));
   const store = await ResearchStore.open(sqliteResearch(file));
   await store.setOwner(AMINA.email, AMINA.name);        // the same person as the cloud account
@@ -181,10 +197,85 @@ describe("privacy: each account sees only its own research", () => {
     expect(aminas[0]!.text).toBe("meaning?");
   });
 
-  it("each account is its own schema", async () => {
-    const schemas = (await pglite.query<{ nspname: string }>(
-      "SELECT nspname FROM pg_namespace WHERE nspname LIKE 'research_%' ORDER BY nspname")).rows.map((r) => r.nspname);
-    expect(schemas).toEqual([schemaFor(AMINA.id), schemaFor(BILAL.id)]);
+  it("one shared schema, each row carrying its account", async () => {
+    // as the server's own (superuser) login, outside any request: both accounts' rows are there
+    const owners = (await pglite.query<{ user_id: string }>(
+      "SELECT DISTINCT user_id FROM research.notes ORDER BY user_id")).rows.map((r) => r.user_id);
+    expect(owners).toEqual([AMINA.id, BILAL.id]);
+  });
+});
+
+describe("row-level security holds against SQL written to reach across accounts", () => {
+  const conn = {
+    query: async (sql: string, params: unknown[] = []) => {
+      const r = await pglite.query(sql, params);
+      return { rows: r.rows as Record<string, unknown>[], rowCount: r.affectedRows ?? r.rows.length };
+    },
+  };
+  /** Run `fn` inside a transaction bound to `who`, exactly as a request is — then roll back. */
+  async function as<T>(who: typeof AMINA, fn: () => Promise<T>): Promise<T> {
+    await pglite.query("BEGIN");
+    try {
+      await bindResearchUser(conn, who.id, async () => who);
+      return await fn();
+    } finally { await pglite.query("ROLLBACK"); }
+  }
+  const q = async (sql: string, params: unknown[] = []) => (await pglite.query(sql, params)).rows;
+
+  it("bound to Amina, even an explicit query for Bilal's rows returns nothing", async () => {
+    const rows = await as(AMINA, () => q("SELECT id FROM research.notes WHERE user_id = $1", [BILAL.id]));
+    expect(rows).toEqual([]);
+    const all = await as(AMINA, () => q("SELECT DISTINCT user_id FROM notes"));
+    expect(all.map((r: any) => r.user_id)).toEqual([AMINA.id]);
+  });
+
+  it("can't write a row into another account, or move one there", async () => {
+    await expect(as(AMINA, () => q(
+      "INSERT INTO notes (user_id, id, verse_key, created_at, updated_at) VALUES ($1, 'planted', '1:1', 1, 1)", [BILAL.id])))
+      .rejects.toThrow(/row-level security/);
+    await expect(as(AMINA, () => q("UPDATE notes SET user_id = $1 WHERE id = 'q1'", [BILAL.id])))
+      .rejects.toThrow(/row-level security/);
+  });
+
+  it("can't change or delete another account's rows (they're simply not there)", async () => {
+    const upd = await as(AMINA, () => pglite.query("UPDATE research.notes SET text = 'hijacked' WHERE user_id = $1", [BILAL.id]));
+    expect(upd.affectedRows ?? 0).toBe(0);
+    const del = await as(AMINA, () => pglite.query("DELETE FROM research.notes WHERE user_id = $1", [BILAL.id]));
+    expect(del.affectedRows ?? 0).toBe(0);
+    const bilals = (await pglite.query("SELECT text FROM research.notes WHERE user_id = $1", [BILAL.id])).rows as any[];
+    expect(bilals.map((n) => n.text)).toEqual(["Bilal's own"]);
+  });
+
+  it("with no account bound, the research role sees nothing and can write nothing", async () => {
+    await pglite.query("BEGIN");
+    try {
+      await pglite.query("SET LOCAL ROLE mqrg_research");
+      expect((await pglite.query("SELECT 1 FROM research.notes")).rows).toEqual([]);
+      await expect(pglite.query("INSERT INTO research.notes (id, verse_key, created_at, updated_at) VALUES ('x', '1:1', 1, 1)"))
+        .rejects.toThrow();
+    } finally { await pglite.query("ROLLBACK"); }
+  });
+
+  it("the research role can't escape: no superuser, no bypass, no other tables", async () => {
+    const role = (await pglite.query<{ rolsuper: boolean; rolbypassrls: boolean }>(
+      "SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = 'mqrg_research'")).rows[0]!;
+    expect(role).toEqual({ rolsuper: false, rolbypassrls: false });
+    await expect(as(AMINA, () => q("SELECT email FROM public.users"))).rejects.toThrow(/permission denied/);
+    // turning row_security off doesn't turn the policy off for a non-owner: it makes reads that
+    // would be filtered fail instead of returning another account's rows
+    await expect(as(AMINA, async () => {
+      await pglite.query("SET LOCAL row_security = off");
+      return q("SELECT id FROM research.notes");
+    })).rejects.toThrow(/row-level security/);
+  });
+
+  it("deleting an account deletes its research", async () => {
+    const GONE = { id: "55555555-5555-4555-8555-555555555555", email: "gone@example.org", name: "Gone" };
+    await addUser(GONE); profiles.set(GONE.id, GONE);
+    await send(cloudAs(GONE), ["PUT", "/research/notes/g1", { id: "g1", verseKey: "1:1", text: "soon gone" }]);
+    expect((await pglite.query("SELECT 1 FROM research.notes WHERE user_id = $1", [GONE.id])).rows).toHaveLength(1);
+    await pglite.query("DELETE FROM users WHERE id = $1", [GONE.id]);
+    expect((await pglite.query("SELECT 1 FROM research.notes WHERE user_id = $1", [GONE.id])).rows).toHaveLength(0);
   });
 });
 
@@ -272,6 +363,7 @@ describe("bringing research in, and taking a copy out", () => {
   it("imports a research.db into a new account: everything arrives", async () => {
     const CARA = { id: "33333333-3333-4333-8333-333333333333", email: "cara@example.org", name: "Cara" };
     profiles.set(CARA.id, CARA);
+    await addUser(CARA);
     const bytes = await fileWith(async (s) => {
       await s.saveCase({ id: "k1", subject: { type: "root", value: "صبر" }, title: "patience",
         formResearch: { "صَبْر": { status: "established", meaning: "holding firm" } } });
@@ -328,5 +420,21 @@ describe("bringing research in, and taking a copy out", () => {
     expect((await store.glossData()).roots).toHaveLength(1);
     // and taking it back in is a no-op
     expect((await (await post(cloudAs(AMINA), bytes)).json() as { copied: number }).copied).toBe(0);
+  });
+});
+
+describe("the Postgres research tables and a research.db file have the same shape", () => {
+  it("every table, every column — plus the owning user_id in Postgres", async () => {
+    const { RESEARCH_TABLES } = await import("../../server/src/research-transfer.js");
+    const file = new Db(join(mkdtempSync(join(tmpdir(), "alsiraat-shape-")), "research.db"));
+    await ResearchStore.open(sqliteResearch(file));
+    for (const table of [...RESEARCH_TABLES, "owner"]) {
+      const sqlite = file.query<{ name: string }>(`PRAGMA table_info(${table})`).map((c) => c.name).sort();
+      const pg = (await pglite.query<{ column_name: string }>(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema = 'research' AND table_name = $1",
+        [table])).rows.map((c) => c.column_name).filter((c) => c !== "user_id").sort();
+      expect(pg, table).toEqual(sqlite);
+    }
+    file.close();
   });
 });

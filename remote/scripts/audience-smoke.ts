@@ -7,7 +7,6 @@ import { createApp } from "../src/app.js";
 import { pool, corpusPool, researchPool, pgRunner } from "../src/db.js";
 import { createToken } from "../src/api-tokens.js";
 import { establish } from "../src/claims.js";
-import { schemaFor } from "../src/research/schema.js";
 
 const app = createApp();
 const made: string[] = [];
@@ -52,7 +51,6 @@ try {
     await pgRunner.query(`DELETE FROM global_forms WHERE claim_id IN (SELECT id FROM claims WHERE author_id = $1)`, [id]);
     await pgRunner.query(`DELETE FROM claim_versions WHERE claim_id IN (SELECT id FROM claims WHERE author_id = $1)`, [id]);
     await pgRunner.query("DELETE FROM claims WHERE author_id = $1", [id]);
-    await pgRunner.query(`DROP SCHEMA IF EXISTS "${schemaFor(id)}" CASCADE`);
     await pgRunner.query("DELETE FROM users WHERE id = $1", [id]);
   }
   console.log(`removed ${made.length} throwaway account(s) and what they published`);

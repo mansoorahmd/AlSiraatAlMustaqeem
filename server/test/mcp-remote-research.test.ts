@@ -16,7 +16,10 @@ import { localReads } from "../../mcp/src/corpus-client.js";
 import { remoteResearch, ResearchRefused } from "../../mcp/src/research-client.js";
 import { TOOLS } from "../../mcp/src/tools.js";
 import { researchApp, type ResearchPool } from "../../remote/src/research/serve.js";
-import { forgetReadySchemas } from "../../remote/src/research/schema.js";
+import { forgetOwners } from "../../remote/src/research/schema.js";
+import { runMigrations } from "../../remote/src/migrate.js";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 const QURAN = process.env.QF_QURAN_DB ?? resolve(import.meta.dirname, "..", "..", "quran.db");
 const READER = { id: "44444444-4444-4444-8444-444444444444", email: "reader@example.org", name: "Reader" };
@@ -49,7 +52,13 @@ const asReader = async (path: string, init?: RequestInit) => (await reader.reque
 
 beforeAll(async () => {
   pglite = new PGlite();
-  forgetReadySchemas();
+  // the research tables, their row-level security and the account the rows belong to
+  await runMigrations({
+    exec: async (sql: string) => { await pglite.exec(sql); },
+    query: async (sql: string, params: unknown[] = []) => (await pglite.query(sql, params)).rows as Record<string, unknown>[],
+  }, join(dirname(fileURLToPath(import.meta.url)), "..", "..", "remote", "migrations"));
+  await pglite.query("INSERT INTO users (id, email, display_name) VALUES ($1, $2, $3)", [READER.id, READER.email, READER.name]);
+  forgetOwners();
   const mcp = appAs("token");
   reader = appAs("session");
   state = {

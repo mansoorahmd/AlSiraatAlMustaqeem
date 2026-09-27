@@ -1,8 +1,8 @@
 # Deploying the research server
 
 The research server (`remote/`) is the one piece that runs in the cloud: it serves the Qur'an
-corpus to every reader's app and MCP, and holds **every reader's research** (private, one schema per
-account), accounts, roles, plans and the community. The app itself runs on the reader's machine (the
+corpus to every reader's app and MCP, and holds **every reader's research** (private to each account,
+by row-level security), accounts, roles, plans and the community. The app itself runs on the reader's machine (the
 desktop app, or `npm start`) and talks to this server over HTTPS.
 
 This guide puts it on **one Linux VPS with Docker**: Postgres, the server, and Caddy in front for

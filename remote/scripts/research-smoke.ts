@@ -1,12 +1,11 @@
-// Smoke of cloud research through the REAL remote app on real Postgres, with a throwaway account
-// (created and removed here, schema dropped): first use creates the schema, a note round-trips,
-// another account can't see it, and a token request gets the AI boundary.
+// Smoke of cloud research through the REAL remote app on real Postgres, with throwaway accounts
+// (created and removed here; their research goes with them): a note round-trips, the other account
+// can't see it (row-level security), and a token request gets the AI boundary.
 // Run: npx tsx remote/scripts/research-smoke.ts
 import { randomBytes } from "node:crypto";
 import { createApp } from "../src/app.js";
 import { pool, corpusPool, researchPool, pgRunner } from "../src/db.js";
 import { createToken } from "../src/api-tokens.js";
-import { schemaFor } from "../src/research/schema.js";
 
 const app = createApp();
 const made: string[] = [];
@@ -24,9 +23,9 @@ try {
   const a = await throwaway("a"), b = await throwaway("b");
   // tokens act as the AI: its note is stored as a proposal
   const put = await app.request("/research/notes/n1", json(a.auth, "PUT", { id: "n1", verseKey: "2:2", text: "hello" }));
-  console.log(`first write (creates the schema) → ${put.status}`);
-  const schema = (await pgRunner.query("SELECT to_regclass($1) AS t", [`${schemaFor(a.id)}.notes`]))[0]?.t;
-  console.log(`schema ${schemaFor(a.id).slice(0, 18)}…  → ${schema ? "exists" : "MISSING"}`);
+  console.log(`first write                     → ${put.status}`);
+  const stored = await pgRunner.query("SELECT user_id FROM research.notes WHERE id = 'n1' AND user_id = $1", [a.id]);
+  console.log(`stored under A's user_id        → ${stored.length ? "yes" : "NO"}`);
   const mine = await (await app.request("/research/notes", { headers: a.auth })).json() as { id: string; source: string }[];
   console.log(`A reads its notes              → ${mine.map((n) => `${n.id}(${n.source})`).join(", ")}`);
   const theirs = await (await app.request("/research/notes", { headers: b.auth })).json() as unknown[];
@@ -35,7 +34,6 @@ try {
   console.log(`signed out                      → ${(await app.request("/research/notes")).status}`);
 } finally {
   for (const id of made) {
-    await pgRunner.query(`DROP SCHEMA IF EXISTS "${schemaFor(id)}" CASCADE`);
     await pgRunner.query("DELETE FROM users WHERE id = $1", [id]);
   }
   console.log(`removed ${made.length} throwaway account(s) and their research`);

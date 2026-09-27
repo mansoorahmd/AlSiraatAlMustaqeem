@@ -1,10 +1,11 @@
 // The signed-in user's research, served at /research — the same routes and JSON the local server
-// serves from a research.db (server/src/routes/research.ts), over their own Postgres schema.
+// serves from a research.db (server/src/routes/research.ts), over the shared `research` schema.
 //
-// Every request runs in ONE transaction on ONE connection with search_path set to that user's
-// schema (SET LOCAL — it ends with the transaction, so a pooled connection can't carry it into
-// someone else's request). Nothing here takes a schema or user id from the request: it comes
-// from the authenticated principal only. There is no route that reads another person's research.
+// Every request runs in ONE transaction on ONE connection, bound to that user (schema.ts): the
+// non-superuser research role, app.user_id, search_path — all LOCAL, so a pooled connection can't
+// carry them into someone else's request. Row-level security then shows and admits only that
+// user's rows. The user id comes from the authenticated principal only; there is no route that
+// reads another person's research.
 //
 // Research is a FEATURE (any account, role reader+). A request made with an API token (the MCP)
 // gets the AI write boundary (server/src/research-boundary.ts).
@@ -21,7 +22,7 @@ import { ResearchStore } from "../../../server/src/research.js";
 import { researchDataRoutes } from "../../../server/src/routes/research.js";
 import { aiBoundary } from "../../../server/src/research-boundary.js";
 import { pgResearch } from "./pg-research.js";
-import { ensureResearchSchema, markReady, type ResearchConn } from "./schema.js";
+import { bindResearchUser, markOwnerKnown, type ResearchConn } from "./schema.js";
 
 export interface ResearchPool {
   connect(): Promise<ResearchConn & { release(): void }>;
@@ -50,11 +51,10 @@ export function researchApp(
   app.use("/research/*", requireRole("reader"), async (c, next) => {
     const user = c.get("user")!;
     const conn = await pool.connect();
-    let commit = false, schema = "";
+    let commit = false;
     try {
       await conn.query("BEGIN");
-      schema = await ensureResearchSchema(conn, user.id, () => profileFor(user.id));
-      await conn.query(`SET LOCAL search_path TO "${schema}"`);
+      await bindResearchUser(conn, user.id, () => profileFor(user.id));
       const db = pgResearch(conn);
       c.set("researchDb", db);
       c.set("research", await ResearchStore.open(db));
@@ -62,7 +62,7 @@ export function researchApp(
       commit = !c.error && c.res.status < 500;
     } finally {
       try { await conn.query(commit ? "COMMIT" : "ROLLBACK"); } finally { conn.release(); }
-      if (commit) markReady(schema);
+      if (commit) markOwnerKnown(user.id);
     }
   });
 
