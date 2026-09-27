@@ -56,7 +56,8 @@ export async function openState(): Promise<McpState> {
   } else {
     corpus = remoteReads(process.env.REMOTE_URL ?? "http://localhost:8100", process.env.REMOTE_TOKEN || undefined);
   }
-  return { ...corpus, research: new ResearchStore(researchDb) };
+  const { sqliteResearch } = await import("../../server/src/research-db.js");
+  return { ...corpus, research: await ResearchStore.open(sqliteResearch(researchDb)) };
 }
 
 // ---- the write boundary -------------------------------------------------------
@@ -79,11 +80,11 @@ export function proposalId(prefix: string): string {
 
 export const guard = {
   /** Refuse to touch a record that already exists — writes are additive only. */
-  mustNotExist(state: McpState, kind: "note" | "indication", id: string): void {
+  async mustNotExist(state: McpState, kind: "note" | "indication", id: string): Promise<void> {
     const found =
       kind === "note"
-        ? state.research.listNotes().some((n) => n.id === id)
-        : state.research.getIndication(id) !== undefined;
+        ? (await state.research.getNote(id)) !== undefined
+        : (await state.research.getIndication(id)) !== undefined;
     if (found) {
       throw new WriteRefused(
         `Refusing to overwrite an existing ${kind} (${id}). This server may only add new records.`,
@@ -116,8 +117,8 @@ export const guard = {
 
   /** A motif the AI may edit — one it proposed. The reader's own motifs are their
    *  curation and stay untouchable, mirroring the rule for notes/indications. */
-  ownMotif(state: McpState, id: string): { id: string; source?: string } {
-    const m = state.research.getMotif(id) as { id: string; source?: string } | undefined;
+  async ownMotif(state: McpState, id: string): Promise<{ id: string; source?: string }> {
+    const m = (await state.research.getMotif(id)) as { id: string; source?: string } | undefined;
     if (!m) throw new WriteRefused(`No such motif: ${id}.`);
     if (m.source !== "ai") {
       throw new WriteRefused(

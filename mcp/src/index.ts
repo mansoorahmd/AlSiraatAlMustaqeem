@@ -96,10 +96,10 @@ const RESOURCES = [
     name: "The reader's research so far",
     description: "Roots with established indications, open questions, and what is awaiting review.",
     mimeType: "text/markdown",
-    read: () => {
-      const gloss = state.research.glossData() as any;
-      const notes = state.research.listNotes();
-      const proposed = state.research.listProposed() as any;
+    read: async () => {
+      const gloss = (await state.research.glossData()) as any;
+      const notes = await state.research.listNotes();
+      const proposed = (await state.research.listProposed()) as any;
       const questions = notes.filter((n: any) => n.kind === "question" && !n.resolved);
       const L: string[] = ["# The reader's research so far", ""];
       L.push(`## Roots with a primary indication (${gloss.roots.length})`);
@@ -128,7 +128,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => ({
 server.setRequestHandler(ReadResourceRequestSchema, async (req) => {
   const r = RESOURCES.find((x) => x.uri === req.params.uri);
   if (!r) throw new Error(`Unknown resource: ${req.params.uri}`);
-  return { contents: [{ uri: r.uri, mimeType: r.mimeType, text: r.read() }] };
+  return { contents: [{ uri: r.uri, mimeType: r.mimeType, text: await r.read() }] };
 });
 
 // ---- prompts -----------------------------------------------------------------

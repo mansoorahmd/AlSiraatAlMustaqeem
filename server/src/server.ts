@@ -11,7 +11,7 @@ import { createState } from "./state.js";
 const PORT = Number(process.env.PORT ?? 8000);
 const SERVE_STATIC = process.env.SERVE_STATIC === "1";
 
-const state = createState();
+const state = await createState();
 const app = createApp(state);
 
 if (SERVE_STATIC) {

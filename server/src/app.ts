@@ -10,7 +10,7 @@ import { HttpError } from "./content.js";
 import { contentRoutes } from "./routes/content.js";
 import { rootRoutes } from "./routes/roots.js";
 import { similarityRoutes } from "./routes/similarity.js";
-import { researchRoutes } from "./routes/research.js";
+import { researchDataRoutes, researchFileRoutes } from "./routes/research.js";
 import { echoRoutes } from "./routes/echoes.js";
 import { corpusRoutes } from "./routes/corpus.js";
 
@@ -43,7 +43,8 @@ export function createApp(state: AppState): Hono {
   v1.route("/", contentRoutes(state));
   v1.route("/", rootRoutes(state));
   v1.route("/", similarityRoutes(state));
-  v1.route("/", researchRoutes(state));
+  v1.route("/", researchFileRoutes(state));
+  v1.route("/", researchDataRoutes(() => state.research));   // per request: the open file can change
   v1.route("/", echoRoutes(state));
   v1.route("/", corpusRoutes(state));
 

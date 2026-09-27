@@ -19,13 +19,14 @@ import { rootRoutes } from "../src/routes/roots.js";
 import { similarityRoutes } from "../src/routes/similarity.js";
 import { echoRoutes } from "../src/routes/echoes.js";
 import { ResearchStore } from "../src/research.js";
+import { sqliteResearch } from "../src/research-db.js";
 import { localReads, remoteReads, CorpusAccessError } from "../../mcp/src/corpus-client.js";
 import { TOOLS } from "../../mcp/src/tools.js";
 
 const QURAN = process.env.QF_QURAN_DB ?? resolve(import.meta.dirname, "..", "..", "quran.db");
 let local: any, remote: any;
 
-beforeAll(() => {
+beforeAll(async () => {
   const svc = createCorpusServices(sqliteCorpus(new Db(QURAN, { readOnly: true })));
   const corpus = new Hono();
   corpus.onError((err, c) => err instanceof HttpError
@@ -33,7 +34,7 @@ beforeAll(() => {
   for (const r of [contentRoutes(svc), rootRoutes(svc), similarityRoutes(svc), echoRoutes(svc)]) corpus.route("/", r);
   const app = new Hono().route("/corpus", corpus);
 
-  const research = new ResearchStore(new Db(join(mkdtempSync(join(tmpdir(), "alsiraat-mcpr-")), "r.db")));
+  const research = await ResearchStore.open(sqliteResearch(new Db(join(mkdtempSync(join(tmpdir(), "alsiraat-mcpr-")), "r.db"))));
   local = { ...localReads(svc), research };
   remote = { ...remoteReads("http://corpus.test", "mqrg_test", async (url, init) => app.request(url, init)), research };
 });

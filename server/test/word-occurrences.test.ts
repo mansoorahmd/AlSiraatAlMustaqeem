@@ -11,7 +11,7 @@ const occ = async (surface: string) =>
   (await (await app.request(`/api/v1/words/occurrences?surface=${encodeURIComponent(surface)}`)).json()) as
     { verse_key: string; word_position: number }[];
 
-beforeAll(() => { app = createApp(createState()); });
+beforeAll(async () => { app = createApp(await createState()); });
 
 describe("exact-word occurrences", () => {
   it("walks a rooted word — ٱلْمُفْلِحُونَ, starting at 2:5", async () => {

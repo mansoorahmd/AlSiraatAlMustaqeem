@@ -9,7 +9,7 @@ import { createState } from "../src/state.js";
 let app: Hono;
 const j = async (r: Response) => r.json() as any;
 
-beforeAll(() => { app = createApp(createState()); });
+beforeAll(async () => { app = createApp(await createState()); });
 
 describe("shared verses of a root pair", () => {
   it("matches the cooccur count /linkages reports (نفق + امن)", async () => {

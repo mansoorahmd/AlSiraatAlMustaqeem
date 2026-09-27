@@ -13,7 +13,7 @@ const put = (path: string, body: unknown) =>
   app.request(path, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 const B = "/api/v1/research";
 
-beforeAll(() => { app = createApp(createState()); });
+beforeAll(async () => { app = createApp(await createState()); });
 
 describe("provenance of research records", () => {
   it("defaults to the reader ('me') when no source is given", async () => {

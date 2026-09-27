@@ -12,7 +12,7 @@ const spelling = async (key: string, pos: number) =>
     surface: string; count: number; verses: string[];
   }[];
 
-beforeAll(() => { app = createApp(createState()); });
+beforeAll(async () => { app = createApp(await createState()); });
 
 describe("spelling variants", () => {
   it("ʿalā (2:5 w2) is written with and without the dagger-alif", async () => {

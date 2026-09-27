@@ -9,7 +9,7 @@ import { createState } from "../src/state.js";
 let app: Hono;
 const get = async (p: string) => (await (await app.request(p)).json()) as any;
 
-beforeAll(() => { app = createApp(createState()); });
+beforeAll(async () => { app = createApp(await createState()); });
 
 describe("verbatim echoes", () => {
   it("Ar-Rahman refrain (55:13) repeats across many ayahs", async () => {

@@ -38,7 +38,7 @@ beforeAll(async () => {
   process.env.QF_RESEARCH_DB = RESEARCH;
   const { createApp } = await import("../src/app.js");
   const { createState } = await import("../src/state.js");
-  app = createApp(createState()); // constructor mints local_id, migrates + backfills
+  app = createApp(await createState()); // constructor mints local_id, migrates + backfills
 });
 
 describe("local identity", () => {
@@ -67,7 +67,8 @@ describe("local identity", () => {
     const { localId } = await j(await app.request(`${B}/identity`));
     const { Db } = await import("../src/db.js");
     const { ResearchStore } = await import("../src/research.js");
-    const reopened = new ResearchStore(new Db(RESEARCH));
+    const { sqliteResearch } = await import("../src/research-db.js");
+    const reopened = await ResearchStore.open(sqliteResearch(new Db(RESEARCH)));
     expect(reopened.localId).toBe(localId); // stable across sessions
   });
 });

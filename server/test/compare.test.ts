@@ -10,7 +10,7 @@ let app: Hono;
 const j = async (r: Response) => r.json() as any;
 const base = "/api/v1/research/compare-sets";
 
-beforeAll(() => { app = createApp(createState()); });
+beforeAll(async () => { app = createApp(await createState()); });
 
 describe("comparisons", () => {
   it("creates, fills, dedupes, removes and deletes", async () => {

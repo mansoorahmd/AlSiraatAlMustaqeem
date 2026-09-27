@@ -13,7 +13,7 @@ const expr = async (terms: { surface?: string; root?: string | null }[], mode: s
     body: JSON.stringify({ terms, mode }),
   })).json()) as { verse_key: string; text: string }[];
 
-beforeAll(() => { app = createApp(createState()); });
+beforeAll(async () => { app = createApp(await createState()); });
 
 describe("expression search", () => {
   it("verbatim: الحمد + لله co-occur (incl. 1:2)", async () => {

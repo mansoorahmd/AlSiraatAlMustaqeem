@@ -13,13 +13,14 @@ import { join } from "node:path";
 import { createRequire } from "node:module";
 import { Db } from "../src/db.js";
 import { ResearchStore } from "../src/research.js";
+import { sqliteResearch } from "../src/research-db.js";
 
 const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite") as typeof import("node:sqlite");
 const dir = mkdtempSync(join(tmpdir(), "alsiraat-mig-"));
 afterAll(() => rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }));
 
 describe("migrating a research.db from before `source`", () => {
-  it("adds source to notes + word_indications, keeps rows, tags them 'me'", () => {
+  it("adds source to notes + word_indications, keeps rows, tags them 'me'", async () => {
     const path = join(dir, "legacy.db");
 
     // an older research.db: both tables exist WITHOUT a source column, with data
@@ -40,16 +41,15 @@ describe("migrating a research.db from before `source`", () => {
 
     // opening the store runs the migrations — must not throw
     const db = new Db(path);
-    expect(() => new ResearchStore(db)).not.toThrow();
-    const store = new ResearchStore(db);
+    const store = await ResearchStore.open(sqliteResearch(db));   // would reject if a migration failed
 
-    const note = store.listNotes({ verse: "2:2" })[0]!;
+    const note = (await store.listNotes({ verse: "2:2" }))[0]!;
     expect(note.source).toBe("me");
-    const ind = store.getIndication("i1")!;
+    const ind = (await store.getIndication("i1"))!;
     expect(ind.source).toBe("me");
     // and a fresh AI write is distinguishable
-    store.saveNote({ id: "n_ai", verseKey: "2:3", kind: "note", text: "from ai", source: "ai" });
-    expect(store.listProposed().notes.map((n: any) => n.id)).toEqual(["n_ai"]);
+    (await store.saveNote({ id: "n_ai", verseKey: "2:3", kind: "note", text: "from ai", source: "ai" }));
+    expect((await store.listProposed()).notes.map((n: any) => n.id)).toEqual(["n_ai"]);
 
     db.close();
   });

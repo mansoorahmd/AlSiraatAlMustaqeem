@@ -28,9 +28,9 @@ beforeAll(async () => {
 });
 
 /** a case as the READER would have made it: no source tags anywhere */
-function seedReaderCase() {
+async function seedReaderCase() {
   const now = Date.now();
-  return state.research.saveCase({
+  return (await state.research.saveCase({
     id: `case_reader_${now}_${Math.random().toString(36).slice(2, 7)}`,
     subject: { type: "root", value: "رحم" },
     title: "the reader's own case",
@@ -38,7 +38,7 @@ function seedReaderCase() {
     slips: [{ id: "slip_mine", kind: "comment", form: null, text: "my own note", x: 400, y: 20, rotation: 0 }],
     threads: [], clusters: [], formResearch: {},
     verdict: "my verdict", status: "partial", createdAt: now, updatedAt: now,
-  });
+  }));
 }
 
 describe("case boundary — what the AI may do", () => {
@@ -71,7 +71,7 @@ describe("case boundary — what the AI may do", () => {
 
     // cards must not be stacked on the same spot
     const full = await call("read_case", { case_id: opened.case_id });
-    const raw = state.research.getCase(opened.case_id);
+    const raw = (await state.research.getCase(opened.case_id));
     const spots = new Set([...raw.cards, ...raw.slips].map((i: any) => `${i.x},${i.y}`));
     expect(spots.size).toBe(raw.cards.length + raw.slips.length);
     expect(full.evidence.every((e: any) => e.added_by === "you")).toBe(true);
@@ -98,29 +98,29 @@ describe("case boundary — what the AI may do", () => {
       case_id: c.case_id, item_id: s.added, action: "retext", text: "better wording",
       expect_version: s.updated_at,
     });
-    expect(state.research.getCase(c.case_id).slips[0].text).toBe("better wording");
+    expect((await state.research.getCase(c.case_id)).slips[0].text).toBe("better wording");
     await call("revise_own_item", { case_id: c.case_id, item_id: s.added, action: "remove", text: "", expect_version: r.updated_at });
-    expect(state.research.getCase(c.case_id).slips.length).toBe(0);
+    expect((await state.research.getCase(c.case_id)).slips.length).toBe(0);
   });
 });
 
 describe("case boundary — what the AI may NOT do", () => {
   it("refuses to edit or delete the reader's own card or slip", async () => {
-    const mine = seedReaderCase();
+    const mine = await seedReaderCase();
     for (const id of ["card_mine", "slip_mine"]) {
       await expect(call("revise_own_item", {
         case_id: mine.id, item_id: id, action: "remove", text: "", expect_version: mine.updatedAt,
       })).rejects.toThrow(/reader's own work/);
     }
-    const after = state.research.getCase(mine.id);
+    const after = (await state.research.getCase(mine.id));
     expect(after.cards.length).toBe(1);
     expect(after.slips.length).toBe(1);
   });
 
   it("never writes verdict, status or formResearch — even while adding to the board", async () => {
-    const mine = seedReaderCase();
+    const mine = await seedReaderCase();
     const ev = await call("add_evidence", { case_id: mine.id, ayat: [{ verse_key: "2:3" }], expect_version: mine.updatedAt });
-    const after = state.research.getCase(mine.id);
+    const after = (await state.research.getCase(mine.id));
     expect(after.verdict).toBe("my verdict");   // untouched
     expect(after.status).toBe("partial");        // untouched
     expect(after.cards.length).toBe(2);          // but the evidence did land
@@ -128,13 +128,13 @@ describe("case boundary — what the AI may NOT do", () => {
   });
 
   it("parks a proposed conclusion without applying it", async () => {
-    const mine = seedReaderCase();
+    const mine = await seedReaderCase();
     const p = await call("propose_conclusion", {
       case_id: mine.id, kind: "verdict", form: null, text: "the root means X",
       reasoning: "because", suggested_status: "closed", expect_version: mine.updatedAt,
     });
     expect(p.applied).toBe(false);
-    const after = state.research.getCase(mine.id);
+    const after = (await state.research.getCase(mine.id));
     expect(after.verdict).toBe("my verdict"); // NOT overwritten
     expect(after.status).toBe("partial");     // NOT closed
     expect(after.proposals.entries.length).toBe(1);
@@ -143,23 +143,23 @@ describe("case boundary — what the AI may NOT do", () => {
   });
 
   it("marking a form established stays a proposal, not formResearch", async () => {
-    const mine = seedReaderCase();
+    const mine = await seedReaderCase();
     await call("propose_conclusion", {
       case_id: mine.id, kind: "form", form: "رَّحْمَٰن", text: "means Y",
       reasoning: "", expect_version: mine.updatedAt,
     });
-    expect(state.research.getCase(mine.id).formResearch).toEqual({});
+    expect((await state.research.getCase(mine.id)).formResearch).toEqual({});
   });
 
   it("refuses a write based on a stale read, so the reader is never clobbered", async () => {
-    const mine = seedReaderCase();
+    const mine = await seedReaderCase();
     const stale = mine.updatedAt;
     // the reader edits in the app meanwhile
-    state.research.saveCase({ ...state.research.getCase(mine.id), title: "renamed by me" });
+    await state.research.saveCase({ ...(await state.research.getCase(mine.id)), title: "renamed by me" });
     await expect(call("add_evidence", {
       case_id: mine.id, ayat: [{ verse_key: "2:4" }], expect_version: stale,
     })).rejects.toThrow(/changed since you read it/);
-    expect(state.research.getCase(mine.id).title).toBe("renamed by me");
+    expect((await state.research.getCase(mine.id)).title).toBe("renamed by me");
   });
 
   it("refuses to link or group items that are not on the case", async () => {
@@ -176,7 +176,7 @@ describe("case boundary — what the AI may NOT do", () => {
     // SlipRecord.source is the WORK BEING CITED ("Lane's Lexicon"), not who wrote the
     // slip (that is `author`). A reader's reference slip must stay untouchable.
     const now = Date.now();
-    const c = state.research.saveCase({
+    const c = (await state.research.saveCase({
       id: `case_cite_${now}`,
       subject: { type: "root", value: "رحم" }, title: "citation slip",
       cards: [],
@@ -184,7 +184,7 @@ describe("case boundary — what the AI may NOT do", () => {
                 source: "Lane's Lexicon", locator: "vol 3", x: 20, y: 20, rotation: 0 }],
       threads: [], clusters: [], formResearch: {}, verdict: "", status: "open",
       createdAt: now, updatedAt: now,
-    });
+    }));
     await expect(call("revise_own_item", {
       case_id: c.id, item_id: "slip_cited", action: "remove", text: "", expect_version: c.updatedAt,
     })).rejects.toThrow(/reader's own work/);

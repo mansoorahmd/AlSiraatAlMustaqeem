@@ -1,19 +1,26 @@
-// Research store — the reader's own scholarship in research.db (read-write).
-// Port of quran_api/research.py: cases (+ form_research/revisions), trails, notes.
+// Research store — the reader's own scholarship: cases (+ form_research/revisions), trails,
+// notes, root meanings, motifs, indications, comparisons, settings, and the outbox of what they
+// have published. Port of quran_api/research.py.
+//
+// Written once, async, against ResearchDb (research-db.ts), so the same code runs over a
+// research.db FILE (SQLite: the local server, tests, import/export) and over the signed-in
+// user's own Postgres SCHEMA on the research server. Every visible ordering is total (ids as the
+// last key), so both engines return the same rows in the same order.
 
 import { randomUUID } from "node:crypto";
 import { ownerIdFor, normalizeEmail } from "./identity.js";
-import type { Db } from "./db.js";
+import type { ResearchDb } from "./research-db.js";
 
 // User-authored top-level records get an author + origin stamp (Phase 1). `author_id`
-// is the account-independent local identity (see ensureLocalId); `origin` is 'local'
+// is the account-independent identity (see ensureLocalId); `origin` is 'local'
 // for anything the reader (or their AI) makes here, vs 'remote' for pulled peer work.
 // Child rows (form_research, motif_roots, compare_items) inherit authorship from their
 // parent and are not stamped.
-const STAMPED_TABLES = [
+export const STAMPED_TABLES = [
   "cases", "notes", "trails", "motifs", "user_root_meanings", "word_indications", "compare_sets",
 ];
 
+/** The research.db file's schema (SQLite). The Postgres twin is remote/src/research/schema.ts. */
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS cases (
     id TEXT PRIMARY KEY, subject_type TEXT NOT NULL, subject_value TEXT NOT NULL,
@@ -52,7 +59,7 @@ CREATE TABLE IF NOT EXISTS notes (
     created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_notes_verse ON notes(verse_key);
--- source indexes are created in the constructor, AFTER the migration adds the column
+-- source indexes are created in migrateSqlite, AFTER the migration adds the column
 
 -- the reader's own meaning for a root, saved alongside the dictionary lexicons
 CREATE TABLE IF NOT EXISTS user_root_meanings (
@@ -150,11 +157,8 @@ CREATE TABLE IF NOT EXISTS derived_proposed_claims (
 );
 
 -- (Removed with monetization: the group's readings are no longer MIRRORED into local derived
--- tables. Community data — globally-established forms, dissents, peer indications, divergence —
--- is now read LIVE from the remote and gated behind a plan (see remote/ + REMOTE.md). Nothing
--- of the group's ever lands on this disk, which is what makes the paid layer enforceable.
--- Only derived_submissions / derived_proposed_claims remain: they record YOUR OWN outbound
--- actions (what you've shared / proposed), not anyone else's work.)
+-- tables. Community data is read LIVE from the remote and gated. Only derived_submissions /
+-- derived_proposed_claims remain: they record YOUR OWN outbound actions, not anyone else's work.)
 `;
 
 const NOTE_MIGRATIONS: [string, string][] = [
@@ -167,47 +171,61 @@ const NOTE_MIGRATIONS: [string, string][] = [
 
 const now = () => Date.now();
 type Doc = Record<string, any>;
+type MotifRow = { id: string; name: string; note: string; source?: string; created_at: number; updated_at: number };
 
 export class ResearchStore {
   /** The identity every row this reader creates is stamped with (the owner's uuid once claimed). */
-  localId: string;
+  localId = "";
 
-  constructor(private db: Db) {
-    db.exec("PRAGMA journal_mode = WAL");
-    db.exec(SCHEMA);
-    const have = new Set(db.query<{ name: string }>("PRAGMA table_info(notes)").map((r) => r.name));
+  private constructor(private db: ResearchDb) {}
+
+  /**
+   * Open a research store. A research.db FILE migrates itself here (old files gain columns as the
+   * schema grew). A Postgres schema is created and upgraded by the research server before it gets
+   * here (remote/src/research/schema.ts), so there is nothing to migrate.
+   */
+  static async open(db: ResearchDb): Promise<ResearchStore> {
+    const store = new ResearchStore(db);
+    if (db.dialect === "sqlite") await store.migrateSqlite();
+    // Phase 1 — local identity: a stable id every authored row is stamped with.
+    store.localId = await store.ensureLocalId();
+    if (db.dialect === "sqlite") for (const table of STAMPED_TABLES) await store.stampTable(table);
+    return store;
+  }
+
+  private async migrateSqlite(): Promise<void> {
+    const db = this.db;
+    const cols = async (t: string) =>
+      new Set((await db.query<{ name: string }>(`PRAGMA table_info(${t})`)).map((r) => r.name));
+    await db.exec("PRAGMA journal_mode = WAL");
+    await db.exec(SCHEMA);
+    const have = await cols("notes");
     for (const [col, decl] of NOTE_MIGRATIONS) {
-      if (!have.has(col)) db.exec(`ALTER TABLE notes ADD COLUMN ${col} ${decl}`);
+      if (!have.has(col)) await db.exec(`ALTER TABLE notes ADD COLUMN ${col} ${decl}`);
     }
-    db.exec("CREATE INDEX IF NOT EXISTS idx_notes_lemma ON notes(lemma)");
-    db.exec("CREATE INDEX IF NOT EXISTS idx_notes_root ON notes(root)");
+    await db.exec("CREATE INDEX IF NOT EXISTS idx_notes_lemma ON notes(lemma)");
+    await db.exec("CREATE INDEX IF NOT EXISTS idx_notes_root ON notes(root)");
     // "senses" were renamed to "indications". The old tables are dropped rather
     // than migrated: the feature was still being shaped and its data was scratch.
-    db.exec("DROP TABLE IF EXISTS word_senses");
-    db.exec("DROP TABLE IF EXISTS sense_assignments");
-    // provenance: records proposed by an AI through the MCP server are tagged,
-    // so the reader can always tell them apart and review them
+    await db.exec("DROP TABLE IF EXISTS word_senses");
+    await db.exec("DROP TABLE IF EXISTS sense_assignments");
     // the owner record gained a name after it shipped with just an email
-    const ownerCols = new Set(db.query<{ name: string }>("PRAGMA table_info(owner)").map((r) => r.name));
+    const ownerCols = await cols("owner");
     if (ownerCols.size && !ownerCols.has("name")) {
-      db.exec("ALTER TABLE owner ADD COLUMN name TEXT NOT NULL DEFAULT ''");
+      await db.exec("ALTER TABLE owner ADD COLUMN name TEXT NOT NULL DEFAULT ''");
     }
-    const indCols = new Set(db.query<{ name: string }>("PRAGMA table_info(word_indications)").map((r) => r.name));
+    // provenance: records proposed by an AI through the MCP server are tagged
+    const indCols = await cols("word_indications");
     if (indCols.size && !indCols.has("source")) {
-      db.exec("ALTER TABLE word_indications ADD COLUMN source TEXT NOT NULL DEFAULT 'me'");
+      await db.exec("ALTER TABLE word_indications ADD COLUMN source TEXT NOT NULL DEFAULT 'me'");
     }
     // motifs gained a source flag so AI-proposed groupings are distinguishable from the reader's
-    const motifCols = new Set(db.query<{ name: string }>("PRAGMA table_info(motifs)").map((r) => r.name));
+    const motifCols = await cols("motifs");
     if (motifCols.size && !motifCols.has("source")) {
-      db.exec("ALTER TABLE motifs ADD COLUMN source TEXT NOT NULL DEFAULT 'me'");
+      await db.exec("ALTER TABLE motifs ADD COLUMN source TEXT NOT NULL DEFAULT 'me'");
     }
-    db.exec("CREATE INDEX IF NOT EXISTS idx_notes_source ON notes(source)");
-    db.exec("CREATE INDEX IF NOT EXISTS idx_word_indications_source ON word_indications(source)");
-
-    // Phase 1 — local identity. Mint a stable local_id, add author_id/origin columns to the
-    // user-authored tables, and backfill pre-existing rows so nothing is left un-attributed.
-    this.localId = this.ensureLocalId();
-    for (const table of STAMPED_TABLES) this.stampTable(table);
+    await db.exec("CREATE INDEX IF NOT EXISTS idx_notes_source ON notes(source)");
+    await db.exec("CREATE INDEX IF NOT EXISTS idx_word_indications_source ON word_indications(source)");
   }
 
   /**
@@ -215,21 +233,21 @@ export class ResearchStore {
    * uuid — stable for that person on any machine. Before that (or in tests) a random one is
    * minted so nothing is ever un-attributed.
    */
-  private ensureLocalId(): string {
-    const owner = this.getOwner();
+  private async ensureLocalId(): Promise<string> {
+    const owner = await this.getOwner();
     if (owner) return owner.uuid as string;
-    const cur = this.getSetting("local_id");
+    const cur = await this.getSetting("local_id");
     if (typeof cur === "string" && cur) return cur;
     const id = randomUUID();
-    this.setSetting("local_id", id);
+    await this.setSetting("local_id", id);
     return id;
   }
 
-  // ---- owner: whose research this file is ---------------------------------------
-  /** Who this database belongs to, or undefined if nobody has claimed it yet. */
-  getOwner(): Doc | undefined {
+  // ---- owner: whose research this is ---------------------------------------------
+  /** Who this research belongs to, or undefined if nobody has claimed it yet. */
+  async getOwner(): Promise<Doc | undefined> {
     try {
-      const r = this.db.one<{ name: string; email: string; uuid: string; claimed_at: number; updated_at: number }>(
+      const r = await this.db.one<{ name: string; email: string; uuid: string; claimed_at: number; updated_at: number }>(
         "SELECT name, email, uuid, claimed_at, updated_at FROM owner WHERE id = 1");
       return r
         ? { name: r.name ?? "", email: r.email, uuid: r.uuid, claimedAt: r.claimed_at, updatedAt: r.updated_at }
@@ -238,54 +256,55 @@ export class ResearchStore {
   }
 
   /**
-   * Claim this database for `email`, or re-assign it (you hold the file, so you may correct a
+   * Claim this research for `email`, or re-assign it (you hold the file, so you may correct a
    * typo or hand it on). The uuid is re-derived, and local_id follows it so newly authored rows
    * carry the right author.
    */
-  setOwner(email: string, name?: string): Doc {
+  async setOwner(email: string, name?: string): Promise<Doc> {
     const clean = normalizeEmail(email);
     if (!clean.includes("@")) throw new Error("a valid email is required");
     const uuid = ownerIdFor(clean);
     const t = now();
     // keep the existing name when one isn't supplied (e.g. correcting only the email)
-    const label = (name ?? (this.getOwner()?.name as string | undefined) ?? "").trim().slice(0, 120);
-    this.db.run(
+    const label = (name ?? ((await this.getOwner())?.name as string | undefined) ?? "").trim().slice(0, 120);
+    await this.db.run(
       `INSERT INTO owner (id, name, email, uuid, claimed_at, updated_at) VALUES (1, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET name = excluded.name, email = excluded.email,
          uuid = excluded.uuid, updated_at = excluded.updated_at`,
       [label, clean, uuid, t, t],
     );
-    this.setSetting("local_id", uuid);
+    await this.setSetting("local_id", uuid);
     this.localId = uuid;
-    return this.getOwner()!;
+    return (await this.getOwner())!;
   }
 
-  /** Add author_id + origin to `table` if missing, and stamp any rows that predate them. */
-  private stampTable(table: string): void {
-    const cols = new Set(this.db.query<{ name: string }>(`PRAGMA table_info(${table})`).map((r) => r.name));
+  /** Add author_id + origin to `table` if missing, and stamp any rows that predate them (SQLite). */
+  private async stampTable(table: string): Promise<void> {
+    const cols = new Set((await this.db.query<{ name: string }>(`PRAGMA table_info(${table})`)).map((r) => r.name));
     if (cols.size === 0) return; // table not present
-    if (!cols.has("author_id")) this.db.exec(`ALTER TABLE ${table} ADD COLUMN author_id TEXT`);
-    if (!cols.has("origin")) this.db.exec(`ALTER TABLE ${table} ADD COLUMN origin TEXT NOT NULL DEFAULT 'local'`);
-    this.db.run(
+    if (!cols.has("author_id")) await this.db.exec(`ALTER TABLE ${table} ADD COLUMN author_id TEXT`);
+    if (!cols.has("origin")) await this.db.exec(`ALTER TABLE ${table} ADD COLUMN origin TEXT NOT NULL DEFAULT 'local'`);
+    await this.db.run(
       `UPDATE ${table} SET author_id = ? WHERE author_id IS NULL OR author_id = ''`,
       [this.localId],
     );
   }
 
   // -- cases --
-  listCases(): Doc[] {
-    return this.db.query<{ doc: string }>("SELECT doc FROM cases ORDER BY updated_at DESC").map((r) => JSON.parse(r.doc));
+  async listCases(): Promise<Doc[]> {
+    return (await this.db.query<{ doc: string }>("SELECT doc FROM cases ORDER BY updated_at DESC, id"))
+      .map((r) => JSON.parse(r.doc));
   }
-  getCase(id: string): Doc | undefined {
-    const row = this.db.one<{ doc: string }>("SELECT doc FROM cases WHERE id = ?", [id]);
+  async getCase(id: string): Promise<Doc | undefined> {
+    const row = await this.db.one<{ doc: string }>("SELECT doc FROM cases WHERE id = ?", [id]);
     return row ? JSON.parse(row.doc) : undefined;
   }
-  saveCase(doc: Doc): Doc {
+  async saveCase(doc: Doc): Promise<Doc> {
     const t = now();
     doc = { ...doc, updatedAt: t };
     doc.createdAt ??= t;
     const subject = doc.subject ?? {};
-    this.db.run(
+    await this.db.run(
       `INSERT INTO cases (id, subject_type, subject_value, title, status, verdict, spark_verse_key, doc, created_at, updated_at, author_id, origin)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET subject_type=excluded.subject_type, subject_value=excluded.subject_value,
@@ -295,13 +314,13 @@ export class ResearchStore {
        doc.verdict ?? "", subject.sparkVerseKey ?? null, JSON.stringify(doc), doc.createdAt, t,
        doc.authorId ?? this.localId, doc.origin ?? "local"],
     );
-    this.reconcileFormResearch(doc);
+    await this.reconcileFormResearch(doc);
     return doc;
   }
-  deleteCase(id: string): boolean {
-    const cur = this.db.run("DELETE FROM cases WHERE id = ?", [id]);
-    this.db.run("DELETE FROM form_research WHERE case_id = ?", [id]);
-    return Number(cur.changes) > 0;
+  async deleteCase(id: string): Promise<boolean> {
+    const cur = await this.db.run("DELETE FROM cases WHERE id = ?", [id]);
+    await this.db.run("DELETE FROM form_research WHERE case_id = ?", [id]);
+    return cur.changes > 0;
   }
 
   /**
@@ -309,13 +328,13 @@ export class ResearchStore {
    * case board is the source, and this is the reader's own act. (Named "sync…" once, which
    * tripped the write-boundary test; the boundary is about what a PULL may write.)
    */
-  private reconcileFormResearch(doc: Doc): void {
+  private async reconcileFormResearch(doc: Doc): Promise<void> {
     const caseId = doc.id;
     const root = (doc.subject ?? {}).value ?? "";
     const forms: Record<string, any> = doc.formResearch ?? {};
     const t = now();
     const old = new Map<string, { status: string; meaning: string }>();
-    for (const r of this.db.query<{ lemma: string; status: string; meaning: string }>(
+    for (const r of await this.db.query<{ lemma: string; status: string; meaning: string }>(
       "SELECT lemma, status, meaning FROM form_research WHERE case_id = ?", [caseId],
     )) old.set(r.lemma, { status: r.status, meaning: r.meaning });
 
@@ -325,10 +344,10 @@ export class ResearchStore {
       const prev = old.get(lemma);
       old.delete(lemma);
       if (prev && prev.status === "established" && prev.meaning && prev.meaning !== meaning) {
-        this.db.run("INSERT INTO form_revisions (case_id, lemma, meaning, replaced_at) VALUES (?,?,?,?)",
+        await this.db.run("INSERT INTO form_revisions (case_id, lemma, meaning, replaced_at) VALUES (?,?,?,?)",
           [caseId, lemma, prev.meaning, t]);
       }
-      this.db.run(
+      await this.db.run(
         `INSERT INTO form_research (case_id, root, lemma, status, meaning, established_at, updated_at)
          VALUES (?,?,?,?,?,?,?)
          ON CONFLICT(case_id, lemma) DO UPDATE SET root=excluded.root, status=excluded.status,
@@ -337,32 +356,34 @@ export class ResearchStore {
       );
     }
     for (const lemma of old.keys()) {
-      this.db.run("DELETE FROM form_research WHERE case_id = ? AND lemma = ?", [caseId, lemma]);
+      await this.db.run("DELETE FROM form_research WHERE case_id = ? AND lemma = ?", [caseId, lemma]);
     }
   }
 
-  formStatus(): Doc[] {
+  async formStatus(): Promise<Doc[]> {
     return this.db.query(
       `SELECT fr.lemma, fr.root, fr.status, fr.meaning, fr.case_id, c.status AS case_status
-       FROM form_research fr JOIN cases c ON c.id = fr.case_id`,
+       FROM form_research fr JOIN cases c ON c.id = fr.case_id
+       ORDER BY fr.case_id, fr.lemma`,
     );
   }
-  revisions(caseId: string, lemma: string): Doc[] {
+  async revisions(caseId: string, lemma: string): Promise<Doc[]> {
     return this.db.query(
-      "SELECT meaning, replaced_at FROM form_revisions WHERE case_id = ? AND lemma = ? ORDER BY replaced_at DESC",
+      "SELECT meaning, replaced_at FROM form_revisions WHERE case_id = ? AND lemma = ? ORDER BY replaced_at DESC, id DESC",
       [caseId, lemma],
     );
   }
 
   // -- trails --
-  listTrails(): Doc[] {
-    return this.db.query<{ doc: string }>("SELECT doc FROM trails ORDER BY updated_at DESC").map((r) => JSON.parse(r.doc));
+  async listTrails(): Promise<Doc[]> {
+    return (await this.db.query<{ doc: string }>("SELECT doc FROM trails ORDER BY updated_at DESC, id"))
+      .map((r) => JSON.parse(r.doc));
   }
-  saveTrail(doc: Doc): Doc {
+  async saveTrail(doc: Doc): Promise<Doc> {
     const t = now();
     doc = { ...doc, updatedAt: t };
     doc.createdAt ??= t;
-    this.db.run(
+    await this.db.run(
       `INSERT INTO trails (id, name, subject, doc, created_at, updated_at, author_id, origin) VALUES (?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET name=excluded.name, subject=excluded.subject, doc=excluded.doc, updated_at=excluded.updated_at`,
       [doc.id, doc.name ?? "", doc.subject ?? null, JSON.stringify(doc), doc.createdAt, t,
@@ -370,8 +391,8 @@ export class ResearchStore {
     );
     return doc;
   }
-  deleteTrail(id: string): boolean {
-    return Number(this.db.run("DELETE FROM trails WHERE id = ?", [id]).changes) > 0;
+  async deleteTrail(id: string): Promise<boolean> {
+    return (await this.db.run("DELETE FROM trails WHERE id = ?", [id])).changes > 0;
   }
 
   // -- notes --
@@ -384,20 +405,24 @@ export class ResearchStore {
       createdAt: r.created_at, updatedAt: r.updated_at,
     };
   }
-  listNotes(opts: { verse?: string; root?: string; lemma?: string } = {}): Doc[] {
+  async getNote(id: string): Promise<Doc | undefined> {
+    const r = await this.db.one("SELECT * FROM notes WHERE id = ?", [id]);
+    return r ? ResearchStore.noteRow(r) : undefined;
+  }
+  async listNotes(opts: { verse?: string; root?: string; lemma?: string } = {}): Promise<Doc[]> {
     const clauses: string[] = [];
     const params: unknown[] = [];
     if (opts.verse) { clauses.push("verse_key = ?"); params.push(opts.verse); }
     if (opts.root) { clauses.push("root = ?"); params.push(opts.root); }
     if (opts.lemma) { clauses.push("lemma = ?"); params.push(opts.lemma); }
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
-    return this.db.query(`SELECT * FROM notes ${where} ORDER BY created_at`, params).map(ResearchStore.noteRow);
+    return (await this.db.query(`SELECT * FROM notes ${where} ORDER BY created_at, id`, params)).map(ResearchStore.noteRow);
   }
-  saveNote(doc: Doc): Doc {
+  async saveNote(doc: Doc): Promise<Doc> {
     const t = now();
     doc = { ...doc, updatedAt: t };
     doc.createdAt ??= t;
-    this.db.run(
+    await this.db.run(
       `INSERT INTO notes (id, verse_key, word_position, kind, text, answer, resolved, lemma, root, source, created_at, updated_at, author_id, origin)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET verse_key=excluded.verse_key, word_position=excluded.word_position,
@@ -410,101 +435,101 @@ export class ResearchStore {
     );
     return doc;
   }
-  deleteNote(id: string): boolean {
-    return Number(this.db.run("DELETE FROM notes WHERE id = ?", [id]).changes) > 0;
+  async deleteNote(id: string): Promise<boolean> {
+    return (await this.db.run("DELETE FROM notes WHERE id = ?", [id])).changes > 0;
   }
 
   // -- user root meanings --
-  getRootMeaning(root: string): Doc {
-    const row = this.db.one<{ root: string; meaning: string; updated_at: number }>(
+  async getRootMeaning(root: string): Promise<Doc> {
+    const row = await this.db.one<{ root: string; meaning: string; updated_at: number }>(
       "SELECT root, meaning, updated_at FROM user_root_meanings WHERE root = ?", [root],
     );
     return { root, meaning: row?.meaning ?? "", updatedAt: row?.updated_at ?? 0 };
   }
-  listRootMeanings(): Doc[] {
-    return this.db
-      .query<{ root: string; meaning: string; updated_at: number }>(
-        "SELECT root, meaning, updated_at FROM user_root_meanings ORDER BY updated_at DESC",
-      )
-      .map((r) => ({ root: r.root, meaning: r.meaning, updatedAt: r.updated_at }));
+  async listRootMeanings(): Promise<Doc[]> {
+    return (await this.db.query<{ root: string; meaning: string; updated_at: number }>(
+      "SELECT root, meaning, updated_at FROM user_root_meanings ORDER BY updated_at DESC, root",
+    )).map((r) => ({ root: r.root, meaning: r.meaning, updatedAt: r.updated_at }));
   }
-  setRootMeaning(root: string, meaning: string): Doc {
+  async setRootMeaning(root: string, meaning: string): Promise<Doc> {
     const t = now();
     const text = (meaning ?? "").trim();
     if (!text) {
-      this.db.run("DELETE FROM user_root_meanings WHERE root = ?", [root]);
+      await this.db.run("DELETE FROM user_root_meanings WHERE root = ?", [root]);
       return { root, meaning: "", updatedAt: t };
     }
-    this.db.run(
+    await this.db.run(
       `INSERT INTO user_root_meanings (root, meaning, updated_at, author_id, origin) VALUES (?,?,?,?,?)
        ON CONFLICT(root) DO UPDATE SET meaning=excluded.meaning, updated_at=excluded.updated_at`,
       [root, text, t, this.localId, "local"],
     );
     return { root, meaning: text, updatedAt: t };
   }
-  deleteRootMeaning(root: string): boolean {
-    return Number(this.db.run("DELETE FROM user_root_meanings WHERE root = ?", [root]).changes) > 0;
+  async deleteRootMeaning(root: string): Promise<boolean> {
+    return (await this.db.run("DELETE FROM user_root_meanings WHERE root = ?", [root])).changes > 0;
   }
 
   // -- motifs (بيوت) --
-  private motifRoots(id: string): string[] {
-    return this.db
-      .query<{ root: string }>("SELECT root FROM motif_roots WHERE motif_id = ? ORDER BY added_at", [id])
-      .map((r) => r.root);
+  private async motifRoots(id: string): Promise<string[]> {
+    return (await this.db.query<{ root: string }>(
+      "SELECT root FROM motif_roots WHERE motif_id = ? ORDER BY added_at, root", [id],
+    )).map((r) => r.root);
   }
-  private static motifRow(m: { id: string; name: string; note: string; source?: string; created_at: number; updated_at: number }, roots: string[]): Doc {
+  private static motifRow(m: MotifRow, roots: string[]): Doc {
     return {
       id: m.id, name: m.name, note: m.note, source: m.source ?? "me",
       roots, createdAt: m.created_at, updatedAt: m.updated_at,
     };
   }
-  listMotifs(): Doc[] {
-    return this.db
-      .query<{ id: string; name: string; note: string; source: string; created_at: number; updated_at: number }>(
-        "SELECT * FROM motifs ORDER BY updated_at DESC",
-      )
-      .map((m) => ResearchStore.motifRow(m, this.motifRoots(m.id)));
+  private async withRoots(rows: MotifRow[]): Promise<Doc[]> {
+    const out: Doc[] = [];
+    for (const m of rows) out.push(ResearchStore.motifRow(m, await this.motifRoots(m.id)));
+    return out;
   }
-  getMotif(id: string): Doc | undefined {
-    const m = this.db.one<{ id: string; name: string; note: string; source: string; created_at: number; updated_at: number }>(
-      "SELECT * FROM motifs WHERE id = ?", [id]);
-    return m ? ResearchStore.motifRow(m, this.motifRoots(m.id)) : undefined;
+  async listMotifs(): Promise<Doc[]> {
+    return this.withRoots(await this.db.query<MotifRow>("SELECT * FROM motifs ORDER BY updated_at DESC, id"));
   }
-  motifsForRoot(root: string): Doc[] {
-    return this.db
-      .query<{ id: string; name: string; note: string; source: string; created_at: number; updated_at: number }>(
-        `SELECT m.* FROM motifs m JOIN motif_roots mr ON mr.motif_id = m.id
-         WHERE mr.root = ? ORDER BY m.name`,
-        [root],
-      )
-      .map((m) => ResearchStore.motifRow(m, this.motifRoots(m.id)));
+  async getMotif(id: string): Promise<Doc | undefined> {
+    const m = await this.db.one<MotifRow>("SELECT * FROM motifs WHERE id = ?", [id]);
+    return m ? ResearchStore.motifRow(m, await this.motifRoots(m.id)) : undefined;
   }
-  saveMotif(doc: Doc): Doc {
+  async motifsForRoot(root: string): Promise<Doc[]> {
+    return this.withRoots(await this.db.query<MotifRow>(
+      `SELECT m.* FROM motifs m JOIN motif_roots mr ON mr.motif_id = m.id
+       WHERE mr.root = ? ORDER BY m.name, m.id`,
+      [root],
+    ));
+  }
+  async saveMotif(doc: Doc): Promise<Doc> {
     const t = now();
     const id = doc.id;
-    const existing = this.getMotif(id);
-    this.db.run(
+    const existing = await this.getMotif(id);
+    await this.db.run(
       `INSERT INTO motifs (id, name, note, source, created_at, updated_at, author_id, origin) VALUES (?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET name=excluded.name, note=excluded.note, updated_at=excluded.updated_at`,
       [id, doc.name ?? "", doc.note ?? "", doc.source === "ai" ? "ai" : existing?.source ?? "me",
        doc.createdAt ?? t, t, doc.authorId ?? this.localId, doc.origin ?? "local"],
     );
-    return { id, name: doc.name ?? "", note: doc.note ?? "", source: existing?.source ?? (doc.source === "ai" ? "ai" : "me"), roots: this.motifRoots(id), updatedAt: t };
+    return {
+      id, name: doc.name ?? "", note: doc.note ?? "",
+      source: existing?.source ?? (doc.source === "ai" ? "ai" : "me"),
+      roots: await this.motifRoots(id), updatedAt: t,
+    };
   }
-  deleteMotif(id: string): boolean {
-    this.db.run("DELETE FROM motif_roots WHERE motif_id = ?", [id]);
-    return Number(this.db.run("DELETE FROM motifs WHERE id = ?", [id]).changes) > 0;
+  async deleteMotif(id: string): Promise<boolean> {
+    await this.db.run("DELETE FROM motif_roots WHERE motif_id = ?", [id]);
+    return (await this.db.run("DELETE FROM motifs WHERE id = ?", [id])).changes > 0;
   }
-  addMotifRoot(id: string, root: string): void {
-    this.db.run(
+  async addMotifRoot(id: string, root: string): Promise<void> {
+    await this.db.run(
       "INSERT INTO motif_roots (motif_id, root, added_at) VALUES (?,?,?) ON CONFLICT DO NOTHING",
       [id, root, now()],
     );
-    this.db.run("UPDATE motifs SET updated_at = ? WHERE id = ?", [now(), id]);
+    await this.db.run("UPDATE motifs SET updated_at = ? WHERE id = ?", [now(), id]);
   }
-  removeMotifRoot(id: string, root: string): void {
-    this.db.run("DELETE FROM motif_roots WHERE motif_id = ? AND root = ?", [id, root]);
-    this.db.run("UPDATE motifs SET updated_at = ? WHERE id = ?", [now(), id]);
+  async removeMotifRoot(id: string, root: string): Promise<void> {
+    await this.db.run("DELETE FROM motif_roots WHERE motif_id = ? AND root = ?", [id, root]);
+    await this.db.run("UPDATE motifs SET updated_at = ? WHERE id = ?", [now(), id]);
   }
 
   // -- comparisons (named, saveable boards of pinned āyāt & roots) --
@@ -514,85 +539,79 @@ export class ResearchStore {
   private static itemRow(r: any): Doc {
     return { id: r.id, setId: r.set_id, kind: r.kind, ref: r.ref, label: r.label ?? null, createdAt: r.created_at };
   }
-  private touchCompareSet(id: string): void {
-    this.db.run("UPDATE compare_sets SET updated_at = ? WHERE id = ?", [now(), id]);
+  private async touchCompareSet(id: string): Promise<void> {
+    await this.db.run("UPDATE compare_sets SET updated_at = ? WHERE id = ?", [now(), id]);
   }
 
   /** All saved comparisons, most-recently-touched first, with member counts. */
-  listCompareSets(): Doc[] {
-    return this.db
-      .query(
-        `SELECT s.id, s.title, s.created_at, s.updated_at, COUNT(c.id) AS count
-         FROM compare_sets s LEFT JOIN compare_items c ON c.set_id = s.id
-         GROUP BY s.id ORDER BY s.updated_at DESC`,
-      )
-      .map(ResearchStore.setRow);
-  }
-  getCompareSet(id: string): Doc | undefined {
-    const r = this.db.one(
+  async listCompareSets(): Promise<Doc[]> {
+    return (await this.db.query(
       `SELECT s.id, s.title, s.created_at, s.updated_at, COUNT(c.id) AS count
-       FROM compare_sets s LEFT JOIN compare_items c ON c.set_id = s.id WHERE s.id = ? GROUP BY s.id`,
+       FROM compare_sets s LEFT JOIN compare_items c ON c.set_id = s.id
+       GROUP BY s.id, s.title, s.created_at, s.updated_at ORDER BY s.updated_at DESC, s.id`,
+    )).map(ResearchStore.setRow);
+  }
+  async getCompareSet(id: string): Promise<Doc | undefined> {
+    const r = await this.db.one(
+      `SELECT s.id, s.title, s.created_at, s.updated_at, COUNT(c.id) AS count
+       FROM compare_sets s LEFT JOIN compare_items c ON c.set_id = s.id WHERE s.id = ?
+       GROUP BY s.id, s.title, s.created_at, s.updated_at`,
       [id],
     );
     return r ? ResearchStore.setRow(r) : undefined;
   }
-  saveCompareSet(doc: Doc): Doc {
+  async saveCompareSet(doc: Doc): Promise<Doc> {
     const t = now();
-    this.db.run(
+    await this.db.run(
       `INSERT INTO compare_sets (id, title, created_at, updated_at, author_id, origin) VALUES (?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at`,
       [doc.id, doc.title ?? "", doc.createdAt ?? t, t, doc.authorId ?? this.localId, doc.origin ?? "local"],
     );
-    return this.getCompareSet(doc.id)!;
+    return (await this.getCompareSet(doc.id))!;
   }
-  deleteCompareSet(id: string): boolean {
-    this.db.run("DELETE FROM compare_items WHERE set_id = ?", [id]);
-    return Number(this.db.run("DELETE FROM compare_sets WHERE id = ?", [id]).changes) > 0;
+  async deleteCompareSet(id: string): Promise<boolean> {
+    await this.db.run("DELETE FROM compare_items WHERE set_id = ?", [id]);
+    return (await this.db.run("DELETE FROM compare_sets WHERE id = ?", [id])).changes > 0;
   }
-  listCompareItems(setId: string): Doc[] {
-    return this.db
-      .query("SELECT * FROM compare_items WHERE set_id = ? ORDER BY created_at", [setId])
+  async listCompareItems(setId: string): Promise<Doc[]> {
+    return (await this.db.query("SELECT * FROM compare_items WHERE set_id = ? ORDER BY created_at, id", [setId]))
       .map(ResearchStore.itemRow);
   }
-  addCompareItem(setId: string, doc: Doc): Doc {
-    this.db.run(
+  async addCompareItem(setId: string, doc: Doc): Promise<Doc> {
+    await this.db.run(
       `INSERT INTO compare_items (id, set_id, kind, ref, label, created_at) VALUES (?,?,?,?,?,?)
        ON CONFLICT(set_id, kind, ref) DO NOTHING`,
       [doc.id, setId, doc.kind, doc.ref, doc.label ?? null, doc.createdAt ?? now()],
     );
-    this.touchCompareSet(setId);
+    await this.touchCompareSet(setId);
     // return the row that now holds this (set,kind,ref) — its own id or the pre-existing one
-    const r = this.db.one("SELECT * FROM compare_items WHERE set_id = ? AND kind = ? AND ref = ?", [setId, doc.kind, doc.ref]);
+    const r = await this.db.one("SELECT * FROM compare_items WHERE set_id = ? AND kind = ? AND ref = ?", [setId, doc.kind, doc.ref]);
     return ResearchStore.itemRow(r);
   }
-  removeCompareItem(setId: string, itemId: string): boolean {
-    const changed = Number(this.db.run("DELETE FROM compare_items WHERE id = ? AND set_id = ?", [itemId, setId]).changes) > 0;
-    if (changed) this.touchCompareSet(setId);
+  async removeCompareItem(setId: string, itemId: string): Promise<boolean> {
+    const changed = (await this.db.run("DELETE FROM compare_items WHERE id = ? AND set_id = ?", [itemId, setId])).changes > 0;
+    if (changed) await this.touchCompareSet(setId);
     return changed;
   }
-  clearCompareItems(setId: string): void {
-    this.db.run("DELETE FROM compare_items WHERE set_id = ?", [setId]);
-    this.touchCompareSet(setId);
+  async clearCompareItems(setId: string): Promise<void> {
+    await this.db.run("DELETE FROM compare_items WHERE set_id = ?", [setId]);
+    await this.touchCompareSet(setId);
   }
 
   // -- provenance: what an AI proposed through the MCP server ------------------
   /** Everything tagged source='ai', for the reader to review. */
-  listProposed(): Doc {
+  async listProposed(): Promise<Doc> {
     return {
-      notes: this.db
-        .query("SELECT * FROM notes WHERE source = 'ai' ORDER BY created_at DESC")
+      notes: (await this.db.query("SELECT * FROM notes WHERE source = 'ai' ORDER BY created_at DESC, id"))
         .map(ResearchStore.noteRow),
-      indications: this.db
-        .query("SELECT * FROM word_indications WHERE source = 'ai' ORDER BY created_at DESC")
+      indications: (await this.db.query("SELECT * FROM word_indications WHERE source = 'ai' ORDER BY created_at DESC, id"))
         .map(ResearchStore.indicationRow),
     };
   }
   /** Accept a proposal: it becomes the reader's own record. */
-  acceptProposed(kind: "note" | "indication", id: string): boolean {
+  async acceptProposed(kind: "note" | "indication", id: string): Promise<boolean> {
     const table = kind === "note" ? "notes" : "word_indications";
-    return Number(
-      this.db.run(`UPDATE ${table} SET source = 'me' WHERE id = ? AND source = 'ai'`, [id]).changes,
-    ) > 0;
+    return (await this.db.run(`UPDATE ${table} SET source = 'me' WHERE id = ? AND source = 'ai'`, [id])).changes > 0;
   }
 
   // -- word indications: meanings anchored at the ROOT (one primary per root), each
@@ -610,29 +629,33 @@ export class ResearchStore {
     };
   }
 
-  getIndication(id: string): Doc | undefined {
-    const r = this.db.one("SELECT * FROM word_indications WHERE id = ?", [id]);
+  async getIndication(id: string): Promise<Doc | undefined> {
+    const r = await this.db.one("SELECT * FROM word_indications WHERE id = ?", [id]);
     return r ? ResearchStore.indicationRow(r) : undefined;
   }
   /** The indications of a root, primary first. */
-  rootIndications(root: string): Doc[] {
-    return this.db
-      .query("SELECT * FROM word_indications WHERE scope='root' AND root=? ORDER BY is_primary DESC, created_at", [root])
-      .map(ResearchStore.indicationRow);
+  async rootIndications(root: string): Promise<Doc[]> {
+    return (await this.db.query(
+      "SELECT * FROM word_indications WHERE scope='root' AND root=? ORDER BY is_primary DESC, created_at, id", [root],
+    )).map(ResearchStore.indicationRow);
   }
   /** Standalone lemma indications (words with no root). */
-  lemmaIndications(lemma: string): Doc[] {
-    return this.db
-      .query("SELECT * FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND lemma=? ORDER BY is_primary DESC, created_at", [lemma])
-      .map(ResearchStore.indicationRow);
+  async lemmaIndications(lemma: string): Promise<Doc[]> {
+    return (await this.db.query(
+      "SELECT * FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND lemma=? ORDER BY is_primary DESC, created_at, id",
+      [lemma],
+    )).map(ResearchStore.indicationRow);
   }
   /** A root indication's refinement for one form (lemma), if written. */
-  refinementFor(parentId: string, lemma: string): Doc | null {
-    const r = this.db.one("SELECT * FROM word_indications WHERE parent_id=? AND lemma=? LIMIT 1", [parentId, lemma]);
+  async refinementFor(parentId: string, lemma: string): Promise<Doc | null> {
+    const r = await this.db.one(
+      "SELECT * FROM word_indications WHERE parent_id=? AND lemma=? ORDER BY created_at, id LIMIT 1", [parentId, lemma]);
     return r ? ResearchStore.indicationRow(r) : null;
   }
-  refinementsForParent(parentId: string): Doc[] {
-    return this.db.query("SELECT * FROM word_indications WHERE parent_id=? ORDER BY created_at", [parentId]).map(ResearchStore.indicationRow);
+  async refinementsForParent(parentId: string): Promise<Doc[]> {
+    return (await this.db.query(
+      "SELECT * FROM word_indications WHERE parent_id=? ORDER BY created_at, id", [parentId],
+    )).map(ResearchStore.indicationRow);
   }
 
   /** Everything the word menu needs: the word's root indications (each with THIS
@@ -641,52 +664,53 @@ export class ResearchStore {
    *  `surface` is the word AS WRITTEN (form_arabic). Refinements are now keyed by surface form
    *  so a plural (أَصْلَٰب) can differ from its singular (صُّلْب) — but we fall back to the lemma
    *  key so refinements written before the switch keep matching. */
-  indicationsForWord(lemma: string | null, root: string | null, surface?: string | null): Doc {
-    const refine = (id: string) =>
-      (surface ? this.refinementFor(id, surface) : null) ??
-      (lemma ? this.refinementFor(id, lemma) : null);
-    const rootIndications = root
-      ? this.rootIndications(root).map((s) => ({
+  async indicationsForWord(lemma: string | null, root: string | null, surface?: string | null): Promise<Doc> {
+    const refine = async (id: string) =>
+      (surface ? await this.refinementFor(id, surface) : null) ??
+      (lemma ? await this.refinementFor(id, lemma) : null);
+    const rootIndications: Doc[] = [];
+    if (root) {
+      for (const s of await this.rootIndications(root)) {
+        rootIndications.push({
           ...s,
-          refinement: refine(s.id),
-          refinedCount: this.refinementsForParent(s.id).length, // how many forms are done
-        }))
-      : [];
-    const lemmaIndications = (!root && lemma) ? this.lemmaIndications(lemma) : [];
+          refinement: await refine(s.id),
+          refinedCount: (await this.refinementsForParent(s.id)).length, // how many forms are done
+        });
+      }
+    }
+    const lemmaIndications = (!root && lemma) ? await this.lemmaIndications(lemma) : [];
     return {
       root, lemma, rootIndications, lemmaIndications,
-      // The community's readings are no longer served from a local mirror. They are a PAID,
-      // ONLINE layer read live from the remote and merged in by the app (db.ts indications.forWord
-      // → GET /community/readings, gated). The server always reports them empty, so a free or
-      // offline reader simply sees their own work — the boundary is now the network, not a table.
+      // The community's readings are not served from here: the app reads them live from the
+      // research server (GET /community/readings, gated) and merges them in.
       communityRoot: [],
       communityLemma: [],
     };
   }
 
-  private clearRootPrimary(root: string, exceptId?: string): void {
-    this.db.run(
+  private async clearRootPrimary(root: string, exceptId?: string): Promise<void> {
+    await this.db.run(
       `UPDATE word_indications SET is_primary=0 WHERE scope='root' AND root=?${exceptId ? " AND id!=?" : ""}`,
       exceptId ? [root, exceptId] : [root]);
   }
-  private clearLemmaPrimary(lemma: string, exceptId?: string): void {
-    this.db.run(
+  private async clearLemmaPrimary(lemma: string, exceptId?: string): Promise<void> {
+    await this.db.run(
       `UPDATE word_indications SET is_primary=0 WHERE scope='lemma' AND parent_id IS NULL AND lemma=?${exceptId ? " AND id!=?" : ""}`,
       exceptId ? [lemma, exceptId] : [lemma]);
   }
 
   /** Create/update a root indication (root set) OR a standalone lemma indication (rootless). */
-  saveIndication(doc: Doc): Doc {
+  async saveIndication(doc: Doc): Promise<Doc> {
     const t = now();
-    const existing = this.getIndication(doc.id);
+    const existing = await this.getIndication(doc.id);
     const root = doc.root ?? existing?.root ?? null;
     const lemma = doc.lemma ?? existing?.lemma ?? null;
     const scope = doc.scope ?? existing?.scope ?? (root ? "root" : "lemma");
-    const had = scope === "root"
-      ? this.db.scalar<number>("SELECT COUNT(*) FROM word_indications WHERE scope='root' AND root=?", [root]) ?? 0
-      : this.db.scalar<number>("SELECT COUNT(*) FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND lemma=?", [lemma]) ?? 0;
+    const had = Number(scope === "root"
+      ? await this.db.scalar("SELECT COUNT(*) FROM word_indications WHERE scope='root' AND root=?", [root]) ?? 0
+      : await this.db.scalar("SELECT COUNT(*) FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND lemma=?", [lemma]) ?? 0);
     const primary = doc.primary ?? existing?.primary ?? had === 0;
-    this.db.run(
+    await this.db.run(
       `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, source, created_at, updated_at, author_id, origin)
        VALUES (?,?,?,?,NULL,?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET root=excluded.root, lemma=excluded.lemma, scope=excluded.scope,
@@ -695,18 +719,21 @@ export class ResearchStore {
        doc.source === "ai" ? "ai" : existing?.source ?? "me", existing?.createdAt ?? t, t,
        doc.authorId ?? this.localId, doc.origin ?? "local"],
     );
-    if (primary) { if (scope === "root" && root) this.clearRootPrimary(root, doc.id); else if (lemma) this.clearLemmaPrimary(lemma, doc.id); }
-    return this.getIndication(doc.id)!;
+    if (primary) {
+      if (scope === "root" && root) await this.clearRootPrimary(root, doc.id);
+      else if (lemma) await this.clearLemmaPrimary(lemma, doc.id);
+    }
+    return (await this.getIndication(doc.id))!;
   }
 
   /** Create/update a per-form refinement of a root indication (upsert by parent+lemma). */
-  saveRefinement(doc: Doc): Doc | undefined {
-    const parent = this.getIndication(doc.parentId);
+  async saveRefinement(doc: Doc): Promise<Doc | undefined> {
+    const parent = await this.getIndication(doc.parentId);
     if (!parent || parent.scope !== "root") return undefined;
     const t = now();
-    const existing = this.refinementFor(doc.parentId, doc.lemma);
+    const existing = await this.refinementFor(doc.parentId, doc.lemma);
     const id = existing?.id ?? doc.id;
-    this.db.run(
+    await this.db.run(
       `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, source, created_at, updated_at, author_id, origin)
        VALUES (?,?,?, 'lemma', ?, ?, ?, 0, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET label=excluded.label, meaning=excluded.meaning, updated_at=excluded.updated_at`,
@@ -717,48 +744,53 @@ export class ResearchStore {
     return this.getIndication(id);
   }
 
-  deleteIndication(id: string): boolean {
-    const s = this.getIndication(id);
+  async deleteIndication(id: string): Promise<boolean> {
+    const s = await this.getIndication(id);
     if (!s) return false;
     // deleting a root indication removes its refinements too
-    this.db.run("DELETE FROM word_indications WHERE id=? OR parent_id=?", [id, id]);
+    await this.db.run("DELETE FROM word_indications WHERE id=? OR parent_id=?", [id, id]);
     if (s.primary && s.scope === "root" && s.root) {
-      const next = this.db.one<{ id: string }>("SELECT id FROM word_indications WHERE scope='root' AND root=? ORDER BY created_at LIMIT 1", [s.root]);
-      if (next) this.db.run("UPDATE word_indications SET is_primary=1 WHERE id=?", [next.id]);
+      const next = await this.db.one<{ id: string }>(
+        "SELECT id FROM word_indications WHERE scope='root' AND root=? ORDER BY created_at, id LIMIT 1", [s.root]);
+      if (next) await this.db.run("UPDATE word_indications SET is_primary=1 WHERE id=?", [next.id]);
     } else if (s.primary && s.scope === "lemma" && !s.parentId && s.lemma) {
-      const next = this.db.one<{ id: string }>("SELECT id FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND lemma=? ORDER BY created_at LIMIT 1", [s.lemma]);
-      if (next) this.db.run("UPDATE word_indications SET is_primary=1 WHERE id=?", [next.id]);
+      const next = await this.db.one<{ id: string }>(
+        "SELECT id FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND lemma=? ORDER BY created_at, id LIMIT 1", [s.lemma]);
+      if (next) await this.db.run("UPDATE word_indications SET is_primary=1 WHERE id=?", [next.id]);
     }
     return true;
   }
 
   /** Make a root indication (or a standalone lemma indication) the primary in its group. */
-  setPrimaryIndication(id: string): Doc | undefined {
-    const s = this.getIndication(id);
+  async setPrimaryIndication(id: string): Promise<Doc | undefined> {
+    const s = await this.getIndication(id);
     if (!s) return undefined;
-    if (s.scope === "root" && s.root) this.clearRootPrimary(s.root);
-    else if (s.scope === "lemma" && !s.parentId && s.lemma) this.clearLemmaPrimary(s.lemma);
+    if (s.scope === "root" && s.root) await this.clearRootPrimary(s.root);
+    else if (s.scope === "lemma" && !s.parentId && s.lemma) await this.clearLemmaPrimary(s.lemma);
     else return s; // refinements have no primary
-    this.db.run("UPDATE word_indications SET is_primary=1, updated_at=? WHERE id=?", [now(), id]);
+    await this.db.run("UPDATE word_indications SET is_primary=1, updated_at=? WHERE id=?", [now(), id]);
     return this.getIndication(id);
   }
 
   /** Reader gloss data: for each root with a PRIMARY indication, its base text and
    *  per-form refinement texts; plus rootless lemma primaries. */
-  glossData(): Doc {
-    const primaries = this.db.query("SELECT * FROM word_indications WHERE scope='root' AND is_primary=1").map(ResearchStore.indicationRow);
+  async glossData(): Promise<Doc> {
+    const primaries = (await this.db.query(
+      "SELECT * FROM word_indications WHERE scope='root' AND is_primary=1 ORDER BY root, id",
+    )).map(ResearchStore.indicationRow);
     const roots = primaries
       .map((p) => ({ root: p.root, text: p.label || p.meaning }))
       .filter((x) => x.text);
     const refinements: Doc[] = [];
     for (const p of primaries) {
-      for (const r of this.refinementsForParent(p.id)) {
+      for (const r of await this.refinementsForParent(p.id)) {
         const text = r.label || r.meaning;
         if (text) refinements.push({ root: p.root, lemma: r.lemma, text });
       }
     }
-    const lemmas = this.db
-      .query("SELECT * FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND is_primary=1")
+    const lemmas = (await this.db.query(
+      "SELECT * FROM word_indications WHERE scope='lemma' AND parent_id IS NULL AND is_primary=1 ORDER BY lemma, id",
+    ))
       .map(ResearchStore.indicationRow)
       .map((s) => ({ lemma: s.lemma, text: s.label || s.meaning }))
       .filter((x) => x.text);
@@ -766,72 +798,69 @@ export class ResearchStore {
   }
 
   // ---- outbound submission ledger (what I've offered upstream) ------------------
-  /** What was submitted for this local record, if anything. */
-  getSubmissionFor(localRef: string): Doc | undefined {
-    const r = this.db.one<{
-      local_ref: string; submission_id: string; content_hash: string;
-      kind: string; status: string; submitted_at: number;
-    }>("SELECT * FROM derived_submissions WHERE local_ref = ?", [localRef]);
-    return r ? {
+  private static submissionRow(r: {
+    local_ref: string; submission_id: string; content_hash: string; kind: string; status: string; submitted_at: number;
+  }): Doc {
+    return {
       localRef: r.local_ref, submissionId: r.submission_id, contentHash: r.content_hash,
       kind: r.kind, status: r.status, submittedAt: r.submitted_at,
-    } : undefined;
+    };
   }
 
-  listSubmissionLog(): Doc[] {
-    return this.db
-      .query<{ local_ref: string; submission_id: string; content_hash: string; kind: string; status: string; submitted_at: number }>(
-        "SELECT * FROM derived_submissions ORDER BY submitted_at DESC")
-      .map((r) => ({
-        localRef: r.local_ref, submissionId: r.submission_id, contentHash: r.content_hash,
-        kind: r.kind, status: r.status, submittedAt: r.submitted_at,
-      }));
+  /** What was submitted for this local record, if anything. */
+  async getSubmissionFor(localRef: string): Promise<Doc | undefined> {
+    const r = await this.db.one<any>("SELECT * FROM derived_submissions WHERE local_ref = ?", [localRef]);
+    return r ? ResearchStore.submissionRow(r) : undefined;
+  }
+
+  async listSubmissionLog(): Promise<Doc[]> {
+    return (await this.db.query<any>("SELECT * FROM derived_submissions ORDER BY submitted_at DESC, local_ref"))
+      .map(ResearchStore.submissionRow);
   }
 
   /** Record (or replace) what was submitted for a local record. */
-  recordSubmission(doc: Doc): Doc {
+  async recordSubmission(doc: Doc): Promise<Doc> {
     const t = now();
-    this.db.run(
+    await this.db.run(
       `INSERT INTO derived_submissions (local_ref, submission_id, content_hash, kind, status, submitted_at)
        VALUES (?,?,?,?,?,?)
        ON CONFLICT(local_ref) DO UPDATE SET submission_id=excluded.submission_id,
          content_hash=excluded.content_hash, kind=excluded.kind,
          status=excluded.status, submitted_at=excluded.submitted_at`,
-      [doc.localRef, doc.submissionId, doc.contentHash, doc.kind ?? "",
-       doc.status ?? "submitted", t],
+      [doc.localRef, doc.submissionId, doc.contentHash, doc.kind ?? "", doc.status ?? "submitted", t],
     );
-    return this.getSubmissionFor(doc.localRef)!;
+    return (await this.getSubmissionFor(doc.localRef))!;
   }
 
   /** Has this reader proposed a reading of this subject, and does it still match? */
-  getProposal(subjectKind: string, subjectValue: string): Doc | undefined {
-    const r = this.db.one<{ content_hash: string; proposed_at: number }>(
+  async getProposal(subjectKind: string, subjectValue: string): Promise<Doc | undefined> {
+    const r = await this.db.one<{ content_hash: string; proposed_at: number }>(
       "SELECT content_hash, proposed_at FROM derived_proposed_claims WHERE subject_kind = ? AND subject_value = ?",
       [subjectKind, subjectValue]);
     return r ? { contentHash: r.content_hash, proposedAt: r.proposed_at } : undefined;
   }
 
   /** Record that a reading was proposed upstream (drop-safe outbox, mirrors recordSubmission). */
-  recordProposal(doc: Doc): Doc {
-    this.db.run(
+  async recordProposal(doc: Doc): Promise<Doc> {
+    await this.db.run(
       `INSERT INTO derived_proposed_claims (subject_kind, subject_value, content_hash, proposed_at)
        VALUES (?,?,?,?)
        ON CONFLICT(subject_kind, subject_value)
          DO UPDATE SET content_hash=excluded.content_hash, proposed_at=excluded.proposed_at`,
       [doc.subjectKind, doc.subjectValue, doc.contentHash, now()],
     );
-    return this.getProposal(doc.subjectKind, doc.subjectValue)!;
+    return (await this.getProposal(doc.subjectKind, doc.subjectValue))!;
   }
 
   // ---- settings: device-independent key -> JSON value --------------------------
-  getSetting(key: string): unknown {
-    const row = this.db.one<{ value: string }>("SELECT value FROM settings WHERE key = ?", [key]);
+  async getSetting(key: string): Promise<unknown> {
+    const row = await this.db.one<{ value: string }>("SELECT value FROM settings WHERE key = ?", [key]);
     if (!row) return undefined;
     try { return JSON.parse(row.value); } catch { return undefined; }
   }
 
-  setSetting(key: string, value: unknown): void {
-    this.db.run(
+  async setSetting(key: string, value: unknown): Promise<void> {
+    await this.db.run(
       `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
       [key, JSON.stringify(value ?? null), now()],

@@ -39,8 +39,8 @@ export const isAiOwned = (item: Doc): boolean =>
 const arr = (v: unknown): Doc[] => (Array.isArray(v) ? v : []);
 
 /** Read a case or refuse clearly. */
-export function mustGetCase(state: McpState, caseId: string): Doc {
-  const c = state.research.getCase(caseId) as Doc | undefined;
+export async function mustGetCase(state: McpState, caseId: string): Promise<Doc> {
+  const c = (await state.research.getCase(caseId)) as Doc | undefined;
   if (!c) throw new WriteRefused(`No case with id ${caseId}. Use list_cases to find it.`);
   return c;
 }
@@ -92,7 +92,7 @@ export function findOwnItem(c: Doc, itemId: string): { kind: "card" | "slip" | "
 }
 
 /** Save a case after mutation, keeping the reader's fields exactly as they were. */
-export function saveGuarded(state: McpState, before: Doc, after: Doc): Doc {
+export async function saveGuarded(state: McpState, before: Doc, after: Doc): Promise<Doc> {
   // belt and braces: conclusions are the reader's alone, whatever the caller built
   const clean: Doc = {
     ...after,
@@ -100,7 +100,7 @@ export function saveGuarded(state: McpState, before: Doc, after: Doc): Doc {
     status: before.status ?? "open",
     formResearch: before.formResearch ?? {},
   };
-  return state.research.saveCase(clean) as Doc;
+  return (await state.research.saveCase(clean)) as Doc;
 }
 
 /** A compact view of a case for the AI: structure and provenance, no board noise. */

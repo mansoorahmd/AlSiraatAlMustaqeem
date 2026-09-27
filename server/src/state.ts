@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { Db } from "./db.js";
 import { Databases } from "./databases.js";
 import { ResearchStore } from "./research.js";
+import { sqliteResearch } from "./research-db.js";
 import { sqliteCorpus } from "./corpus-db.js";
 import { createCorpusServices, type CorpusServices } from "./corpus-services.js";
 
@@ -22,7 +23,7 @@ export interface AppState extends CorpusServices {
   research: ResearchStore;
 }
 
-export function createState(): AppState {
+export async function createState(): Promise<AppState> {
   const quran = new Db(QURAN_DB, { readOnly: true });
   // Which file to open is remembered per machine; WHO it belongs to lives inside the file.
   const databases = new Databases(RESEARCH_DB);
@@ -39,7 +40,7 @@ export function createState(): AppState {
     quran,
     databases,
     researchDb,
-    research: new ResearchStore(researchDb),
+    research: await ResearchStore.open(sqliteResearch(researchDb)),
   };
 }
 
@@ -48,11 +49,12 @@ export function createState(): AppState {
  * switches profile, signs in (claiming their file), or opens a database explicitly.
  * The old handle is closed so its WAL is checkpointed before anything else touches the file.
  */
-export function reopenResearch(state: AppState, path: string): void {
+export async function reopenResearch(state: AppState, path: string): Promise<void> {
   const previous = state.researchDb;
   const next = new Db(path);
+  const research = await ResearchStore.open(sqliteResearch(next));
   state.researchDb = next;
-  state.research = new ResearchStore(next);
+  state.research = research;
   try { previous.close(); } catch { /* already gone */ }
 }
 

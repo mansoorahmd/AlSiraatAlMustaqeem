@@ -13,7 +13,7 @@ import { createState } from "../src/state.js";
 const fx = (n: string) => JSON.parse(readFileSync(resolve(import.meta.dirname, "fixtures", n), "utf-8"));
 let app: Hono;
 
-beforeAll(() => { app = createApp(createState()); });
+beforeAll(async () => { app = createApp(await createState()); });
 
 function compareMatches(gotAll: any[], wantAll: any[]) {
   // The top_k cutoff can fall inside a group of equal-scoring verses; which of

@@ -128,7 +128,7 @@ const study_root: Tool = {
     const d = await getRoot(state, root);
     if (!d) return { error: `root not found: ${root}` };
     const bw = d.root_buckwalter;
-    const ind = state.research.indicationsForWord(null, d.root_arabic);
+    const ind = await state.research.indicationsForWord(null, d.root_arabic);
     const company = await state.linkages.coOccurringRoots(bw, { scope: "ayah", limit: 10, sortBy: "count" });
     const samples = occurrences ? await rootOccurrences(state, bw, occurrences) : [];
     return {
@@ -207,7 +207,7 @@ const read_ayah: Tool = {
       verse_key,
       text: v.text,
       words,
-      my_notes: state.research.listNotes({ verse: verse_key }).map((n: any) => ({
+      my_notes: (await state.research.listNotes({ verse: verse_key })).map((n: any) => ({
         kind: n.kind, text: n.text, answer: n.answer || null,
         word_position: n.wordPosition, proposed_by: n.source,
       })),
@@ -407,27 +407,27 @@ const my_research_on: Tool = {
     if (root) {
       const d = await getRoot(state, root);
       const ar = d?.root_arabic ?? root;
-      const ind = state.research.indicationsForWord(null, ar);
+      const ind = await state.research.indicationsForWord(null, ar);
       out.root = ar;
-      out.indications = (ind.rootIndications ?? []).map((s: any) => ({
+      out.indications = await Promise.all((ind.rootIndications ?? []).map(async (s: any) => ({
         id: s.id, label: s.label, meaning: s.meaning, is_primary: s.primary, proposed_by: s.source,
-        refinements: state.research.refinementsForParent(s.id).map((r: any) => ({
+        refinements: (await state.research.refinementsForParent(s.id)).map((r: any) => ({
           form: r.lemma, label: r.label, meaning: r.meaning, proposed_by: r.source,
         })),
-      }));
-      out.notes = state.research.listNotes({ root: ar });
-      out.my_root_meaning = state.research.getRootMeaning(d?.root_buckwalter ?? root);
-      out.motifs = state.research.motifsForRoot(ar);  // the houses (بيوت) this root sits in
-      out.cases = (state.research.listCases() as any[])
+      })));
+      out.notes = await state.research.listNotes({ root: ar });
+      out.my_root_meaning = await state.research.getRootMeaning(d?.root_buckwalter ?? root);
+      out.motifs = await state.research.motifsForRoot(ar);  // the houses (بيوت) this root sits in
+      out.cases = ((await state.research.listCases()) as any[])
         .filter((c) => c.subject?.value === ar)
         .map((c) => caseSummary(c));
     }
     if (verse_key) {
       out.verse_key = verse_key;
-      out.notes_on_ayah = state.research.listNotes({ verse: verse_key });
+      out.notes_on_ayah = await state.research.listNotes({ verse: verse_key });
     }
-    out.open_questions = state.research
-      .listNotes(root ? { root } : { verse: verse_key })
+    out.open_questions = (await state.research
+      .listNotes(root ? { root } : { verse: verse_key }))
       .filter((n: any) => n.kind === "question" && !n.resolved)
       .map((n: any) => n.text);
     return out;
@@ -520,7 +520,7 @@ const add_note: Tool = {
     const verseKey = guard.verseKey(a.verse_key);
     const text = guard.requireText(a.text, "text");
     const id = proposalId("note");
-    guard.mustNotExist(state, "note", id);
+    await guard.mustNotExist(state, "note", id);
     // carry the word's form/root so the note cross-references properly
     let lemma: string | null = null;
     let root: string | null = null;
@@ -529,7 +529,7 @@ const add_note: Tool = {
       lemma = w?.lemma ?? null;
       root = w?.root ?? null;
     }
-    const saved = state.research.saveNote({
+    const saved = await state.research.saveNote({
       id, verseKey, wordPosition: a.word_position ?? null, kind: a.kind,
       text, lemma, root, source: AI_SOURCE,
     });
@@ -568,13 +568,13 @@ const propose_indication: Tool = {
     if (!d) return { error: `root not found: ${a.root}` };
     const label = guard.requireText(a.label, "label");
     const id = proposalId("ind");
-    guard.mustNotExist(state, "indication", id);
+    await guard.mustNotExist(state, "indication", id);
 
     const formRefs: FormRef[] = (d.forms ?? [])
       .filter((f) => f.lemma_arabic)
       .map((f) => ({ form: f.lemma_arabic as string, pos: f.pos_english, occurrences: f.occurrence_count }));
     const resolveForm = makeFormResolver(formRefs);
-    const saved = state.research.saveIndication(
+    const saved = await state.research.saveIndication(
       guard.sanitiseIndication({ id, root: d.root_arabic, lemma: null, scope: "root", label, meaning: a.meaning ?? "" }),
     );
 
@@ -594,7 +594,7 @@ const propose_indication: Tool = {
         rejected.push({ form: r.form, why: "not a form of this root", known_forms: formRefs.map((f) => f.form) });
         continue;
       }
-      const out = state.research.saveRefinement(
+      const out = await state.research.saveRefinement(
         guard.sanitiseIndication({
           id: proposalId("ref"), parentId: saved.id, lemma: m.form,
           label: r.label ?? "", meaning: r.meaning ?? "",
@@ -637,8 +637,8 @@ const list_cases: Tool = {
     subject: z.string().optional().describe("Filter by root, phrase or verse key."),
     status: z.enum(["open", "partial", "closed", "any"]).default("any"),
   },
-  run: (state, a) => {
-    const all = (state.research.listCases() as any[]).map((c) => caseSummary(c));
+  run: async (state, a) => {
+    const all = ((await state.research.listCases()) as any[]).map((c) => caseSummary(c));
     return all.filter((c: any) =>
       (a.status === "any" || c.status === a.status) &&
       (!a.subject || c.subject?.value === a.subject || c.title?.includes(a.subject)));
@@ -652,7 +652,7 @@ const read_case: Tool = {
     "The whole board for one case: every evidence āyah, slip, link and group, each marked " +
     "with who added it. Read this before writing, and keep `updated_at` for your next write.",
   schema: { case_id: z.string() },
-  run: (state, { case_id }) => caseSummary(mustGetCase(state, case_id), { full: true }),
+  run: async (state, { case_id }) => caseSummary(await mustGetCase(state, case_id), { full: true }),
 };
 
 const open_case: Tool = {
@@ -673,7 +673,7 @@ const open_case: Tool = {
       ? ((await getRoot(state, a.subject))?.root_arabic ?? a.subject)
       : a.subject;
     const now = Date.now();
-    const saved = state.research.saveCase({
+    const saved = await state.research.saveCase({
       id: proposalId("case"),
       subject: { type: a.subject_type, value: subject },
       title: guard.requireText(a.title, "title"),
@@ -702,7 +702,7 @@ const add_evidence: Tool = {
     expect_version: VERSION,
   },
   run: async (state, a) => {
-    const c = mustGetCase(state, a.case_id);
+    const c = await mustGetCase(state, a.case_id);
     expectVersion(c, a.expect_version);
     const next = { ...c, cards: [...(c.cards ?? [])] };
     const added: unknown[] = [];
@@ -725,7 +725,7 @@ const add_evidence: Tool = {
       next.cards.push(card);
       added.push({ id: card.id, verse_key: vk });
     }
-    const saved = saveGuarded(state, c, next);
+    const saved = await saveGuarded(state, c, next);
     return { added, skipped, updated_at: saved.updatedAt };
   },
 };
@@ -746,8 +746,8 @@ const add_slip: Tool = {
     locator: z.string().default("").describe("Reference slips: e.g. \"under ر-ح-م\", \"vol 8 p. 2925\"."),
     expect_version: VERSION,
   },
-  run: (state, a) => {
-    const c = mustGetCase(state, a.case_id);
+  run: async (state, a) => {
+    const c = await mustGetCase(state, a.case_id);
     expectVersion(c, a.expect_version);
     const text = guard.requireText(a.text, "text");
     if (a.kind === "reference" && !String(a.source ?? "").trim()) {
@@ -761,7 +761,7 @@ const add_slip: Tool = {
       ...at, author: AI_SOURCE,
     };
     next.slips.push(slip);
-    const saved = saveGuarded(state, c, next);
+    const saved = await saveGuarded(state, c, next);
     return { added: slip.id, updated_at: saved.updatedAt };
   },
 };
@@ -780,8 +780,8 @@ const link_evidence: Tool = {
     label: z.string().describe("What the link asserts, in a few words."),
     expect_version: VERSION,
   },
-  run: (state, a) => {
-    const c = mustGetCase(state, a.case_id);
+  run: async (state, a) => {
+    const c = await mustGetCase(state, a.case_id);
     expectVersion(c, a.expect_version);
     const ids = new Set([...(c.cards ?? []), ...(c.slips ?? [])].map((i: any) => i.id));
     for (const id of [a.from_id, a.to_id]) {
@@ -792,7 +792,7 @@ const link_evidence: Tool = {
       label: guard.requireText(a.label, "label"),
       source: "suggested" as const, accepted: false, author: AI_SOURCE,
     };
-    const saved = saveGuarded(state, c, { ...c, threads: [...(c.threads ?? []), thread] });
+    const saved = await saveGuarded(state, c, { ...c, threads: [...(c.threads ?? []), thread] });
     return { added: thread.id, updated_at: saved.updatedAt, note: "Offered as a suggested thread; the reader accepts it to make it ink." };
   },
 };
@@ -810,8 +810,8 @@ const group_evidence: Tool = {
     item_ids: z.array(z.string()).min(1),
     expect_version: VERSION,
   },
-  run: (state, a) => {
-    const c = mustGetCase(state, a.case_id);
+  run: async (state, a) => {
+    const c = await mustGetCase(state, a.case_id);
     expectVersion(c, a.expect_version);
     const ids = new Set([...(c.cards ?? []), ...(c.slips ?? [])].map((i: any) => i.id));
     const missing = a.item_ids.filter((i: string) => !ids.has(i));
@@ -820,7 +820,7 @@ const group_evidence: Tool = {
       id: proposalId("cl"), name: guard.requireText(a.name, "name"),
       cardIds: a.item_ids, source: AI_SOURCE,
     };
-    const saved = saveGuarded(state, c, { ...c, clusters: [...(c.clusters ?? []), cluster] });
+    const saved = await saveGuarded(state, c, { ...c, clusters: [...(c.clusters ?? []), cluster] });
     return { added: cluster.id, updated_at: saved.updatedAt };
   },
 };
@@ -840,8 +840,8 @@ const revise_own_item: Tool = {
     text: z.string().default("").describe("The new text/label, for action=retext."),
     expect_version: VERSION,
   },
-  run: (state, a) => {
-    const c = mustGetCase(state, a.case_id);
+  run: async (state, a) => {
+    const c = await mustGetCase(state, a.case_id);
     expectVersion(c, a.expect_version);
     const { kind } = findOwnItem(c, a.item_id); // refuses if it is the reader's
     const key = ({ card: "cards", slip: "slips", thread: "threads", cluster: "clusters" } as const)[kind];
@@ -871,7 +871,7 @@ const revise_own_item: Tool = {
             : { ...i, label: text }), // thread
       };
     }
-    const saved = saveGuarded(state, c, next);
+    const saved = await saveGuarded(state, c, next);
     return { [a.action === "remove" ? "removed" : "updated"]: a.item_id, updated_at: saved.updatedAt };
   },
 };
@@ -894,8 +894,8 @@ const propose_conclusion: Tool = {
       .describe("What state you think the case has reached. Advisory only."),
     expect_version: VERSION,
   },
-  run: (state, a) => {
-    const c = mustGetCase(state, a.case_id);
+  run: async (state, a) => {
+    const c = await mustGetCase(state, a.case_id);
     expectVersion(c, a.expect_version);
     const text = guard.requireText(a.text, "text");
     if (a.kind === "form" && !String(a.form ?? "").trim()) {
@@ -907,7 +907,7 @@ const propose_conclusion: Tool = {
       createdAt: Date.now(),
     };
     const entries = [...((c.proposals?.entries ?? []) as any[]), entry];
-    const saved = saveGuarded(state, c, { ...c, proposals: { entries } });
+    const saved = await saveGuarded(state, c, { ...c, proposals: { entries } });
     return {
       proposed: true, id: entry.id, updated_at: saved.updatedAt,
       applied: false, awaiting_review: true,
@@ -930,9 +930,9 @@ const list_motifs: Tool = {
     if (root) {
       const d = await getRoot(state, root);
       const ar = d?.root_arabic ?? root;
-      return { root: ar, motifs: state.research.motifsForRoot(ar) };
+      return { root: ar, motifs: await state.research.motifsForRoot(ar) };
     }
-    return { motifs: state.research.listMotifs() };
+    return { motifs: await state.research.listMotifs() };
   },
 };
 
@@ -952,12 +952,12 @@ const propose_motif: Tool = {
   run: async (state, a) => {
     const name = guard.requireText(a.name, "name");
     const id = proposalId("motif");
-    state.research.saveMotif({ id, name, note: a.note ?? "", source: AI_SOURCE });
+    await state.research.saveMotif({ id, name, note: a.note ?? "", source: AI_SOURCE });
     const added: string[] = [];
     for (const r of a.roots ?? []) {
       const d = await getRoot(state, r);
       const ar = d?.root_arabic ?? String(r);
-      state.research.addMotifRoot(id, ar);
+      await state.research.addMotifRoot(id, ar);
       added.push(ar);
     }
     return { proposed: true, id, name, roots: added, awaiting_review: true };
@@ -976,11 +976,11 @@ const add_root_to_motif: Tool = {
     root: z.string().describe("The root to add (Arabic or buckwalter)."),
   },
   run: async (state, a) => {
-    const m = guard.ownMotif(state, a.motif_id);
+    const m = await guard.ownMotif(state, a.motif_id);
     const d = await getRoot(state, a.root);
     const ar = d?.root_arabic ?? String(a.root);
-    state.research.addMotifRoot(m.id, ar);
-    return { ok: true, motif_id: m.id, root: ar, roots: (state.research.getMotif(m.id) as any)?.roots ?? [] };
+    await state.research.addMotifRoot(m.id, ar);
+    return { ok: true, motif_id: m.id, root: ar, roots: ((await state.research.getMotif(m.id)) as any)?.roots ?? [] };
   },
 };
 
@@ -994,11 +994,11 @@ const remove_root_from_motif: Tool = {
     root: z.string().describe("The root to remove (Arabic or buckwalter)."),
   },
   run: async (state, a) => {
-    const m = guard.ownMotif(state, a.motif_id);
+    const m = await guard.ownMotif(state, a.motif_id);
     const d = await getRoot(state, a.root);
     const ar = d?.root_arabic ?? String(a.root);
-    state.research.removeMotifRoot(m.id, ar);
-    return { ok: true, motif_id: m.id, root: ar, roots: (state.research.getMotif(m.id) as any)?.roots ?? [] };
+    await state.research.removeMotifRoot(m.id, ar);
+    return { ok: true, motif_id: m.id, root: ar, roots: ((await state.research.getMotif(m.id)) as any)?.roots ?? [] };
   },
 };
 

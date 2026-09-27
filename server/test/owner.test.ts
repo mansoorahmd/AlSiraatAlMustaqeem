@@ -40,7 +40,7 @@ beforeAll(async () => {
   process.env.QF_RESEARCH_DB = RESEARCH;
   const { createApp } = await import("../src/app.js");
   const { createState } = await import("../src/state.js");
-  app = createApp(createState());
+  app = createApp(await createState());
 });
 
 describe("an unclaimed database", () => {
@@ -90,11 +90,12 @@ describe("claiming it", () => {
   it("survives reopening the file — it's in the database, not beside it", async () => {
     const { Db } = await import("../src/db.js");
     const { ResearchStore } = await import("../src/research.js");
+    const { sqliteResearch } = await import("../src/research-db.js");
     const handle = new Db(RESEARCH);
     try {
-      const reopened = new ResearchStore(handle);
-      expect(reopened.getOwner()!.email).toBe(ME);
-      expect(reopened.getOwner()!.name).toBe("Mansoor Ahmad");
+      const reopened = await ResearchStore.open(sqliteResearch(handle));
+      expect((await reopened.getOwner())!.email).toBe(ME);
+      expect((await reopened.getOwner())!.name).toBe("Mansoor Ahmad");
       expect(reopened.localId).toBe(ownerIdFor(ME));
     } finally {
       handle.close();   // a leaked handle locks the file on Windows (the "copy a backup in" test renames it)

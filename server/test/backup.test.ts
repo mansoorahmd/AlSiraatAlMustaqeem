@@ -22,7 +22,7 @@ beforeAll(async () => {
   process.env.QF_RESEARCH_DB = RESEARCH;
   const { createApp } = await import("../src/app.js");
   const { createState } = await import("../src/state.js");
-  app = createApp(createState()); // ResearchStore puts the db in WAL mode
+  app = createApp(await createState()); // ResearchStore puts the db in WAL mode
 
   // dirty the WAL: write many notes through the real API, no checkpoint
   for (let i = 0; i < N; i++) {

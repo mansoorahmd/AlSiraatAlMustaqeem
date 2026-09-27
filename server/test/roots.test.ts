@@ -11,7 +11,7 @@ const fx = (n: string) => JSON.parse(readFileSync(resolve(import.meta.dirname, "
 let app: Hono;
 const get = async (p: string) => (await (await app.request(p)).json()) as any;
 
-beforeAll(() => { app = createApp(createState()); });
+beforeAll(async () => { app = createApp(await createState()); });
 
 describe("roots parity", () => {
   it("top roots", async () => {

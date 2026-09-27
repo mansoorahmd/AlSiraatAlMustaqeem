@@ -15,7 +15,7 @@ const B = "/api/v1/research";
 const forWord = (lemma: string, root: string) =>
   `${B}/indications/for-word?lemma=${encodeURIComponent(lemma)}&root=${encodeURIComponent(root)}`;
 
-beforeAll(() => { app = createApp(createState()); });
+beforeAll(async () => { app = createApp(await createState()); });
 
 describe("word indications (root + refinements)", () => {
   it("root indications: first is primary, second isn't, primary can switch", async () => {

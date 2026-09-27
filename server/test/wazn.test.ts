@@ -9,7 +9,7 @@ let app: Hono;
 const wazn = async (key: string, pos: number) =>
   (await (await app.request(`/api/v1/verses/${key}/wazn?pos=${pos}`)).json()) as any;
 
-beforeAll(() => { app = createApp(createState()); });
+beforeAll(async () => { app = createApp(await createState()); });
 
 describe("wazn", () => {
   it("iqraʾ (96:1 w1) is a Form I imperative verb", async () => {

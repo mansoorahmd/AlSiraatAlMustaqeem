@@ -34,7 +34,7 @@ beforeAll(async () => {
   process.env.QF_RESEARCH_DB = RESEARCH;
   const { createApp } = await import("../src/app.js");
   const { createState } = await import("../src/state.js");
-  app = createApp(createState());
+  app = createApp(await createState());
 });
 
 describe("outbound submission ledger", () => {

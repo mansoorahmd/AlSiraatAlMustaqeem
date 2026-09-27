@@ -16,8 +16,8 @@ const get = async (p: string) => {
   return { status: r.status, body: await r.json() };
 };
 
-beforeAll(() => {
-  app = createApp(createState());
+beforeAll(async () => {
+  app = createApp(await createState());
 });
 
 describe("content parity with Python", () => {
