@@ -9,7 +9,8 @@
 import { betterAuth } from "better-auth";
 import { magicLink } from "better-auth/plugins";
 import { pool } from "./db.js";
-import { config } from "./config.js";
+import { config, crossSiteCookies } from "./config.js";
+import { sendMail, resetEmail, magicLinkEmail } from "./mailer.js";
 
 export const auth = betterAuth({
   database: pool,
@@ -55,10 +56,24 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 10,
     autoSignIn: false,          // redeeming an invite shouldn't silently sign you in
-    requireEmailVerification: false, // no email transport is configured by default
+    requireEmailVerification: false, // accounts come from invites, so the address is already vouched for
+    // Forgotten password: POST /api/auth/request-password-reset {email, redirectTo} emails a
+    // one-time link; it lands on this server's own /reset-password page (app.ts), which sets the
+    // new password. Better Auth only sends when the account exists, and answers the same either
+    // way, so it doesn't reveal who has an account.
+    sendResetPassword: async ({ user, url }: { user: { email: string }; url: string }) => {
+      await sendMail(resetEmail(user.email, url));
+    },
+    resetPasswordTokenExpiresIn: 60 * 60,
+    revokeSessionsOnPasswordReset: true,  // a reset signs out every other device
   },
 
   advanced: {
+    // Over HTTPS the app (on the reader's localhost) and this server are different sites, so the
+    // session cookie must be SameSite=None; Secure to be sent at all (config.ts).
+    ...(crossSiteCookies
+      ? { useSecureCookies: true, defaultCookieAttributes: { sameSite: "none" as const, secure: true } }
+      : {}),
     database: {
       // Postgres mints the users uuid (gen_random_uuid); Better Auth generates the
       // text ids for its own session/account/verification rows.
@@ -85,12 +100,7 @@ export const auth = betterAuth({
           console.log(`[magic-link] not sent — no account for ${email} (invite-only)`);
           return;
         }
-        if (config.emailTransport === "console") {
-          // dev: no SMTP needed — the link is printed for you to click
-          console.log(`\n[magic-link] ${email}\n  ${url}\n`);
-          return;
-        }
-        throw new Error(`email transport '${config.emailTransport}' not configured`);
+        await sendMail(magicLinkEmail(email, url));   // console transport: printed to the log
       },
     }),
   ],

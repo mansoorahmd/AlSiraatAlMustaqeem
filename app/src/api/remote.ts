@@ -143,6 +143,17 @@ export const remote = {
     });
   },
 
+  /**
+   * Forgotten password: the server emails a one-time link to the research server's own reset
+   * page. The answer is the same whether or not the address has an account.
+   */
+  requestPasswordReset(email: string): Promise<unknown> {
+    return call("/api/auth/request-password-reset", {
+      method: "POST",
+      body: JSON.stringify({ email, redirectTo: `${REMOTE}/reset-password` }),
+    });
+  },
+
   /** Change your password (needs the current one). */
   changePassword(currentPassword: string, newPassword: string): Promise<unknown> {
     return call("/api/auth/change-password", {

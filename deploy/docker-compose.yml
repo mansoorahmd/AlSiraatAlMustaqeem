@@ -1,0 +1,74 @@
+# The research server on one VPS: Postgres, the server, and Caddy in front for automatic HTTPS
+# (a Let's Encrypt certificate for $DOMAIN, renewed by itself). See DEPLOY.md.
+#
+#   cd deploy && cp .env.example .env   # then fill it in
+#   docker compose up -d --build
+#
+# Only Caddy is reachable from outside (ports 80/443). Postgres and the server listen on the
+# private compose network only.
+
+name: mqrg
+
+services:
+  db:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mqrg
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: researchgate
+      # the corpus loader refuses anything but UTF8 (Arabic); C collation = byte order
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C.UTF-8
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mqrg -d researchgate"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    shm_size: 256mb
+
+  remote:
+    build:
+      context: ..
+      dockerfile: remote/Dockerfile
+    image: mqrg-remote
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://mqrg:${POSTGRES_PASSWORD}@db:5432/researchgate
+      REMOTE_BASE_URL: https://${DOMAIN:?set DOMAIN in deploy/.env}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in deploy/.env}
+      TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-}
+      EMAIL_TRANSPORT: ${EMAIL_TRANSPORT:-smtp}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    volumes:
+      # put quran.db here (deploy/corpus/quran.db) for `docker compose run --rm remote corpus-migrate`
+      - ./corpus:/corpus:ro
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [remote]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

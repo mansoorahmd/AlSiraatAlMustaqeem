@@ -20,6 +20,7 @@ import {
   requireResource, wholeMin, canRead, listRules, setRule, removeRule, isResourceKind,
 } from "./resource-access.js";
 import { createToken, listTokens, revokeToken } from "./api-tokens.js";
+import { RESET_PAGE, RESET_PAGE_HEADERS } from "./reset-page.js";
 import { listUsers, setRole, listResources, isUserId, AdminError } from "./admin.js";
 import { corpusApp } from "./corpus/serve.js";
 import { pgCorpus } from "./corpus/pg-corpus.js";
@@ -62,6 +63,9 @@ export function createApp(): Hono<Env> {
   app.all("/api/auth/*", (c) => auth.handler(c.req.raw));
 
   app.get("/health", (c) => c.json({ status: "ok", service: "remote" }));
+
+  // where a password-reset email lands (reset-page.ts); the reset itself is Better Auth's
+  app.get("/reset-password", (c) => c.body(RESET_PAGE, 200, RESET_PAGE_HEADERS));
 
   // Where a verified magic link lands. Two jobs: tell a human it worked, and give the desktop
   // sign-in window a URL it can recognise so it knows the cookie is set and can close itself.
