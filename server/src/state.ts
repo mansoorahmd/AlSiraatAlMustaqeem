@@ -26,7 +26,13 @@ export function createState(): AppState {
   const quran = new Db(QURAN_DB, { readOnly: true });
   // Which file to open is remembered per machine; WHO it belongs to lives inside the file.
   const databases = new Databases(RESEARCH_DB);
-  const researchDb = new Db(databases.currentPath()); // read-write
+  const path = databases.currentPath();
+  // A test must never open the reader's real research (test/setup.ts isolates every file; this
+  // is the backstop if a runner is ever started without it).
+  if (process.env.VITEST && resolve(path) === resolve(ROOT, "research.db")) {
+    throw new Error("refusing to open the project's research.db under test — set QF_RESEARCH_DB");
+  }
+  const researchDb = new Db(path); // read-write
   databases.use(researchDb.path); // remember it, so it appears in "recently opened"
   return {
     ...createCorpusServices(sqliteCorpus(quran)),

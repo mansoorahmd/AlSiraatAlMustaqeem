@@ -90,10 +90,15 @@ describe("claiming it", () => {
   it("survives reopening the file — it's in the database, not beside it", async () => {
     const { Db } = await import("../src/db.js");
     const { ResearchStore } = await import("../src/research.js");
-    const reopened = new ResearchStore(new Db(RESEARCH));
-    expect(reopened.getOwner()!.email).toBe(ME);
-    expect(reopened.getOwner()!.name).toBe("Mansoor Ahmad");
-    expect(reopened.localId).toBe(ownerIdFor(ME));
+    const handle = new Db(RESEARCH);
+    try {
+      const reopened = new ResearchStore(handle);
+      expect(reopened.getOwner()!.email).toBe(ME);
+      expect(reopened.getOwner()!.name).toBe("Mansoor Ahmad");
+      expect(reopened.localId).toBe(ownerIdFor(ME));
+    } finally {
+      handle.close();   // a leaked handle locks the file on Windows (the "copy a backup in" test renames it)
+    }
   });
 });
 

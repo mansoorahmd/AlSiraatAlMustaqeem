@@ -35,7 +35,7 @@ beforeAll(() => {
 
   const research = new ResearchStore(new Db(join(mkdtempSync(join(tmpdir(), "alsiraat-mcpr-")), "r.db")));
   local = { ...localReads(svc), research };
-  remote = { ...remoteReads("http://corpus.test", "mqrg_test", (url, init) => app.request(url, init)), research };
+  remote = { ...remoteReads("http://corpus.test", "mqrg_test", async (url, init) => app.request(url, init)), research };
 });
 
 const tool = (name: string) => TOOLS.find((t) => t.name === name)!;
