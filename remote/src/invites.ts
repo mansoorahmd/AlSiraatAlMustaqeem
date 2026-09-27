@@ -13,6 +13,7 @@
 import { randomBytes } from "node:crypto";
 import type { SqlRunner } from "./migrate.js";
 import { isRole, type Role } from "./roles.js";
+import { isPlan, type Plan } from "./plans.js";
 
 export interface Invite {
   code: string;
@@ -94,16 +95,51 @@ export async function bindLocalId(r: SqlRunner, userId: string, localId: string)
 export async function loadPrincipal(
   r: SqlRunner,
   userId: string,
-): Promise<{ id: string; role: Role; localId: string | null; email: string; displayName: string } | null> {
+): Promise<{
+  id: string; role: Role; localId: string | null; email: string; displayName: string;
+  plan: Plan; planExpiresAt: string | null;
+} | null> {
   const rows = await r.query(
-    "SELECT id, role, local_id, email, display_name FROM users WHERE id = $1", [userId]);
-  const u = rows[0] as
-    { id: string; role: string; local_id: string | null; email: string; display_name: string | null } | undefined;
+    "SELECT id, role, local_id, email, display_name, plan, plan_expires_at FROM users WHERE id = $1",
+    [userId]);
+  const u = rows[0] as {
+    id: string; role: string; local_id: string | null; email: string; display_name: string | null;
+    plan: string; plan_expires_at: string | Date | null;
+  } | undefined;
   if (!u || !isRole(u.role)) return null;
   return {
     id: u.id, role: u.role, localId: u.local_id,
     email: u.email, displayName: u.display_name ?? "",
+    // A bad value in the column must never read as a paid plan — default to free.
+    plan: isPlan(u.plan) ? u.plan : "free",
+    planExpiresAt: u.plan_expires_at == null ? null : new Date(u.plan_expires_at).toISOString(),
   };
+}
+
+/**
+ * Grant or revoke a plan. A maintainer act (route guard / CLI), never self-service — mirrors how
+ * a role is only ever set by an invite, not by the request. `expiresInDays` null = no expiry
+ * (a manual grant that never lapses); setting plan 'free' clears any expiry.
+ */
+export async function setPlan(
+  r: SqlRunner,
+  opts: { userId: string; plan: Plan; expiresInDays?: number | null },
+): Promise<void> {
+  if (!isPlan(opts.plan)) throw new Error(`unknown plan: ${opts.plan}`);
+  const expires =
+    opts.plan === "free" || opts.expiresInDays == null
+      ? "NULL"
+      : `now() + interval '${Number(opts.expiresInDays)} days'`;
+  await r.query(
+    `UPDATE users SET plan = $1, plan_expires_at = ${expires}, updated_at = now() WHERE id = $2`,
+    [opts.plan, opts.userId],
+  );
+}
+
+/** Resolve a user id from an email (for CLI / admin routes that take an email). */
+export async function userIdByEmail(r: SqlRunner, email: string): Promise<string | null> {
+  const rows = await r.query("SELECT id FROM users WHERE email = $1", [email.trim().toLowerCase()]);
+  return (rows[0] as { id: string } | undefined)?.id ?? null;
 }
 
 /** Let a signed-in reader set their own display name. */

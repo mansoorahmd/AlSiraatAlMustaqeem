@@ -34,7 +34,7 @@ interface Props {
 export function ProposeReading({
   subjectKind, subjectValue, defaultLabel, defaultMeaning, refinements = [], missingForms = [], caseId, onClose,
 }: Props) {
-  const { me, loading } = useMe();
+  const { me, loading, isPro } = useMe();
   const [label, setLabel] = useState(defaultLabel ?? "");
   const [meaning, setMeaning] = useState(defaultMeaning ?? "");
   const [argument, setArgument] = useState("");
@@ -63,6 +63,7 @@ export function ProposeReading({
       setErr(
         e instanceof RemoteOffline ? "The research server isn't reachable — you may be offline, or not signed in."
         : e instanceof RemoteError && e.status === 401 ? "Sign in to the research community first."
+        : e instanceof RemoteError && e.status === 402 ? "Proposing to the community needs an active plan — upgrade to publish your reading."
         : (e as Error).message);
     } finally { setBusy(false); }
   };
@@ -85,14 +86,23 @@ export function ProposeReading({
           <div className="propose-body">
             <p className="propose-ok">✓ Proposed. It now contends for the group's reading of this {subjectKind}.</p>
             <p className="acct-hint">
-              It won't appear in your community list until you <strong>Sync with the group</strong> —
-              proposing writes upstream and changes nothing here.
+              It appears in the community readings for this {subjectKind} straight away, marked
+              <em> proposed</em>, until a majority of reviewers carry it. Proposing writes upstream
+              and changes nothing in your own work here.
             </p>
             <div className="propose-actions"><button className="ctl primary" onClick={onClose}>Done</button></div>
           </div>
         ) : !loading && !me ? (
           <div className="propose-body">
             <p className="acct-error">Sign in to the research community to propose a reading.</p>
+            <div className="propose-actions"><button className="ctl" onClick={onClose}>Close</button></div>
+          </div>
+        ) : !loading && me && !isPro ? (
+          <div className="propose-body">
+            <p className="acct-error">
+              Proposing a reading to the community is part of the research plan. Upgrade to publish
+              your work; studying and establishing your own readings stays free and offline.
+            </p>
             <div className="propose-actions"><button className="ctl" onClick={onClose}>Close</button></div>
           </div>
         ) : (

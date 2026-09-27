@@ -15,7 +15,7 @@
 // moderator is already reviewing.
 
 import { useCallback, useEffect, useState } from "react";
-import { remote, type AdditiveKind } from "../api/remote";
+import { remote, RemoteError, type AdditiveKind } from "../api/remote";
 import { submissionLog, contentHash, fetchIdentity, type SubmissionRecord } from "../persistence/db";
 
 interface Props {
@@ -33,6 +33,10 @@ type State = "idle" | "sending" | "error";
 
 export function ShareButton({ localRef, kind, payload, subjectKind, subjectValue, label }: Props) {
   const [allowed, setAllowed] = useState(false);
+  // Signed in as a publisher, owner matches, but no active plan: publishing is a paid action, so
+  // show a quiet upgrade nudge rather than a button that fails with 402. (The leader wants the
+  // upsell; readers and the signed-out still see nothing.)
+  const [needsPlan, setNeedsPlan] = useState(false);
   const [mismatch, setMismatch] = useState<string | null>(null);
   const [prior, setPrior] = useState<SubmissionRecord | null>(null);
   const [state, setState] = useState<State>("idle");
@@ -53,6 +57,7 @@ export function ShareButton({ localRef, kind, payload, subjectKind, subjectValue
           setMismatch(`This database belongs to ${ownerEmail}, but you're signed in as ${me.email}.`);
           return setAllowed(false);
         }
+        if (!me.planActive) { setNeedsPlan(true); return setAllowed(false); }
         setAllowed(true);
       })
       .catch(() => setAllowed(false));
@@ -73,6 +78,8 @@ export function ShareButton({ localRef, kind, payload, subjectKind, subjectValue
       }));
       setState("idle");
     } catch (e) {
+      // The plan may have lapsed since we checked: turn a 402 into the upgrade nudge, not an error.
+      if (e instanceof RemoteError && e.status === 402) { setNeedsPlan(true); setAllowed(false); return; }
       setDetail((e as Error).message);
       setState("error");
     }
@@ -92,6 +99,15 @@ export function ShareButton({ localRef, kind, payload, subjectKind, subjectValue
 
   // The database isn't yours: say so quietly rather than vanishing, so the reason is visible.
   if (mismatch) return <span className="share-blocked" title={mismatch}>not yours</span>;
+
+  // A publisher without an active plan: a quiet upsell (publishing to the community is paid).
+  if (needsPlan) {
+    return (
+      <span className="share-blocked" title="Publishing to the research community needs an active plan — upgrade to share your work.">
+        {shared && changed ? "edited · upgrade" : "upgrade"}
+      </span>
+    );
+  }
 
   // Edited since it was shared, but you can't publish right now — still worth saying.
   if (!allowed) {

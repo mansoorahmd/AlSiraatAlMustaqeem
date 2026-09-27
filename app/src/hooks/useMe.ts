@@ -29,6 +29,15 @@ export function refreshMe(): Promise<Me | null> {
   return load();
 }
 
+/**
+ * The last-known account, synchronously, without a fetch — for non-React callers that must
+ * decide cheaply whether to attempt a PAID, online request (e.g. the community layer). Returns
+ * null when signed out or not yet loaded; treat null / inactive plan as "free" (the safe default).
+ */
+export function cachedMe(): Me | null {
+  return cache;
+}
+
 export interface MeState {
   me: Me | null;
   loading: boolean;
@@ -36,6 +45,8 @@ export interface MeState {
   canReview: boolean;
   /** convenience: can this account establish directly? */
   canEstablish: boolean;
+  /** convenience: does this account have an active paid plan? Gates the community layer. */
+  isPro: boolean;
 }
 
 export function useMe(): MeState {
@@ -54,5 +65,6 @@ export function useMe(): MeState {
     loading,
     canReview: me?.role === "moderator" || me?.role === "maintainer",
     canEstablish: me?.role === "maintainer",
+    isPro: me?.planActive === true,
   };
 }

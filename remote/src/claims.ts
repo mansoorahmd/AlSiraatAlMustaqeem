@@ -241,6 +241,142 @@ export async function globalReading(
   return g ? getVersion(r, g.claim_id, Number(g.version)) : null;
 }
 
+export interface PeerReading {
+  id: string;                  // peer:<claimId>@<version>
+  claimId: string;
+  version: number;
+  authorId: string;
+  authorName: string;
+  scope: "root" | "lemma";
+  root: string | null;
+  lemma: string | null;
+  status: "proposed" | "established" | "superseded";
+  label: string;
+  meaning: string;
+  refinements: { lemma: string; label: string; meaning: string }[];
+  approvers: string[];
+  dissents: number;
+}
+
+const STATUS_ORDER = { established: 0, proposed: 1, superseded: 2 } as const;
+
+/**
+ * Every reading on record for ONE subject, shaped for the reader — the live, remote-only source
+ * for the community chips that used to be mirrored into `derived_peer_indications`. `status` is
+ * derived exactly as pull.ts derives it (established = the global slot points here; superseded =
+ * a later version exists; proposed otherwise), so a claim that later loses the slot corrects
+ * itself with no history rewrite. Ordered established → proposed → superseded, newest first.
+ */
+async function readingsForSubject(
+  r: SqlRunner, subjectKind: SubjectKind, subjectValue: string,
+): Promise<PeerReading[]> {
+  const subject = subjectValue?.trim();
+  if (!subject) return [];
+  const rows = await r.query(
+    `SELECT cv.claim_id, cv.version, cv.payload_json, cv.created_at,
+            c.author_id, c.subject_kind, c.subject_value, c.current_version,
+            (g.claim_id IS NOT NULL) AS is_global,
+            COALESCE(NULLIF(au.display_name, ''), au.email) AS author_name,
+            COALESCE((
+              SELECT json_agg(COALESCE(NULLIF(mu.display_name, ''), mu.email) ORDER BY rv.created_at)
+                FROM reviews rv JOIN users mu ON mu.id = rv.moderator_id
+               WHERE rv.claim_id = cv.claim_id AND rv.claim_version = cv.version
+                 AND rv.decision = 'approve'
+            ), '[]'::json) AS approvers,
+            (SELECT COUNT(*)::int FROM dissents d
+              WHERE d.claim_id = cv.claim_id AND d.claim_version = cv.version) AS dissents
+       FROM claim_versions cv
+       JOIN claims c ON c.id = cv.claim_id
+       JOIN users au ON au.id = c.author_id
+       LEFT JOIN global_forms g ON g.claim_id = cv.claim_id AND g.version = cv.version
+      WHERE c.subject_kind = $1 AND c.subject_value = $2
+      ORDER BY cv.created_at DESC`, [subjectKind, subject]);
+
+  const mapped: PeerReading[] = rows.map((p) => {
+    const payload = p.payload_json as
+      { meaning?: string; label?: string; refinements?: PeerReading["refinements"] } | null;
+    const status: PeerReading["status"] = p.is_global
+      ? "established"
+      : Number(p.current_version ?? 0) > Number(p.version) ? "superseded" : "proposed";
+    return {
+      id: `peer:${p.claim_id}@${Number(p.version)}`,
+      claimId: String(p.claim_id), version: Number(p.version), authorId: String(p.author_id),
+      authorName: String(p.author_name ?? ""),
+      scope: subjectKind === "root" ? "root" : "lemma",
+      root: subjectKind === "root" ? String(p.subject_value) : null,
+      lemma: subjectKind === "form" ? String(p.subject_value) : null,
+      status,
+      label: payload?.label ?? "", meaning: payload?.meaning ?? "",
+      refinements: Array.isArray(payload?.refinements) ? payload!.refinements : [],
+      approvers: (p.approvers as string[] | null) ?? [],
+      dissents: Number(p.dissents ?? 0),
+    };
+  });
+  // stable sort (created_at DESC already applied within each status group)
+  return mapped.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
+}
+
+/**
+ * The community's readings of a word — its root and its exact form — for the reader's indication
+ * chips. Live and gated; the group's readings never touch the client's disk.
+ */
+export async function communityReadingsFor(
+  r: SqlRunner, opts: { root?: string | null; lemma?: string | null },
+): Promise<{ communityRoot: PeerReading[]; communityLemma: PeerReading[] }> {
+  return {
+    communityRoot: opts.root ? await readingsForSubject(r, "root", opts.root) : [],
+    communityLemma: opts.lemma ? await readingsForSubject(r, "form", opts.lemma) : [],
+  };
+}
+
+export interface DivergenceRow {
+  subjectKind: SubjectKind;
+  subjectValue: string;
+  mine: string;
+  theirs: string;
+  claimId: string;
+  version: number;
+  authorId: string;
+  dissents: number;
+}
+
+/**
+ * ⚖ Where a reader stands apart from the group — computed LIVE against the remote, never from a
+ * local mirror. The client sends the forms IT has established (subject + its own meaning); we
+ * diff each against the group's current reading and return only the ones that differ. This is
+ * the remote-only replacement for the old local `divergences()` that read `derived_global_forms`
+ * — the group's readings never touch the client's disk, which is what makes the feature gateable.
+ *
+ * Both readings are returned; NEITHER is changed. Divergence is a state to know, not resolve.
+ */
+export async function divergencesAgainstGlobal(
+  r: SqlRunner,
+  mine: { subjectKind?: SubjectKind; subjectValue: string; meaning: string }[],
+): Promise<{ divergences: DivergenceRow[]; overlap: number; globalTotal: number }> {
+  const out: DivergenceRow[] = [];
+  let overlap = 0;
+  for (const m of mine) {
+    const kind = m.subjectKind ?? "form";
+    const subject = m.subjectValue?.trim();
+    if (!subject) continue;
+    const g = await globalReading(r, kind, subject);
+    if (!g) continue; // the group hasn't settled this form — nothing to diverge from
+    overlap++;
+    const theirs = String((g.payload as { meaning?: string } | null)?.meaning ?? "").trim();
+    const mineMeaning = (m.meaning ?? "").trim();
+    if (theirs && mineMeaning && theirs !== mineMeaning) {
+      const dissents = (await dissentsFor(r, g.claimId, g.version)).length;
+      out.push({
+        subjectKind: kind, subjectValue: subject, mine: mineMeaning, theirs,
+        claimId: g.claimId, version: g.version, authorId: g.authorId, dissents,
+      });
+    }
+  }
+  const gt = await r.query("SELECT COUNT(*)::int AS n FROM global_forms");
+  const globalTotal = Number((gt[0] as { n: number })?.n ?? 0);
+  return { divergences: out, overlap, globalTotal };
+}
+
 /**
  * File a dissent against an established reading. It carries its OWN payload (§12.4) — it must
  * stand alone, because the submission it came from may later be redacted, and because a dissent

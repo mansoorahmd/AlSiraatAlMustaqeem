@@ -277,50 +277,14 @@ export function researchRoutes(state: AppState): Hono {
     }));
   });
 
-  // --- the group's readings, pulled from the remote (Phase 6) ---
+  // --- the group's readings ---
   //
-  // The app fetches pages from the remote itself (it holds the session cookie) and posts them
-  // here to be applied. Everything lands in derived_* tables; a pull can never touch the
-  // reader's own work.
-
-  r.get("/research/pull/state", (c) => c.json({
-    cursors: s().syncCursors(),
-    groupReadings: s().groupGloss().length,
-    // so an empty list can say WHY it is empty rather than just "nothing"
-    ...s().divergenceContext(),
-  }));
-
-  r.post("/research/pull/apply", async (c) => {
-    const page = (await c.req.json().catch(() => ({}))) as
-      { globalForms?: never[]; dissents?: never[]; cursor?: number };
-    return c.json(s().applyPull(page));
-  });
-
-  /** Drop everything pulled and start again — always safe, no research is lost. */
-  r.post("/research/pull/reset", (c) => {
-    s().resetPulled();
-    return c.json({ ok: true, cursors: s().syncCursors() });
-  });
-
-  /** The group's reading of one form/root, with how many dissents are filed against it. */
-  r.get("/research/group-reading", (c) =>
-    c.json(s().groupReading(c.req.query("subjectKind") ?? "form", c.req.query("subjectValue") ?? "") ?? null));
-
-  /** Every group reading — the "group" gloss layer. */
-  r.get("/research/group-gloss", (c) => c.json(s().groupGloss()));
-
-  /** The community's FORM readings for a comma-separated list of lemmas, keyed by lemma.
-   *  Used to give a community root reading a per-form view, mirroring your own. */
-  r.get("/research/peer-form-readings", (c) => {
-    const lemmas = (c.req.query("lemmas") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-    return c.json(s().peerFormReadings(lemmas));
-  });
-
-  /**
-   * Where I stand apart: forms I have established whose meaning differs from the group's.
-   * Not a conflict to resolve — the record of where the readings genuinely part company.
-   */
-  r.get("/research/divergences", (c) => c.json(s().divergences()));
+  // No longer mirrored through the local server. Community data (globally-established forms,
+  // dissents, peer indications, and divergence) is read LIVE from the remote and gated behind a
+  // plan — the app talks to the remote directly for it (app/src/api/remote.ts). Keeping it off
+  // this disk is what makes the paid layer enforceable; see REMOTE.md and the monetization plan.
+  // The outbound submission ledger and proposal tracking (derived_submissions /
+  // derived_proposed_claims) stay local — those are the reader's OWN actions, above.
 
   // settings — device-independent key/value UI prefs (reading prefs, active comparison)
   r.get("/research/settings/:key", (c) => c.json({ value: s().getSetting(c.req.param("key")) ?? null }));

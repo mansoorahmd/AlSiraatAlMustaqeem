@@ -4,7 +4,9 @@
 // The client is a thin fetch wrapper; there is no browser-side storage.
 
 import type { CaseRecord, TrailRecord, NoteRecord, UserRootMeaning, Motif } from "./types";
-import type { CompareSet, CompareItemRow, WordIndication, IndicationsForWord, IndicationGloss, Proposed, PeerIndication } from "../api/types";
+import type { CompareSet, CompareItemRow, WordIndication, IndicationsForWord, IndicationGloss, Proposed } from "../api/types";
+import { remote } from "../api/remote";
+import { cachedMe } from "../hooks/useMe";
 
 const API = "/api/v1/research";
 
@@ -92,68 +94,52 @@ export const databases = {
   },
 };
 
-// ---- the group's readings, pulled from the remote (Phase 6) --------------------
+// ---- the community layer: read LIVE from the remote, never mirrored locally ----
+//
+// Monetization: the group's readings are a PAID, ONLINE layer. They are fetched from the remote
+// on demand and gated behind a plan (api/remote.ts + REMOTE.md); nothing of the group's is ever
+// stored in research.db. A free, signed-out, or offline reader simply sees their own work — the
+// boundary is now the network, not a local table.
 
-export interface GroupReading {
-  subjectKind: string; subjectValue: string; claimId: string; version: number;
-  meaning: string; authorId: string; establishedAt: number; dissents: number;
-}
 export interface Divergence {
   lemma: string; root: string; caseId: string;
   mine: string; theirs: string;
   claimId: string; version: number; authorId: string; dissents: number;
 }
 
-/**
- * The group's established readings, kept in DERIVED tables so they can be dropped and re-pulled
- * at any time. Your own established meanings are never touched — where the two differ is shown,
- * not resolved.
- */
-/** One position per stream — each remote table has its own sequence. */
-export interface SyncCursors {
-  globalForms: number;
-  dissents: number;
-  peerIndications: number;
-}
-
 export interface GroupState {
-  cursors: SyncCursors;
-  groupReadings: number;
   /** forms I have established */
   mine: number;
-  /** readings the group has established */
+  /** readings the group has established (globally) */
   theirs: number;
   /** forms we have both settled — the only ones that CAN diverge */
   overlap: number;
 }
 
 export const group = {
-  state(): Promise<GroupState> {
-    return srvGet("/pull/state");
-  },
-  apply(page: unknown): Promise<{
-    globalForms: number; dissents: number; peerIndications: number; cursors: SyncCursors;
-  }> {
-    return srvPost("/pull/apply", page);
-  },
-  reset(): Promise<{ ok: boolean; cursors: SyncCursors }> {
-    return srvPost("/pull/reset", {});
-  },
-  reading(subjectValue: string, subjectKind = "form"): Promise<GroupReading | null> {
-    return srvGet(`/group-reading?subjectKind=${subjectKind}&subjectValue=${encodeURIComponent(subjectValue)}`);
-  },
-  gloss(): Promise<{ subjectKind: string; subjectValue: string; meaning: string }[]> {
-    return srvGet("/group-gloss");
-  },
-  /** Forms I established whose meaning differs from the group's. */
-  divergences(): Promise<Divergence[]> {
-    return srvGet("/divergences");
-  },
-  /** The community's FORM readings for these lemmas, keyed by lemma — the per-form view
-   *  of a community root reading. */
-  peerFormReadings(lemmas: string[]): Promise<Record<string, PeerIndication>> {
-    if (lemmas.length === 0) return Promise.resolve({});
-    return srvGet(`/peer-form-readings?lemmas=${encodeURIComponent(lemmas.join(","))}`);
+  /**
+   * ⚖ Forms I established whose meaning differs from the group's — computed LIVE on the remote.
+   * We send it the forms we have established (subject + our own meaning); it diffs them against
+   * the group's current readings and returns the differences, enriched here with the local root
+   * and case so a row can still link back into the board.
+   *
+   * Throws RemoteOffline / RemoteError(401|402) when not connected or not on a paid plan — the
+   * caller shows a "connect / subscribe" state rather than a bare empty list.
+   */
+  async divergences(): Promise<{ rows: Divergence[]; state: GroupState }> {
+    const established = (await fetchFormStatus()).filter((f) => f.status === "established");
+    const byLemma = new Map(established.map((f) => [f.lemma, f]));
+    const out = await remote.divergences(
+      established.map((f) => ({ subjectValue: f.lemma, meaning: f.meaning })));
+    const rows: Divergence[] = out.divergences.map((d) => {
+      const local = byLemma.get(d.subjectValue);
+      return {
+        lemma: d.subjectValue, root: local?.root ?? "", caseId: local?.case_id ?? "",
+        mine: d.mine, theirs: d.theirs,
+        claimId: d.claimId, version: d.version, authorId: d.authorId, dissents: d.dissents,
+      };
+    });
+    return { rows, state: { mine: established.length, theirs: out.globalTotal, overlap: out.overlap } };
   },
 };
 
@@ -381,7 +367,18 @@ export const archive = {
       if (lemma) q.set("lemma", lemma);
       if (root) q.set("root", root);
       if (surface) q.set("surface", surface);   // the word as written — keys the per-form refinement
-      return srvGet<IndicationsForWord>(`/indications/for-word?${q.toString()}`);
+      const own = await srvGet<IndicationsForWord>(`/indications/for-word?${q.toString()}`);
+      // The community's readings are a PAID, ONLINE layer, read live from the remote (the server
+      // always returns them empty). Only attempt it when the cached account has an active plan,
+      // and never let its failure (offline / lapsed / signed out) break the reader's own view.
+      const me = cachedMe();
+      if (me?.planActive && (root || lemma)) {
+        try {
+          const c = await remote.communityReadings({ root, lemma });
+          return { ...own, communityRoot: c.communityRoot, communityLemma: c.communityLemma };
+        } catch { /* fall through to own-only */ }
+      }
+      return { ...own, communityRoot: [], communityLemma: [] };
     },
     /** Reader gloss data (primary root-indication text + refinements + rootless primaries). */
     gloss: async (): Promise<IndicationGloss> => {

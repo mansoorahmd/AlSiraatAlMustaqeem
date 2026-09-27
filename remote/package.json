@@ -11,6 +11,7 @@
     "migrate": "cross-env NODE_NO_WARNINGS=1 tsx src/migrate-cli.ts",
     "bootstrap": "cross-env NODE_NO_WARNINGS=1 tsx src/bootstrap-cli.ts",
     "set-password": "cross-env NODE_NO_WARNINGS=1 tsx src/set-password-cli.ts",
+    "set-plan": "cross-env NODE_NO_WARNINGS=1 tsx src/set-plan-cli.ts",
     "smoke": "cross-env NODE_NO_WARNINGS=1 tsx src/smoke-cli.ts",
     "demo:claims": "cross-env NODE_NO_WARNINGS=1 tsx src/demo-claims-cli.ts",
     "diagnose:pull": "cross-env NODE_NO_WARNINGS=1 tsx src/diagnose-pull-cli.ts",

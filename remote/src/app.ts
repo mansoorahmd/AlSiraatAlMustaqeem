@@ -15,16 +15,18 @@ import { config } from "./config.js";
 import { pgRunner } from "./db.js";
 import { sessionMiddleware } from "./session.js";
 import { requireRole, type Env } from "./roles.js";
+import { planActive, requirePlan, isPlan, type Plan } from "./plans.js";
 import {
   createInvite, bindLocalId, loadPrincipal, setDisplayName,
   validateInvite, emailTaken, finishRedeem, InviteError,
+  setPlan, userIdByEmail,
 } from "./invites.js";
 import {
   createSubmission, listMine, getSubmission, SubmissionError, type SubmissionItemInput,
 } from "./submissions.js";
 import {
   proposeClaim, review, claimsFor, globalReading, dissentsFor, establishAsMaintainer,
-  ClaimError, type SubjectKind, type Decision,
+  divergencesAgainstGlobal, communityReadingsFor, ClaimError, type SubjectKind, type Decision,
 } from "./claims.js";
 import { pullSince, STREAMS, type Cursors } from "./pull.js";
 
@@ -70,7 +72,27 @@ export function createApp(): Hono<Env> {
       id: me.id, role: me.role,
       email: p?.email ?? "", displayName: p?.displayName ?? "",
       localId: p?.localId ?? null,
+      // The billing axis. `planActive` is the one flag the app's feature gates read: the plan
+      // may be 'pro' but lapsed, so never let the app infer "paid" from the plan name alone.
+      plan: me.plan ?? "free",
+      planExpiresAt: me.planExpiresAt ?? null,
+      planActive: planActive(me),
     });
+  });
+
+  // Grant or revoke a plan. Maintainer-only, and never self-service in spirit — the manual
+  // stand-in for billing until it is wired (POST /plan or the set-plan CLI). `expiresInDays`
+  // omitted = a grant that never lapses; plan 'free' revokes and clears any expiry.
+  app.post("/plan", requireRole("maintainer"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as
+      { email?: string; plan?: string; expiresInDays?: number | null };
+    if (!body.email || !isPlan(body.plan)) {
+      return c.json({ detail: "email and a valid plan (free|pro) are required" }, 422);
+    }
+    const userId = await userIdByEmail(pgRunner, body.email);
+    if (!userId) return c.json({ detail: `no account for ${body.email}` }, 404);
+    await setPlan(pgRunner, { userId, plan: body.plan as Plan, expiresInDays: body.expiresInDays ?? null });
+    return c.json({ ok: true, email: body.email.trim().toLowerCase(), plan: body.plan });
   });
 
   app.post("/me/name", requireRole("reader"), async (c) => {
@@ -88,8 +110,10 @@ export function createApp(): Hono<Env> {
   });
 
   // --- submissions: local research offered upstream (Phase 4, additive kinds only) ---
-  // Guarded at `researcher`: a reader may pull the group's work but not publish into it.
-  app.post("/submissions", requireRole("researcher"), async (c) => {
+  // Guarded at `researcher` AND an active plan: publishing your work into the community is a paid
+  // action. (Moderation/establishment below stay role-only — the leader's staff run the community
+  // and must not be charged to do so; flip that by adding requirePlan there if the model changes.)
+  app.post("/submissions", requireRole("researcher"), requirePlan("pro"), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { items?: SubmissionItemInput[]; supersedes?: string | null };
     try {
@@ -116,8 +140,8 @@ export function createApp(): Hono<Env> {
 
   // --- claims: contending readings, review, establishment, dissent (Phase 5) ---
 
-  /** Offer your reading of a form or root. Must carry its argument (§12.1). */
-  app.post("/claims", requireRole("researcher"), async (c) => {
+  /** Offer your reading of a form or root. Must carry its argument (§12.1). Publishing → paid. */
+  app.post("/claims", requireRole("researcher"), requirePlan("pro"), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { subjectKind?: SubjectKind; subjectValue?: string; payload?: never };
     try {
@@ -145,6 +169,28 @@ export function createApp(): Hono<Env> {
 
   app.get("/claims/:id/dissents", requireRole("reader"), async (c) =>
     c.json(await dissentsFor(pgRunner, c.req.param("id"))));
+
+  /**
+   * ⚖ Where I stand apart — computed LIVE, the remote-only replacement for the old local
+   * mirror. The client sends the forms it has established; we diff against the group's current
+   * readings and return the differences. PAID: requireRole gates *who*, requirePlan gates
+   * *paid-for* — the group's readings never land on the client's disk, so the gate is real.
+   */
+  app.post("/divergences", requireRole("reader"), requirePlan("pro"), async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as
+      { forms?: { subjectKind?: SubjectKind; subjectValue: string; meaning: string }[] };
+    return c.json(await divergencesAgainstGlobal(pgRunner, body.forms ?? []));
+  });
+
+  /**
+   * The community's readings of a word (its root + its exact form), for the reader's indication
+   * chips — the live, gated replacement for the old local derived_peer_indications mirror. PAID.
+   */
+  app.get("/community/readings", requireRole("reader"), requirePlan("pro"), async (c) =>
+    c.json(await communityReadingsFor(pgRunner, {
+      root: c.req.query("root") || null,
+      lemma: c.req.query("lemma") || null,
+    })));
 
   /**
    * The pull (Phase 6). A cursor walk over append-only streams: give me everything with

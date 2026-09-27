@@ -4,30 +4,33 @@
 // design is for: it is NOT a conflict to resolve. Both readings are shown, side by side, and
 // neither is changed. You may adopt theirs, keep yours, or simply know that you differ — that
 // last one is a legitimate, permanent outcome.
+//
+// Monetization: the group's readings are a PAID, ONLINE layer. Nothing of theirs is stored
+// locally; this screen computes divergence live on the remote (your established forms diffed
+// against the group's current readings). Signed out, unpaid, or offline, it says so and shows
+// nothing of the group's — your own established meanings are untouched and remain fully offline.
 
 import { useCallback, useEffect, useState } from "react";
 import { group, type Divergence, type GroupState } from "../persistence/db";
-import { remote, RemoteOffline } from "../api/remote";
+import { RemoteOffline, RemoteError } from "../api/remote";
 import { useAppDispatch } from "../state/store";
 
-const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
+const spaced = (r: string) => r.split("").join(" "); // nbsp: root letters must not wrap (ه د ي)
 
 /**
- * An empty list has four quite different causes, and saying only "nothing" reads as breakage.
+ * An empty list has several quite different causes, and saying only "nothing" reads as breakage.
  * Each branch names the ONE thing missing, so the reader knows whether to act or to be content.
  */
 function explainEmpty(st: GroupState | null): string {
   if (!st) return "Loading…";
-  const pulled = Object.values(st.cursors ?? {}).some((n) => n > 0);
-  if (!pulled) return "Nothing pulled yet. Sync to see what the group has established.";
   if (st.theirs === 0) {
-    return "Synced — the group hasn't established any readings yet, so there is nothing to compare against.";
+    return "The group hasn't established any readings yet, so there is nothing to compare against.";
   }
   if (st.mine === 0) {
-    return `Synced. The group holds ${st.theirs} reading${st.theirs === 1 ? "" : "s"}, but you haven't established any form meanings of your own yet — establish one in a case and it will be compared here.`;
+    return `The group holds ${st.theirs} reading${st.theirs === 1 ? "" : "s"}, but you haven't established any form meanings of your own yet — establish one in a case and it will be compared here.`;
   }
   if (st.overlap === 0) {
-    return `Synced. You and the group have both settled meanings, but not for any of the same forms yet — no overlap, so nothing to compare.`;
+    return "You and the group have both settled meanings, but not for any of the same forms yet — no overlap, so nothing to compare.";
   }
   return `Your established meanings agree with the group's on all ${st.overlap} form${st.overlap === 1 ? "" : "s"} you have both settled.`;
 }
@@ -37,62 +40,32 @@ export function Divergences() {
   const [rows, setRows] = useState<Divergence[]>([]);
   const [st, setSt] = useState<GroupState | null>(null);
   const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
+  /** A gate message that replaces the list entirely (signed out / unpaid / offline). */
+  const [gate, setGate] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    setBusy(true); setErr(null); setGate(null);
     try {
-      const [d, s] = await Promise.all([group.divergences(), group.state()]);
-      setRows(d); setSt(s);
-    } catch (e) { setErr((e as Error).message); }
+      const { rows, state } = await group.divergences();
+      setRows(rows); setSt(state);
+    } catch (e) {
+      // The community layer is optional and paid: distinguish "not reachable" and "not entitled"
+      // from a real error, and in each case show the group nothing rather than a broken screen.
+      if (e instanceof RemoteOffline) {
+        setGate("The research community isn't reachable — you may be offline. Your own work is unaffected.");
+      } else if (e instanceof RemoteError && e.status === 401) {
+        setGate("Sign in to the research community to compare your readings with the group's.");
+      } else if (e instanceof RemoteError && e.status === 402) {
+        setGate("Comparing with the community is part of the research plan. Upgrade to see where you stand apart.");
+      } else {
+        setErr((e as Error).message);
+      }
+      setRows([]); setSt(null);
+    } finally { setBusy(false); }
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
-
-  /** Fetch pages from the remote and hand each to the local server to apply. */
-  const sync = async () => {
-    setBusy(true); setErr(null); setNote(null);
-    try {
-      let { cursors } = await group.state();
-      let forms = 0, dissents = 0, peers = 0, pages = 0;
-      for (;;) {
-        const page = await remote.pull(cursors);
-        const applied = await group.apply(page);
-        forms += applied.globalForms; dissents += applied.dissents;
-        peers += applied.peerIndications;
-        cursors = applied.cursors; pages++;
-        if (!page.more || pages > 50) break;      // guard against a runaway loop
-      }
-      const n = (c: number, one: string) => `${c} ${one}${c === 1 ? "" : "s"}`;
-      setNote(
-        `Received ${n(forms, "established reading")}, ${n(peers, "community indication")} and ${n(dissents, "dissent")}.`);
-      await refresh();
-    } catch (e) {
-      setErr(e instanceof RemoteOffline
-        ? "The research server isn't reachable — you may be offline, or not signed in."
-        : (e as Error).message);
-    } finally { setBusy(false); }
-  };
-
-  /**
-   * Drop everything pulled and walk from scratch.
-   *
-   * A pull only ever adds or updates — it cannot delete. So a reading that has vanished
-   * upstream (a redaction, or a demo you cleaned out) lingers locally until you reset. This is
-   * always safe: it touches only the derived_* tables, never your own work, and a resync
-   * rebuilds whatever the group still holds.
-   */
-  const resetAndResync = async () => {
-    setBusy(true); setErr(null); setNote(null);
-    try {
-      await group.reset();
-      await refresh();
-      await sync();   // rebuild from what the remote holds NOW
-    } catch (e) {
-      setErr((e as Error).message);
-      setBusy(false);
-    }
-  };
 
   return (
     <div className="sheet home">
@@ -103,27 +76,24 @@ export function Divergences() {
             <span className="resume-ref">
               {rows.length} form{rows.length === 1 ? "" : "s"}
               <span className="resume-ayah">
-                {" "}· {st?.groupReadings ?? 0} group reading{st?.groupReadings === 1 ? "" : "s"} held
+                {" "}· {st?.theirs ?? 0} group reading{st?.theirs === 1 ? "" : "s"} held
               </span>
             </span>
           </span>
           <div className="diverge-actions">
-            <button className="ctl primary" disabled={busy} onClick={sync}>
-              {busy ? "Syncing…" : "Sync with the group"}
+            <button className="ctl primary" disabled={busy} onClick={() => void refresh()}>
+              {busy ? "Checking…" : "Refresh"}
             </button>
-            <button
-              className="ctl"
-              disabled={busy}
-              title="Drop everything pulled and fetch again — use this after readings are removed upstream. Never touches your own work."
-              onClick={resetAndResync}
-            >Reset &amp; re-sync</button>
           </div>
         </div>
-        {note && <p className="acct-hint">{note}</p>}
         {err && <p className="acct-error" role="alert">{err}</p>}
       </header>
 
-      {rows.length === 0 ? (
+      {gate ? (
+        <section className="home-card">
+          <p className="home-empty">{gate}</p>
+        </section>
+      ) : rows.length === 0 ? (
         <section className="home-card">
           <p className="home-empty">{explainEmpty(st)}</p>
         </section>
