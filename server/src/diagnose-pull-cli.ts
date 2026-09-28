@@ -1,6 +1,6 @@
 // What would a client actually receive right now?
 //
-//   npm run remote:diagnose
+//   npm run server:diagnose
 //
 // Answers, against YOUR Postgres, the only question that matters when the app shows nothing:
 // is there anything to send, and does the pull send it? Everything here is read-only.
@@ -22,7 +22,7 @@ try {
       WHERE table_name = 'claim_versions' AND column_name = 'created_at'`);
   if (!hasCreatedAt) {
     console.log("\n  ✗ claim_versions.created_at is MISSING — migration 0004 has not run.");
-    console.log("    The pull cannot work until it does:  npm run remote:migrate\n");
+    console.log("    The pull cannot work until it does:  npm run server:migrate\n");
     process.exitCode = 1;
   }
 
@@ -37,7 +37,7 @@ try {
 
   if (rows.claimVersions === 0) {
     console.log("\n  Nothing has been proposed, so a client would correctly receive nothing.");
-    console.log("  Create something to pull:  npm run remote:demo:keep\n");
+    console.log("  Create something to pull:  npm run server:demo:keep\n");
   }
 
   if (hasCreatedAt) {
@@ -62,7 +62,7 @@ try {
   }
 } catch (e) {
   console.error(`\ndiagnose: ${(e as Error).message}`);
-  console.error("If this mentions a missing column, run: npm run remote:migrate\n");
+  console.error("If this mentions a missing column, run: npm run server:migrate\n");
   process.exitCode = 1;
 } finally {
   await pool.end();

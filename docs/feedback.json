@@ -98,6 +98,20 @@
       "section": "system",
       "text": "Done: the local server is gone (server/src/{server,app,state}.ts, run-dev scripts, the Electron server bundle, the Vite proxy). Two things run: Postgres and the research server; npm run dev starts it with the web app, npm test runs both suites. The desktop app serves app/dist from a tiny built-in file server and ships no quran.db. server/ remains as the corpus code the research server runs (renaming it is open).",
       "status": "done"
+    },
+    {
+      "ts": "2026-09-28T02:00:00Z",
+      "author": "Maintainer",
+      "section": "system",
+      "text": "Rename: yes. Directory renaming is a good idea now because the remote directory is also misleading.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-09-28T02:00:00Z",
+      "author": "Claude",
+      "section": "system",
+      "text": "Done: server/ -> corpus-core/ (the corpus code), then remote/ -> server/ (the research server), REMOTE.md -> SERVER.md, npm scripts remote:* -> server:*, the compose service and image -> server / mqrg-server. REMOTE_* env vars unchanged.",
+      "status": "done"
     }
   ]
 }

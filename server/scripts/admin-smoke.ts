@@ -1,6 +1,6 @@
 // Smoke of the Admin screen's endpoints through the REAL remote app — reads only, nothing
 // changed: as the first maintainer (via a temporary API token) and as nobody.
-// Run: npx tsx remote/scripts/admin-smoke.ts
+// Run: npx tsx server/scripts/admin-smoke.ts
 import { createApp } from "../src/app.js";
 import { pool, corpusPool, pgRunner } from "../src/db.js";
 import { createToken } from "../src/api-tokens.js";

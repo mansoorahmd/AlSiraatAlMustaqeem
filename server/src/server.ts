@@ -11,7 +11,7 @@ import { warmCorpus } from "../../corpus-core/src/corpus-services.js";
 try { assertDeployable(); } catch (e) { console.error((e as Error).message); process.exit(1); }
 
 const server = serve({ fetch: createApp().fetch, port: config.port }, (info) => {
-  console.log(`MQRG remote on port ${info.port} — public address ${config.baseUrl}`);
+  console.log(`MQRG research server on port ${info.port} — public address ${config.baseUrl}`);
 });
 void verifyMailer();
 

@@ -28,11 +28,11 @@ services:
       retries: 10
     shm_size: 256mb
 
-  remote:
+  server:
     build:
       context: ..
-      dockerfile: remote/Dockerfile
-    image: mqrg-remote
+      dockerfile: server/Dockerfile
+    image: mqrg-server
     restart: unless-stopped
     depends_on:
       db: { condition: service_healthy }
@@ -50,13 +50,13 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
     volumes:
-      # put quran.db here (deploy/corpus/quran.db) for `docker compose run --rm remote corpus-migrate`
+      # put quran.db here (deploy/corpus/quran.db) for `docker compose run --rm server corpus-migrate`
       - ./corpus:/corpus:ro
 
   caddy:
     image: caddy:2
     restart: unless-stopped
-    depends_on: [remote]
+    depends_on: [server]
     ports:
       - "80:80"
       - "443:443"

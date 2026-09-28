@@ -167,7 +167,7 @@ export async function migrateCorpus(opts: MigrateOptions): Promise<MigrateResult
         ["source_sha256", sourceSha256],
         ["source_bytes", String(sourceBytes)],
         ["migrated_at", new Date().toISOString()],
-        ["migrator", "remote/src/corpus/load.ts v1"],
+        ["migrator", "server/src/corpus/load.ts v1"],
       ];
       for (const [k, v] of meta) {
         await r.query(`INSERT INTO ${SCHEMA}.corpus_meta ("key", "value") VALUES ($1, $2)`, [k, v]);

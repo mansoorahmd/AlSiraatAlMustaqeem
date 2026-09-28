@@ -2,7 +2,7 @@
 // invited. This creates (or promotes) one directly against the database — a deliberate
 // out-of-band admin act, not an HTTP route.
 //
-//   npm run bootstrap -w @alsiraat/remote -- me@example.org "My Name"
+//   npm run bootstrap -w @alsiraat/server -- me@example.org "My Name"
 
 import { pool, pgRunner } from "./db.js";
 

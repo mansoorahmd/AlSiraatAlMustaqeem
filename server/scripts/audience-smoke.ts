@@ -1,7 +1,7 @@
 // Smoke of roles + audiences through the REAL remote app on real Postgres, with throwaway
 // accounts (created and removed here): a researcher publishes a reading for "scholars on Pro",
 // it is established, and two readers on Pro — a scholar and a plain reader — ask for it.
-// Run: npx tsx remote/scripts/audience-smoke.ts
+// Run: npx tsx server/scripts/audience-smoke.ts
 import { randomBytes } from "node:crypto";
 import { createApp } from "../src/app.js";
 import { pool, corpusPool, researchPool, pgRunner } from "../src/db.js";

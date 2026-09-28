@@ -1,5 +1,5 @@
 > **History.** This records the Python → TypeScript port. The local API it describes (`corpus-core/` on
-> :8000, `/api/v1`) has since been retired: the research server (`remote/`) serves everything — see
+> :8000, `/api/v1`) has since been retired: the research server (`server/`) serves everything — see
 > INSTRUCTIONS.md.
 
 # Backend migration: Python → TypeScript (single deployable app)

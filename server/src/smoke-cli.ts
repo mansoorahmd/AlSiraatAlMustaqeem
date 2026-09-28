@@ -3,7 +3,7 @@
 // version, gen_random_uuid(), CHECK + FK enforcement, the invite flow, and the Better Auth
 // tables. Writes only to a temporary email/code and cleans up after itself.
 //
-//   npm run smoke -w @alsiraat/remote
+//   npm run smoke -w @alsiraat/server
 
 import { pool, pgRunner as r } from "./db.js";
 import { createInvite, validateInvite, finishRedeem, bindLocalId, loadPrincipal } from "./invites.js";
@@ -44,7 +44,7 @@ try {
     const rows = await r.query("SELECT name FROM _migrations ORDER BY name");
     const names = rows.map((x) => x.name as string);
     for (const need of ["0001_init.sql", "0002_auth.sql"]) {
-      if (!names.includes(need)) throw new Error(`${need} is missing — run: npm run remote:migrate`);
+      if (!names.includes(need)) throw new Error(`${need} is missing — run: npm run server:migrate`);
     }
     return names.join(", ");
   });

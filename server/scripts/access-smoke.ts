@@ -1,6 +1,6 @@
 // End-to-end smoke of resource access through the REAL remote app (createApp, real Postgres, real
 // corpus): the corpus gate, making it public, locking one translation — then it restores every
-// rule it found. Run: npx tsx remote/scripts/access-smoke.ts
+// rule it found. Run: npx tsx server/scripts/access-smoke.ts
 import { createApp } from "../src/app.js";
 import { pool, pgRunner } from "../src/db.js";
 import { listRules, setRule, removeRule } from "../src/resource-access.js";

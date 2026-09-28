@@ -1,7 +1,7 @@
 // A throwaway maintainer for checking the Admin screen in a browser, made through the app's own
 // invite flow — and removed again. Credentials are written to a file you name, never printed.
-//   npx tsx remote/scripts/ui-test-account.ts create <credentials-file>
-//   npx tsx remote/scripts/ui-test-account.ts remove
+//   npx tsx server/scripts/ui-test-account.ts create <credentials-file>
+//   npx tsx server/scripts/ui-test-account.ts remove
 import { writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { createApp } from "../src/app.js";

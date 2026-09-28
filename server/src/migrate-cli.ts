@@ -1,4 +1,4 @@
-// Apply pending migrations to the configured Postgres: `npm run migrate -w @alsiraat/remote`.
+// Apply pending migrations to the configured Postgres: `npm run migrate -w @alsiraat/server`.
 
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";

@@ -72,7 +72,7 @@ npm run corpus -w @alsiraat/corpus-core -- version
 ## The corpus in Postgres
 
 The corpus lives on the research server, in Postgres, and **the app and the MCP read it from there**
-(`/corpus`, plan-gated — REMOTE.md). `quran.db` remains the source it's loaded from, the local driver
+(`/corpus`, plan-gated — SERVER.md). `quran.db` remains the source it's loaded from, the local driver
 (tests, `MQ_CORPUS=local` for the MCP), and the reference parity is measured against.
 
 ### Step 1 — moving the data (done)
@@ -84,7 +84,7 @@ npm run corpus:migrate -- --verify  # re-verify an existing copy (e.g. after rep
 
 Source is `QF_QURAN_DB` (default `./quran.db`), opened read-only. Target is the remote's
 `DATABASE_URL`, schema **`corpus`** — the remote's research tables in `public` are never touched.
-Code: `remote/src/corpus/` (`schema.ts`, `load.ts`, `verify.ts`); tests `remote/test/corpus-migrate.test.ts`.
+Code: `server/src/corpus/` (`schema.ts`, `load.ts`, `verify.ts`); tests `server/test/corpus-migrate.test.ts`.
 
 **Guarantees.** Refuses a non-UTF8 database before touching anything (Arabic would be corrupted).
 The whole rebuild is **one transaction** — a failed load rolls back and the previous copy survives.
@@ -116,12 +116,12 @@ written once**, async, against a small interface — `CorpusDb {query, one, scal
 | Driver | Where | Used by |
 |---|---|---|
 | `sqliteCorpus(db)` | `corpus-core/src/corpus-db.ts` | tests, the parity check, the MCP with `MQ_CORPUS=local` |
-| `pgCorpus(runner)` | `remote/src/corpus/pg-corpus.ts` (`?` → `$n`) | the research server's `/corpus` |
+| `pgCorpus(runner)` | `server/src/corpus/pg-corpus.ts` (`?` → `$n`) | the research server's `/corpus` |
 
 `createCorpusServices(db)` (`corpus-core/src/corpus-services.ts`) builds all of them — content, roots,
 linkages, wazn, expressions, echoes, spellings, free-text, similarity, word forms. The route
 builders in `corpus-core/src/routes/` take the services plus optional *entitlements* (translation and
-lexicon filters); the research server mounts them at `/corpus` (`remote/src/corpus/serve.ts`) with
+lexicon filters); the research server mounts them at `/corpus` (`server/src/corpus/serve.ts`) with
 the plan filters plugged in, and the tests mount the same builders over `quran.db`. Expensive indexes are built
 once per process (`once()`); the cloud warms them at startup (`warmCorpus`).
 
@@ -141,7 +141,7 @@ the JSON of every answer over HTTP, key order included. Full sweep (2026-09-26):
 all identical** — every chapter in every script, every verse (words, translations, echoes, similar
 verses, neighbours, wazn, spellings), navigation filters, every root (list, detail, forms,
 occurrences, linkages), root pairs, word occurrences, phrase / expression / free-text search.
-`-- --quick` samples ~3,000. `remote/test/corpus-parity.test.ts` runs ~50 URLs on a fixture in CI, and
+`-- --quick` samples ~3,000. `server/test/corpus-parity.test.ts` runs ~50 URLs on a fixture in CI, and
 `corpus-core/test/mcp-remote-corpus.test.ts` proves the MCP's tools answer identically over HTTP.
 
 **Still open:** the signed patch channel (`corpus-core/src/corpus/patch.ts`) writes SQLite; corrections

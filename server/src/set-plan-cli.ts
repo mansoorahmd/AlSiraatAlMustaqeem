@@ -1,9 +1,9 @@
 // Grant or revoke a user's plan tier directly against the database — a maintainer act, done out
 // of band like `bootstrap` / `set-password`, and the manual stand-in for billing until it is wired.
 //
-//   npm run set-plan -w @alsiraat/remote -- me@example.org pro          # grant, no expiry
-//   npm run set-plan -w @alsiraat/remote -- me@example.org scholar 30   # grant for 30 days
-//   npm run set-plan -w @alsiraat/remote -- me@example.org free         # revoke
+//   npm run set-plan -w @alsiraat/server -- me@example.org pro          # grant, no expiry
+//   npm run set-plan -w @alsiraat/server -- me@example.org scholar 30   # grant for 30 days
+//   npm run set-plan -w @alsiraat/server -- me@example.org free         # revoke
 //
 // The tier must exist in the ladder (see `npm run access -- tiers`). `role` (what you may do) is
 // set by invites; `plan` (what you paid for) is set here. They are independent — see plans.ts.

@@ -71,11 +71,11 @@ No research schema, no auth — can run in parallel with Phase 3.
 
 ## Phase 3 — Remote foundation: Postgres + Better Auth + roles
 
-- [x] **3.1 Stand up the remote research service** — ✅ new `remote/` workspace (Hono + `pg`),
+- [x] **3.1 Stand up the remote research service** — ✅ new `server/` workspace (Hono + `pg`),
   full schema in `migrations/0001_init.sql`, forward-only idempotent migration runner + CLI,
   service skeleton. Schema validated against real Postgres via **PGlite** (`migrations.test.ts`).
   Defaults to `postgres://postgres:researchgate@localhost:5432/researchgate`. (You run `createdb`
-  + `npm run remote:migrate` on your box.)
+  + `npm run server:migrate` on your box.)
 - [x] **3.2 Better Auth** — ✅ `src/auth.ts`: magic-link plugin, mapped onto our snake_case
   `users`, year-long session refreshed weekly; `0002_auth.sql` adds session/account/verification.
   Invite-only enforced twice: `disableSignUp: true` (Better Auth never creates a user) **and**
@@ -111,7 +111,7 @@ No research schema, no auth — can run in parallel with Phase 3.
   probes `/health` with `mode: "no-cors"` to tell **down** from **origin-blocked** and says which.
   ⚠ Still needs your local run: the in-app sign-in window and the cross-origin session cookie.
 
-**Phase 3 complete** — also `npm run smoke -w @alsiraat/remote`: 9/9 against real Postgres
+**Phase 3 complete** — also `npm run smoke -w @alsiraat/server`: 9/9 against real Postgres
 (version, migrations, Better Auth tables, `gen_random_uuid()` default, role CHECK, dissent FK,
 invite flow via node-postgres, `local_id` binding, cleanup).
 
@@ -121,9 +121,9 @@ invite flow via node-postgres, `local_id` binding, cleanup).
 
 Smallest end-to-end loop; cannot conflict, so no claim machinery yet.
 
-- [x] **4.1 Submission snapshot model** — ✅ `remote/src/submissions.ts`: payload frozen at submit
+- [x] **4.1 Submission snapshot model** — ✅ `server/src/submissions.ts`: payload frozen at submit
   time, `supersedes` pointer (own submissions only), and the id is **content-addressed**
-  (`sub_` + base32 sha256 of author + items, `remote/src/ids.ts`) so re-submitting the identical
+  (`sub_` + base32 sha256 of author + items, `server/src/ids.ts`) so re-submitting the identical
   bundle is idempotent instead of duplicating — a stronger guarantee than `expect_version`, which
   isn't needed while items are frozen snapshots rather than live reads.  ⇢ 0.2, 3.4
 - [x] **4.2 Submit additive kinds** — ✅ note / question / evidence land as attributed rows;
@@ -178,7 +178,7 @@ The convergence-free heart. Build after the pipe is proven but from the Phase 0 
 
 ## Phase 6 — Inbound pull + reader integration
 
-- [x] **6.1 Pull** — ✅ `remote/src/pull.ts`: `GET /pull`, a cursor walk over append-only rows.
+- [x] **6.1 Pull** — ✅ `server/src/pull.ts`: `GET /pull`, a cursor walk over append-only rows.
   Replayable, resumable, and all-zero cursors are a full resync. Locally
   `derived_global_forms` / `derived_dissents` / `derived_peer_indications` /
   `derived_sync_state` + `applyPull` (upsert by key, unknown payload fields kept verbatim).
@@ -221,7 +221,7 @@ The convergence-free heart. Build after the pipe is proven but from the Phase 0 
     no ✕ — you cannot promote or edit someone else's reading. To hold what they hold, you write
     it yourself, which keeps every indication in your database one you actually chose.
 
-  *AC:* resync is idempotent and can't damage local work ✅ — `remote/test/pull.test.ts` (9, new:
+  *AC:* resync is idempotent and can't damage local work ✅ — `server/test/pull.test.ts` (9, new:
   `pullSince` had no test of its own before) and `corpus-core/test/sync-boundary.test.ts` (12,
   including that a peer-indication pull leaves `word_indications` byte-identical and that
   re-pulling updates in place rather than duplicating). Divergence screen ✅; **still to come:**
@@ -246,7 +246,7 @@ The convergence-free heart. Build after the pipe is proven but from the Phase 0 
    2 (independent — runs any time after 0)
 ```
 
-Phase **2 (corpus)** and Phase **3 (remote/auth)** are independent and can run in parallel;
+Phase **2 (corpus)** and Phase **3 (server/auth)** are independent and can run in parallel;
 both only need Phase 0 done. Everything from 4 onward is the research channel and is linear.
 
 ## Definition of done (per phase)

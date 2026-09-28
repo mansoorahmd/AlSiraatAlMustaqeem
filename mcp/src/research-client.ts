@@ -1,6 +1,6 @@
 // The reader's research as the MCP's tools see it — exactly the reads and writes they make, in
 // their account on the research server, over HTTP with REMOTE_TOKEN
-// (remote/src/research/routes.ts). The server applies the AI write boundary to every token
+// (server/src/research/routes.ts). The server applies the AI write boundary to every token
 // request (tagged 'ai', add-only, never primary, no deletes), on top of the MCP's own guard
 // (core.ts, cases.ts).
 

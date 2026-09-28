@@ -134,7 +134,7 @@ Two things run: **Postgres** and the **research server**. The app (in a browser,
 window) and the MCP are clients of the research server; nothing else is a server.
 
 ```
-your machine                              research server (remote/, :8100)
+your machine                              research server (server/, :8100)
   app  (Vite :5174, or desktop) ─ cookie ─▶  sign-in · gates (role / plan / audience)
   MCP  (stdio, started by Claude) ─ token ─▶  /corpus · /research · /community · /admin
                                                       │
@@ -145,7 +145,7 @@ your machine                              research server (remote/, :8100)
 ```
 AlSiraatAlMustaqeem/
 ├── app/                  # React + Vite single-page app (the reader & investigation UI)
-├── remote/               # the research server: corpus, research, accounts, community (Postgres)
+├── server/               # the research server: corpus, research, accounts, community (Postgres)
 ├── corpus-core/          # the corpus code (search, roots, similarity, …) + its golden-parity tests
 ├── mcp/                  # MCP server (stdio) — lets an AI study with you
 ├── electron/             # the desktop window around the built app
@@ -157,8 +157,8 @@ AlSiraatAlMustaqeem/
 - **`app/`** — the front end (React 18 + Vite + TypeScript). Reads the **corpus** from the
   research server (`${VITE_REMOTE_URL}/corpus`, default `http://localhost:8100/corpus`), and reads and
   writes your **research** in your account there (`${VITE_REMOTE_URL}/research`).
-- **`remote/`** — the research server (Hono + Postgres + Better Auth): the corpus, every account's
-  private research (`remote/src/research/`), accounts, roles, plans, the community. See `REMOTE.md`
+- **`server/`** — the research server (Hono + Postgres + Better Auth): the corpus, every account's
+  private research (`server/src/research/`), accounts, roles, plans, the community. See `SERVER.md`
   and `CORPUS.md`.
 - **`corpus-core/`** — the corpus code and its route builders, which the research server runs over
   Postgres. `corpus-core/src/corpus-db.ts` also drives it over
@@ -191,21 +191,21 @@ First time on a machine:
 
 ```bash
 npm install                                          # every workspace
-npm run remote:migrate                               # create/upgrade the tables (also after pulling new migrations)
+npm run server:migrate                               # create/upgrade the tables (also after pulling new migrations)
 npm run corpus:migrate                               # load quran.db into Postgres (~20 s)
-npm run bootstrap -w @alsiraat/remote -- you@example.org "Your Name"     # the first maintainer
-npm run set-password -w @alsiraat/remote -- you@example.org 'a password'
-npm run set-plan -w @alsiraat/remote -- you@example.org pro             # or open the corpus in Admin
+npm run bootstrap -w @alsiraat/server -- you@example.org "Your Name"     # the first maintainer
+npm run set-password -w @alsiraat/server -- you@example.org 'a password'
+npm run set-plan -w @alsiraat/server -- you@example.org pro             # or open the corpus in Admin
 ```
 
 The research server does **not** apply migrations when it starts in development — run
-`npm run remote:migrate` after pulling a change that adds one (the Docker deployment applies them on
+`npm run server:migrate` after pulling a change that adds one (the Docker deployment applies them on
 start).
 
 Other commands:
 
 ```bash
-npm test                          # both test suites (corpus-core/, remote/)
+npm test                          # both test suites (corpus-core/, server/)
 npm run typecheck                 # every workspace
 npm run corpus:parity -- --quick  # prove Postgres answers exactly as quran.db
 npm start                         # build the app and preview it on :8000
@@ -219,7 +219,7 @@ npm run desktop:dist              # desktop installers → dist-desktop/
 **In plain terms.** The app is one web build (optionally wrapped in a desktop window). It
 **reads** the fixed Qur'an corpus from the research server (Postgres, loaded from `quran.db` and
 proven identical), and **reads and writes** the reader's personal research **in their account** on
-the same server — private to each account by row-level security (REMOTE.md, "Your research, in
+the same server — private to each account by row-level security (SERVER.md, "Your research, in
 your account"). Nothing of the research is kept on the reader's machine. Two jobs:
 
 - **The corpus is the reference material** — the Qur'an and everything known *about* its
@@ -244,9 +244,9 @@ archived Python pipeline (see "How quran.db was built" below); day-to-day you ju
 existing file.
 
 ### Your research — in your account (read-write)
-Schema `research` on the research server (`remote/migrations/0010_research_rls.sql`), one set of
+Schema `research` on the research server (`server/migrations/0010_research_rls.sql`), one set of
 tables for every account, each row carrying its `user_id` and visible only to that account.
-The code is `remote/src/research/` (`store.ts` the queries, `routes.ts` the HTTP routes, `serve.ts`
+The code is `server/src/research/` (`store.ts` the queries, `routes.ts` the HTTP routes, `serve.ts`
 the per-request binding to the signed-in user).
 
 Tables: `cases`, `form_research`, `form_revisions`, `trails`, `notes`, `user_root_meanings`,

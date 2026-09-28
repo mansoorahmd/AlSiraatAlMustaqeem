@@ -1,8 +1,8 @@
 // Remove EVERY demo person and their work.
 //
-//   npm run remote:demo:clean
+//   npm run server:demo:clean
 //
-// Each `remote:demo:keep` run seeds fresh fake people (Amina, Bilal, moderators) tagged with a
+// Each `server:demo:keep` run seeds fresh fake people (Amina, Bilal, moderators) tagged with a
 // timestamp, all under @demo.invalid. Run the demo a few times and the community list fills with
 // duplicate readings from different fake authors — which is correct behaviour (different authors
 // are different claims) but is noise. This wipes all of them in one go. It touches nothing whose

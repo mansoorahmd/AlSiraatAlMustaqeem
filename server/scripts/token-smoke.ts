@@ -1,6 +1,6 @@
 // End-to-end smoke of API-token auth through the REAL remote app: mint a token for an existing
 // account, call as it, revoke it, confirm it no longer works — then delete it.
-// Run: npx tsx remote/scripts/token-smoke.ts
+// Run: npx tsx server/scripts/token-smoke.ts
 import { createApp } from "../src/app.js";
 import { pool, corpusPool, pgRunner } from "../src/db.js";
 import { createToken, revokeToken } from "../src/api-tokens.js";

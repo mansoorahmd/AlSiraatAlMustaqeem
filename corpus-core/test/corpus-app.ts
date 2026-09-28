@@ -1,5 +1,5 @@
 // The corpus routes over quran.db, mounted at /corpus — what the golden-parity tests call. It's
-// the same route code the research server mounts at /corpus (remote/src/corpus/serve.ts), over the
+// the same route code the research server mounts at /corpus (server/src/corpus/serve.ts), over the
 // SQLite driver instead of Postgres.
 
 import { Hono } from "hono";

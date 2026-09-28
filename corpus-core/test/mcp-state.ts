@@ -9,7 +9,7 @@ import { createCorpusServices } from "../src/corpus-services.js";
 import { localReads } from "../../mcp/src/corpus-client.js";
 import { remoteResearch, type McpResearch } from "../../mcp/src/research-client.js";
 import type { McpState } from "../../mcp/src/core.js";
-import { researchHarness, type ResearchHarness } from "../../remote/test/research-harness.js";
+import { researchHarness, type ResearchHarness } from "../../server/test/research-harness.js";
 
 const QURAN = process.env.QF_QURAN_DB ?? resolve(import.meta.dirname, "..", "..", "quran.db");
 export const READER = { id: "44444444-4444-4444-8444-444444444444", email: "reader@example.org", name: "Reader" };

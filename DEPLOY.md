@@ -1,6 +1,6 @@
 # Deploying the research server
 
-The research server (`remote/`) is the one piece that runs in the cloud: it serves the Qur'an
+The research server (`server/`) is the one piece that runs in the cloud: it serves the Qur'an
 corpus to every reader's app and MCP, and holds **every reader's research** (private to each account,
 by row-level security), accounts, roles, plans and the community. The app itself runs on the reader's machine (the
 desktop app, or `npm start`) and talks to this server over HTTPS.
@@ -65,8 +65,8 @@ secret, plain `http://`, SMTP chosen but not configured — and says exactly wha
 
 ```bash
 docker compose up -d --build
-docker compose logs -f remote      # "MQRG remote on port 8100", "email: SMTP ready"
-curl https://research.example.org/health     # {"status":"ok","service":"remote"}
+docker compose logs -f server      # "MQRG research server on port 8100", "email: SMTP ready"
+curl https://research.example.org/health     # {"status":"ok","service":"research-server"}
 ```
 
 The server applies any pending database migrations every time it starts.
@@ -81,19 +81,19 @@ scp quran.db you@your-vps:/opt/mqrg/deploy/corpus/quran.db
 
 # on the VPS
 cd /opt/mqrg/deploy
-docker compose run --rm remote corpus-migrate        # ~20 s; verifies every row
-docker compose restart remote                        # builds the search indexes (~1 min)
+docker compose run --rm server corpus-migrate        # ~20 s; verifies every row
+docker compose restart server                        # builds the search indexes (~1 min)
 ```
 
 Optionally prove it answers exactly like the local copy (takes ~2 minutes):
-`docker compose run --rm remote corpus-parity --quick`.
+`docker compose run --rm server corpus-parity --quick`.
 
 ## 5. The first maintainer
 
 ```bash
-docker compose run --rm remote bootstrap you@example.org "Your Name"
-docker compose run --rm remote set-password you@example.org 'a long password'
-docker compose run --rm remote set-plan you@example.org pro     # so you can read the corpus
+docker compose run --rm server bootstrap you@example.org "Your Name"
+docker compose run --rm server set-password you@example.org 'a long password'
+docker compose run --rm server set-plan you@example.org pro     # so you can read the corpus
 ```
 
 (`set-password` puts the password in your shell history — clear it with `history -d`, or change the
@@ -129,12 +129,12 @@ sign-in — use the desktop app, or allow cookies for the server's domain.
 
 | Task | Command (in `/opt/mqrg/deploy`) |
 |---|---|
-| Logs | `docker compose logs -f remote` |
+| Logs | `docker compose logs -f server` |
 | Update to the latest code | `git pull && docker compose up -d --build` |
-| Restart | `docker compose restart remote` |
+| Restart | `docker compose restart server` |
 | Status | `docker compose ps` |
-| An access change from the shell | `docker compose run --rm remote access show` |
-| Grant a plan | `docker compose run --rm remote set-plan them@example.org pro 30` |
+| An access change from the shell | `docker compose run --rm server access show` |
+| Grant a plan | `docker compose run --rm server set-plan them@example.org pro 30` |
 
 ### Backups
 
@@ -157,7 +157,7 @@ gunzip -c backups/researchgate-<stamp>.sql.gz | docker compose exec -T db psql -
 
 ### Email
 
-`docker compose logs remote | grep email` shows whether SMTP connected at startup. A reset email
+`docker compose logs server | grep email` shows whether SMTP connected at startup. A reset email
 that never arrives is almost always the sender domain's SPF/DKIM — set those up with your mail
 provider for the address in `SMTP_FROM`. To run without email for a while, set
 `EMAIL_TRANSPORT=console`: reset links are then printed to the log instead, and a maintainer can

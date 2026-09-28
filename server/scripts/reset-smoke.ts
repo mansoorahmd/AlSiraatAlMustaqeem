@@ -1,7 +1,7 @@
 // End-to-end smoke of the forgotten-password flow through the REAL remote app, on a throwaway
 // account that is deleted afterwards: request a reset (console transport — the email is captured
 // from the log), follow the link, set a new password, sign in with it; the old one no longer works.
-// Run: npx tsx remote/scripts/reset-smoke.ts
+// Run: npx tsx server/scripts/reset-smoke.ts
 import { randomBytes } from "node:crypto";
 import { createApp } from "../src/app.js";
 import { config } from "../src/config.js";

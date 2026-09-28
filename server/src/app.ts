@@ -68,7 +68,7 @@ export function createApp(): Hono<Env> {
   // Better Auth speaks Web-standard Request/Response — hand it the raw request
   app.all("/api/auth/*", (c) => auth.handler(c.req.raw));
 
-  app.get("/health", (c) => c.json({ status: "ok", service: "remote" }));
+  app.get("/health", (c) => c.json({ status: "ok", service: "research-server" }));
 
   // where a password-reset email lands (reset-page.ts); the reset itself is Better Auth's
   app.get("/reset-password", (c) => c.body(RESET_PAGE, 200, RESET_PAGE_HEADERS));

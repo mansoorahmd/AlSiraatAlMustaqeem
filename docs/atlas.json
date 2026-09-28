@@ -7,8 +7,8 @@
     "repoName": "AlSiraatAlMustaqeem",
     "arabic": "الصراط المستقيم",
     "oneLiner": "A detective's study for the Qur'an: meaning is earned from within the text (the organic Qur'anic methodology). Notice a word, open a case on its root family, gather every place the Book uses it, form a hypothesis, then weigh the classical dictionaries.",
-    "stack": "React + Vite + TypeScript SPA (app/), run on the reader's machine (browser, or the desktop window). The research server (remote/, Hono + Postgres + Better Auth) is the only server: the Qur'an corpus, every account's private research, accounts and the community. MCP server (mcp/) lets an AI study and propose, as its user. corpus-core/ is the corpus code library that the research server runs. Electron desktop wrapper (electron/).",
-    "run": "Postgres + `npm run dev` (research server :8100 and web app :5174). First time: npm install, npm run remote:migrate, npm run corpus:migrate, bootstrap/set-password/set-plan. After pulling a new migration: npm run remote:migrate (dev doesn't auto-migrate; Docker does)."
+    "stack": "React + Vite + TypeScript SPA (app/), run on the reader's machine (browser, or the desktop window). The research server (server/, Hono + Postgres + Better Auth) is the only server: the Qur'an corpus, every account's private research, accounts and the community. MCP server (mcp/) lets an AI study and propose, as its user. corpus-core/ is the corpus code library that the research server runs. Electron desktop wrapper (electron/).",
+    "run": "Postgres + `npm run dev` (research server :8100 and web app :5174). First time: npm install, npm run server:migrate, npm run corpus:migrate, bootstrap/set-password/set-plan. After pulling a new migration: npm run server:migrate (dev doesn't auto-migrate; Docker does)."
   },
   "principle": {
     "core": "Features are ROLE-based (what you may do); resources are PLAN-based (what you may read). Your research is private to your account; only what you publish is shared, only once approved, and only with the audience it names.",
@@ -38,11 +38,11 @@
       "path": "mcp/"
     },
     {
-      "id": "remote",
+      "id": "server",
       "name": "Research server",
       "runtime": "Hono + Postgres + Better Auth",
       "role": "Auth (cookie or API token), the role ladder, plan tiers, resource rules, the corpus (/corpus), every account's research (/research, row-level security), the community with audiences, Admin endpoints. Deployed with Docker + Caddy (DEPLOY.md).",
-      "path": "remote/",
+      "path": "server/",
       "port": 8100
     },
     {
@@ -59,7 +59,7 @@
       "access": "read-only, plan-gated (resource 'corpus')",
       "location": "cloud — the research server's DATABASE_URL",
       "holds": "Qur'an text in four scripts, per-word morphology (root/lemma/form), roots, ~10 classical lexicons, translations, search indexes. Copied from quran.db and verified exact.",
-      "load": "npm run corpus:migrate (-- --verify to re-verify only). remote/src/corpus/{schema,load,verify}.ts. 294,804 rows, 143.5 MB, 18 s.",
+      "load": "npm run corpus:migrate (-- --verify to re-verify only). server/src/corpus/{schema,load,verify}.ts. 294,804 rows, 143.5 MB, 18 s.",
       "collation": "every text column COLLATE \"C\" (= SQLite BINARY) so Arabic sorts identically.",
       "parity": "npm run corpus:parity — the SAME corpus routes over each driver, compared over HTTP. Full sweep 2026-09-26: 77,439 requests (every chapter, verse, root, root pair, word, search) — all identical. --quick samples ~3k."
     },
@@ -77,7 +77,7 @@
       "holds": "cases + board layout, form_research + form_revisions, trails, notes, word_indications (+ refinements), user_root_meanings, motifs, comparisons, settings, and the outbox of what was published.",
       "isolation": "Row-level security, enabled and FORCED on every table, one policy: user_id = the request's user (app.user_id), for reads and writes. Requests SET LOCAL ROLE mqrg_research (not a superuser, no BYPASSRLS), set app.user_id via set_config with a bound parameter from the principal, and search_path to research — all LOCAL to the transaction. No user bound = nothing visible, nothing writable. A draft is reachable only by its owner (and their own AI); staff included. Deleting an account cascades to its research.",
       "shape": "Every row carries user_id, which leads every key (migrations/0010_research_rls.sql). The store's SQL names no user: RLS filters and the user_id default fills it in. author_id = the account id. Tests: research-store.test.ts (what it does), research-cloud.test.ts (cross-account SQL refused, RLS forced on every table, the AI boundary).",
-      "code": "remote/src/research/{store,routes,boundary,pg-research,schema,serve}.ts, migrations/0010_research_rls.sql, 0011_research_account_only.sql",
+      "code": "server/src/research/{store,routes,boundary,pg-research,schema,serve}.ts, migrations/0010_research_rls.sql, 0011_research_account_only.sql",
       "notProtectedAgainst": "A database superuser (the operator) can read the tables directly, as in any hosted app.",
       "noFile": "Research lives only in the account: no research.db, no import/export (removed 2026-09-28; migration 0011 dropped the file-era owner table). Backed up with the database (deploy/backup.sh)."
     }
@@ -93,12 +93,12 @@
         "review": "moderator (fixed)",
         "establish, invite, administer": "maintainer (fixed, session only)"
       },
-      "file": "remote/src/roles.ts (guards, no DB), remote/src/role-ladder.ts (ladder, requireFeature, audiences)"
+      "file": "server/src/roles.ts (guards, no DB), server/src/role-ladder.ts (ladder, requireFeature, audiences)"
     },
     "plans": {
       "ladder": "DATA: table plan_tiers (name, rank, label). Seeded free (0) < pro (100); a maintainer adds e.g. student 50, scholar 200 in the Admin tab. free is always rank 0.",
       "meaning": "What you may READ. A higher rank unlocks everything a lower one does; a lapsed plan (users.plan_expires_at past) counts as free.",
-      "file": "remote/src/plans.ts (meetsPlan, effectiveRank)"
+      "file": "server/src/plans.ts (meetsPlan, effectiveRank)"
     },
     "resources": {
       "table": "resource_access (kind, key, min_plan). min_plan = a tier, 'free' (= any signed-in account), or NULL (= public, no sign-in).",
@@ -112,28 +112,28 @@
       },
       "noRule": "An item with no rule needs only what the corpus needs.",
       "refusal": "requireResource(kind) → 401 {detail} if a sign-in is needed, 402 {detail, resource, plan} if a higher plan is.",
-      "file": "remote/src/resource-access.ts (canRead, wholeMin, requireResource, itemFilter)"
+      "file": "server/src/resource-access.ts (canRead, wholeMin, requireResource, itemFilter)"
     },
     "edit": "In the app: Admin → Roles (the ladder, 'What each role may do'), Plan tiers, Who can read, Translations, Dictionaries, People. Scripted: npm run access / set-plan.",
     "billing": "Not wired yet. A maintainer grants plans in the Admin tab (or set-plan / POST /plan). That is the single seam a payment provider slots into.",
     "audiences": {
       "rule": "Every published result (claim version, submission) carries an audience: at least a role AND at least a plan (either may be empty). The author proposes it; the reviewer confirms or changes it when approving/establishing. Nothing is visible before approval except to its author and staff.",
       "enforcement": "Every community read — claims, the group's reading, dissents, readings/chips, divergences and their count, the pull — filters by the viewer's role rank and plan. Authors always see their own; staff (moderator+) see everything, since they review it. The community resource rule (plan) still applies to all of it.",
-      "file": "remote/src/role-ladder.ts makeAudienceCheck; claims.ts / pull.ts take a CanSee"
+      "file": "server/src/role-ladder.ts makeAudienceCheck; claims.ts / pull.ts take a CanSee"
     }
   },
   "auth": {
     "cookie": "Better Auth session cookie — the app (credentials: 'include').",
-    "apiTokens": "Personal API tokens (mqrg_…, stored as SHA-256; secret shown once) for headless clients — the MCP. Sent as `Authorization: Bearer`. Made in the app: Account → Connect an AI assistant (it prints a ready MCP config). remote/src/api-tokens.ts, session.ts. A token acts exactly as its user, so the MCP reads what that user's plan allows."
+    "apiTokens": "Personal API tokens (mqrg_…, stored as SHA-256; secret shown once) for headless clients — the MCP. Sent as `Authorization: Bearer`. Made in the app: Account → Connect an AI assistant (it prints a ready MCP config). server/src/api-tokens.ts, session.ts. A token acts exactly as its user, so the MCP reads what that user's plan allows."
   },
   "corpusCode": {
     "oneCodebase": "corpus-core/src/corpus-db.ts defines CorpusDb {query, one, scalar} (async). Every corpus service (content, roots, linkages, wazn, expressions, echoes, spellings, freetext, similarity, morphology) is written once against it.",
     "drivers": {
       "sqlite": "sqliteCorpus(db) — corpus-core/src/corpus-db.ts",
-      "postgres": "pgCorpus(runner) — remote/src/corpus/pg-corpus.ts (? → $n)"
+      "postgres": "pgCorpus(runner) — server/src/corpus/pg-corpus.ts (? → $n)"
     },
     "services": "createCorpusServices(db) in corpus-core/src/corpus-services.ts; warmCorpus builds the memoised indexes (the cloud warms them at startup).",
-    "routes": "corpus-core/src/routes/{content,roots,similarity,echoes,corpus}.ts take (services, entitlements). The research server mounts them at /corpus (remote/src/corpus/serve.ts) with the plan filters as entitlements; the tests mount the same builders over quran.db (corpus-core/test/corpus-app.ts).",
+    "routes": "corpus-core/src/routes/{content,roots,similarity,echoes,corpus}.ts take (services, entitlements). The research server mounts them at /corpus (server/src/corpus/serve.ts) with the plan filters as entitlements; the tests mount the same builders over quran.db (corpus-core/test/corpus-app.ts).",
     "portableSql": [
       "GROUP BY every non-aggregated column",
       "a total ORDER BY wherever order is visible",
@@ -454,6 +454,11 @@
       "id": "no-local-server",
       "decision": "No local server: the research server is the only server.",
       "why": "The maintainer's call, 2026-09-28 (keep things tidy): once research moved to the account, the local server (server/ on :8000, /api/v1) served only a health check and the desktop window. Removed its entry, its routes app, run-dev scripts and the Electron server bundle; the desktop app serves app/dist itself and ships no quran.db. npm run dev starts the research server and the web app; npm start previews the build on :8000. The corpus code stays — renamed server/ → corpus-core/ (the research server runs it)."
+    },
+    {
+      "id": "rename-folders",
+      "decision": "Folders named for what they are: server/ (was remote/) is the research server; corpus-core/ (was server/) is the corpus code.",
+      "why": "The maintainer, 2026-09-28: with the local server gone, remote/ was the only server and server/ was not one. Env vars (REMOTE_URL, REMOTE_TOKEN, VITE_REMOTE_URL, REMOTE_BASE_URL, REMOTE_PORT) keep their names so existing MCP configs and deploy .env files still work."
     }
   ],
   "fileMap": [
@@ -474,51 +479,51 @@
       "purpose": "corpus route builders — /corpus on the research server, and the tests over quran.db"
     },
     {
-      "path": "remote/src/corpus/pg-corpus.ts",
+      "path": "server/src/corpus/pg-corpus.ts",
       "purpose": "Postgres driver"
     },
     {
-      "path": "remote/src/corpus/serve.ts",
+      "path": "server/src/corpus/serve.ts",
       "purpose": "corpusApp: mounts the shared routes with plan entitlements"
     },
     {
-      "path": "remote/src/corpus/{schema,load,verify}.ts",
+      "path": "server/src/corpus/{schema,load,verify}.ts",
       "purpose": "corpus:migrate — load + prove the copy exact"
     },
     {
-      "path": "remote/src/corpus-parity-cli.ts",
+      "path": "server/src/corpus-parity-cli.ts",
       "purpose": "npm run corpus:parity [-- --quick]"
     },
     {
-      "path": "remote/src/resource-access.ts",
+      "path": "server/src/resource-access.ts",
       "purpose": "resource rules, canRead, requireResource, itemFilter"
     },
     {
-      "path": "remote/src/plans.ts",
+      "path": "server/src/plans.ts",
       "purpose": "tier ladder, meetsPlan"
     },
     {
-      "path": "remote/src/roles.ts",
+      "path": "server/src/roles.ts",
       "purpose": "role ladder, requireRole"
     },
     {
-      "path": "remote/src/api-tokens.ts, session.ts",
+      "path": "server/src/api-tokens.ts, session.ts",
       "purpose": "personal API tokens; bearer-or-cookie sessions"
     },
     {
-      "path": "remote/src/admin.ts",
+      "path": "server/src/admin.ts",
       "purpose": "listUsers, setRole (last-maintainer guard), listResources"
     },
     {
-      "path": "remote/src/app.ts",
+      "path": "server/src/app.ts",
       "purpose": "every remote route"
     },
     {
-      "path": "remote/src/access-cli.ts",
+      "path": "server/src/access-cli.ts",
       "purpose": "npm run access — the scripted twin of the Admin tab"
     },
     {
-      "path": "remote/migrations/0007_resource_access.sql, 0008_api_tokens.sql",
+      "path": "server/migrations/0007_resource_access.sql, 0008_api_tokens.sql",
       "purpose": "resource_access; api_tokens"
     },
     {
@@ -550,27 +555,27 @@
       "purpose": "every MCP corpus tool, remote vs local: identical"
     },
     {
-      "path": "remote/test/{access,admin,api-tokens,corpus-parity,corpus-migrate}.test.ts",
+      "path": "server/test/{access,admin,api-tokens,corpus-parity,corpus-migrate}.test.ts",
       "purpose": "PGlite tests for the above"
     },
     {
-      "path": "remote/scripts/{token,admin,access}-smoke.ts, ui-test-account.ts",
+      "path": "server/scripts/{token,admin,access}-smoke.ts, ui-test-account.ts",
       "purpose": "smoke checks through the real app; a throwaway maintainer for browser checks"
     },
     {
-      "path": "INSTRUCTIONS.md, CORPUS.md, REMOTE.md",
+      "path": "INSTRUCTIONS.md, CORPUS.md, SERVER.md",
       "purpose": "the deeper references"
     },
     {
-      "path": "remote/src/research/{store,routes,boundary,schema,pg-research,serve}.ts",
+      "path": "server/src/research/{store,routes,boundary,schema,pg-research,serve}.ts",
       "purpose": "the research queries (ResearchStore), its routes, the AI boundary for token requests, binding a request to its user (role, app.user_id, search_path), the driver, /research with the per-request transaction"
     },
     {
-      "path": "remote/src/role-ladder.ts",
+      "path": "server/src/role-ladder.ts",
       "purpose": "the role ladder, requireFeature, audiences"
     },
     {
-      "path": "remote/migrations/0009_roles_audience.sql",
+      "path": "server/migrations/0009_roles_audience.sql",
       "purpose": "role_levels, feature_access, audience columns"
     },
     {
@@ -582,15 +587,15 @@
       "purpose": "who can see it once approved"
     },
     {
-      "path": "remote/test/{research-store,research-cloud,audience}.test.ts, corpus-core/test/mcp-remote-research.test.ts",
+      "path": "server/test/{research-store,research-cloud,audience}.test.ts, corpus-core/test/mcp-remote-research.test.ts",
       "purpose": "what research does; privacy/RLS/AI boundary; ladder/publish/audiences; the MCP over the account's research"
     },
     {
-      "path": "remote/migrations/0010_research_rls.sql",
+      "path": "server/migrations/0010_research_rls.sql",
       "purpose": "the research schema, row-level security, the mqrg_research role"
     },
     {
-      "path": "remote/migrations/0011_research_account_only.sql",
+      "path": "server/migrations/0011_research_account_only.sql",
       "purpose": "research without files: drops the owner table and file-era settings; author_id = the account"
     },
     {
@@ -621,7 +626,7 @@
   ],
   "deployment": {
     "guide": "DEPLOY.md",
-    "shape": "One Linux VPS, docker compose (deploy/): Postgres 16 + the research server (remote/Dockerfile) + Caddy (automatic HTTPS). Only 80/443 exposed.",
+    "shape": "One Linux VPS, docker compose (deploy/): Postgres 16 + the research server (server/Dockerfile) + Caddy (automatic HTTPS). Only 80/443 exposed.",
     "container": "entrypoint: serve (config check → migrations → server) | corpus-migrate | corpus-parity | bootstrap | set-password | set-plan | access | smoke",
     "safety": "NODE_ENV=production refuses to start without a real AUTH_SECRET, DATABASE_URL, an https REMOTE_BASE_URL, or with SMTP chosen but unset (config.ts deployProblems).",
     "cookies": "Over HTTPS the session cookie is SameSite=None; Secure — the app runs on the reader's localhost, a different site from the server.",

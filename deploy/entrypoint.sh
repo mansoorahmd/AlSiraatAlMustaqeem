@@ -1,11 +1,11 @@
 #!/bin/sh
 # The research server container's commands. `serve` (the default) applies any pending
 # migrations, then starts the server. The others are the maintainer's one-off jobs:
-#   docker compose run --rm remote corpus-migrate        # load /corpus/quran.db into Postgres
-#   docker compose run --rm remote bootstrap you@example.org "Your Name"
-#   docker compose run --rm remote set-password you@example.org
-#   docker compose run --rm remote set-plan you@example.org pro
-#   docker compose run --rm remote access show
+#   docker compose run --rm server corpus-migrate        # load /corpus/quran.db into Postgres
+#   docker compose run --rm server bootstrap you@example.org "Your Name"
+#   docker compose run --rm server set-password you@example.org
+#   docker compose run --rm server set-plan you@example.org pro
+#   docker compose run --rm server access show
 set -e
 run() { exec node --import tsx "$@"; }
 # quran.db is a WAL-mode SQLite file, which SQLite can't open from the read-only /corpus mount,

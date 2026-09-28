@@ -1,7 +1,7 @@
 // Smoke of cloud research through the REAL remote app on real Postgres, with throwaway accounts
 // (created and removed here; their research goes with them): a note round-trips, the other account
 // can't see it (row-level security), and a token request gets the AI boundary.
-// Run: npx tsx remote/scripts/research-smoke.ts
+// Run: npx tsx server/scripts/research-smoke.ts
 import { randomBytes } from "node:crypto";
 import { createApp } from "../src/app.js";
 import { pool, corpusPool, researchPool, pgRunner } from "../src/db.js";

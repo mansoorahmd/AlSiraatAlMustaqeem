@@ -18,7 +18,7 @@ const RES = process.resourcesPath ?? join(here, "..");
 const isDev = !app.isPackaged;
 
 // A STABLE port, so the window's origin (localhost:PORT) is the same on every launch — it's
-// one the research server trusts by default (remote/src/config.ts trustedOrigins), and a new
+// one the research server trusts by default (server/src/config.ts trustedOrigins), and a new
 // origin each run would be refused. Only if it's taken do we step to the next one.
 const PREFERRED_PORT = 51789;
 

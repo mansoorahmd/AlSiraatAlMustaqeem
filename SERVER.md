@@ -1,4 +1,4 @@
-# Remote research channel (`remote/`)
+# The research server (`server/`)
 
 The invite-only research server. It holds **everything**: the **Qur'an corpus**, **each account's own
 research** (private to each account, by row-level security), and the **community**, where research is
@@ -222,20 +222,20 @@ the community, each translation and dictionary), and people (each user's role an
 expiry). The same, scripted:
 
 ```bash
-npm run access -w @alsiraat/remote -- show                         # the ladder + every rule
-npm run access -w @alsiraat/remote -- tier scholar 200 "Scholar"   # add or change a tier
-npm run access -w @alsiraat/remote -- tier-remove student          # remove an unused tier
-npm run access -w @alsiraat/remote -- corpus public                # anyone may read the corpus
-npm run access -w @alsiraat/remote -- corpus free                  # any signed-in account
-npm run access -w @alsiraat/remote -- corpus scholar               # scholar or higher
-npm run access -w @alsiraat/remote -- community pro                # the community's tier
-npm run access -w @alsiraat/remote -- translation 131 scholar      # translation 131 needs scholar
-npm run access -w @alsiraat/remote -- translation 131 none         # back to "same as the corpus"
-npm run access -w @alsiraat/remote -- lexicon lanes_lexicon scholar  # Lane's lexicon needs scholar
+npm run access -w @alsiraat/server -- show                         # the ladder + every rule
+npm run access -w @alsiraat/server -- tier scholar 200 "Scholar"   # add or change a tier
+npm run access -w @alsiraat/server -- tier-remove student          # remove an unused tier
+npm run access -w @alsiraat/server -- corpus public                # anyone may read the corpus
+npm run access -w @alsiraat/server -- corpus free                  # any signed-in account
+npm run access -w @alsiraat/server -- corpus scholar               # scholar or higher
+npm run access -w @alsiraat/server -- community pro                # the community's tier
+npm run access -w @alsiraat/server -- translation 131 scholar      # translation 131 needs scholar
+npm run access -w @alsiraat/server -- translation 131 none         # back to "same as the corpus"
+npm run access -w @alsiraat/server -- lexicon lanes_lexicon scholar  # Lane's lexicon needs scholar
 
-npm run set-plan -w @alsiraat/remote -- me@example.org scholar     # grant, no expiry
-npm run set-plan -w @alsiraat/remote -- me@example.org pro 30      # grant for 30 days
-npm run set-plan -w @alsiraat/remote -- me@example.org free        # revoke
+npm run set-plan -w @alsiraat/server -- me@example.org scholar     # grant, no expiry
+npm run set-plan -w @alsiraat/server -- me@example.org pro 30      # grant for 30 days
+npm run set-plan -w @alsiraat/server -- me@example.org free        # revoke
 ```
 
 Billing isn't wired yet; the plan grant (Admin tab, `set-plan`, `POST /plan`) is the seam a payment
@@ -278,7 +278,7 @@ can't read, which rules out server-side search and the AI boundary on your resea
 **The code.** `src/research/store.ts` holds the queries (`ResearchStore`, one per request, over that
 request's connection), `routes.ts` the HTTP routes, `serve.ts` the per-request transaction.
 No query names a user: row-level security and the `user_id` default do that. Records you write are
-stamped with your account id as their author. `remote/test/research-store.test.ts` covers what the
+stamped with your account id as their author. `server/test/research-store.test.ts` covers what the
 research does, `research-cloud.test.ts` the privacy and the AI boundary.
 
 **The AI boundary, on the server.** A request made with an API token (the MCP) may only propose:
@@ -325,27 +325,27 @@ HTTPS), the corpus load, the first maintainer, backups.
 npm install                      # plain install; no flags needed
 
 createdb researchgate            # or: psql -U postgres -c 'CREATE DATABASE researchgate'
-npm run remote:migrate           # → applied: 0001_init.sql, 0002_auth.sql
+npm run server:migrate           # → applied: 0001_init.sql, 0002_auth.sql
 
 # verify against YOUR server (the unit tests run on PGlite, not real Postgres):
-npm run smoke -w @alsiraat/remote
+npm run smoke -w @alsiraat/server
 
 # watch the claim spine work end to end — propose, review, establish, dissent.
 # It creates temporary people (the majority rule needs several moderators) and cleans
 # up after itself; --keep leaves the rows so you can inspect them.
-npm run remote:demo
+npm run server:demo
 
 # the first maintainer can't be invited — create one out of band:
-npm run bootstrap -w @alsiraat/remote -- you@example.org "Your Name"
+npm run bootstrap -w @alsiraat/server -- you@example.org "Your Name"
 
 # bootstrap creates the account with NO password, so give it one (also how a maintainer
 # resets a forgotten password, since no reset email is configured):
-npm run set-password -w @alsiraat/remote -- you@example.org "a good long password"
+npm run set-password -w @alsiraat/server -- you@example.org "a good long password"
 
-npm run remote:dev               # http://localhost:8100/health
+npm run server:dev               # http://localhost:8100/health
 ```
 
-Then, to exercise the flow end to end. Keep `remote:dev` running in one terminal (magic links
+Then, to exercise the flow end to end. Keep `server:dev` running in one terminal (magic links
 are printed there) and run these in another.
 
 **Windows CMD** — one line each, double quotes, inner quotes escaped:
@@ -378,7 +378,7 @@ curl -X POST localhost:8100/invites/redeem \
 ```
 
 Tests use **PGlite** (Postgres compiled to WASM, in-process) — no server needed:
-`npm test -w @alsiraat/remote`.
+`npm test -w @alsiraat/server`.
 
 ### If `npm install` ever reports ERESOLVE about `@tanstack/react-start` / `vite`
 

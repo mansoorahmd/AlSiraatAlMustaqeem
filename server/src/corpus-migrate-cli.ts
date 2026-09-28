@@ -1,7 +1,7 @@
 // Move the Qur'an corpus (quran.db) into Postgres, then prove the copy is exact.
 //
-//   npm run corpus:migrate -w @alsiraat/remote              # load + verify
-//   npm run corpus:migrate -w @alsiraat/remote -- --verify  # verify an existing copy only
+//   npm run corpus:migrate -w @alsiraat/server              # load + verify
+//   npm run corpus:migrate -w @alsiraat/server -- --verify  # verify an existing copy only
 //
 // Source: QF_QURAN_DB, else the project's quran.db. Target: DATABASE_URL (the remote's
 // Postgres), schema `corpus`. Only the `corpus` schema is ever rebuilt — the remote's research

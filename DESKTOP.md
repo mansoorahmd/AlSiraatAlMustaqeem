@@ -14,7 +14,7 @@ Electron main (electron/main.mjs)
 ```
 
 - **Why a local port at all.** The window needs an `http://localhost` origin: the research server
-  trusts `http://localhost:51789` by default (`remote/src/config.ts` `trustedOrigins`), and the sign-in
+  trusts `http://localhost:51789` by default (`server/src/config.ts` `trustedOrigins`), and the sign-in
   cookie must be same-site with it in development. The port is stable so the origin stays trusted.
 - **The file server** is ~20 lines in `main.mjs`: files from `app/dist`, `index.html` for anything
   else, and nothing outside `app/dist` (a path that escapes it gets 403).
@@ -31,7 +31,7 @@ npm install                 # electron, electron-builder — no native builds
 npm run electron:dev        # builds the app, launches Electron
 ```
 
-The research server must be running (`npm run dev`, or just `npm run remote:dev`).
+The research server must be running (`npm run dev`, or just `npm run server:dev`).
 
 ## Package installers
 

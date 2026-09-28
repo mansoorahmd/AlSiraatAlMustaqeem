@@ -11,7 +11,7 @@
 	request_body {
 		max_size 5MB
 	}
-	reverse_proxy remote:8100 {
+	reverse_proxy server:8100 {
 		health_uri /health
 	}
 }

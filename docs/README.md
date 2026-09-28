@@ -13,7 +13,7 @@ and easy to pick up in a new session.
 
 - **`atlas.json` is the source of truth for facts.** When the architecture changes, update it (and `atlas.html` to match). Keep entries terse and include file/line pointers.
 - **Feedback** is captured live in `atlas.html`'s threads (backed by the artifact `db` capability) and mirrored into `feedback.json` for repo-side extraction. Each entry is tagged with the atlas section it's about.
-- The deeper design docs still live at the repo root (`INSTRUCTIONS.md`, `DESIGN.md`, `CORPUS.md`, `REMOTE.md`, `SHARED_RESEARCH*.md`). The atlas summarizes and points into them; it does not replace them.
+- The deeper design docs still live at the repo root (`INSTRUCTIONS.md`, `DESIGN.md`, `CORPUS.md`, `SERVER.md`, `SHARED_RESEARCH*.md`). The atlas summarizes and points into them; it does not replace them.
 
 ## The one line to remember
 

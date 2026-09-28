@@ -1,7 +1,7 @@
 // A narrated walkthrough of the claim → review → establishment → dissent spine, run against
 // the REAL Postgres so you can watch it happen (and inspect the rows afterwards).
 //
-//   npm run demo:claims -w @alsiraat/remote
+//   npm run demo:claims -w @alsiraat/server
 //
 // It creates temporary people (tagged, cleaned up at the end unless you pass --keep), because
 // the majority rule needs several moderators and you are currently one person. Nothing it does
@@ -109,12 +109,12 @@ try {
     await r.query("DELETE FROM users WHERE email LIKE $1", [`%${TAG}%`]);
     console.log("Cleaned up — nothing is left for a client to pull.");
     console.log("To KEEP the established reading so the app can sync it:\n");
-    console.log("  npm run remote:demo:keep\n");
-    console.log("(`npm run remote:demo --keep` does NOT work: npm eats the flag itself.)\n");
+    console.log("  npm run server:demo:keep\n");
+    console.log("(`npm run server:demo --keep` does NOT work: npm eats the flag itself.)\n");
   }
 } catch (e) {
   console.error(`\ndemo: ${(e as Error).message}`);
-  console.error("If this mentions a missing column, run: npm run remote:migrate\n");
+  console.error("If this mentions a missing column, run: npm run server:migrate\n");
   process.exitCode = 1;
 } finally {
   await pool.end();

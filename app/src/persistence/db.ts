@@ -61,7 +61,7 @@ async function srvDelete(path: string): Promise<void> {
 // ---- the community layer: read LIVE from the remote, never mirrored locally ----
 //
 // Monetization: the group's readings are a PAID, ONLINE layer. They are fetched from the remote
-// on demand and gated behind a plan (api/remote.ts + REMOTE.md); nothing of the group's is ever
+// on demand and gated behind a plan (api/remote.ts + SERVER.md); nothing of the group's is ever
 // stored with the reader's research. A free, signed-out, or offline reader simply sees their own work — the
 // boundary is now the network, not a local table.
 

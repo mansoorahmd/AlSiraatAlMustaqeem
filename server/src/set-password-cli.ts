@@ -1,7 +1,7 @@
 // Set (or reset) a user's password directly against the database — a maintainer act, done
 // out of band like `bootstrap`, not over HTTP.
 //
-//   npm run set-password -w @alsiraat/remote -- me@example.org "a good long password"
+//   npm run set-password -w @alsiraat/server -- me@example.org "a good long password"
 //
 // Two cases need this:
 //   • an account created by `bootstrap` has no password at all, so nobody can sign in as it

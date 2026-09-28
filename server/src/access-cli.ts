@@ -2,17 +2,17 @@
 // are available to a maintainer in the app (Admin screen) and over HTTP. Resources are
 // plan-based; a resource's minimum is a tier, `free` (any signed-in account) or `public`.
 //
-//   npm run access -w @alsiraat/remote -- show
+//   npm run access -w @alsiraat/server -- show
 //
-//   npm run access -w @alsiraat/remote -- tier scholar 200 "Scholar"   # add / change a tier
-//   npm run access -w @alsiraat/remote -- tier-remove student          # remove an unused tier
+//   npm run access -w @alsiraat/server -- tier scholar 200 "Scholar"   # add / change a tier
+//   npm run access -w @alsiraat/server -- tier-remove student          # remove an unused tier
 //
-//   npm run access -w @alsiraat/remote -- corpus public                # anyone may read the Qur'an
-//   npm run access -w @alsiraat/remote -- corpus free                  # any signed-in account
-//   npm run access -w @alsiraat/remote -- community scholar            # scholar or higher
-//   npm run access -w @alsiraat/remote -- translation 131 scholar      # one translation
-//   npm run access -w @alsiraat/remote -- lexicon lane student         # one dictionary
-//   npm run access -w @alsiraat/remote -- translation 131 none         # drop a per-item rule
+//   npm run access -w @alsiraat/server -- corpus public                # anyone may read the Qur'an
+//   npm run access -w @alsiraat/server -- corpus free                  # any signed-in account
+//   npm run access -w @alsiraat/server -- community scholar            # scholar or higher
+//   npm run access -w @alsiraat/server -- translation 131 scholar      # one translation
+//   npm run access -w @alsiraat/server -- lexicon lane student         # one dictionary
+//   npm run access -w @alsiraat/server -- translation 131 none         # drop a per-item rule
 
 import { pool, pgRunner as r } from "./db.js";
 import { loadTiers, setTier, removeTier } from "./plans.js";
