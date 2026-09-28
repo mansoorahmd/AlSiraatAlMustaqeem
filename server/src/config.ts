@@ -22,9 +22,14 @@ export const config = {
    * origins to a browser, so both spellings are listed.
    */
   // (empty counts as unset: compose passes `TRUSTED_ORIGINS=` when .env leaves it blank)
-  trustedOrigins: (env.TRUSTED_ORIGINS?.trim() ||
-    [5174, 8000, 51789].flatMap((p) => [`http://localhost:${p}`, `http://127.0.0.1:${p}`]).join(","))
-    .split(",").map((s) => s.trim()).filter(Boolean),
+  // The server's own public address is always trusted too: the deployed web app is served from
+  // it (deploy/Caddyfile).
+  trustedOrigins: [...new Set([
+    ...(env.TRUSTED_ORIGINS?.trim() ||
+      [5174, 8000, 51789].flatMap((p) => [`http://localhost:${p}`, `http://127.0.0.1:${p}`]).join(","))
+      .split(",").map((s) => s.trim()).filter(Boolean),
+    new URL(env.REMOTE_BASE_URL ?? `http://localhost:${port}`).origin,
+  ])],
   /** "console" prints emails (magic links, password resets) to the log; "smtp" sends them. */
   emailTransport: env.EMAIL_TRANSPORT ?? "console",
   smtp: {

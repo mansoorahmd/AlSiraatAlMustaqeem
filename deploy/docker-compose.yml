@@ -53,8 +53,14 @@ services:
       # put quran.db here (deploy/corpus/quran.db) for `docker compose run --rm server corpus-migrate`
       - ./corpus:/corpus:ro
 
+  # Caddy with the web app built in (deploy/web.Dockerfile) — https://$DOMAIN/ opens the app
   caddy:
-    image: caddy:2
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+      args:
+        DOMAIN: ${DOMAIN}
+    image: mqrg-web
     restart: unless-stopped
     depends_on: [server]
     ports:

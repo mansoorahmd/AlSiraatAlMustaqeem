@@ -1,5 +1,9 @@
 # HTTPS in front of the research server. Caddy fetches and renews a Let's Encrypt certificate
 # for {$DOMAIN} by itself — the DNS A/AAAA record must point at this machine first.
+#
+# The web app (built into this image, deploy/web.Dockerfile) is served from the same address: a
+# path that is one of its files (/, /index.html, /assets/…) is the app; everything else goes to
+# the research server. The app routes with #hashes, so it has no paths of its own to clash.
 {$DOMAIN} {
 	encode zstd gzip
 	header {
@@ -11,7 +15,23 @@
 	request_body {
 		max_size 5MB
 	}
-	reverse_proxy server:8100 {
-		health_uri /health
+
+	@app file {
+		root /srv/app
+		try_files {path} {path}index.html
+	}
+	handle @app {
+		root * /srv/app
+		# hashed file names never change; index.html must always be re-checked
+		header /assets/* Cache-Control "public, max-age=31536000, immutable"
+		header / Cache-Control "no-cache"
+		header /index.html Cache-Control "no-cache"
+		file_server
+	}
+
+	handle {
+		reverse_proxy server:8100 {
+			health_uri /health
+		}
 	}
 }
