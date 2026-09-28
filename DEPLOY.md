@@ -31,52 +31,6 @@ reader's machine                                  your VPS (docker compose)
   Postmark, Brevo…).
 - The corpus file **`quran.db`** (it isn't in git — it's 143 MB).
 
-## 0. On Oracle Cloud (Always Free)
-
-Oracle's Always Free tier covers this whole setup: one ARM (Ampere A1) VM with up to 2 OCPUs and
-12 GB RAM, plus up to 200 GB of block storage. The server needs no changes for ARM. It reads SQLite
-through Node's built-in `node:sqlite` (no native modules), and `node`, `postgres` and `caddy` all
-publish arm64 images. Do these steps before step 1.
-
-1. **Sign up** at cloud.oracle.com. Your **home region can't be changed later**, and free A1
-   instances are only created there. Busy regions (Ashburn, Frankfurt, Singapore…) are often "out
-   of capacity", so pick a quieter one near your readers.
-2. **Upgrade to Pay As You Go** (Billing → Upgrade). Always Free resources stay free. Without the
-   upgrade, Oracle can *reclaim* free instances it sees as idle (low CPU, network and memory use
-   over 7 days), and a research server is idle most of the time. Then add a **budget alert**
-   (Billing → Budgets, e.g. $1) so any charge you didn't plan for emails you.
-3. **Create the instance** (Compute → Instances → Create):
-   - Image: **Canonical Ubuntu 24.04** (the aarch64 build is picked automatically for A1).
-   - Shape: **VM.Standard.A1.Flex**, **2 OCPUs / 12 GB**, the whole free allowance.
-   - Networking: a public subnet with **Assign a public IPv4 address** checked.
-   - SSH keys: upload your public key, or download the generated private key and keep it.
-   - Boot volume: the default 47 GB is enough. You can go up to 200 GB free.
-
-   If you get "Out of host capacity", try another availability domain, or retry later. Capacity
-   often frees up within hours.
-4. **Reserve the IP** (Networking → IP management → Reserved public IPs), so the address, and
-   your DNS record, survive recreating the instance.
-5. **Open ports 80 and 443 in Oracle's firewall.** Go to Networking → Virtual cloud networks →
-   your VCN → Security Lists → Default → Add Ingress Rules. Source `0.0.0.0/0`: TCP `80`,
-   TCP `443`, UDP `443`.
-6. **Open them on the VM too.** Oracle's Ubuntu images ship their own iptables rules that reject
-   everything except SSH. On Oracle, **skip the `ufw` line in step 1** (it clashes with those
-   rules) and run this instead:
-
-   ```bash
-   ssh ubuntu@<public-ip>
-   sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
-   sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
-   sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 443 -j ACCEPT
-   sudo netfilter-persistent save
-   ```
-
-7. **A domain.** Point an A record at the reserved IP. If you have no domain yet, a free DuckDNS
-   subdomain (`yourname.duckdns.org`) works with Caddy's automatic HTTPS.
-
-Then continue with step 1. Log in as `ubuntu`, and leave out the `ufw` line. Oracle Object
-Storage (20 GB free) is a good place to copy the nightly backups (see *Backups*).
-
 ## 1. Prepare the server
 
 ```bash
