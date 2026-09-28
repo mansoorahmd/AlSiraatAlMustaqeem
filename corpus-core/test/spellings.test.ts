@@ -35,6 +35,15 @@ describe("spelling variants", () => {
     expect(fromAlif.map((v) => rasmKey(v.surface))).toEqual(expect.arrayContaining([WAW, ALIF]));
   });
 
+  it("qahhār: one group across cases — ×1 dagger-alif (13:16), ×5 full alif", async () => {
+    // 13:16 w45 is nominative قَهَّٰرُ; 14:48 w10 is genitive قَهَّارِ — the same word
+    for (const [key, pos] of [["13:16", 45], ["14:48", 10]] as const) {
+      const v = await spelling(key, pos);
+      expect(v.map((x) => [rasmKey(x.surface), x.count])).toEqual([["قهار", 5], ["قهٰر", 1]]);
+      expect(v[1]!.verses).toEqual(["13:16"]);
+    }
+  });
+
   it("a word with no variation returns no variants", async () => {
     const v = await spelling("1:1", 1); // bism — one spelling only
     expect(v.length).toBe(0);

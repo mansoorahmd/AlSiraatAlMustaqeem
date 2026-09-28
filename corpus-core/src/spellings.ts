@@ -156,6 +156,13 @@ export class WordFormIndex {
 // A word occurrence is a "variant" when its (lemma | raw_features | skeleton)
 // group is written ≥2 distinct ways across the mushaf. Built once and cached so
 // the reader can mark āyāt cheaply.
+//
+// Case (NOM/ACC/GEN) is left out of the group: it is a vowel mark, never a rasm
+// letter, so it can't make a spelling variant — keeping it split one word's
+// spellings by case, and the counts read as totals when they weren't (قَهَّار: ×1
+// dagger-alif + ×3 full, when the full alif is ×5 once its two genitives count).
+const CASES = new Set(["NOM", "ACC", "GEN"]);
+const caseless = (raw: string) => raw.split("|").filter((t) => !CASES.has(t)).join("|");
 
 export class SpellingIndex {
   private byVerse = new Map<string, Set<number>>(); // verse_key → variant word positions
@@ -203,7 +210,7 @@ export class SpellingIndex {
       // skip compounds/assimilations (مِمَّا = مِن+مَا): not simple spelling variants
       if (!w.lemma || w.lemmas.size > 1) continue;
       const rk = rasmKey(w.surface);
-      const gk = `${w.lemma}|${w.raw}|${skeleton(rk)}`;
+      const gk = `${w.lemma}|${caseless(w.raw)}|${skeleton(rk)}`;
       let g = groups.get(gk);
       if (!g) { g = { rasm: new Map(), words: [] }; groups.set(gk, g); }
       let e = g.rasm.get(rk);
