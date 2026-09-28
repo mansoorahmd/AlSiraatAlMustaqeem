@@ -167,9 +167,7 @@ gunzip -c backups/researchgate-<stamp>.sql.gz | docker compose exec -T db psql -
 
 ### Email
 
-`docker compose logs server | grep email` shows whether SMTP connected at startup. A reset email
-that never arrives is almost always the sender domain's SPF/DKIM — set those up with your mail
-provider for the address in `SMTP_FROM`. To run without email for a while, set
+`docker compose logs server | grep email` shows whether SMTP connected at startup. To run without email for a while, set
 `EMAIL_TRANSPORT=console`: reset links are then printed to the log instead, and a maintainer can
 still use `set-password`.
 
