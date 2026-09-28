@@ -2,7 +2,7 @@
   "name": "alsiraat-almustaqeem",
   "private": true,
   "version": "0.2.0",
-  "description": "MQ Research Gate — a detective-style Quran study app (React SPA + TypeScript API).",
+  "description": "MQ Research Gate — a detective-style Quran study app (React SPA + the research server).",
   "main": "electron/main.mjs",
   "workspaces": [
     "app",
@@ -11,8 +11,8 @@
     "remote"
   ],
   "scripts": {
-    "dev": "concurrently -k -n api,web -c blue,green \"npm run dev -w server\" \"npm run dev -w app\"",
-    "test": "npm test -w server",
+    "dev": "concurrently -k -n remote,web -c blue,green \"npm run dev -w @alsiraat/remote\" \"npm run dev -w app\"",
+    "test": "npm test -w server && npm test -w @alsiraat/remote",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w app && npm run typecheck -w @alsiraat/mcp && npm run typecheck -w @alsiraat/remote",
     "remote:dev": "npm run dev -w @alsiraat/remote",
     "remote:migrate": "npm run migrate -w @alsiraat/remote",
@@ -24,16 +24,14 @@
     "corpus:parity": "npm run corpus:parity -w @alsiraat/remote --",
     "access": "npm run access -w @alsiraat/remote --",
     "build": "npm run build -w app",
-    "start": "npm run build -w app && npm run start:static -w server",
+    "start": "npm run build -w app && npm run preview -w app",
     "mcp": "npm start --silent -w @alsiraat/mcp",
-    "electron:build": "npm run build -w app && node electron/bundle-server.mjs",
-    "electron:dev": "npm run electron:build && electron .",
-    "desktop:dist": "npm run electron:build && electron-builder"
+    "electron:dev": "npm run build -w app && electron .",
+    "desktop:dist": "npm run build -w app && electron-builder"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
     "electron": "^36.0.0",
-    "electron-builder": "^25.1.0",
-    "esbuild": "^0.24.0"
+    "electron-builder": "^25.1.0"
   }
 }

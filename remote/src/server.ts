@@ -1,5 +1,5 @@
-// Remote service entry — separate process from the local API (they share nothing but the
-// concept). Serves the research channel and the Qur'an corpus over HTTP against Postgres.
+// The research server's entry: accounts, the corpus, every account's research and the
+// community, over HTTP against Postgres.
 
 import { serve } from "@hono/node-server";
 import { createApp, cloudCorpus } from "./app.js";

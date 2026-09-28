@@ -2,14 +2,13 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import type { Hono } from "hono";
-import { createApp } from "../src/app.js";
-import { createState } from "../src/state.js";
+import { corpusTestApp } from "./corpus-app.js";
 
 let app: Hono;
 const wazn = async (key: string, pos: number) =>
-  (await (await app.request(`/api/v1/verses/${key}/wazn?pos=${pos}`)).json()) as any;
+  (await (await app.request(`/corpus/verses/${key}/wazn?pos=${pos}`)).json()) as any;
 
-beforeAll(async () => { app = createApp(await createState()); });
+beforeAll(async () => { app = corpusTestApp(); });
 
 describe("wazn", () => {
   it("iqraʾ (96:1 w1) is a Form I imperative verb", async () => {
@@ -30,6 +29,6 @@ describe("wazn", () => {
   });
 
   it("missing pos → 422", async () => {
-    expect((await app.request("/api/v1/verses/1:1/wazn")).status).toBe(422);
+    expect((await app.request("/corpus/verses/1:1/wazn")).status).toBe(422);
   });
 });

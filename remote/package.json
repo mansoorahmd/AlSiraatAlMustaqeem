@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "MQ Research Gate — remote research channel (Postgres + Better Auth). Separate from the local API.",
+  "description": "MQ Research Gate — the research server: the corpus, accounts, research and the community (Postgres + Better Auth).",
   "main": "src/server.ts",
   "scripts": {
     "dev": "cross-env NODE_NO_WARNINGS=1 tsx watch src/server.ts",

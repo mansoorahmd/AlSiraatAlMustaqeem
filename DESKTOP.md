@@ -1,41 +1,37 @@
 # MQ Research Gate — desktop (Electron)
 
-The desktop app is a thin native shell around the **same** web app. It boots the
-project's own Hono server on a private local port and opens a window at it — no code is
-duplicated, and the web workflow (`npm run dev`, the tests) is untouched.
+The desktop app is a thin native shell around the **same** web app. There is no back end in it:
+everything the app reads and writes — the corpus, your research, the community — is on the research
+server, exactly as in the browser.
 
 ## How it fits together
 
 ```
 Electron main (electron/main.mjs)
-  ├─ picks a free port
-  ├─ spawns the bundled server (electron/build/server.cjs) as a Node utilityProcess
-  │     env: SERVE_STATIC=1, NODE_OPTIONS=--experimental-sqlite,
-  │          QF_QURAN_DB, QF_STATIC_ROOT, PORT
-  ├─ waits for /api/v1/health
-  └─ opens a BrowserWindow at http://127.0.0.1:<port>/
+  ├─ picks a stable local port (51789, or the next free one)
+  ├─ serves the built app (app/dist) from a tiny built-in file server on 127.0.0.1
+  └─ opens a BrowserWindow at http://localhost:<port>/
 ```
 
-- **The server is bundled**, not shipped as source: `electron/bundle-server.mjs` runs
-  esbuild over `server/src/server.ts` → `electron/build/server.cjs`.
-- **SQLite: the same driver as the web app — no native module.** Electron 36 bundles
-  Node 22, which has the built-in `node:sqlite`. So the desktop build uses the exact same
-  `db.ts` path as web/CI. On Node 22 that module is behind a flag, so the server process
-  is launched with `NODE_OPTIONS=--experimental-sqlite`. This means **no native
-  dependency, no rebuild step, no C++ build tools** — packaging is trivial and works on
-  any machine.
-- **Data.** `quran.db` ships read-only in the app's `resources/`. The reader's research is
-  in their account on the research server — the desktop app keeps none of it on disk.
+- **Why a local port at all.** The window needs an `http://localhost` origin: the research server
+  trusts `http://localhost:51789` by default (`remote/src/config.ts` `trustedOrigins`), and the sign-in
+  cookie must be same-site with it in development. The port is stable so the origin stays trusted.
+- **The file server** is ~20 lines in `main.mjs`: files from `app/dist`, `index.html` for anything
+  else, and nothing outside `app/dist` (a path that escapes it gets 403).
+- **Sign-in** opens in an in-app window (`auth:open-sign-in`), so the session cookie lands in the
+  app's own session, not the system browser's. That's the only thing the preload exposes.
+- **The research server's address** is baked into the web build: `VITE_REMOTE_URL=https://… npm run
+  desktop:dist` (default `http://localhost:8100`).
 - **The MCP server is unrelated** — it's a separate stdio process Claude Desktop launches.
 
 ## Develop
 
 ```bash
-npm install                 # electron, electron-builder, esbuild — no native builds
-npm run electron:dev        # builds the SPA, bundles the server, launches Electron
+npm install                 # electron, electron-builder — no native builds
+npm run electron:dev        # builds the app, launches Electron
 ```
 
-`electron:dev` = `npm run build -w app` + `node electron/bundle-server.mjs` + `electron .`.
+The research server must be running (`npm run dev`, or just `npm run remote:dev`).
 
 ## Package installers
 
@@ -43,19 +39,11 @@ npm run electron:dev        # builds the SPA, bundles the server, launches Elect
 npm run desktop:dist        # → dist-desktop/  (nsis on Windows, dmg on macOS, AppImage on Linux)
 ```
 
-Config is `electron-builder.yml`. It packs `electron/main.mjs`, `electron/preload.mjs`
-and the bundled `electron/build/**` (unpacked from the asar so the utility process can
-fork it), and copies `app/dist` and `quran.db` into `resources/`. No native modules to
-rebuild, so no extra packaging steps.
+Config is `electron-builder.yml`: it packs `electron/main.mjs` and `electron/preload.cjs`, and copies
+`app/dist` into `resources/`. No native modules, no data files.
 
 ## Notes
 
-- **Older Electron / native fallback.** `db.ts` still supports `better-sqlite3` when
-  `QF_SQLITE_DRIVER=better-sqlite3` is set. Only needed if you must run on an Electron
-  whose Node predates `node:sqlite` (< Electron 35). Then you'd add `better-sqlite3` as a
-  dep, set that env var in `electron/main.mjs` (instead of the `--experimental-sqlite`
-  flag), and let `electron-builder` rebuild it during `desktop:dist`. The default path
-  above avoids all of this.
 - No app icon or code-signing yet (unsigned builds warn on first launch) — add an
   `electron/resources/` icon set and signing config to `electron-builder.yml` before a
   public release.

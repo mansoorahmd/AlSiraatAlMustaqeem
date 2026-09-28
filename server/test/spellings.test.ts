@@ -2,17 +2,16 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import type { Hono } from "hono";
-import { createApp } from "../src/app.js";
-import { createState } from "../src/state.js";
+import { corpusTestApp } from "./corpus-app.js";
 import { rasmKey } from "../src/spellings.js";
 
 let app: Hono;
 const spelling = async (key: string, pos: number) =>
-  (await (await app.request(`/api/v1/verses/${key}/spelling?pos=${pos}`)).json()) as {
+  (await (await app.request(`/corpus/verses/${key}/spelling?pos=${pos}`)).json()) as {
     surface: string; count: number; verses: string[];
   }[];
 
-beforeAll(async () => { app = createApp(await createState()); });
+beforeAll(async () => { app = corpusTestApp(); });
 
 describe("spelling variants", () => {
   it("ʿalā (2:5 w2) is written with and without the dagger-alif", async () => {
@@ -46,6 +45,6 @@ describe("spelling variants", () => {
   });
 
   it("missing pos → 422", async () => {
-    expect((await app.request("/api/v1/verses/1:1/spelling")).status).toBe(422);
+    expect((await app.request("/corpus/verses/1:1/spelling")).status).toBe(422);
   });
 });

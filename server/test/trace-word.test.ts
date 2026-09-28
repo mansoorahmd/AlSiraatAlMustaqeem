@@ -92,8 +92,7 @@ describe("trace_word — a word tapped in the reader must match the index", () =
   const SCRIPTS = ["uthmani", "uthmani_simple", "imlaei", "imlaei_simple", "indopak"] as const;
 
   it("finds every ٱلرَّحْمَٰنِ from the token of ANY display script", async () => {
-    const { createState } = await import("../src/state.js");
-    const s: any = state ?? (await createState());
+    const s: any = state;
     for (const script of SCRIPTS) {
       const verse: any = await s.content.getVerse("1:1", { script });
       const token = String(verse.text).split(/\s+/)[2]; // ٱلرَّحْمَٰنِ

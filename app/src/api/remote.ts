@@ -1,12 +1,12 @@
-// Client for the REMOTE research channel (a different service from the local API).
+// Client for the research server: accounts, the community, publishing, admin.
 //
 // Every call sends `credentials: "include"` so the Better Auth session cookie travels; the
 // remote allows our origin explicitly (its TRUSTED_ORIGINS / CORS config). On the desktop the
 // sign-in page is opened in an in-app window so the cookie lands in the app's own session —
 // see `window.desktop.openSignIn` (electron/preload.cjs).
 //
-// The remote is OPTIONAL: local study never needs it. Every function here can fail with the
-// service simply not running, and callers must treat that as "not connected", not an error.
+// Every function here can fail with the server simply not running, and callers must treat that
+// as "not connected", not an error.
 
 import type { PeerIndication } from "./types";
 

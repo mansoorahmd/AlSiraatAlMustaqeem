@@ -7,7 +7,8 @@
     "repoName": "AlSiraatAlMustaqeem",
     "arabic": "الصراط المستقيم",
     "oneLiner": "A detective's study for the Qur'an: meaning is earned from within the text (the organic Qur'anic methodology). Notice a word, open a case on its root family, gather every place the Book uses it, form a hypothesis, then weigh the classical dictionaries.",
-    "stack": "React + Vite + TypeScript SPA (app/), run on the reader's machine (desktop, or npm start). The research server (remote/, Hono + Postgres + Better Auth) holds the Qur'an corpus, every account's private research, and the community. MCP server (mcp/) lets an AI study and propose, as its user. The local server (server/) serves the corpus over quran.db for tests, local tools and the desktop window; it holds no research. Electron desktop wrapper (electron/)."
+    "stack": "React + Vite + TypeScript SPA (app/), run on the reader's machine (browser, or the desktop window). The research server (remote/, Hono + Postgres + Better Auth) is the only server: the Qur'an corpus, every account's private research, accounts and the community. MCP server (mcp/) lets an AI study and propose, as its user. server/ is the corpus code library (despite its name) that the research server runs. Electron desktop wrapper (electron/).",
+    "run": "Postgres + `npm run dev` (research server :8100 and web app :5174). First time: npm install, npm run remote:migrate, npm run corpus:migrate, bootstrap/set-password/set-plan. After pulling a new migration: npm run remote:migrate (dev doesn't auto-migrate; Docker does)."
   },
   "principle": {
     "core": "Features are ROLE-based (what you may do); resources are PLAN-based (what you may read). Your research is private to your account; only what you publish is shared, only once approved, and only with the audience it names.",
@@ -24,9 +25,9 @@
     },
     {
       "id": "server",
-      "name": "Local server",
-      "runtime": "Hono on node:sqlite",
-      "role": "The corpus code, and a local server over quran.db — for tests, local tools (MQ_CORPUS=local) and the desktop app's window. It holds no research.",
+      "name": "Corpus code (server/)",
+      "runtime": "a library: corpus services + Hono route builders, over a SQLite or Postgres driver",
+      "role": "Not a server any more: the corpus code (search, roots, similarity, …) and its route builders, run by the research server over Postgres, and by the tests, the parity check and MQ_CORPUS=local over quran.db.",
       "path": "server/"
     },
     {
@@ -48,7 +49,7 @@
       "id": "electron",
       "name": "Desktop",
       "runtime": "Electron",
-      "role": "Wraps the built SPA + the local corpus server in a desktop window. Keeps no research on disk.",
+      "role": "The desktop window: serves app/dist from a tiny built-in file server on localhost:51789 (a trusted origin) and opens a window at it. No back end, no data files.",
       "path": "electron/"
     }
   ],
@@ -132,7 +133,7 @@
       "postgres": "pgCorpus(runner) — remote/src/corpus/pg-corpus.ts (? → $n)"
     },
     "services": "createCorpusServices(db) in server/src/corpus-services.ts; warmCorpus builds the memoised indexes (the cloud warms them at startup).",
-    "routes": "server/src/routes/{content,roots,similarity,echoes,corpus}.ts take (services, entitlements). The local server mounts them at /api/v1; the cloud mounts the identical builders at /corpus (remote/src/corpus/serve.ts) with the plan filters as entitlements.",
+    "routes": "server/src/routes/{content,roots,similarity,echoes,corpus}.ts take (services, entitlements). The research server mounts them at /corpus (remote/src/corpus/serve.ts) with the plan filters as entitlements; the tests mount the same builders over quran.db (server/test/corpus-app.ts).",
     "portableSql": [
       "GROUP BY every non-aggregated column",
       "a total ORDER BY wherever order is visible",
@@ -229,7 +230,7 @@
       "path": "/corpus/*",
       "role": null,
       "resource": "corpus",
-      "note": "the whole corpus API — same paths/params/JSON as the local /api/v1 (verses, chapters, words, roots, linkages, echoes, similar, spellings, wazn, phrase/expression/free-text search); translations + lexicons filtered by tier"
+      "note": "the whole corpus API — (verses, chapters, words, roots, linkages, echoes, similar, spellings, wazn, phrase/expression/free-text search); translations + lexicons filtered by tier"
     },
     {
       "method": "GET",
@@ -448,6 +449,11 @@
       "id": "research-account-only",
       "decision": "No research.db: research exists only in the account, in Postgres.",
       "why": "The maintainer's call, 2026-09-28: still in development, nothing important in the file, so keep one place and one code path. Dropped with it: the SQLite research driver, the local server's research routes, import/export and 'Bring it into my account', MQ_RESEARCH=local, the file's owner record. Cost: no offline research and no file copy — the database backup is the copy."
+    },
+    {
+      "id": "no-local-server",
+      "decision": "No local server: the research server is the only server.",
+      "why": "The maintainer's call, 2026-09-28 (keep things tidy): once research moved to the account, the local server (server/ on :8000, /api/v1) served only a health check and the desktop window. Removed its entry, its routes app, run-dev scripts and the Electron server bundle; the desktop app serves app/dist itself and ships no quran.db. npm run dev starts the research server and the web app; npm start previews the build on :8000. The corpus code stays in server/ (the research server runs it)."
     }
   ],
   "fileMap": [
@@ -465,7 +471,7 @@
     },
     {
       "path": "server/src/routes/{content,roots,similarity,echoes,corpus}.ts",
-      "purpose": "corpus route builders shared by /api/v1 and /corpus"
+      "purpose": "corpus route builders — /corpus on the research server, and the tests over quran.db"
     },
     {
       "path": "remote/src/corpus/pg-corpus.ts",
@@ -586,6 +592,10 @@
     {
       "path": "remote/migrations/0011_research_account_only.sql",
       "purpose": "research without files: drops the owner table and file-era settings; author_id = the account"
+    },
+    {
+      "path": "electron/main.mjs",
+      "purpose": "the desktop window + its built-in static file server for app/dist"
     }
   ],
   "glossary": {

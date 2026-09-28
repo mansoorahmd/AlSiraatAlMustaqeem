@@ -30,7 +30,6 @@ Thumbs.db
 mcp/node_modules/
 
 # desktop (Electron) build artifacts
-electron/build/
 dist-desktop/
 
 # research backups (copies of research.db — personal data, same reason it isn't tracked)

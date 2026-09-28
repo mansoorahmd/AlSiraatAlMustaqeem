@@ -20,17 +20,6 @@
         "app"
       ],
       "port": 5174
-    },
-    {
-      "name": "api",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "start",
-        "-w",
-        "server"
-      ],
-      "port": 8000
     }
   ]
 }

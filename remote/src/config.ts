@@ -15,10 +15,10 @@ export const config = {
   /** Signs sessions. MUST be set to a real secret in any deployment. */
   authSecret: env.AUTH_SECRET ?? "dev-only-insecure-secret-change-me",
   /**
-   * Origins allowed to call with credentials. The app always runs on the reader's own machine
-   * (its research is local), so these are local origins even in production: the Vite dev server
-   * (5174), the local API serving the built SPA (8000), and the desktop shell's stable port
-   * (51789 — see electron/main.mjs PREFERRED_PORT). 127.0.0.1 and localhost are DIFFERENT
+   * Origins allowed to call with credentials. The app runs on the reader's own machine, so these
+   * are local origins even in production: the Vite dev server (5174), `npm start`'s preview of the
+   * built app (8000), and the desktop shell's stable port (51789 — see electron/main.mjs
+   * PREFERRED_PORT). 127.0.0.1 and localhost are DIFFERENT
    * origins to a browser, so both spellings are listed.
    */
   // (empty counts as unset: compose passes `TRUSTED_ORIGINS=` when .env leaves it blank)

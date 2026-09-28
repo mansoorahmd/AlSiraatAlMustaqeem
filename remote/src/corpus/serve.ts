@@ -1,12 +1,9 @@
-// The Qur'an corpus, served from Postgres at /corpus — by the SAME route code the local server
-// mounts at /api/v1 (server/src/routes/*), over the same services (server/src/corpus-services.ts),
-// through the Postgres driver (pg-corpus.ts). One codebase, so the cloud API matches the local
-// one by construction: a client moves by changing its base URL.
+// The Qur'an corpus, served from Postgres at /corpus — by the corpus route code
+// (server/src/routes/*), over the corpus services (server/src/corpus-services.ts), through the
+// Postgres driver (pg-corpus.ts). The tests and the parity check run the same routes over
+// quran.db, so Postgres is proven to answer exactly as the source file does.
 //
-//   local   GET /api/v1/roots/hdy
-//   cloud   GET /corpus/roots/hdy
-//
-// The one cloud-only difference is entitlement: translations and dictionaries whose resource rule
+// The one Postgres-side difference is entitlement: translations and dictionaries whose resource rule
 // the caller's plan doesn't reach are left out (resource-access.ts). The corpus as a whole is
 // gated before this app, by requireResource("corpus").
 
@@ -40,7 +37,7 @@ export function corpusApp(svc: CorpusServices, access?: SqlRunner): Hono<Env> {
   };
 
   const app = new Hono<Env>();
-  // same error contract as the local server's app.onError
+  // typed errors → { detail } with the right status
   app.onError((err, c) => {
     if (err instanceof HttpError) return c.json({ detail: err.message }, err.status as 400);
     console.error(err);

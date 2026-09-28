@@ -16,7 +16,7 @@ its one sanctioned writer.
 - **`server/src/corpus/keys.ts`** — loads the trusted public key (`QF_CORPUS_PUBKEY`, or
   `corpus/trusted-key.pub.pem`).
 - **`server/src/corpus/cli.ts`** — `keygen` / `sign` / `apply` / `version`.
-- **`GET /api/v1/corpus/version`** — reports the loaded edition (`{ version, schemaVersion }`),
+- **`GET /corpus/corpus/version`** (on the research server) — reports the loaded edition (`{ version, schemaVersion }`),
   read-only.
 - Version lives in a `corpus_meta` table **inside `quran.db`**, so it travels with the file.
 
@@ -115,14 +115,14 @@ written once**, async, against a small interface — `CorpusDb {query, one, scal
 
 | Driver | Where | Used by |
 |---|---|---|
-| `sqliteCorpus(db)` | `server/src/corpus-db.ts` | the local server, tests, the MCP with `MQ_CORPUS=local` |
+| `sqliteCorpus(db)` | `server/src/corpus-db.ts` | tests, the parity check, the MCP with `MQ_CORPUS=local` |
 | `pgCorpus(runner)` | `remote/src/corpus/pg-corpus.ts` (`?` → `$n`) | the research server's `/corpus` |
 
 `createCorpusServices(db)` (`server/src/corpus-services.ts`) builds all of them — content, roots,
 linkages, wazn, expressions, echoes, spellings, free-text, similarity, word forms. The route
 builders in `server/src/routes/` take the services plus optional *entitlements* (translation and
-lexicon filters); the local server mounts them at `/api/v1`, the cloud mounts the same builders at
-`/corpus` (`remote/src/corpus/serve.ts`) with the plan filters plugged in. Expensive indexes are built
+lexicon filters); the research server mounts them at `/corpus` (`remote/src/corpus/serve.ts`) with
+the plan filters plugged in, and the tests mount the same builders over `quran.db`. Expensive indexes are built
 once per process (`once()`); the cloud warms them at startup (`warmCorpus`).
 
 **Portable SQL.** What made one codebase give identical answers on both engines:

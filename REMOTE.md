@@ -293,13 +293,12 @@ a file owner's email.) It is backed up with the rest of the database (DEPLOY.md,
 
 ## The corpus, served from the cloud
 
-The whole Qur'an corpus is served from Postgres at **`/corpus`** — the same paths, query parameters
-and JSON as the local API (`/corpus/verses/2:255?words=true` answers exactly like
-`/api/v1/verses/2:255?words=true`): verses in every script, words, chapters, roots and forms, lexicons,
+The whole Qur'an corpus is served from Postgres at **`/corpus`** (e.g.
+`/corpus/verses/2:255?words=true`): verses in every script, words, chapters, roots and forms, lexicons,
 linkages, echoes, similar verses, spellings, wazn, and phrase / expression / free-text search.
 
-It is **the same code** as the local server, not a port: every corpus service is written against one
-`CorpusDb` interface (`server/src/corpus-db.ts`) with two drivers — SQLite locally, Postgres here
+Every corpus service is written once, against one `CorpusDb` interface (`server/src/corpus-db.ts`)
+with two drivers — SQLite over `quran.db` (the tests, the parity check), Postgres here
 (`src/corpus/pg-corpus.ts`) — and `src/corpus/serve.ts` mounts the shared route builders with the plan
 filters. The corpus indexes are built once at startup (`warmCorpus`). The app and the MCP read the
 corpus from here; see CORPUS.md for how the copy is loaded and proven identical.

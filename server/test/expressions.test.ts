@@ -2,18 +2,17 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import type { Hono } from "hono";
-import { createApp } from "../src/app.js";
-import { createState } from "../src/state.js";
+import { corpusTestApp } from "./corpus-app.js";
 
 let app: Hono;
 const expr = async (terms: { surface?: string; root?: string | null }[], mode: string) =>
-  (await (await app.request("/api/v1/expression-search", {
+  (await (await app.request("/corpus/expression-search", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ terms, mode }),
   })).json()) as { verse_key: string; text: string }[];
 
-beforeAll(async () => { app = createApp(await createState()); });
+beforeAll(async () => { app = corpusTestApp(); });
 
 describe("expression search", () => {
   it("verbatim: الحمد + لله co-occur (incl. 1:2)", async () => {

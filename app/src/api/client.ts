@@ -1,8 +1,6 @@
 // Typed client for the Qur'an corpus.
 //
-// The corpus is read from the research server's `/corpus` (the cloud, Postgres) — the same paths
-// and JSON the local API used to serve at /api/v1, so every call below is unchanged except for
-// its base URL. Reading it is a plan-gated RESOURCE: the server may answer 401 (sign in) or 402
+// The corpus is read from the research server's `/corpus` (Postgres). Reading it is a plan-gated RESOURCE: the server may answer 401 (sign in) or 402
 // (needs a plan), and without a network there is no corpus at all. Rather than every screen
 // handling that, a refused or unreachable read announces itself once (`corpus-access` event) and
 // CorpusAccessBanner explains it; the calling screen just sees an ApiError as before.
@@ -14,8 +12,6 @@ import type {
 import { REMOTE_URL } from "./remote";
 
 const CORPUS = `${REMOTE_URL}/corpus`;
-/** The local API, still used for its own health check. */
-const LOCAL = "/api/v1";
 
 export class ApiError extends Error {
   status: number;
@@ -91,10 +87,11 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 export const api = {
+  /** The research server's own health check. */
   health: async () => {
-    const res = await fetch(`${LOCAL}/health`);
+    const res = await fetch(`${REMOTE_URL}/health`, { cache: "no-store" });
     if (!res.ok) throw new ApiError(res.status, `GET /health → ${res.status}`);
-    return res.json() as Promise<{ status: string; version: string }>;
+    return res.json() as Promise<{ status: string; service: string }>;
   },
   scripts: () => get<Script[]>("/scripts"),
 

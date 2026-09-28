@@ -84,6 +84,20 @@
       "section": "data",
       "text": "Done: research lives only in Postgres. Removed the SQLite research driver, the local server's research routes, import/export and 'Bring it into my account', MQ_RESEARCH=local, the Electron backup/open-file dialogs, npm run backup. The research code moved to remote/src/research/ (store, routes, boundary). Migration 0011 drops the file-era owner table; author_id is now the account id. The old research.db files went to the Recycle Bin. SQLite remains only for the corpus (quran.db: the source, parity, MQ_CORPUS=local).",
       "status": "done"
+    },
+    {
+      "ts": "2026-09-28T01:00:00Z",
+      "author": "Maintainer",
+      "section": "system",
+      "text": "No need for local server — keep things tidy and manageable.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-09-28T01:00:00Z",
+      "author": "Claude",
+      "section": "system",
+      "text": "Done: the local server is gone (server/src/{server,app,state}.ts, run-dev scripts, the Electron server bundle, the Vite proxy). Two things run: Postgres and the research server; npm run dev starts it with the web app, npm test runs both suites. The desktop app serves app/dist from a tiny built-in file server and ships no quran.db. server/ remains as the corpus code the research server runs (renaming it is open).",
+      "status": "done"
     }
   ]
 }

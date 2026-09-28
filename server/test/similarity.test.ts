@@ -7,13 +7,12 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Hono } from "hono";
-import { createApp } from "../src/app.js";
-import { createState } from "../src/state.js";
+import { corpusTestApp } from "./corpus-app.js";
 
 const fx = (n: string) => JSON.parse(readFileSync(resolve(import.meta.dirname, "fixtures", n), "utf-8"));
 let app: Hono;
 
-beforeAll(async () => { app = createApp(await createState()); });
+beforeAll(async () => { app = corpusTestApp(); });
 
 function compareMatches(gotAll: any[], wantAll: any[]) {
   // The top_k cutoff can fall inside a group of equal-scoring verses; which of
@@ -45,7 +44,7 @@ function compareMatches(gotAll: any[], wantAll: any[]) {
 describe("similarity parity", () => {
   for (const key of ["2:143", "55:13", "1:1", "112:1"]) {
     it(`similar to ${key}`, async () => {
-      const got = (await (await app.request(`/api/v1/verses/${key}/similar?top_k=40`)).json()) as any[];
+      const got = (await (await app.request(`/corpus/verses/${key}/similar?top_k=40`)).json()) as any[];
       compareMatches(got, fx(`similar_${key.replace(":", "_")}.json`));
     });
   }
@@ -53,7 +52,7 @@ describe("similarity parity", () => {
   it("free-text search", async () => {
     const cases = fx("search.json") as { query: string; result: any }[];
     for (const { query, result } of cases) {
-      const got = (await (await app.request("/api/v1/search", {
+      const got = (await (await app.request("/corpus/search", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text: query, top_k: 30 }),

@@ -1,11 +1,11 @@
-// Every corpus service over one CorpusDb — the unit both hosts mount:
+// Every corpus service over one CorpusDb:
 //
-//   local server  createCorpusServices(sqliteCorpus(quran.db)) → /api/v1/*
-//   cloud remote  createCorpusServices(pgCorpus(…))            → /corpus/*
+//   research server  createCorpusServices(pgCorpus(…))            → /corpus/*
+//   tests, MCP local createCorpusServices(sqliteCorpus(quran.db))
 //
 // Same code, same routes (routes/content.ts, roots.ts, similarity.ts, echoes.ts), same JSON.
-// The one thing that may differ per host is ENTITLEMENT: the cloud leaves out translations and
-// dictionaries a caller's plan doesn't reach; locally there is nothing to filter.
+// The one thing that may differ is ENTITLEMENT: the research server leaves out translations and
+// dictionaries a caller's plan doesn't reach; over quran.db there is nothing to filter.
 
 import type { Context } from "hono";
 import type { CorpusDb } from "./corpus-db.js";

@@ -335,7 +335,7 @@
             words — schema <code>corpus</code>.</p>
           <ul class="checks">
             <li>Text in four scripts, morphology, roots, ~10 classical lexicons, translations</li>
-            <li>Loaded from <code>quran.db</code> and verified exact; served by the same code as the local server</li>
+            <li>Loaded from <code>quran.db</code> and verified exact; the same corpus code answers over both, identically</li>
             <li>Proven: <strong>77,439</strong> requests compared with the local copy — all identical</li>
           </ul>
         </div>
@@ -625,12 +625,13 @@
 
     <section id="roadmap">
       <h2><span class="num">09</span>Roadmap &amp; status</h2>
-      <p>Server 116/116, remote 250/250 tests; the corpus parity sweep 77,439/77,439.</p>
+      <p>Corpus code 116/116, research server 250/250 tests; the corpus parity sweep 77,439/77,439. Two things run: Postgres and the research server — <code>npm run dev</code> starts the server and the web app.</p>
       <div class="road">
         <div class="step"><span class="st done">corpus · done</span><div><h4>The corpus on the research server</h4><p>Loaded and proven identical; the app and MCP read it from <code>/corpus</code>.</p></div></div>
         <div class="step"><span class="st done">access · done</span><div><h4>Features by role, resources by plan</h4><p>Resource rules for the corpus, the community, each translation and dictionary; the Admin tab.</p></div></div>
         <div class="step"><span class="st done">deploy · ready</span><div><h4>Deployable to a VPS</h4><p>Docker + Caddy HTTPS + SMTP password reset + backups (<code>DEPLOY.md</code>). Waiting on a server and a domain.</p></div></div>
         <div class="step"><span class="st done">research · done</span><div><h4>Your research in your account</h4><p>In Postgres only, private to each account by row-level security; the app and the MCP read and write it as you. No <code>research.db</code> any more — no local file, no import or export.</p></div></div>
+        <div class="step"><span class="st done">tidy · done</span><div><h4>One server</h4><p>No <code>research.db</code> and no local server: the research server is the only back end. The desktop app just serves the built web app to its own window.</p></div></div>
         <div class="step"><span class="st done">roles · done</span><div><h4>Roles as data; audiences on results</h4><p>reader ‹ student ‹ researcher ‹ scholar ‹ moderator ‹ maintainer; publishing's role is yours to set; each published result is seen only by its audience — proposed by its author, confirmed by the reviewer.</p></div></div>
         <div class="step"><span class="st defer">next</span><div><h4>Billing provider</h4><p>Slots into the plan grant with no rework of the gates. Also open: deleting an account (and its research), a review screen for submissions.</p></div></div>
       </div>

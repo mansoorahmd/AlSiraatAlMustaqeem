@@ -3,15 +3,14 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import type { Hono } from "hono";
-import { createApp } from "../src/app.js";
-import { createState } from "../src/state.js";
+import { corpusTestApp } from "./corpus-app.js";
 
 let app: Hono;
 const occ = async (surface: string) =>
-  (await (await app.request(`/api/v1/words/occurrences?surface=${encodeURIComponent(surface)}`)).json()) as
+  (await (await app.request(`/corpus/words/occurrences?surface=${encodeURIComponent(surface)}`)).json()) as
     { verse_key: string; word_position: number }[];
 
-beforeAll(async () => { app = createApp(await createState()); });
+beforeAll(async () => { app = corpusTestApp(); });
 
 describe("exact-word occurrences", () => {
   it("walks a rooted word — ٱلْمُفْلِحُونَ, starting at 2:5", async () => {
@@ -37,8 +36,8 @@ describe("exact-word occurrences", () => {
   });
 
   it("respects limit, and rejects a missing surface", async () => {
-    const res = await app.request("/api/v1/words/occurrences?surface=%D9%85%D9%90%D9%86&limit=5");
+    const res = await app.request("/corpus/words/occurrences?surface=%D9%85%D9%90%D9%86&limit=5");
     expect(((await res.json()) as unknown[]).length).toBe(5);
-    expect((await app.request("/api/v1/words/occurrences")).status).toBe(422);
+    expect((await app.request("/corpus/words/occurrences")).status).toBe(422);
   });
 });

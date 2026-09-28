@@ -252,7 +252,6 @@ export function createApp(): Hono<Env> {
     c.json(await listResources(corpusRunner, pgRunner)));
 
   // The Qur'an corpus itself, from Postgres — a RESOURCE, so its gate is the corpus plan rule.
-  // Same route code as the local server's /api/v1 (see corpus/serve.ts).
   app.use("/corpus/*", requireResource("corpus", pgRunner));
   app.route("/corpus", corpusApp(cloudCorpus, pgRunner));
 

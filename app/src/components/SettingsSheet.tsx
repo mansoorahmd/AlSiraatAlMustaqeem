@@ -4,6 +4,7 @@
 // what you're in the middle of; this is for how the app behaves and where your work is kept.
 
 import { api } from "../api/client";
+import { REMOTE_URL } from "../api/remote";
 import { useAsync } from "../hooks/useAsync";
 import { useMe } from "../hooks/useMe";
 import { Preferences } from "./Preferences";
@@ -40,12 +41,10 @@ export function SettingsSheet() {
       <section className="settings-group">
         <h3>About</h3>
         <div className="acct-row">
-          <span className="acct-row-label">This app</span>
-          <span className="acct-row-value">
+          <span className="acct-row-label">Research server</span>
+          <span className="acct-row-value" title={REMOTE_URL}>
             <span className={`dot ${health.loading ? "" : health.error ? "error" : "ok"}`} />{" "}
-            {health.loading ? "connecting…"
-              : health.error ? "unreachable"
-              : `running · v${health.data?.version ?? "?"}`}
+            {health.loading ? "connecting…" : health.error ? "unreachable" : "connected"}
           </span>
         </div>
       </section>

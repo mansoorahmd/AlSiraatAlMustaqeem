@@ -130,71 +130,90 @@ both صُّلْبِ (singular, 86:7) and أَصْلَٰبِ (plural, 4:23), whic
 
 ## Architecture
 
-A TypeScript app in three parts, run as one npm workspace:
+Two things run: **Postgres** and the **research server**. The app (in a browser, or the desktop
+window) and the MCP are clients of the research server; nothing else is a server.
+
+```
+your machine                              research server (remote/, :8100)
+  app  (Vite :5174, or desktop) ─ cookie ─▶  sign-in · gates (role / plan / audience)
+  MCP  (stdio, started by Claude) ─ token ─▶  /corpus · /research · /community · /admin
+                                                      │
+                                                  Postgres (:5432)
+                                         corpus · research (row-level security) · accounts
+```
 
 ```
 AlSiraatAlMustaqeem/
 ├── app/                  # React + Vite single-page app (the reader & investigation UI)
-├── server/               # Hono API on Node (serves /api/v1) + Vitest parity tests
-├── mcp/                  # MCP server (stdio) — lets an AI study the corpus with you
-├── remote/               # the research server: the corpus (Postgres) at /corpus, accounts, community
-├── quran.db              # read-only content (Quran text, words, roots, translations) — the corpus source
-├── package.json          # workspace root — the commands below live here
-├── run-dev.bat / .sh     # convenience dev launchers
-├── BACKEND_TS_MIGRATION.md
-└── DESIGN.md
+├── remote/               # the research server: corpus, research, accounts, community (Postgres)
+├── server/               # the corpus code (search, roots, similarity, …) + its golden-parity tests
+├── mcp/                  # MCP server (stdio) — lets an AI study with you
+├── electron/             # the desktop window around the built app
+├── deploy/               # Docker compose, Caddy, backups (DEPLOY.md)
+├── quran.db              # the corpus source, loaded into Postgres (not in git)
+└── package.json          # workspace root — the commands below live here
 ```
 
 - **`app/`** — the front end (React 18 + Vite + TypeScript). Reads the **corpus** from the
   research server (`${VITE_REMOTE_URL}/corpus`, default `http://localhost:8100/corpus`), and reads and
   writes your **research** in your account there (`${VITE_REMOTE_URL}/research`).
-- **`server/`** — the corpus code (Hono + Node's built-in `node:sqlite`), and a small local server
-  that serves the same corpus routes over `quran.db` — for tests, local tools, and the desktop app's
-  window. The research server runs the same corpus code over Postgres (`server/src/corpus-db.ts` is
-  the SQLite driver). Ported 1:1 from the original Python/FastAPI backend and verified by
-  golden-parity tests (`server/test/`). It holds no research.
 - **`remote/`** — the research server (Hono + Postgres + Better Auth): the corpus, every account's
   private research (`remote/src/research/`), accounts, roles, plans, the community. See `REMOTE.md`
   and `CORPUS.md`.
+- **`server/`** — not a server any more, despite the name: the corpus code and its route builders,
+  which the research server runs over Postgres. `server/src/corpus-db.ts` also drives it over
+  `quran.db` (node:sqlite) for the tests, the parity check and the MCP's `MQ_CORPUS=local`. Ported
+  1:1 from the original Python/FastAPI backend and verified by golden-parity tests (`server/test/`).
 - **`mcp/`** — an MCP server over stdio so an AI client can study the corpus and your research with
   you. See "The MCP server" below.
+- **`electron/`** — the desktop app: it serves `app/dist` from a tiny built-in file server and opens a
+  window at it (`DESKTOP.md`).
 
-> The backend was migrated from Python to TypeScript — see `BACKEND_TS_MIGRATION.md`. The old
-> Python data-pipeline and API code are no longer in this repo (archived separately).
+> The backend was migrated from Python to TypeScript — see `BACKEND_TS_MIGRATION.md` (history). The
+> old Python data-pipeline and API code are no longer in this repo (archived separately).
 
-**Requirements:** Node.js **22 or newer** (the API uses the built-in `node:sqlite`). No Python,
-no native build tools needed.
+**Requirements:** Node.js **22 or newer**, and Postgres 16 running locally. No Python, no native
+build tools.
 
 ---
 
 ## Running the app
 
-All commands run from the **project root**.
+All commands run from the **project root**. Postgres must be running; the research server connects
+to `postgres://postgres:researchgate@localhost:5432/researchgate` unless `DATABASE_URL` says otherwise.
 
 ```bash
-npm install        # one-time — installs the app, server and mcp workspaces
-
-npm run remote:dev  # the research server (:8100) — the Qur'an text is read from here (REMOTE.md)
-npm run dev        # start API (:8000) and web app (:5174) together
+npm run dev        # the research server (:8100) and the web app (:5174) together
                    # open http://localhost:5174
-                   # (wait for the "[api] AlSiraat API on http://localhost:8000" line
-                   #  on first start — the API's first compile takes a few seconds)
-
-npm test           # run the backend parity test suite (server/test)
-
-npm run build      # build the web SPA → app/dist
-npm start          # build + serve the SPA and API together on one port (:8000)
 ```
 
-`run-dev.bat` (Windows) and `run-dev.sh` (macOS/Linux) just wrap `npm run dev`.
+First time on a machine:
 
-**Config (optional):** the local server looks for `quran.db` at the project root by default. Override
-with env vars if needed: `QF_QURAN_DB`, `PORT` (default 8000), and
-`SERVE_STATIC=1` to also serve the built SPA (what `npm start` sets). CORS is open so a future
-mobile app can call `/api/v1` directly.
+```bash
+npm install                                          # every workspace
+npm run remote:migrate                               # create/upgrade the tables (also after pulling new migrations)
+npm run corpus:migrate                               # load quran.db into Postgres (~20 s)
+npm run bootstrap -w @alsiraat/remote -- you@example.org "Your Name"     # the first maintainer
+npm run set-password -w @alsiraat/remote -- you@example.org 'a password'
+npm run set-plan -w @alsiraat/remote -- you@example.org pro             # or open the corpus in Admin
+```
+
+The research server does **not** apply migrations when it starts in development — run
+`npm run remote:migrate` after pulling a change that adds one (the Docker deployment applies them on
+start).
+
+Other commands:
+
+```bash
+npm test                          # both test suites (server/ corpus, remote/)
+npm run typecheck                 # every workspace
+npm run corpus:parity -- --quick  # prove Postgres answers exactly as quran.db
+npm start                         # build the app and preview it on :8000
+npm run electron:dev              # the desktop app
+npm run desktop:dist              # desktop installers → dist-desktop/
+```
 
 ---
-
 ## The corpus and your research
 
 **In plain terms.** The app is one web build (optionally wrapped in a desktop window). It

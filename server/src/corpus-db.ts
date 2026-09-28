@@ -1,6 +1,6 @@
 // The corpus database, as an async interface — so ONE corpus codebase runs over two engines:
 //
-//   SQLite   quran.db, via sqliteCorpus()   — the local server, the tests, the parity reference
+//   SQLite   quran.db, via sqliteCorpus()   — the tests, the MCP's MQ_CORPUS=local, the parity reference
 //   Postgres the cloud's `corpus` schema, via remote/src/corpus/pg-corpus.ts — what /corpus serves
 //
 // Every query in the corpus modules is written once, with `?` placeholders, and must behave the

@@ -3,24 +3,16 @@ productName: MQ Research Gate
 directories:
   output: dist-desktop
 
-# Ship only the shell + the bundled server; the SPA and corpus go in resources.
+# Ship only the shell; the built web app goes in resources. Everything else is on the
+# research server.
 files:
   - electron/main.mjs
   - electron/preload.cjs
-  - electron/build/**
   - package.json
 
-# the server bundle must live outside the asar so the utility process can fork it
-# (no native modules to unpack — the desktop build uses Node's built-in node:sqlite)
-asarUnpack:
-  - electron/build/**
-
-# read-only assets the app opens at runtime
 extraResources:
   - from: app/dist
     to: app/dist
-  - from: quran.db
-    to: quran.db
 
 win:
   target: nsis

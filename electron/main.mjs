@@ -1,15 +1,15 @@
 // Electron main process for MQ Research Gate desktop.
 //
-// It boots the app's own Hono server (bundled to build/server.cjs) as a Node
-// utility process, then opens a window pointed at it. Nothing about the web app
-// changes — this is just a native shell around the same server + SPA.
-//
-// Data: quran.db ships read-only inside the app bundle (resources), copied nowhere. The
-// reader's research is in their account on the research server — nothing of it is on disk.
+// It serves the built web app (app/dist) from a tiny static file server on a local port and
+// opens a window at it — a native shell around the same SPA. Everything the app reads and
+// writes (the corpus, the reader's research, the community) is on the research server; nothing
+// of it is on disk.
 
-import { app, BrowserWindow, Menu, ipcMain, shell, utilityProcess } from "electron";
+import { app, BrowserWindow, Menu, ipcMain, shell } from "electron";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, extname, join, resolve, sep } from "node:path";
+import { readFile, stat } from "node:fs/promises";
+import http from "node:http";
 import net from "node:net";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -17,10 +17,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const RES = process.resourcesPath ?? join(here, "..");
 const isDev = !app.isPackaged;
 
-// A STABLE port, so the window's origin (localhost:PORT) — and therefore the
-// per-origin IndexedDB where reading prefs (gloss, font, script) live — is the same on
-// every launch. A random port would give a new origin each run and silently reset all
-// settings. Try a fixed preferred port; only if it's taken do we step to the next one.
+// A STABLE port, so the window's origin (localhost:PORT) is the same on every launch — it's
+// one the research server trusts by default (remote/src/config.ts trustedOrigins), and a new
+// origin each run would be refused. Only if it's taken do we step to the next one.
 const PREFERRED_PORT = 51789;
 
 function isFree(port) {
@@ -38,50 +37,32 @@ async function stablePort() {
   return PREFERRED_PORT; // give up gracefully; the server will report if truly blocked
 }
 
-async function waitForHealth(port, tries = 100) {
-  const url = `http://127.0.0.1:${port}/api/v1/health`;
-  for (let i = 0; i < tries; i++) {
-    try {
-      const r = await fetch(url);
-      if (r.ok) return;
-    } catch { /* not up yet */ }
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  throw new Error("server did not become healthy in time");
-}
+const TYPES = {
+  ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+  ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg",
+  ".ico": "image/x-icon", ".woff": "font/woff", ".woff2": "font/woff2", ".ttf": "font/ttf",
+  ".webmanifest": "application/manifest+json",
+};
 
-let child = null;
+let server = null;
+let serverPort = null;
 
+/** Serve app/dist on 127.0.0.1:<port> — unknown paths get index.html (the app routes itself). */
 async function startServer() {
+  if (serverPort) return serverPort;   // macOS re-activation: the one already running
   const port = await stablePort();
-
-  // read-only corpus from the bundle
-  const quranDb = isDev ? join(here, "..", "quran.db") : join(RES, "quran.db");
-
-  const staticRoot = isDev ? join(here, "..", "app", "dist") : join(RES, "app", "dist");
-  // the bundle is asarUnpack'd, so run it from the unpacked path, not inside the asar
-  let serverEntry = join(here, "build", "server.cjs");
-  if (serverEntry.includes("app.asar")) serverEntry = serverEntry.replace("app.asar", "app.asar.unpacked");
-
-  child = utilityProcess.fork(serverEntry, [], {
-    env: {
-      ...process.env,
-      PORT: String(port),
-      SERVE_STATIC: "1",
-      // use Node's built-in node:sqlite (Electron 36 bundles Node 22). It's behind a
-      // flag on Node 22, hence --experimental-sqlite. No native module, no rebuild.
-      // (To fall back to the native driver on older Electron: set QF_SQLITE_DRIVER
-      //  to "better-sqlite3" here and drop the NODE_OPTIONS flag.)
-      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --experimental-sqlite`.trim(),
-      QF_QURAN_DB: quranDb,
-      QF_STATIC_ROOT: staticRoot,
-      NODE_NO_WARNINGS: "1",
-    },
-    stdio: "inherit",
+  const root = resolve(isDev ? join(here, "..", "app", "dist") : join(RES, "app", "dist"));
+  server = http.createServer(async (req, res) => {
+    let file = resolve(root, "." + decodeURIComponent(new URL(req.url ?? "/", "http://x").pathname));
+    if (file !== root && !file.startsWith(root + sep)) { res.writeHead(403).end(); return; }
+    try { if (!(await stat(file)).isFile()) throw new Error("not a file"); } catch { file = join(root, "index.html"); }
+    try {
+      const body = await readFile(file);
+      res.writeHead(200, { "content-type": TYPES[extname(file)] ?? "application/octet-stream" }).end(body);
+    } catch { res.writeHead(404).end(); }
   });
-
-  await waitForHealth(port);
-  return port;
+  await new Promise((ok, fail) => { server.once("error", fail); server.listen(port, "127.0.0.1", ok); });
+  return (serverPort = port);
 }
 
 function createWindow(port) {
@@ -175,4 +156,4 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-app.on("quit", () => { try { child?.kill(); } catch { /* already gone */ } });
+app.on("quit", () => { try { server?.close(); } catch { /* already gone */ } });

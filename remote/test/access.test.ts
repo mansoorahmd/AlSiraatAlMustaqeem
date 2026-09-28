@@ -217,7 +217,7 @@ describe("per-item resources are filtered, not refused", () => {
   });
 });
 
-describe("the routes answer like the local API", () => {
+describe("the routes answer like the corpus code over quran.db", () => {
   beforeEach(async () => { await setRule(r, "corpus", "*", null); });
 
   it("same 404s and the same 422 text", async () => {

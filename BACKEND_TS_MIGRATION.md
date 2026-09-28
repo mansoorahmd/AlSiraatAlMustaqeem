@@ -1,3 +1,7 @@
+> **History.** This records the Python → TypeScript port. The local API it describes (`server/` on
+> :8000, `/api/v1`) has since been retired: the research server (`remote/`) serves everything — see
+> INSTRUCTIONS.md.
+
 # Backend migration: Python → TypeScript (single deployable app)
 
 **Goal:** fold the FastAPI backend into the TypeScript codebase so the whole

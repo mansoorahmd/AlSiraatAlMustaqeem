@@ -1,8 +1,8 @@
 // Content & metadata routes — ports of the FastAPI content endpoints.
 //
-// Mounted by BOTH hosts over the same services (corpus-services.ts): the local server at
-// /api/v1 (SQLite) and the cloud remote at /corpus (Postgres). `ent` lets a host filter
-// translations by the caller's plan; absent, nothing is filtered.
+// Mounted by the research server at /corpus (Postgres), and by the tests over quran.db (SQLite)
+// — the same services either way (corpus-services.ts). `ent` lets the host filter translations
+// by the caller's plan; absent, nothing is filtered.
 
 import { Hono } from "hono";
 import { SCRIPTS } from "../content.js";
