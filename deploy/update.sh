@@ -24,7 +24,7 @@ docker compose up -d --build
 # Caddy sends traffic to the server only after its first health check passes (up to ~30 s).
 printf 'waiting for https://%s/health ' "$domain"
 i=0
-until curl -fsS -o /dev/null --max-time 5 "https://$domain/health"; do
+until curl -fs -o /dev/null --max-time 5 "https://$domain/health"; do
   i=$((i + 1))
   if [ "$i" -ge 60 ]; then
     echo; echo "not healthy after 3 minutes — see: docker compose logs --tail 50 server" >&2
