@@ -140,7 +140,7 @@ sign-in — use the desktop app, or allow cookies for the server's domain.
 | Task | Command (in `/opt/mqrg/deploy`) |
 |---|---|
 | Logs | `docker compose logs -f server` |
-| Update to the latest code | `git pull && docker compose up -d --build` |
+| Update to the latest code | `./update.sh` (pulls `main`, backs up, rebuilds, waits for health; `./update.sh <branch>` for another branch) |
 | Restart | `docker compose restart server` |
 | Status | `docker compose ps` |
 | An access change from the shell | `docker compose run --rm server access show` |
