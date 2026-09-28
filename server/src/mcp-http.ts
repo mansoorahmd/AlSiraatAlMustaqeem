@@ -17,6 +17,7 @@ import { createMcpServer } from "../../mcp/src/server.js";
 import { remoteReads } from "../../mcp/src/corpus-client.js";
 import { remoteResearch } from "../../mcp/src/research-client.js";
 import { pgRunner } from "./db.js";
+import { config } from "./config.js";
 import { userForToken, TOKEN_PREFIX } from "./api-tokens.js";
 import type { Env } from "./roles.js";
 
@@ -38,7 +39,7 @@ export function mountMcp(app: Hono<Env>): void {
     const server = createMcpServer({
       ...remoteReads(SELF, token, inProcess),
       research: remoteResearch(SELF, token, inProcess),
-    });
+    }, { iconUrl: `${config.baseUrl}/icon-512.png` });
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

@@ -20,9 +20,13 @@ import { ResearchRefused } from "./research-client.js";
 import { TOOLS } from "./tools.js";
 import { METHOD, PROMPTS, WRITE_POLICY } from "./method.js";
 
-export function createMcpServer(state: McpState): Server {
+/** `iconUrl`: the logo, for clients that show one (the hosted MCP serves it from the web app). */
+export function createMcpServer(state: McpState, opts: { iconUrl?: string } = {}): Server {
   const server = new Server(
-    { name: "alsiraat-almustaqeem", version: "0.1.0" },
+    {
+      name: "alsiraat-almustaqeem", title: "MQ Research Gate", version: "0.1.0",
+      ...(opts.iconUrl ? { icons: [{ src: opts.iconUrl, mimeType: "image/png", sizes: ["512x512"] }] } : {}),
+    },
     { capabilities: { tools: {}, prompts: {}, resources: {} } },
   );
 
