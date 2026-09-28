@@ -5,6 +5,7 @@
 #   docker compose run --rm server bootstrap you@example.org "Your Name"
 #   docker compose run --rm server set-password you@example.org
 #   docker compose run --rm server set-plan you@example.org pro
+#   docker compose run --rm -T server test-users < ../test-users.csv   # the test logins
 #   docker compose run --rm server access show
 set -e
 run() { exec node --import tsx "$@"; }
@@ -28,7 +29,8 @@ case "$cmd" in
   bootstrap)      run src/bootstrap-cli.ts "$@" ;;
   set-password)   run src/set-password-cli.ts "$@" ;;
   set-plan)       run src/set-plan-cli.ts "$@" ;;
+  test-users)     run src/test-users-cli.ts "$@" ;;
   access)         run src/access-cli.ts "$@" ;;
   smoke)          run src/smoke-cli.ts "$@" ;;
-  *) echo "unknown command: $cmd (serve | migrate | corpus-migrate | corpus-parity | bootstrap | set-password | set-plan | access | smoke)" >&2; exit 2 ;;
+  *) echo "unknown command: $cmd (serve | migrate | corpus-migrate | corpus-parity | bootstrap | set-password | set-plan | test-users | access | smoke)" >&2; exit 2 ;;
 esac

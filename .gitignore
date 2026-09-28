@@ -48,3 +48,6 @@ research-*.db-*
 
 # deployment — secrets and the corpus file live on the server, not in git
 deploy/corpus/
+
+# test logins (passwords for the deployed server) — see server/src/test-users-cli.ts
+test-users.csv
