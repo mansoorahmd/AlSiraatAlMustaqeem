@@ -12,7 +12,7 @@ import { archive, fetchFormStatus } from "../persistence/db";
 import {
   normalizeCase, createSubjectCase, openOrCreateRootCase, openOrCreateAyahCase,
 } from "../cases/ops";
-import type { SubjectType } from "../persistence/types";
+import type { SubjectType, TrailRecord } from "../persistence/types";
 import { useAppState, useAppDispatch } from "../state/store";
 import { ShareButton } from "../components/ShareButton";
 
@@ -61,9 +61,13 @@ export function Home() {
     dispatch({ type: "setActiveCase", caseId: id });
     dispatch({ type: "setTab", tab: "investigate" });
   };
-  const openTrail = (id: string) => {
-    dispatch({ type: "setActiveTrail", trailId: id });
-    dispatch({ type: "setTab", tab: "read" });
+  // resume where the trail left off — its latest hop. Without a verse to land on the Reading
+  // Room would open its surah index, not the reader.
+  const openTrail = (t: TrailRecord) => {
+    dispatch({ type: "setActiveTrail", trailId: t.id });
+    const last = t.hops[t.hops.length - 1];
+    if (last) dispatch({ type: "jumpToVerse", verseKey: last.verseKey, wordPosition: last.wordPosition });
+    else dispatch({ type: "setTab", tab: "read" });
   };
 
   return (
@@ -232,7 +236,7 @@ export function Home() {
             <ul className="home-list">
               {recentTrails.slice(0, 6).map((t) => (
                 <li key={t.id}>
-                  <button className="home-row" onClick={() => openTrail(t.id)}>
+                  <button className="home-row" onClick={() => openTrail(t)}>
                     <span className="home-trail">➶</span>
                     <span className="home-row-main quran">{t.name || t.subject || "trail"}</span>
                     <span className="home-row-meta">{t.hops.length} hops</span>
