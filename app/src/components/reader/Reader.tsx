@@ -157,11 +157,39 @@ export function Reader({ chapters, onBackToIndex }: Props) {
   }, [verses.data, surahId]);
 
   // scroll to a jumped-to verse once it is on the page
+  const stopSettling = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!jumpToVerseKey || !verses.data) return;
     const el = document.querySelector(`[data-key="${jumpToVerseKey}"]`);
     if (!el) return;
     el.scrollIntoView({ block: "center" });
+    // Āyāt off screen are laid out at an ESTIMATED height (content-visibility: auto,
+    // styles.css), so that first scroll lands on a guess. As the āyāt around the target
+    // render at their real height the target drifts — in a surah of short āyāt, clean off
+    // the top of the screen. Re-centre it until it holds still, unless the reader scrolls.
+    // Not tied to this effect's cleanup: clearJump below re-runs the effect at once.
+    stopSettling.current?.();
+    let top = el.getBoundingClientRect().top, still = 0, raf = 0;
+    const started = performance.now();
+    const inputs = ["wheel", "touchstart", "keydown", "mousedown"] as const;
+    const stop = () => {
+      cancelAnimationFrame(raf);
+      inputs.forEach((t) => window.removeEventListener(t, stop));
+      stopSettling.current = null;
+    };
+    const settle = () => {
+      const now = el.getBoundingClientRect().top;
+      if (Math.abs(now - top) > 1) {
+        el.scrollIntoView({ block: "center" });
+        top = el.getBoundingClientRect().top;
+        still = 0;
+      } else still++;
+      if (still < 20 && performance.now() - started < 2000) raf = requestAnimationFrame(settle);
+      else stop();
+    };
+    inputs.forEach((t) => window.addEventListener(t, stop, { passive: true }));
+    raf = requestAnimationFrame(settle);
+    stopSettling.current = stop;
     el.classList.add("flash");
     window.setTimeout(() => el.classList.remove("flash"), 1800);
     dispatch({ type: "clearJump" });
