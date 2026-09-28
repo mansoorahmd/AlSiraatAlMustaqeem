@@ -25,6 +25,9 @@ COPY server/src ./server/src
 COPY server/migrations ./server/migrations
 COPY corpus-core/package.json ./corpus-core/
 COPY corpus-core/src ./corpus-core/src
+# the hosted MCP (server/src/mcp-http.ts) runs the MCP's own server code
+COPY mcp/package.json ./mcp/
+COPY mcp/src ./mcp/src
 COPY deploy/entrypoint.sh /usr/local/bin/entrypoint
 RUN chmod +x /usr/local/bin/entrypoint && mkdir -p /corpus && chown node:node /corpus
 USER node

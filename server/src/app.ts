@@ -49,6 +49,7 @@ import {
   divergencesAgainstGlobal, communityReadingsFor, ClaimError, type SubjectKind, type Decision,
 } from "./claims.js";
 import { pullSince, STREAMS, type Cursors } from "./pull.js";
+import { mountMcp } from "./mcp-http.js";
 
 export function createApp(): Hono<Env> {
   const app = new Hono<Env>();
@@ -84,6 +85,9 @@ export function createApp(): Hono<Env> {
        <div><h1>Signed in</h1>
        <p>You can close this window and return to MQ Research Gate.</p></div>`,
     ));
+
+  // the hosted MCP (mcp-http.ts) — it checks its own token and calls the routes below in-process
+  mountMcp(app);
 
   // everything below may know who the caller is
   app.use("*", sessionMiddleware);

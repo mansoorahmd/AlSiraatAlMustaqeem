@@ -28,14 +28,19 @@ function initials(me: Me): string {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
-/** The MCP client config for a fresh token — the reader pastes it into their AI app. */
+/**
+ * The hosted MCP (server/src/mcp-http.ts) — nothing to install. A client that takes only a URL
+ * (Claude's custom connectors) gets the token in the path; one with a config file sends it as a
+ * header.
+ */
+const mcpUrl = (token: string) => `${remote.url}/mcp/${token}`;
 function mcpConfig(token: string): string {
   return JSON.stringify({
     mcpServers: {
       "Organic-Quranic-Methodology": {
-        command: "node",
-        args: ["<path to AlSiraatAlMustaqeem>/mcp/bin/start.mjs"],
-        env: { REMOTE_URL: remote.url, REMOTE_TOKEN: token },
+        type: "http",
+        url: `${remote.url}/mcp`,
+        headers: { Authorization: `Bearer ${token}` },
       },
     },
   }, null, 2);
@@ -52,7 +57,7 @@ function AiAssistantSection() {
   const [tokens, setTokens] = useState<ApiToken[] | null>(null);
   const [label, setLabel] = useState("");
   const [fresh, setFresh] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"url" | "config" | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -101,7 +106,7 @@ function AiAssistantSection() {
         <button className="ctl primary" disabled={busy}
           onClick={() => act(async () => {
             const t = await remote.createToken(label.trim() || "MCP");
-            setFresh(t.token); setCopied(false); setLabel("");
+            setFresh(t.token); setCopied(null); setLabel("");
           })}>
           {busy ? "Creating…" : "Create token"}
         </button>
@@ -110,12 +115,25 @@ function AiAssistantSection() {
       {fresh && (
         <div className="acct-code-box acct-token-fresh">
           <span className="acct-hint">
-            Copy this now — it won’t be shown again. Paste it into your AI app’s MCP config:
+            Copy this now — it won’t be shown again. It works like a password: anyone with it can
+            act as you.
+          </span>
+          <span className="acct-hint">
+            <strong>Claude app</strong> (desktop or claude.ai): Settings → Connectors → Add custom
+            connector, and paste this URL:
+          </span>
+          <pre>{mcpUrl(fresh)}</pre>
+          <button className="ctl"
+            onClick={() => { void navigator.clipboard?.writeText(mcpUrl(fresh)); setCopied("url"); }}>
+            {copied === "url" ? "Copied" : "Copy URL"}
+          </button>
+          <span className="acct-hint">
+            <strong>Claude Code, Cursor and other MCP clients</strong> — add this to the MCP config:
           </span>
           <pre>{mcpConfig(fresh)}</pre>
           <button className="ctl"
-            onClick={() => { void navigator.clipboard?.writeText(mcpConfig(fresh)); setCopied(true); }}>
-            {copied ? "Copied" : "Copy config"}
+            onClick={() => { void navigator.clipboard?.writeText(mcpConfig(fresh)); setCopied("config"); }}>
+            {copied === "config" ? "Copied" : "Copy config"}
           </button>
           <button className="ctl" onClick={() => setFresh(null)}>Done</button>
         </div>

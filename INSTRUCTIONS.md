@@ -273,13 +273,32 @@ REMOTE_TOKEN=mqrg_… npm run smoke -w @alsiraat/mcp   # end-to-end smoke (write
 
 ### Client configuration
 
-**First, once:** run `npm install` in the project root — `mcp/` is a workspace and needs its
-dependencies.
+In the app: **Account → Connect an AI assistant → Create token**. The MCP reads the corpus from
+the research server **as you** — it sees exactly what your plan allows — so it needs a personal
+API token. The app shows the token once, ready to paste.
 
-Then, in the app: **Account → Connect an AI assistant → Create token**. The MCP reads the corpus
-from the research server **as you** — it sees exactly what your plan allows — so it needs a personal
-API token. The app shows the token once, inside a ready-to-paste config like this (point `args` at
-the launcher by absolute path; no `cwd` needed):
+**Hosted (nothing to install).** The research server runs the same MCP at `/mcp` over streamable
+HTTP (`server/src/mcp-http.ts`):
+
+- Claude app (desktop or claude.ai): Settings → Connectors → Add custom connector →
+  `https://<server>/mcp/mqrg_…` (the token in the path, for clients that take only a URL)
+- Claude Code, Cursor, other clients — the token as a header:
+
+```json
+{
+  "mcpServers": {
+    "Organic-Quranic-Methodology": {
+      "type": "http",
+      "url": "https://<server>/mcp",
+      "headers": { "Authorization": "Bearer mqrg_…" }
+    }
+  }
+}
+```
+
+**Local (stdio).** Needed only for `MQ_CORPUS=local` (offline, reading `quran.db`) or to work on
+the MCP itself. Run `npm install` in the project root once, then point `args` at the launcher by
+absolute path (no `cwd` needed):
 
 ```json
 {
