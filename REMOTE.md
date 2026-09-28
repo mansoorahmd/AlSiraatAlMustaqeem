@@ -297,7 +297,7 @@ The whole Qur'an corpus is served from Postgres at **`/corpus`** (e.g.
 `/corpus/verses/2:255?words=true`): verses in every script, words, chapters, roots and forms, lexicons,
 linkages, echoes, similar verses, spellings, wazn, and phrase / expression / free-text search.
 
-Every corpus service is written once, against one `CorpusDb` interface (`server/src/corpus-db.ts`)
+Every corpus service is written once, against one `CorpusDb` interface (`corpus-core/src/corpus-db.ts`)
 with two drivers — SQLite over `quran.db` (the tests, the parity check), Postgres here
 (`src/corpus/pg-corpus.ts`) — and `src/corpus/serve.ts` mounts the shared route builders with the plan
 filters. The corpus indexes are built once at startup (`warmCorpus`). The app and the MCP read the

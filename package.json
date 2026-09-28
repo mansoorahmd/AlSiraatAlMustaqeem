@@ -6,14 +6,14 @@
   "main": "electron/main.mjs",
   "workspaces": [
     "app",
-    "server",
+    "corpus-core",
     "mcp",
     "remote"
   ],
   "scripts": {
     "dev": "concurrently -k -n remote,web -c blue,green \"npm run dev -w @alsiraat/remote\" \"npm run dev -w app\"",
-    "test": "npm test -w server && npm test -w @alsiraat/remote",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w app && npm run typecheck -w @alsiraat/mcp && npm run typecheck -w @alsiraat/remote",
+    "test": "npm test -w @alsiraat/corpus-core && npm test -w @alsiraat/remote",
+    "typecheck": "npm run typecheck -w @alsiraat/corpus-core && npm run typecheck -w app && npm run typecheck -w @alsiraat/mcp && npm run typecheck -w @alsiraat/remote",
     "remote:dev": "npm run dev -w @alsiraat/remote",
     "remote:migrate": "npm run migrate -w @alsiraat/remote",
     "remote:demo": "npm run demo:claims -w @alsiraat/remote --",

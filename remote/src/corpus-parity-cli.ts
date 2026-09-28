@@ -17,9 +17,9 @@ import type { Hono } from "hono";
 import { corpusPool, corpusRunner } from "./db.js";
 import { pgCorpus } from "./corpus/pg-corpus.js";
 import { corpusApp } from "./corpus/serve.js";
-import { Db } from "../../server/src/db.js";
-import { sqliteCorpus } from "../../server/src/corpus-db.js";
-import { createCorpusServices, warmCorpus } from "../../server/src/corpus-services.js";
+import { Db } from "../../corpus-core/src/db.js";
+import { sqliteCorpus } from "../../corpus-core/src/corpus-db.js";
+import { createCorpusServices, warmCorpus } from "../../corpus-core/src/corpus-services.js";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const sqlitePath = process.env.QF_QURAN_DB ?? resolve(repo, "quran.db");

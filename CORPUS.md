@@ -11,11 +11,11 @@ its one sanctioned writer.
 
 ## The pieces
 
-- **`server/src/corpus/patch.ts`** — the whole contract: canonicalization, `sha256`, Ed25519
+- **`corpus-core/src/corpus/patch.ts`** — the whole contract: canonicalization, `sha256`, Ed25519
   sign/verify, and `applyPatch` (verify → order/idempotency gate → apply in one transaction).
-- **`server/src/corpus/keys.ts`** — loads the trusted public key (`QF_CORPUS_PUBKEY`, or
+- **`corpus-core/src/corpus/keys.ts`** — loads the trusted public key (`QF_CORPUS_PUBKEY`, or
   `corpus/trusted-key.pub.pem`).
-- **`server/src/corpus/cli.ts`** — `keygen` / `sign` / `apply` / `version`.
+- **`corpus-core/src/corpus/cli.ts`** — `keygen` / `sign` / `apply` / `version`.
 - **`GET /corpus/corpus/version`** (on the research server) — reports the loaded edition (`{ version, schemaVersion }`),
   read-only.
 - Version lives in a `corpus_meta` table **inside `quran.db`**, so it travels with the file.
@@ -57,16 +57,16 @@ names are validated as identifiers; all values are bound parameters.
 ```bash
 # one-time: generate the maintainer keypair. Commit corpus/trusted-key.pub.pem;
 # keep corpus/maintainer-key.priv.pem secret (it is gitignored).
-npm run corpus -w server -- keygen
+npm run corpus -w @alsiraat/corpus-core -- keygen
 
 # author a patch.json (see shape above), then sign it:
-npm run corpus -w server -- sign patch.json corpus/maintainer-key.priv.pem > signed.json
+npm run corpus -w @alsiraat/corpus-core -- sign patch.json corpus/maintainer-key.priv.pem > signed.json
 
 # apply to a corpus (defaults to ./quran.db; honours QF_QURAN_DB):
-QF_QURAN_DB=/path/to/quran.db npm run corpus -w server -- apply signed.json
+QF_QURAN_DB=/path/to/quran.db npm run corpus -w @alsiraat/corpus-core -- apply signed.json
 
 # check the loaded edition:
-npm run corpus -w server -- version
+npm run corpus -w @alsiraat/corpus-core -- version
 ```
 
 ## The corpus in Postgres
@@ -111,16 +111,16 @@ same study query (every form of هدي) returns the identical answer, in the ide
 
 Rather than a Postgres twin of the query layer (which would drift), **every corpus service is
 written once**, async, against a small interface — `CorpusDb {query, one, scalar}` in
-`server/src/corpus-db.ts` — with two drivers:
+`corpus-core/src/corpus-db.ts` — with two drivers:
 
 | Driver | Where | Used by |
 |---|---|---|
-| `sqliteCorpus(db)` | `server/src/corpus-db.ts` | tests, the parity check, the MCP with `MQ_CORPUS=local` |
+| `sqliteCorpus(db)` | `corpus-core/src/corpus-db.ts` | tests, the parity check, the MCP with `MQ_CORPUS=local` |
 | `pgCorpus(runner)` | `remote/src/corpus/pg-corpus.ts` (`?` → `$n`) | the research server's `/corpus` |
 
-`createCorpusServices(db)` (`server/src/corpus-services.ts`) builds all of them — content, roots,
+`createCorpusServices(db)` (`corpus-core/src/corpus-services.ts`) builds all of them — content, roots,
 linkages, wazn, expressions, echoes, spellings, free-text, similarity, word forms. The route
-builders in `server/src/routes/` take the services plus optional *entitlements* (translation and
+builders in `corpus-core/src/routes/` take the services plus optional *entitlements* (translation and
 lexicon filters); the research server mounts them at `/corpus` (`remote/src/corpus/serve.ts`) with
 the plan filters plugged in, and the tests mount the same builders over `quran.db`. Expensive indexes are built
 once per process (`once()`); the cloud warms them at startup (`warmCorpus`).
@@ -142,9 +142,9 @@ all identical** — every chapter in every script, every verse (words, translati
 verses, neighbours, wazn, spellings), navigation filters, every root (list, detail, forms,
 occurrences, linkages), root pairs, word occurrences, phrase / expression / free-text search.
 `-- --quick` samples ~3,000. `remote/test/corpus-parity.test.ts` runs ~50 URLs on a fixture in CI, and
-`server/test/mcp-remote-corpus.test.ts` proves the MCP's tools answer identically over HTTP.
+`corpus-core/test/mcp-remote-corpus.test.ts` proves the MCP's tools answer identically over HTTP.
 
-**Still open:** the signed patch channel (`server/src/corpus/patch.ts`) writes SQLite; corrections
+**Still open:** the signed patch channel (`corpus-core/src/corpus/patch.ts`) writes SQLite; corrections
 need a Postgres target (the `corpus_meta` keys are already mirrored, so the ordering/idempotency rules
 carry over). Until then, re-run `corpus:migrate` after patching `quran.db`.
 

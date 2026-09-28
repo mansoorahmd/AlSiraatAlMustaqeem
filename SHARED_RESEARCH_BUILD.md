@@ -20,7 +20,7 @@ Sync is the first feature that can lose `research.db`, and the claim/dissent sch
 spine everything hangs off. Lock both before writing sync code.
 
 - [x] **0.1 One-click `research.db` backup** with the WAL checkpoint handled (a clean copy,
-  not a half-written one). ✅ `VACUUM INTO` core (`server/src/backup.ts`) + `POST /research/backup`
+  not a half-written one). ✅ `VACUUM INTO` core (`corpus-core/src/backup.ts`) + `POST /research/backup`
   route; Home → *Your data* button (desktop save dialog via `window.desktop`, web → sibling
   `backups/`); `npm run backup` CLI fallback; `backup.test.ts` (WAL-dirty → complete copy, 4 tests);
   documented in `INSTRUCTIONS.md`.
@@ -54,7 +54,7 @@ spine everything hangs off. Lock both before writing sync code.
 
 No research schema, no auth — can run in parallel with Phase 3.
 
-- [x] **2.1 Patch file format** — ✅ `server/src/corpus/patch.ts`: signed envelope (Ed25519 over
+- [x] **2.1 Patch file format** — ✅ `corpus-core/src/corpus/patch.ts`: signed envelope (Ed25519 over
   canonical bytes + `sha256`), patch with `schemaVersion`/`patchVersion`/`parent`, ops = upsert/
   delete by **natural key**. Documented in `CORPUS.md`.
 - [x] **2.2 Client applier** — ✅ `applyPatch`: verify → order + idempotency gate → apply in one
@@ -62,8 +62,8 @@ No research schema, no auth — can run in parallel with Phase 3.
   `quran.db`; `GET /corpus/version` reports it.  ⇢ 2.1
   *AC:* signed patch upgrades deterministically; bad/again-applied = safe no-op; tamper + untrusted
   key rejected; atomic rollback on a bad op. ✅ `corpus-patch.test.ts` (6 tests). 114/114 total.
-- [x] **2.3 Patch generator** (author side) — ✅ `server/src/corpus/cli.ts` (`keygen`/`sign`/
-  `apply`/`version`) via `npm run corpus -w server -- …`; private key gitignored.  ⇢ 2.1
+- [x] **2.3 Patch generator** (author side) — ✅ `corpus-core/src/corpus/cli.ts` (`keygen`/`sign`/
+  `apply`/`version`) via `npm run corpus -w @alsiraat/corpus-core -- …`; private key gitignored.  ⇢ 2.1
 - [ ] **2.4 Desktop integration** (follow-up) — copy `quran.db` to user-data (writable), apply
   pending patches on startup before opening the window, show the edition in the UI. (See `CORPUS.md`.)
 
@@ -222,7 +222,7 @@ The convergence-free heart. Build after the pipe is proven but from the Phase 0 
     it yourself, which keeps every indication in your database one you actually chose.
 
   *AC:* resync is idempotent and can't damage local work ✅ — `remote/test/pull.test.ts` (9, new:
-  `pullSince` had no test of its own before) and `server/test/sync-boundary.test.ts` (12,
+  `pullSince` had no test of its own before) and `corpus-core/test/sync-boundary.test.ts` (12,
   including that a peer-indication pull leaves `word_indications` byte-identical and that
   re-pulling updates in place rather than duplicating). Divergence screen ✅; **still to come:**
   dissents in the form dossier, and the ⚖ margin mark in the reader.

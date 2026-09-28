@@ -9,7 +9,7 @@
 
 import { z } from "zod";
 import type { McpState } from "./core.js";
-import { foldArabic, buckToArabic } from "../../server/src/text/normalize.js";
+import { foldArabic, buckToArabic } from "../../corpus-core/src/text/normalize.js";
 import { AI_SOURCE, guard, proposalId, WriteRefused } from "./core.js";
 import {
   caseSummary, expectVersion, findOwnItem, mustGetCase, placeItem, saveGuarded,

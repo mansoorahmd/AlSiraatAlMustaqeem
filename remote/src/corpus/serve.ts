@@ -1,5 +1,5 @@
 // The Qur'an corpus, served from Postgres at /corpus — by the corpus route code
-// (server/src/routes/*), over the corpus services (server/src/corpus-services.ts), through the
+// (corpus-core/src/routes/*), over the corpus services (corpus-core/src/corpus-services.ts), through the
 // Postgres driver (pg-corpus.ts). The tests and the parity check run the same routes over
 // quran.db, so Postgres is proven to answer exactly as the source file does.
 //
@@ -11,13 +11,13 @@ import { Hono, type Context } from "hono";
 import type { SqlRunner } from "../migrate.js";
 import type { Env } from "../roles.js";
 import { itemFilter } from "../resource-access.js";
-import { HttpError } from "../../../server/src/content.js";
-import type { CorpusServices, Entitlements } from "../../../server/src/corpus-services.js";
-import { contentRoutes } from "../../../server/src/routes/content.js";
-import { rootRoutes } from "../../../server/src/routes/roots.js";
-import { similarityRoutes } from "../../../server/src/routes/similarity.js";
-import { echoRoutes } from "../../../server/src/routes/echoes.js";
-import { corpusRoutes as versionRoutes } from "../../../server/src/routes/corpus.js";
+import { HttpError } from "../../../corpus-core/src/content.js";
+import type { CorpusServices, Entitlements } from "../../../corpus-core/src/corpus-services.js";
+import { contentRoutes } from "../../../corpus-core/src/routes/content.js";
+import { rootRoutes } from "../../../corpus-core/src/routes/roots.js";
+import { similarityRoutes } from "../../../corpus-core/src/routes/similarity.js";
+import { echoRoutes } from "../../../corpus-core/src/routes/echoes.js";
+import { corpusRoutes as versionRoutes } from "../../../corpus-core/src/routes/corpus.js";
 
 /**
  * `access` is the runner holding the resource rules and plan tiers (the public schema). Omit it

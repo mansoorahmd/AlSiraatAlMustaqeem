@@ -1,5 +1,5 @@
 # The research server as a container. Build from the REPO ROOT (it shares the corpus code in
-# server/src):   docker build -f remote/Dockerfile -t mqrg-remote .
+# corpus-core/src):   docker build -f remote/Dockerfile -t mqrg-remote .
 # Run it with deploy/docker-compose.yml (Postgres + Caddy for HTTPS). See DEPLOY.md.
 
 FROM node:22-bookworm-slim AS deps
@@ -8,7 +8,7 @@ WORKDIR /app
 # only the remote's production dependencies are installed.
 COPY package.json package-lock.json ./
 COPY app/package.json app/
-COPY server/package.json server/
+COPY corpus-core/package.json corpus-core/
 COPY mcp/package.json mcp/
 COPY remote/package.json remote/
 RUN npm ci --omit=dev --workspace @alsiraat/remote --include-workspace-root=false --ignore-scripts \
@@ -23,8 +23,8 @@ COPY package.json ./
 COPY remote/package.json remote/tsconfig.json ./remote/
 COPY remote/src ./remote/src
 COPY remote/migrations ./remote/migrations
-COPY server/package.json ./server/
-COPY server/src ./server/src
+COPY corpus-core/package.json ./corpus-core/
+COPY corpus-core/src ./corpus-core/src
 COPY deploy/entrypoint.sh /usr/local/bin/entrypoint
 RUN chmod +x /usr/local/bin/entrypoint && mkdir -p /corpus && chown node:node /corpus
 USER node

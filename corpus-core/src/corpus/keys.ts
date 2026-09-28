@@ -15,6 +15,6 @@ export function trustedPublicKey(): string {
   if (existsSync(p)) return readFileSync(p, "utf8");
   throw new Error(
     "no trusted corpus public key — set QF_CORPUS_PUBKEY or add corpus/trusted-key.pub.pem " +
-    "(generate a keypair with: npm run corpus -w server -- keygen)",
+    "(generate a keypair with: npm run corpus -w @alsiraat/corpus-core -- keygen)",
   );
 }

@@ -7,20 +7,20 @@
 //                      reference the tests compare the remote path against.
 //
 // Both return the same shapes, because /corpus is the same route code as the local services
-// (server/src/corpus-services.ts). Where a route answers 404 for "nothing there", the remote
+// (corpus-core/src/corpus-services.ts). Where a route answers 404 for "nothing there", the remote
 // client returns what the service would have: null / [] / undefined.
 
-import type { Row } from "../../server/src/corpus-db.js";
-import type { CorpusServices } from "../../server/src/corpus-services.js";
-import type { Linkage } from "../../server/src/linkages.js";
-import type { Echo } from "../../server/src/echoes.js";
-import type { SpellingVariant, WordOccurrence, RelatedForm } from "../../server/src/spellings.js";
-import type { CompositeMatch } from "../../server/src/similarity/compose.js";
-import type { FreeTextResultDict } from "../../server/src/freetext.js";
-import type { Wazn } from "../../server/src/wazn.js";
-import type { ExprTerm, ExprMode, ExprHit } from "../../server/src/expressions.js";
-import { waznForWord } from "../../server/src/wazn.js";
-import { expressionSearch } from "../../server/src/expressions.js";
+import type { Row } from "../../corpus-core/src/corpus-db.js";
+import type { CorpusServices } from "../../corpus-core/src/corpus-services.js";
+import type { Linkage } from "../../corpus-core/src/linkages.js";
+import type { Echo } from "../../corpus-core/src/echoes.js";
+import type { SpellingVariant, WordOccurrence, RelatedForm } from "../../corpus-core/src/spellings.js";
+import type { CompositeMatch } from "../../corpus-core/src/similarity/compose.js";
+import type { FreeTextResultDict } from "../../corpus-core/src/freetext.js";
+import type { Wazn } from "../../corpus-core/src/wazn.js";
+import type { ExprTerm, ExprMode, ExprHit } from "../../corpus-core/src/expressions.js";
+import { waznForWord } from "../../corpus-core/src/wazn.js";
+import { expressionSearch } from "../../corpus-core/src/expressions.js";
 
 type Script = string;
 

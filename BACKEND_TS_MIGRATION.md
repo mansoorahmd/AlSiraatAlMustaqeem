@@ -1,4 +1,4 @@
-> **History.** This records the Python → TypeScript port. The local API it describes (`server/` on
+> **History.** This records the Python → TypeScript port. The local API it describes (`corpus-core/` on
 > :8000, `/api/v1`) has since been retired: the research server (`remote/`) serves everything — see
 > INSTRUCTIONS.md.
 
@@ -109,7 +109,7 @@ better-sqlite3. It's loaded via `createRequire` and hidden behind a one-file
 | `freetext.py` | 167 | `server/freetext/index.ts` | Depends on `normalize` + similarity; port after both. |
 | `research.py` | 368 | `server/research/store.ts` | Read-write. Port the schema, the **self-migrating connect logic** (notes `answer/lemma/root`), and idempotent IndexedDB→DB migration endpoints. |
 | `api.py` | 392 | `server/routes.ts` + `server.ts` | FastAPI → Hono. Query/path params, `HTTPException` → `c.json(..., status)`. Mechanical once helpers exist. |
-| `tests/test_m0…m6` | ~600 | `server/test/*.test.ts` (Vitest) | Re-express. This is where correctness is actually locked — budget accordingly. |
+| `tests/test_m0…m6` | ~600 | `corpus-core/test/*.test.ts` (Vitest) | Re-express. This is where correctness is actually locked — budget accordingly. |
 
 No custom SQLite functions or collations exist, and the API does **not** use
 the FTS5 tables (search runs in the similarity engine), so nothing exotic
@@ -261,5 +261,5 @@ service; the mobile app talks to `/api/v1` directly.
 **Retired Python:** the original FastAPI backend and the Python DB-build
 scripts have been **removed** from this workspace (backed up separately). The
 TypeScript server in `/server` is now the sole backend. The parity fixtures in
-`server/test/fixtures/` are frozen snapshots the tests still run against;
+`corpus-core/test/fixtures/` are frozen snapshots the tests still run against;
 regenerating them would require the Python again (kept in your backup).

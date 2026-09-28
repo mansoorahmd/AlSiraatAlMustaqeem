@@ -146,7 +146,7 @@ your machine                              research server (remote/, :8100)
 AlSiraatAlMustaqeem/
 ├── app/                  # React + Vite single-page app (the reader & investigation UI)
 ├── remote/               # the research server: corpus, research, accounts, community (Postgres)
-├── server/               # the corpus code (search, roots, similarity, …) + its golden-parity tests
+├── corpus-core/          # the corpus code (search, roots, similarity, …) + its golden-parity tests
 ├── mcp/                  # MCP server (stdio) — lets an AI study with you
 ├── electron/             # the desktop window around the built app
 ├── deploy/               # Docker compose, Caddy, backups (DEPLOY.md)
@@ -160,10 +160,10 @@ AlSiraatAlMustaqeem/
 - **`remote/`** — the research server (Hono + Postgres + Better Auth): the corpus, every account's
   private research (`remote/src/research/`), accounts, roles, plans, the community. See `REMOTE.md`
   and `CORPUS.md`.
-- **`server/`** — not a server any more, despite the name: the corpus code and its route builders,
-  which the research server runs over Postgres. `server/src/corpus-db.ts` also drives it over
+- **`corpus-core/`** — the corpus code and its route builders, which the research server runs over
+  Postgres. `corpus-core/src/corpus-db.ts` also drives it over
   `quran.db` (node:sqlite) for the tests, the parity check and the MCP's `MQ_CORPUS=local`. Ported
-  1:1 from the original Python/FastAPI backend and verified by golden-parity tests (`server/test/`).
+  1:1 from the original Python/FastAPI backend and verified by golden-parity tests (`corpus-core/test/`).
 - **`mcp/`** — an MCP server over stdio so an AI client can study the corpus and your research with
   you. See "The MCP server" below.
 - **`electron/`** — the desktop app: it serves `app/dist` from a tiny built-in file server and opens a
@@ -205,7 +205,7 @@ start).
 Other commands:
 
 ```bash
-npm test                          # both test suites (server/ corpus, remote/)
+npm test                          # both test suites (corpus-core/, remote/)
 npm run typecheck                 # every workspace
 npm run corpus:parity -- --quick  # prove Postgres answers exactly as quran.db
 npm start                         # build the app and preview it on :8000
@@ -302,7 +302,7 @@ the launcher by absolute path; no `cwd` needed):
 
 When it can't read the corpus it tells the AI why, in words it can pass on: no or revoked token →
 create one in the app; below the corpus tier → which plan is needed; server unreachable → set
-`REMOTE_URL`, or `MQ_CORPUS=local`. (`mcp/src/corpus-client.ts`; `server/test/mcp-remote-corpus.test.ts`
+`REMOTE_URL`, or `MQ_CORPUS=local`. (`mcp/src/corpus-client.ts`; `corpus-core/test/mcp-remote-corpus.test.ts`
 runs every corpus tool both ways and requires identical answers.)
 
 `mcp/bin/start.mjs` exists because launching this server is deceptively fragile. Two failures
@@ -326,7 +326,7 @@ Your **research** is in your account: the MCP reads it, and writes proposals int
 research server with the same token — within the guard below, which the server also enforces for
 every token request (`mcp/src/research-client.ts`). There is no offline research: without the
 research server the tools that read or write your research say so.
-`server/test/mcp-remote-research.test.ts` runs the real tools against the research server.
+`corpus-core/test/mcp-remote-research.test.ts` runs the real tools against the research server.
 
 For running it by hand (not via a client), `npm run mcp` from the project root still works.
 

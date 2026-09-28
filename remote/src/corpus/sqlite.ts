@@ -1,4 +1,4 @@
-// node:sqlite, loaded the way server/src/db.ts loads it: through createRequire, not a static
+// node:sqlite, loaded the way corpus-core/src/db.ts loads it: through createRequire, not a static
 // import. Vite (and so vitest) strips the `node:` prefix from a static import and then fails to
 // resolve `sqlite`, because node:sqlite is a prefix-only built-in. The type import is erased.
 

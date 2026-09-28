@@ -6,7 +6,7 @@
 > organic Qur'anic methodology, made tactile.
 
 **Stack:** React + Vite + TypeScript SPA (`app/`) over a Hono + `node:sqlite` backend
-(`server/`, ported 1:1 from the old FastAPI service and parity-tested). An MCP server
+(`corpus-core/`, ported 1:1 from the old FastAPI service and parity-tested). An MCP server
 (`mcp/`) exposes the corpus and research to an AI. Content lives in `quran.db`
 (read-only); the reader's work in `research.db` (read-write, self-migrating).
 UI conventions (symmetry/alignment, paper aesthetic) are in `INSTRUCTIONS.md`.

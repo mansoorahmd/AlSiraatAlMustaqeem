@@ -10,9 +10,9 @@ import type { SqlRunner } from "../src/migrate.js";
 import { migrateCorpus } from "../src/corpus/load.js";
 import { pgCorpus } from "../src/corpus/pg-corpus.js";
 import { corpusApp } from "../src/corpus/serve.js";
-import { Db } from "../../server/src/db.js";
-import { sqliteCorpus } from "../../server/src/corpus-db.js";
-import { createCorpusServices } from "../../server/src/corpus-services.js";
+import { Db } from "../../corpus-core/src/db.js";
+import { sqliteCorpus } from "../../corpus-core/src/corpus-db.js";
+import { createCorpusServices } from "../../corpus-core/src/corpus-services.js";
 import { makeFixture, pgliteRunner } from "./fixtures/corpus-fixture.js";
 
 let lite: Hono;

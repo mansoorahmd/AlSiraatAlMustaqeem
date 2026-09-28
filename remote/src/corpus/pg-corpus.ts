@@ -1,4 +1,4 @@
-// The Postgres driver for the shared corpus code (server/src/corpus-db.ts). The corpus modules are
+// The Postgres driver for the shared corpus code (corpus-core/src/corpus-db.ts). The corpus modules are
 // written once, in portable SQL with `?` placeholders and unqualified table names; this adapts
 // them to Postgres so the SAME code answers from the cloud's `corpus` schema:
 //
@@ -11,7 +11,7 @@
 // Everything else that could differ between the engines is kept out of the SQL itself (see the
 // rules in corpus-db.ts) and proved by `npm run corpus:parity`.
 
-import type { CorpusDb, Row } from "../../../server/src/corpus-db.js";
+import type { CorpusDb, Row } from "../../../corpus-core/src/corpus-db.js";
 import type { SqlRunner } from "../migrate.js";
 
 /** Rewrite SQLite-style `?` placeholders as Postgres `$n`, leaving string literals alone. */

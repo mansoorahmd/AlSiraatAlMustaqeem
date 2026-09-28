@@ -5,7 +5,7 @@ import { serve } from "@hono/node-server";
 import { createApp, cloudCorpus } from "./app.js";
 import { config, assertDeployable } from "./config.js";
 import { verifyMailer } from "./mailer.js";
-import { warmCorpus } from "../../server/src/corpus-services.js";
+import { warmCorpus } from "../../corpus-core/src/corpus-services.js";
 
 // NODE_ENV=production: refuse to start on an unsafe or broken configuration (DEPLOY.md)
 try { assertDeployable(); } catch (e) { console.error((e as Error).message); process.exit(1); }

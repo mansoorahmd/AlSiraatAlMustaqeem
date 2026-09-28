@@ -7,7 +7,7 @@
     "repoName": "AlSiraatAlMustaqeem",
     "arabic": "الصراط المستقيم",
     "oneLiner": "A detective's study for the Qur'an: meaning is earned from within the text (the organic Qur'anic methodology). Notice a word, open a case on its root family, gather every place the Book uses it, form a hypothesis, then weigh the classical dictionaries.",
-    "stack": "React + Vite + TypeScript SPA (app/), run on the reader's machine (browser, or the desktop window). The research server (remote/, Hono + Postgres + Better Auth) is the only server: the Qur'an corpus, every account's private research, accounts and the community. MCP server (mcp/) lets an AI study and propose, as its user. server/ is the corpus code library (despite its name) that the research server runs. Electron desktop wrapper (electron/).",
+    "stack": "React + Vite + TypeScript SPA (app/), run on the reader's machine (browser, or the desktop window). The research server (remote/, Hono + Postgres + Better Auth) is the only server: the Qur'an corpus, every account's private research, accounts and the community. MCP server (mcp/) lets an AI study and propose, as its user. corpus-core/ is the corpus code library that the research server runs. Electron desktop wrapper (electron/).",
     "run": "Postgres + `npm run dev` (research server :8100 and web app :5174). First time: npm install, npm run remote:migrate, npm run corpus:migrate, bootstrap/set-password/set-plan. After pulling a new migration: npm run remote:migrate (dev doesn't auto-migrate; Docker does)."
   },
   "principle": {
@@ -24,11 +24,11 @@
       "path": "app/"
     },
     {
-      "id": "server",
-      "name": "Corpus code (server/)",
+      "id": "corpus-core",
+      "name": "Corpus code (corpus-core/)",
       "runtime": "a library: corpus services + Hono route builders, over a SQLite or Postgres driver",
-      "role": "Not a server any more: the corpus code (search, roots, similarity, …) and its route builders, run by the research server over Postgres, and by the tests, the parity check and MQ_CORPUS=local over quran.db.",
-      "path": "server/"
+      "role": "The corpus code (search, roots, similarity, …) and its route builders, run by the research server over Postgres, and by the tests, the parity check and MQ_CORPUS=local over quran.db.",
+      "path": "corpus-core/"
     },
     {
       "id": "mcp",
@@ -127,13 +127,13 @@
     "apiTokens": "Personal API tokens (mqrg_…, stored as SHA-256; secret shown once) for headless clients — the MCP. Sent as `Authorization: Bearer`. Made in the app: Account → Connect an AI assistant (it prints a ready MCP config). remote/src/api-tokens.ts, session.ts. A token acts exactly as its user, so the MCP reads what that user's plan allows."
   },
   "corpusCode": {
-    "oneCodebase": "server/src/corpus-db.ts defines CorpusDb {query, one, scalar} (async). Every corpus service (content, roots, linkages, wazn, expressions, echoes, spellings, freetext, similarity, morphology) is written once against it.",
+    "oneCodebase": "corpus-core/src/corpus-db.ts defines CorpusDb {query, one, scalar} (async). Every corpus service (content, roots, linkages, wazn, expressions, echoes, spellings, freetext, similarity, morphology) is written once against it.",
     "drivers": {
-      "sqlite": "sqliteCorpus(db) — server/src/corpus-db.ts",
+      "sqlite": "sqliteCorpus(db) — corpus-core/src/corpus-db.ts",
       "postgres": "pgCorpus(runner) — remote/src/corpus/pg-corpus.ts (? → $n)"
     },
-    "services": "createCorpusServices(db) in server/src/corpus-services.ts; warmCorpus builds the memoised indexes (the cloud warms them at startup).",
-    "routes": "server/src/routes/{content,roots,similarity,echoes,corpus}.ts take (services, entitlements). The research server mounts them at /corpus (remote/src/corpus/serve.ts) with the plan filters as entitlements; the tests mount the same builders over quran.db (server/test/corpus-app.ts).",
+    "services": "createCorpusServices(db) in corpus-core/src/corpus-services.ts; warmCorpus builds the memoised indexes (the cloud warms them at startup).",
+    "routes": "corpus-core/src/routes/{content,roots,similarity,echoes,corpus}.ts take (services, entitlements). The research server mounts them at /corpus (remote/src/corpus/serve.ts) with the plan filters as entitlements; the tests mount the same builders over quran.db (corpus-core/test/corpus-app.ts).",
     "portableSql": [
       "GROUP BY every non-aggregated column",
       "a total ORDER BY wherever order is visible",
@@ -144,7 +144,7 @@
   },
   "clients": {
     "app": "app/src/api/client.ts: CORPUS = ${REMOTE_URL}/corpus. A refused read announces itself (CORPUS_ACCESS_EVENT) and CorpusAccessBanner says why once, at the top: offline / sign in / needs the X plan — and 'Your access has changed, reload' after a sign-in or plan grant.",
-    "mcp": "mcp/src/corpus-client.ts: CorpusReads with remoteReads (HTTP, default) and localReads (MQ_CORPUS=local). 401 → 'create a token', 402 → 'needs the X plan', unreachable → 'set REMOTE_URL or MQ_CORPUS=local'. server/test/mcp-remote-corpus.test.ts runs every corpus tool on both paths: byte-identical.",
+    "mcp": "mcp/src/corpus-client.ts: CorpusReads with remoteReads (HTTP, default) and localReads (MQ_CORPUS=local). 401 → 'create a token', 402 → 'needs the X plan', unreachable → 'set REMOTE_URL or MQ_CORPUS=local'. corpus-core/test/mcp-remote-corpus.test.ts runs every corpus tool on both paths: byte-identical.",
     "mcpEnv": {
       "REMOTE_URL": "research server (default http://localhost:8100)",
       "REMOTE_TOKEN": "a personal API token",
@@ -453,24 +453,24 @@
     {
       "id": "no-local-server",
       "decision": "No local server: the research server is the only server.",
-      "why": "The maintainer's call, 2026-09-28 (keep things tidy): once research moved to the account, the local server (server/ on :8000, /api/v1) served only a health check and the desktop window. Removed its entry, its routes app, run-dev scripts and the Electron server bundle; the desktop app serves app/dist itself and ships no quran.db. npm run dev starts the research server and the web app; npm start previews the build on :8000. The corpus code stays in server/ (the research server runs it)."
+      "why": "The maintainer's call, 2026-09-28 (keep things tidy): once research moved to the account, the local server (server/ on :8000, /api/v1) served only a health check and the desktop window. Removed its entry, its routes app, run-dev scripts and the Electron server bundle; the desktop app serves app/dist itself and ships no quran.db. npm run dev starts the research server and the web app; npm start previews the build on :8000. The corpus code stays — renamed server/ → corpus-core/ (the research server runs it)."
     }
   ],
   "fileMap": [
     {
-      "path": "server/src/corpus-db.ts",
+      "path": "corpus-core/src/corpus-db.ts",
       "purpose": "CorpusDb interface + sqliteCorpus + once()"
     },
     {
-      "path": "server/src/corpus-services.ts",
+      "path": "corpus-core/src/corpus-services.ts",
       "purpose": "createCorpusServices, warmCorpus, Entitlements"
     },
     {
-      "path": "server/src/{content,roots,linkages,wazn,expressions,echoes,spellings,freetext,morphology}.ts, similarity/",
+      "path": "corpus-core/src/{content,roots,linkages,wazn,expressions,echoes,spellings,freetext,morphology}.ts, similarity/",
       "purpose": "the corpus services, async, portable SQL"
     },
     {
-      "path": "server/src/routes/{content,roots,similarity,echoes,corpus}.ts",
+      "path": "corpus-core/src/routes/{content,roots,similarity,echoes,corpus}.ts",
       "purpose": "corpus route builders — /corpus on the research server, and the tests over quran.db"
     },
     {
@@ -546,7 +546,7 @@
       "purpose": "openState: corpus (remote|local) + the account's research; the write guard"
     },
     {
-      "path": "server/test/mcp-remote-corpus.test.ts",
+      "path": "corpus-core/test/mcp-remote-corpus.test.ts",
       "purpose": "every MCP corpus tool, remote vs local: identical"
     },
     {
@@ -582,7 +582,7 @@
       "purpose": "who can see it once approved"
     },
     {
-      "path": "remote/test/{research-store,research-cloud,audience}.test.ts, server/test/mcp-remote-research.test.ts",
+      "path": "remote/test/{research-store,research-cloud,audience}.test.ts, corpus-core/test/mcp-remote-research.test.ts",
       "purpose": "what research does; privacy/RLS/AI boundary; ladder/publish/audiences; the MCP over the account's research"
     },
     {

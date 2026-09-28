@@ -28,7 +28,7 @@ import { RESET_PAGE, RESET_PAGE_HEADERS } from "./reset-page.js";
 import { listUsers, setRole, listResources, isUserId, AdminError } from "./admin.js";
 import { corpusApp } from "./corpus/serve.js";
 import { pgCorpus } from "./corpus/pg-corpus.js";
-import { createCorpusServices, type CorpusServices } from "../../server/src/corpus-services.js";
+import { createCorpusServices, type CorpusServices } from "../../corpus-core/src/corpus-services.js";
 import { corpusRunner, researchConnections } from "./db.js";
 import { researchApp } from "./research/serve.js";
 

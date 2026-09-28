@@ -224,7 +224,7 @@ CREATE TABLE ${SCHEMA}.word_segments (
 );
 
 -- The edition this copy holds, in the same keys the signed-patch channel uses
--- (server/src/corpus/patch.ts), plus where it came from.
+-- (corpus-core/src/corpus/patch.ts), plus where it came from.
 CREATE TABLE ${SCHEMA}.corpus_meta (
   "key"   ${T} PRIMARY KEY,
   "value" ${T} NOT NULL

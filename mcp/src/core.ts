@@ -39,9 +39,9 @@ export async function openState(): Promise<McpState> {
 
   let corpus: CorpusReads;
   if (corpusMode() === "local") {
-    const { Db } = await import("../../server/src/db.js");
-    const { sqliteCorpus } = await import("../../server/src/corpus-db.js");
-    const { createCorpusServices } = await import("../../server/src/corpus-services.js");
+    const { Db } = await import("../../corpus-core/src/db.js");
+    const { sqliteCorpus } = await import("../../corpus-core/src/corpus-db.js");
+    const { createCorpusServices } = await import("../../corpus-core/src/corpus-services.js");
     corpus = localReads(createCorpusServices(sqliteCorpus(new Db(resolveQuranDb(), { readOnly: true }))));
   } else {
     corpus = remoteReads(base, token);

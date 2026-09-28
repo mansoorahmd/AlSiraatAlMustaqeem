@@ -1,8 +1,8 @@
 // Corpus patch tooling. Run via tsx:
-//   npm run corpus -w server -- keygen [dir]        generate the maintainer keypair
-//   npm run corpus -w server -- sign <patch.json> <priv.pem>   → signed envelope on stdout
-//   npm run corpus -w server -- apply <signed.json>            apply to QF_QURAN_DB
-//   npm run corpus -w server -- version                        print the corpus version
+//   npm run corpus -w @alsiraat/corpus-core -- keygen [dir]        generate the maintainer keypair
+//   npm run corpus -w @alsiraat/corpus-core -- sign <patch.json> <priv.pem>   → signed envelope on stdout
+//   npm run corpus -w @alsiraat/corpus-core -- apply <signed.json>            apply to QF_QURAN_DB
+//   npm run corpus -w @alsiraat/corpus-core -- version                        print the corpus version
 //
 // keygen/sign never touch a database. apply/version open QF_QURAN_DB (read-write for apply).
 

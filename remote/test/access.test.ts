@@ -16,7 +16,7 @@ import {
 } from "../src/resource-access.js";
 import { corpusApp } from "../src/corpus/serve.js";
 import { pgCorpus } from "../src/corpus/pg-corpus.js";
-import { createCorpusServices } from "../../server/src/corpus-services.js";
+import { createCorpusServices } from "../../corpus-core/src/corpus-services.js";
 import { migrateCorpus } from "../src/corpus/load.js";
 import { makeFixture, pgliteRunner } from "./fixtures/corpus-fixture.js";
 
