@@ -248,7 +248,7 @@
         gates.</p>
       <figure>
         <div class="figbody">
-          <svg viewBox="0 0 940 480" role="img" aria-label="On your machine: the app, the MCP, and an older research.db that can be brought in. On the cloud: the research server with sign-in, the gates, admin, the corpus, each account's private research, and the community. The app and MCP reach it over the network with a session or token.">
+          <svg viewBox="0 0 940 480" role="img" aria-label="On your machine: the app and the MCP, which store nothing of yours. On the cloud: the research server with sign-in, the gates, admin, the corpus, each account's private research, and the community. The app and MCP reach it over the network with a session or token.">
             <defs>
               <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M0 0L10 5L0 10z" fill="currentColor"/>
@@ -276,9 +276,7 @@
               <text x="137" y="274" text-anchor="middle" font-weight="600">MCP</text>
               <text x="137" y="292" text-anchor="middle" font-size="11" fill="var(--ink-soft)">AI study · stdio</text>
 
-              <rect x="52" y="378" width="200" height="50" rx="9" fill="var(--surface)" stroke="var(--gold)" stroke-dasharray="4 4"/>
-              <text x="66" y="398" font-weight="600" font-size="12.5">research.db (from before)</text>
-              <text x="66" y="415" font-size="10.5" fill="var(--ink-soft)">brought in once · left as it is</text>
+              <text x="52" y="405" font-size="11.5" fill="var(--ink-soft)">nothing of yours is stored here</text>
             </g>
 
             <g font-family="var(--sans)">
@@ -318,14 +316,11 @@
             <text x="300" y="74" text-anchor="middle" font-size="11" fill="var(--lapis)" font-family="var(--mono)">everything · your sign-in</text>
             <path d="M222 272 C 320 250, 400 190, 504 160" stroke="var(--lapis)" stroke-width="2" fill="none" marker-end="url(#ahL)"/>
             <text x="240" y="302" font-size="11" fill="var(--lapis)" font-family="var(--mono)">as you, by token</text>
-            <path d="M252 400 C 360 420, 560 460, 690 428" stroke="var(--gold)" stroke-width="1.4" fill="none" stroke-dasharray="4 4" marker-end="url(#ahG)"/>
-            <text x="482" y="453" font-size="10.5" fill="var(--gold)" font-family="var(--mono)">"bring it into my account" — a copy</text>
           </svg>
         </div>
         <figcaption><b>The whole system.</b> The app and the MCP hold nothing of their own: the corpus, your research
           and the community are all on the research server, reached with your sign-in (or a token that acts as you). Your
-          research is kept apart by row-level security — every row carries your account, and nobody else's request can reach it. An older <code>research.db</code>
-          on this computer is brought in once, as a copy; the file itself is never changed.</figcaption>
+          research is kept apart by row-level security — every row carries your account, and nobody else's request can reach it.</figcaption>
       </figure>
       <div class="thread" data-section="system"></div>
     </section>
@@ -351,7 +346,7 @@
           <ul class="checks">
             <li>Cases &amp; board, established meanings, trails, notes, indications, motifs, comparisons</li>
             <li>Every row carries your account; the database itself shows each request only its own user's rows — a draft is yours alone, staff included</li>
-            <li>Same tables as a <code>research.db</code> file (derived from it): <strong>Download a copy</strong> any time, or import one</li>
+            <li>Only here — nothing of it is kept on your computer; the server's nightly backup is its copy</li>
             <li>The AI's proposals land here, tagged <code>ai</code>, for you to accept</li>
           </ul>
         </div>
@@ -527,7 +522,7 @@
         <figcaption><b>Before vs now.</b> The <code>derived_global_forms / dissents / peer_indications</code> tables
           and the pull path are gone. The ⚖ divergence list and the reader's community chips call
           <code>POST /divergences</code> and <code>GET /community/readings</code> live. Your own established meanings
-          never left <code>research.db</code>.</figcaption>
+          stay in your own research.</figcaption>
       </figure>
       <div class="thread" data-section="community"></div>
     </section>
@@ -578,7 +573,7 @@
           <ul class="checks">
             <li><code>REMOTE_URL</code> — the research server</li>
             <li><code>REMOTE_TOKEN</code> — from Account → <em>Connect an AI assistant</em></li>
-            <li><code>MQ_CORPUS=local</code> / <code>MQ_RESEARCH=local</code> — local files instead (offline)</li>
+            <li><code>MQ_CORPUS=local</code> — read <code>quran.db</code> instead (offline); your research is always your account's</li>
           </ul>
         </div>
       </div>
@@ -622,21 +617,20 @@
           </ul>
         </div>
       </div>
-      <div class="callout"><span class="h">Heads-up for you.</span> Your research is still in the <code>research.db</code>
-        on your computer. Open Settings → <em>Your research</em> → <strong>Bring it into my account</strong> to copy it in (the
-        file stays as it is). And your account is <em>maintainer · free</em> while the corpus rule is <em>pro</em> — grant
+      <div class="callout"><span class="h">Heads-up for you.</span> Your research starts empty in your account — the old
+        <code>research.db</code> files are gone (in the Recycle Bin). And your account is <em>maintainer · free</em> while the corpus rule is <em>pro</em> — grant
         yourself Pro in Admin → People, or open the corpus in Who can read.</div>
       <div class="thread" data-section="admin"></div>
     </section>
 
     <section id="roadmap">
       <h2><span class="num">09</span>Roadmap &amp; status</h2>
-      <p>Server 178/178, remote 225/225 tests; the corpus parity sweep 77,439/77,439; research parity 78/78 calls.</p>
+      <p>Server 116/116, remote 250/250 tests; the corpus parity sweep 77,439/77,439.</p>
       <div class="road">
         <div class="step"><span class="st done">corpus · done</span><div><h4>The corpus on the research server</h4><p>Loaded and proven identical; the app and MCP read it from <code>/corpus</code>.</p></div></div>
         <div class="step"><span class="st done">access · done</span><div><h4>Features by role, resources by plan</h4><p>Resource rules for the corpus, the community, each translation and dictionary; the Admin tab.</p></div></div>
         <div class="step"><span class="st done">deploy · ready</span><div><h4>Deployable to a VPS</h4><p>Docker + Caddy HTTPS + SMTP password reset + backups (<code>DEPLOY.md</code>). Waiting on a server and a domain.</p></div></div>
-        <div class="step"><span class="st done">research · done</span><div><h4>Your research in your account</h4><p>One research codebase over SQLite or Postgres; private to each account by row-level security; the app and the MCP read and write it as you; bring your old <code>research.db</code> in; download a copy any time.</p></div></div>
+        <div class="step"><span class="st done">research · done</span><div><h4>Your research in your account</h4><p>In Postgres only, private to each account by row-level security; the app and the MCP read and write it as you. No <code>research.db</code> any more — no local file, no import or export.</p></div></div>
         <div class="step"><span class="st done">roles · done</span><div><h4>Roles as data; audiences on results</h4><p>reader ‹ student ‹ researcher ‹ scholar ‹ moderator ‹ maintainer; publishing's role is yours to set; each published result is seen only by its audience — proposed by its author, confirmed by the reviewer.</p></div></div>
         <div class="step"><span class="st defer">next</span><div><h4>Billing provider</h4><p>Slots into the plan grant with no rework of the gates. Also open: deleting an account (and its research), a review screen for submissions.</p></div></div>
       </div>

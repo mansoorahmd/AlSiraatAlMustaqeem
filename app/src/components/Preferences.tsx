@@ -2,7 +2,7 @@
 // settings on Home rather than in the top bar: they're set occasionally, not per-action, and
 // the chrome is better spent on navigation.
 //
-// Every value persists in research.db (via the settings store), so it follows the reader
+// Every value persists in the account (via the settings store), so it follows the reader
 // between the web and desktop builds.
 
 import { api } from "../api/client";

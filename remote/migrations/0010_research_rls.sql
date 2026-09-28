@@ -8,9 +8,8 @@
 --   • requests run as mqrg_research, a role that is not a superuser and cannot bypass RLS (a
 --     superuser bypasses every policy, FORCE or not — and the Docker image's database user is one)
 --
--- The columns are exactly a research.db file's (server/src/research.ts SQLITE_SCHEMA) plus user_id;
--- remote/test/research-cloud.test.ts fails if they drift. Text is COLLATE "C" (byte order, as in
--- SQLite), timestamps are BIGINT milliseconds.
+-- The columns began as a research.db file's, plus user_id (the file is gone: 0011). Text is
+-- COLLATE "C" (byte order), timestamps are BIGINT milliseconds.
 
 CREATE SCHEMA IF NOT EXISTS research;
 

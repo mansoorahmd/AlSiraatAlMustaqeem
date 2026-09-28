@@ -7,13 +7,8 @@
 		X-Content-Type-Options "nosniff"
 		-Server
 	}
-	# requests are small JSON — except bringing a research.db into an account (up to 100 MB)
-	@import path /research/import
-	@other not path /research/import
-	request_body @import {
-		max_size 100MB
-	}
-	request_body @other {
+	# requests are small JSON
+	request_body {
 		max_size 5MB
 	}
 	reverse_proxy remote:8100 {

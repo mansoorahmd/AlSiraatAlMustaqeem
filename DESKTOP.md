@@ -11,7 +11,7 @@ Electron main (electron/main.mjs)
   ├─ picks a free port
   ├─ spawns the bundled server (electron/build/server.cjs) as a Node utilityProcess
   │     env: SERVE_STATIC=1, NODE_OPTIONS=--experimental-sqlite,
-  │          QF_QURAN_DB, QF_RESEARCH_DB, QF_STATIC_ROOT, PORT
+  │          QF_QURAN_DB, QF_STATIC_ROOT, PORT
   ├─ waits for /api/v1/health
   └─ opens a BrowserWindow at http://127.0.0.1:<port>/
 ```
@@ -24,17 +24,8 @@ Electron main (electron/main.mjs)
   is launched with `NODE_OPTIONS=--experimental-sqlite`. This means **no native
   dependency, no rebuild step, no C++ build tools** — packaging is trivial and works on
   any machine.
-- **Data.** `quran.db` ships read-only in the app's `resources/`. Where `research.db` lives
-  depends on the build:
-  - **Packaged** — the OS user-data dir (`app.getPath('userData')`), so the reader's work
-    survives updates and a shipped app never writes into a source checkout. Seeded from a
-    bundled copy on first run if one is shipped, else created on first write.
-  - **Dev** (`npm run electron:dev`) — the repo's `./research.db`, i.e. **the same file the
-    web dev server uses**. They used to differ, which silently forked your research: share a
-    question in the browser, open Electron, and it wasn't there. One file while developing.
-
-  `QF_RESEARCH_DB` overrides either. The path in use is printed at startup
-  (`[mqrg] research.db → …`) and shown in the app under **Home → Your data**.
+- **Data.** `quran.db` ships read-only in the app's `resources/`. The reader's research is
+  in their account on the research server — the desktop app keeps none of it on disk.
 - **The MCP server is unrelated** — it's a separate stdio process Claude Desktop launches.
 
 ## Develop
@@ -68,6 +59,4 @@ rebuild, so no extra packaging steps.
 - No app icon or code-signing yet (unsigned builds warn on first launch) — add an
   `electron/resources/` icon set and signing config to `electron-builder.yml` before a
   public release.
-- To ship a starter `research.db`, uncomment its `extraResources` entry in
-  `electron-builder.yml`.
 - Auto-update (electron-updater) is not wired up.

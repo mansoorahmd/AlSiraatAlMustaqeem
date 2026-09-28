@@ -10,7 +10,6 @@ import { HttpError } from "./content.js";
 import { contentRoutes } from "./routes/content.js";
 import { rootRoutes } from "./routes/roots.js";
 import { similarityRoutes } from "./routes/similarity.js";
-import { researchDataRoutes, researchFileRoutes } from "./routes/research.js";
 import { echoRoutes } from "./routes/echoes.js";
 import { corpusRoutes } from "./routes/corpus.js";
 
@@ -20,14 +19,6 @@ export function createApp(state: AppState): Hono {
   // Open CORS so a future mobile app (or a separately-hosted web build) can
   // consume the API from any origin. Tighten to an allowlist when accounts land.
   app.use("/api/*", cors());
-
-  // Research data is read-write and changes as the user works, so its fixed-URL
-  // reads (e.g. /indications/gloss) must never come back stale. Scoped deliberately:
-  // Quran content is immutable and stays cacheable.
-  app.use("/api/v1/research/*", async (c, next) => {
-    await next();
-    c.header("Cache-Control", "no-store");
-  });
 
   // typed errors → { detail } with the right status (FastAPI-style)
   app.onError((err, c) => {
@@ -43,8 +34,6 @@ export function createApp(state: AppState): Hono {
   v1.route("/", contentRoutes(state));
   v1.route("/", rootRoutes(state));
   v1.route("/", similarityRoutes(state));
-  v1.route("/", researchFileRoutes(state));
-  v1.route("/", researchDataRoutes(() => state.research));   // per request: the open file can change
   v1.route("/", echoRoutes(state));
   v1.route("/", corpusRoutes(state));
 

@@ -153,7 +153,7 @@ carry over). Until then, re-run `corpus:migrate` after patching `quran.db`.
 The applier writes to `quran.db`, so it runs out-of-band, not through the live server (which
 holds the corpus read-only). Remaining for a later pass:
 
-- Copy the bundled `quran.db` into the OS user-data dir on first run (as `research.db` already is),
+- Copy the bundled `quran.db` into the OS user-data dir on first run,
   so it's writable and patchable; the read-only handle then opens that copy.
 - On startup, fetch any patches with `patchVersion > corpus_version` from the release feed and
   apply them in order before opening the window.

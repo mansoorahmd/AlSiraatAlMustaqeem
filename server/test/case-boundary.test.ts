@@ -6,32 +6,29 @@
 // These are the tests that matter most: this is the first surface where an AI can
 // modify the reader's existing work, so each prohibition gets an explicit test.
 
-import { describe, it, expect, beforeAll } from "vitest";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+// The tools run as the MCP (an API token), against a real account on an in-process research
+// server — so the server's AI boundary applies too. The reader's own cases are seeded as the
+// reader, in the app.
 
-// these tests are about tool behaviour, against the local corpus reference (the remote path has its own test)
-process.env.MQ_CORPUS = "local";
-process.env.MQ_RESEARCH = "local";
-process.env.QF_RESEARCH_DB = join(mkdtempSync(join(tmpdir(), "alsiraat-case-")), "r.db");
+import { describe, it, expect, beforeAll } from "vitest";
+import { mcpTestState } from "./mcp-state.js";
 
 let state: any;
+let reader: any;
 let T: Map<string, any>;
 // tools may be async (corpus reads), so every call is awaited and a refusal is a rejection
 const call = async (name: string, args: any): Promise<any> => T.get(name)!.run(state, args);
 
 beforeAll(async () => {
-  const { openState } = await import("../../mcp/src/core.js");
   const { TOOLS } = await import("../../mcp/src/tools.js");
-  state = await openState();
+  ({ state, reader } = await mcpTestState());
   T = new Map(TOOLS.map((t) => [t.name, t]));
 });
 
 /** a case as the READER would have made it: no source tags anywhere */
 async function seedReaderCase() {
   const now = Date.now();
-  return (await state.research.saveCase({
+  return (await reader.saveCase({
     id: `case_reader_${now}_${Math.random().toString(36).slice(2, 7)}`,
     subject: { type: "root", value: "رحم" },
     title: "the reader's own case",
@@ -156,7 +153,7 @@ describe("case boundary — what the AI may NOT do", () => {
     const mine = await seedReaderCase();
     const stale = mine.updatedAt;
     // the reader edits in the app meanwhile
-    await state.research.saveCase({ ...(await state.research.getCase(mine.id)), title: "renamed by me" });
+    await reader.saveCase({ ...(await reader.getCase(mine.id)), title: "renamed by me" });
     await expect(call("add_evidence", {
       case_id: mine.id, ayat: [{ verse_key: "2:4" }], expect_version: stale,
     })).rejects.toThrow(/changed since you read it/);
@@ -177,7 +174,7 @@ describe("case boundary — what the AI may NOT do", () => {
     // SlipRecord.source is the WORK BEING CITED ("Lane's Lexicon"), not who wrote the
     // slip (that is `author`). A reader's reference slip must stay untouchable.
     const now = Date.now();
-    const c = (await state.research.saveCase({
+    const c = (await reader.saveCase({
       id: `case_cite_${now}`,
       subject: { type: "root", value: "رحم" }, title: "citation slip",
       cards: [],

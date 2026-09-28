@@ -21,9 +21,6 @@ extraResources:
     to: app/dist
   - from: quran.db
     to: quran.db
-  # a starter research.db can be shipped to seed first run; omit to start empty
-  # - from: research.db
-  #   to: research.db
 
 win:
   target: nsis

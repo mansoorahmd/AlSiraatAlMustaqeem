@@ -1,306 +1,24 @@
 // Research store — the reader's own scholarship: cases (+ form_research/revisions), trails,
 // notes, root meanings, motifs, indications, comparisons, settings, and the outbox of what they
-// have published. Port of quran_api/research.py.
+// have published.
 //
-// Written once, async, against ResearchDb (research-db.ts), so the same code runs over a
-// research.db FILE (SQLite: the local server, tests, import/export) and over the signed-in
-// user's own Postgres SCHEMA on the research server. Every visible ordering is total (ids as the
-// last key), so both engines return the same rows in the same order.
+// One store per request, over that request's connection, already bound to the signed-in user
+// (schema.ts): row-level security shows and admits only their rows, and every insert takes their
+// user_id by default — so no query here names a user, and none can reach another's. The tables
+// are migrations/0010_research_rls.sql. Every visible ordering is total (ids as the last key).
 
-import { randomUUID } from "node:crypto";
-import { ownerIdFor, normalizeEmail } from "./identity.js";
-import type { ResearchDb } from "./research-db.js";
-
-// User-authored top-level records get an author + origin stamp (Phase 1). `author_id`
-// is the account-independent identity (see ensureLocalId); `origin` is 'local'
-// for anything the reader (or their AI) makes here, vs 'remote' for pulled peer work.
-// Child rows (form_research, motif_roots, compare_items) inherit authorship from their
-// parent and are not stamped.
-export const STAMPED_TABLES = [
-  "cases", "notes", "trails", "motifs", "user_root_meanings", "word_indications", "compare_sets",
-];
-
-/**
- * The research schema, as a research.db file (SQLite) declares it. The research server derives
- * each account's Postgres schema from this same text (remote/src/research/schema.ts), so the two
- * can't drift apart.
- */
-export const SQLITE_SCHEMA = `
-CREATE TABLE IF NOT EXISTS cases (
-    id TEXT PRIMARY KEY, subject_type TEXT NOT NULL, subject_value TEXT NOT NULL,
-    title TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'open',
-    verdict TEXT NOT NULL DEFAULT '', spark_verse_key TEXT,
-    doc TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_cases_subject ON cases(subject_type, subject_value);
-CREATE INDEX IF NOT EXISTS idx_cases_status ON cases(status);
-
-CREATE TABLE IF NOT EXISTS form_research (
-    case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
-    root TEXT NOT NULL, lemma TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open',
-    meaning TEXT NOT NULL DEFAULT '', established_at INTEGER, updated_at INTEGER NOT NULL,
-    PRIMARY KEY (case_id, lemma)
-);
-CREATE INDEX IF NOT EXISTS idx_form_lemma ON form_research(lemma);
-CREATE INDEX IF NOT EXISTS idx_form_root ON form_research(root);
-
-CREATE TABLE IF NOT EXISTS form_revisions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, case_id TEXT NOT NULL, lemma TEXT NOT NULL,
-    meaning TEXT NOT NULL, replaced_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_rev_lemma ON form_revisions(case_id, lemma);
-
-CREATE TABLE IF NOT EXISTS trails (
-    id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', subject TEXT,
-    doc TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS notes (
-    id TEXT PRIMARY KEY, verse_key TEXT NOT NULL, word_position INTEGER,
-    kind TEXT NOT NULL DEFAULT 'note', text TEXT NOT NULL DEFAULT '',
-    answer TEXT NOT NULL DEFAULT '', resolved INTEGER NOT NULL DEFAULT 0,
-    lemma TEXT, root TEXT, source TEXT NOT NULL DEFAULT 'me',
-    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_notes_verse ON notes(verse_key);
--- source indexes are created in migrateSqlite, AFTER the migration adds the column
-
--- the reader's own meaning for a root, saved alongside the dictionary lexicons
-CREATE TABLE IF NOT EXISTS user_root_meanings (
-    root TEXT PRIMARY KEY, meaning TEXT NOT NULL DEFAULT '', updated_at INTEGER NOT NULL
-);
-
--- motifs (بيوت): reader-defined collections that group roots by a linguistic motif
-CREATE TABLE IF NOT EXISTS motifs (
-    id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '',
-    source TEXT NOT NULL DEFAULT 'me',   -- 'me' = the reader; 'ai' = proposed via the MCP server
-    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS motif_roots (
-    motif_id TEXT NOT NULL, root TEXT NOT NULL, added_at INTEGER NOT NULL,
-    PRIMARY KEY (motif_id, root)
-);
-CREATE INDEX IF NOT EXISTS idx_motif_roots_root ON motif_roots(root);
-
--- device-independent UI settings (reading prefs, active comparison): a small
--- key -> JSON value store, so they persist with the reader's data rather than in the
--- browser's per-origin IndexedDB (which reset when the desktop shell changed port).
-CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL
-);
-
--- indications: the reader's own meanings for a word, anchored at the ROOT
--- (scope='root', parent_id NULL, one primary per root). Each root indication has
--- per-FORM refinements (scope='lemma', parent_id = the root indication, one per
--- lemma). Words with no root keep standalone lemma indications.
-CREATE TABLE IF NOT EXISTS word_indications (
-    id TEXT PRIMARY KEY, lemma TEXT, root TEXT,
-    scope TEXT NOT NULL DEFAULT 'lemma',   -- 'root' | 'lemma'
-    parent_id TEXT,                        -- refinement -> its root indication; else NULL
-    label TEXT NOT NULL DEFAULT '', meaning TEXT NOT NULL DEFAULT '',
-    is_primary INTEGER NOT NULL DEFAULT 0, source TEXT NOT NULL DEFAULT 'me',
-    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_word_indications_lemma ON word_indications(lemma);
-CREATE INDEX IF NOT EXISTS idx_word_indications_root ON word_indications(root);
-CREATE INDEX IF NOT EXISTS idx_word_indications_parent ON word_indications(parent_id);
-
--- comparisons (بيوت-style saveable boards of pinned āyāt & roots studied side by side)
-CREATE TABLE IF NOT EXISTS compare_sets (
-    id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '',
-    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS compare_items (
-    id TEXT PRIMARY KEY, set_id TEXT NOT NULL,
-    kind TEXT NOT NULL, ref TEXT NOT NULL, label TEXT,
-    created_at INTEGER NOT NULL,
-    UNIQUE (set_id, kind, ref)
-);
-CREATE INDEX IF NOT EXISTS idx_compare_items_set ON compare_items(set_id);
-
--- Who this database belongs to. Kept INSIDE the file, so the file is self-describing: copy it
--- to another machine, rename it, or hand it to a colleague and it still knows whose research it
--- is. uuid is derived from the email (uuidv5), so the same person always gets the same id — it
--- is what a remote account binds to. Exactly one row.
-CREATE TABLE IF NOT EXISTS owner (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
-    name TEXT NOT NULL DEFAULT '',
-    email TEXT NOT NULL,
-    uuid TEXT NOT NULL,
-    claimed_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
-);
-
--- Outbound submission ledger (SHARED_RESEARCH_SCHEMA.md section 2, derived_submissions): what
--- this reader has offered upstream, so the app can tell "already shared" from "changed since I
--- shared it" and chain a re-submission via supersedes instead of orphaning a duplicate.
--- Drop-safe: the underlying work lives in the reader's own tables, so losing this costs a
--- re-submit, not data. local_ref + content_hash are additions to the frozen shape — they map
--- a submission back to the local record it came from.
-CREATE TABLE IF NOT EXISTS derived_submissions (
-    local_ref TEXT PRIMARY KEY,          -- the local record's id (note/question/…)
-    submission_id TEXT NOT NULL,         -- sub_… returned by the remote
-    content_hash TEXT NOT NULL,          -- hash of the payload as submitted
-    kind TEXT NOT NULL DEFAULT '',
-    status TEXT NOT NULL DEFAULT 'submitted',
-    submitted_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_derived_submissions_sub ON derived_submissions(submission_id);
-
--- Which readings this reader has PROPOSED to the community (the claim spine's outbox). Like
--- derived_submissions, it exists only so the UI can tell "not proposed" from "proposed" from
--- "changed since I proposed it" — the claim itself lives on the remote. content_hash covers
--- the whole reading (root meaning + every form refinement), so editing any part shows as a
--- pending update. Drop-safe: losing it costs a re-propose, never research.
-CREATE TABLE IF NOT EXISTS derived_proposed_claims (
-    subject_kind TEXT NOT NULL,          -- 'form' | 'root'
-    subject_value TEXT NOT NULL,
-    content_hash TEXT NOT NULL,          -- hash of the reading as proposed
-    proposed_at INTEGER NOT NULL,
-    PRIMARY KEY (subject_kind, subject_value)
-);
-
--- (Removed with monetization: the group's readings are no longer MIRRORED into local derived
--- tables. Community data is read LIVE from the remote and gated. Only derived_submissions /
--- derived_proposed_claims remain: they record YOUR OWN outbound actions, not anyone else's work.)
-`;
-
-/** Indexes a research.db gains in migrateSqlite (after its columns exist) — also created in Postgres. */
-export const LATER_INDEXES = [
-  "CREATE INDEX IF NOT EXISTS idx_notes_lemma ON notes(lemma)",
-  "CREATE INDEX IF NOT EXISTS idx_notes_root ON notes(root)",
-  "CREATE INDEX IF NOT EXISTS idx_notes_source ON notes(source)",
-  "CREATE INDEX IF NOT EXISTS idx_word_indications_source ON word_indications(source)",
-];
-
-const NOTE_MIGRATIONS: [string, string][] = [
-  ["answer", "TEXT NOT NULL DEFAULT ''"],
-  ["lemma", "TEXT"],
-  ["root", "TEXT"],
-  // who wrote it: 'me' (the reader) or 'ai' (proposed via the MCP server)
-  ["source", "TEXT NOT NULL DEFAULT 'me'"],
-];
+import type { ResearchDb } from "./pg-research.js";
 
 const now = () => Date.now();
 type Doc = Record<string, any>;
 type MotifRow = { id: string; name: string; note: string; source?: string; created_at: number; updated_at: number };
 
 export class ResearchStore {
-  /** The identity every row this reader creates is stamped with (the owner's uuid once claimed). */
-  localId = "";
-
-  private constructor(private db: ResearchDb) {}
-
   /**
-   * Open a research store. A research.db FILE migrates itself here (old files gain columns as the
-   * schema grew). A Postgres schema is created and upgraded by the research server before it gets
-   * here (remote/src/research/schema.ts), so there is nothing to migrate.
+   * `userId` is the signed-in account: what the reader's records are stamped with as their
+   * author (author_id), so a record carries who wrote it wherever it's shown.
    */
-  static async open(db: ResearchDb): Promise<ResearchStore> {
-    const store = new ResearchStore(db);
-    if (db.dialect === "sqlite") await store.migrateSqlite();
-    // Phase 1 — local identity: a stable id every authored row is stamped with.
-    store.localId = await store.ensureLocalId();
-    if (db.dialect === "sqlite") for (const table of STAMPED_TABLES) await store.stampTable(table);
-    return store;
-  }
-
-  private async migrateSqlite(): Promise<void> {
-    const db = this.db;
-    const cols = async (t: string) =>
-      new Set((await db.query<{ name: string }>(`PRAGMA table_info(${t})`)).map((r) => r.name));
-    await db.exec("PRAGMA journal_mode = WAL");
-    await db.exec(SQLITE_SCHEMA);
-    const have = await cols("notes");
-    for (const [col, decl] of NOTE_MIGRATIONS) {
-      if (!have.has(col)) await db.exec(`ALTER TABLE notes ADD COLUMN ${col} ${decl}`);
-    }
-    await db.exec("CREATE INDEX IF NOT EXISTS idx_notes_lemma ON notes(lemma)");
-    await db.exec("CREATE INDEX IF NOT EXISTS idx_notes_root ON notes(root)");
-    // "senses" were renamed to "indications". The old tables are dropped rather
-    // than migrated: the feature was still being shaped and its data was scratch.
-    await db.exec("DROP TABLE IF EXISTS word_senses");
-    await db.exec("DROP TABLE IF EXISTS sense_assignments");
-    // the owner record gained a name after it shipped with just an email
-    const ownerCols = await cols("owner");
-    if (ownerCols.size && !ownerCols.has("name")) {
-      await db.exec("ALTER TABLE owner ADD COLUMN name TEXT NOT NULL DEFAULT ''");
-    }
-    // provenance: records proposed by an AI through the MCP server are tagged
-    const indCols = await cols("word_indications");
-    if (indCols.size && !indCols.has("source")) {
-      await db.exec("ALTER TABLE word_indications ADD COLUMN source TEXT NOT NULL DEFAULT 'me'");
-    }
-    // motifs gained a source flag so AI-proposed groupings are distinguishable from the reader's
-    const motifCols = await cols("motifs");
-    if (motifCols.size && !motifCols.has("source")) {
-      await db.exec("ALTER TABLE motifs ADD COLUMN source TEXT NOT NULL DEFAULT 'me'");
-    }
-    await db.exec("CREATE INDEX IF NOT EXISTS idx_notes_source ON notes(source)");
-    await db.exec("CREATE INDEX IF NOT EXISTS idx_word_indications_source ON word_indications(source)");
-  }
-
-  /**
-   * The id this database's work is attributed to. Once an owner is set it is their derived
-   * uuid — stable for that person on any machine. Before that (or in tests) a random one is
-   * minted so nothing is ever un-attributed.
-   */
-  private async ensureLocalId(): Promise<string> {
-    const owner = await this.getOwner();
-    if (owner) return owner.uuid as string;
-    const cur = await this.getSetting("local_id");
-    if (typeof cur === "string" && cur) return cur;
-    const id = randomUUID();
-    await this.setSetting("local_id", id);
-    return id;
-  }
-
-  // ---- owner: whose research this is ---------------------------------------------
-  /** Who this research belongs to, or undefined if nobody has claimed it yet. */
-  async getOwner(): Promise<Doc | undefined> {
-    try {
-      const r = await this.db.one<{ name: string; email: string; uuid: string; claimed_at: number; updated_at: number }>(
-        "SELECT name, email, uuid, claimed_at, updated_at FROM owner WHERE id = 1");
-      return r
-        ? { name: r.name ?? "", email: r.email, uuid: r.uuid, claimedAt: r.claimed_at, updatedAt: r.updated_at }
-        : undefined;
-    } catch { return undefined; } // table not present on a very old file
-  }
-
-  /**
-   * Claim this research for `email`, or re-assign it (you hold the file, so you may correct a
-   * typo or hand it on). The uuid is re-derived, and local_id follows it so newly authored rows
-   * carry the right author.
-   */
-  async setOwner(email: string, name?: string): Promise<Doc> {
-    const clean = normalizeEmail(email);
-    if (!clean.includes("@")) throw new Error("a valid email is required");
-    const uuid = ownerIdFor(clean);
-    const t = now();
-    // keep the existing name when one isn't supplied (e.g. correcting only the email)
-    const label = (name ?? ((await this.getOwner())?.name as string | undefined) ?? "").trim().slice(0, 120);
-    await this.db.run(
-      `INSERT INTO owner (id, name, email, uuid, claimed_at, updated_at) VALUES (1, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET name = excluded.name, email = excluded.email,
-         uuid = excluded.uuid, updated_at = excluded.updated_at`,
-      [label, clean, uuid, t, t],
-    );
-    await this.setSetting("local_id", uuid);
-    this.localId = uuid;
-    return (await this.getOwner())!;
-  }
-
-  /** Add author_id + origin to `table` if missing, and stamp any rows that predate them (SQLite). */
-  private async stampTable(table: string): Promise<void> {
-    const cols = new Set((await this.db.query<{ name: string }>(`PRAGMA table_info(${table})`)).map((r) => r.name));
-    if (cols.size === 0) return; // table not present
-    if (!cols.has("author_id")) await this.db.exec(`ALTER TABLE ${table} ADD COLUMN author_id TEXT`);
-    if (!cols.has("origin")) await this.db.exec(`ALTER TABLE ${table} ADD COLUMN origin TEXT NOT NULL DEFAULT 'local'`);
-    await this.db.run(
-      `UPDATE ${table} SET author_id = ? WHERE author_id IS NULL OR author_id = ''`,
-      [this.localId],
-    );
-  }
+  constructor(private db: ResearchDb, readonly userId: string) {}
 
   // -- cases --
   async listCases(): Promise<Doc[]> {
@@ -319,27 +37,22 @@ export class ResearchStore {
     await this.db.run(
       `INSERT INTO cases (id, subject_type, subject_value, title, status, verdict, spark_verse_key, doc, created_at, updated_at, author_id, origin)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-       ON CONFLICT(id) DO UPDATE SET subject_type=excluded.subject_type, subject_value=excluded.subject_value,
+       ON CONFLICT (user_id, id) DO UPDATE SET subject_type=excluded.subject_type, subject_value=excluded.subject_value,
          title=excluded.title, status=excluded.status, verdict=excluded.verdict,
          spark_verse_key=excluded.spark_verse_key, doc=excluded.doc, updated_at=excluded.updated_at`,
       [doc.id, subject.type ?? "root", subject.value ?? "", doc.title ?? "", doc.status ?? "open",
        doc.verdict ?? "", subject.sparkVerseKey ?? null, JSON.stringify(doc), doc.createdAt, t,
-       doc.authorId ?? this.localId, doc.origin ?? "local"],
+       doc.authorId ?? this.userId, doc.origin ?? "local"],
     );
     await this.reconcileFormResearch(doc);
     return doc;
   }
   async deleteCase(id: string): Promise<boolean> {
-    const cur = await this.db.run("DELETE FROM cases WHERE id = ?", [id]);
-    await this.db.run("DELETE FROM form_research WHERE case_id = ?", [id]);
-    return cur.changes > 0;
+    // its form research goes with it (ON DELETE CASCADE)
+    return (await this.db.run("DELETE FROM cases WHERE id = ?", [id])).changes > 0;
   }
 
-  /**
-   * Keep form_research in step with the case document. NOTHING to do with remote sync — the
-   * case board is the source, and this is the reader's own act. (Named "sync…" once, which
-   * tripped the write-boundary test; the boundary is about what a PULL may write.)
-   */
+  /** Keep form_research in step with the case document — the case board is the source. */
   private async reconcileFormResearch(doc: Doc): Promise<void> {
     const caseId = doc.id;
     const root = (doc.subject ?? {}).value ?? "";
@@ -362,7 +75,7 @@ export class ResearchStore {
       await this.db.run(
         `INSERT INTO form_research (case_id, root, lemma, status, meaning, established_at, updated_at)
          VALUES (?,?,?,?,?,?,?)
-         ON CONFLICT(case_id, lemma) DO UPDATE SET root=excluded.root, status=excluded.status,
+         ON CONFLICT (user_id, case_id, lemma) DO UPDATE SET root=excluded.root, status=excluded.status,
            meaning=excluded.meaning, established_at=excluded.established_at, updated_at=excluded.updated_at`,
         [caseId, root, lemma, status, meaning, fr.establishedAt ?? null, t],
       );
@@ -397,9 +110,9 @@ export class ResearchStore {
     doc.createdAt ??= t;
     await this.db.run(
       `INSERT INTO trails (id, name, subject, doc, created_at, updated_at, author_id, origin) VALUES (?,?,?,?,?,?,?,?)
-       ON CONFLICT(id) DO UPDATE SET name=excluded.name, subject=excluded.subject, doc=excluded.doc, updated_at=excluded.updated_at`,
+       ON CONFLICT (user_id, id) DO UPDATE SET name=excluded.name, subject=excluded.subject, doc=excluded.doc, updated_at=excluded.updated_at`,
       [doc.id, doc.name ?? "", doc.subject ?? null, JSON.stringify(doc), doc.createdAt, t,
-       doc.authorId ?? this.localId, doc.origin ?? "local"],
+       doc.authorId ?? this.userId, doc.origin ?? "local"],
     );
     return doc;
   }
@@ -437,13 +150,13 @@ export class ResearchStore {
     await this.db.run(
       `INSERT INTO notes (id, verse_key, word_position, kind, text, answer, resolved, lemma, root, source, created_at, updated_at, author_id, origin)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-       ON CONFLICT(id) DO UPDATE SET verse_key=excluded.verse_key, word_position=excluded.word_position,
+       ON CONFLICT (user_id, id) DO UPDATE SET verse_key=excluded.verse_key, word_position=excluded.word_position,
          kind=excluded.kind, text=excluded.text, answer=excluded.answer, resolved=excluded.resolved,
          lemma=excluded.lemma, root=excluded.root, updated_at=excluded.updated_at`,
       [doc.id, doc.verseKey, doc.wordPosition ?? null, doc.kind ?? "note", doc.text ?? "",
        doc.answer ?? "", doc.resolved ? 1 : 0, doc.lemma ?? null, doc.root ?? null,
        doc.source === "ai" ? "ai" : "me", doc.createdAt, t,
-       doc.authorId ?? this.localId, doc.origin ?? "local"],
+       doc.authorId ?? this.userId, doc.origin ?? "local"],
     );
     return doc;
   }
@@ -472,8 +185,8 @@ export class ResearchStore {
     }
     await this.db.run(
       `INSERT INTO user_root_meanings (root, meaning, updated_at, author_id, origin) VALUES (?,?,?,?,?)
-       ON CONFLICT(root) DO UPDATE SET meaning=excluded.meaning, updated_at=excluded.updated_at`,
-      [root, text, t, this.localId, "local"],
+       ON CONFLICT (user_id, root) DO UPDATE SET meaning=excluded.meaning, updated_at=excluded.updated_at`,
+      [root, text, t, this.userId, "local"],
     );
     return { root, meaning: text, updatedAt: t };
   }
@@ -518,9 +231,9 @@ export class ResearchStore {
     const existing = await this.getMotif(id);
     await this.db.run(
       `INSERT INTO motifs (id, name, note, source, created_at, updated_at, author_id, origin) VALUES (?,?,?,?,?,?,?,?)
-       ON CONFLICT(id) DO UPDATE SET name=excluded.name, note=excluded.note, updated_at=excluded.updated_at`,
+       ON CONFLICT (user_id, id) DO UPDATE SET name=excluded.name, note=excluded.note, updated_at=excluded.updated_at`,
       [id, doc.name ?? "", doc.note ?? "", doc.source === "ai" ? "ai" : existing?.source ?? "me",
-       doc.createdAt ?? t, t, doc.authorId ?? this.localId, doc.origin ?? "local"],
+       doc.createdAt ?? t, t, doc.authorId ?? this.userId, doc.origin ?? "local"],
     );
     return {
       id, name: doc.name ?? "", note: doc.note ?? "",
@@ -576,8 +289,8 @@ export class ResearchStore {
     const t = now();
     await this.db.run(
       `INSERT INTO compare_sets (id, title, created_at, updated_at, author_id, origin) VALUES (?,?,?,?,?,?)
-       ON CONFLICT(id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at`,
-      [doc.id, doc.title ?? "", doc.createdAt ?? t, t, doc.authorId ?? this.localId, doc.origin ?? "local"],
+       ON CONFLICT (user_id, id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at`,
+      [doc.id, doc.title ?? "", doc.createdAt ?? t, t, doc.authorId ?? this.userId, doc.origin ?? "local"],
     );
     return (await this.getCompareSet(doc.id))!;
   }
@@ -592,7 +305,7 @@ export class ResearchStore {
   async addCompareItem(setId: string, doc: Doc): Promise<Doc> {
     await this.db.run(
       `INSERT INTO compare_items (id, set_id, kind, ref, label, created_at) VALUES (?,?,?,?,?,?)
-       ON CONFLICT(set_id, kind, ref) DO NOTHING`,
+       ON CONFLICT (user_id, set_id, kind, ref) DO NOTHING`,
       [doc.id, setId, doc.kind, doc.ref, doc.label ?? null, doc.createdAt ?? now()],
     );
     await this.touchCompareSet(setId);
@@ -693,8 +406,8 @@ export class ResearchStore {
     const lemmaIndications = (!root && lemma) ? await this.lemmaIndications(lemma) : [];
     return {
       root, lemma, rootIndications, lemmaIndications,
-      // The community's readings are not served from here: the app reads them live from the
-      // research server (GET /community/readings, gated) and merges them in.
+      // The community's readings are not served from here: the app reads them live from
+      // GET /community/readings (gated) and merges them in.
       communityRoot: [],
       communityLemma: [],
     };
@@ -725,11 +438,11 @@ export class ResearchStore {
     await this.db.run(
       `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, source, created_at, updated_at, author_id, origin)
        VALUES (?,?,?,?,NULL,?,?,?,?,?,?,?,?)
-       ON CONFLICT(id) DO UPDATE SET root=excluded.root, lemma=excluded.lemma, scope=excluded.scope,
+       ON CONFLICT (user_id, id) DO UPDATE SET root=excluded.root, lemma=excluded.lemma, scope=excluded.scope,
          label=excluded.label, meaning=excluded.meaning, is_primary=excluded.is_primary, updated_at=excluded.updated_at`,
       [doc.id, root, lemma, scope, doc.label ?? "", doc.meaning ?? "", primary ? 1 : 0,
        doc.source === "ai" ? "ai" : existing?.source ?? "me", existing?.createdAt ?? t, t,
-       doc.authorId ?? this.localId, doc.origin ?? "local"],
+       doc.authorId ?? this.userId, doc.origin ?? "local"],
     );
     if (primary) {
       if (scope === "root" && root) await this.clearRootPrimary(root, doc.id);
@@ -748,10 +461,10 @@ export class ResearchStore {
     await this.db.run(
       `INSERT INTO word_indications (id, root, lemma, scope, parent_id, label, meaning, is_primary, source, created_at, updated_at, author_id, origin)
        VALUES (?,?,?, 'lemma', ?, ?, ?, 0, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET label=excluded.label, meaning=excluded.meaning, updated_at=excluded.updated_at`,
+       ON CONFLICT (user_id, id) DO UPDATE SET label=excluded.label, meaning=excluded.meaning, updated_at=excluded.updated_at`,
       [id, parent.root, doc.lemma, doc.parentId, doc.label ?? "", doc.meaning ?? "",
        doc.source === "ai" ? "ai" : existing?.source ?? "me", existing?.createdAt ?? t, t,
-       doc.authorId ?? this.localId, doc.origin ?? "local"],
+       doc.authorId ?? this.userId, doc.origin ?? "local"],
     );
     return this.getIndication(id);
   }
@@ -819,7 +532,7 @@ export class ResearchStore {
     };
   }
 
-  /** What was submitted for this local record, if anything. */
+  /** What was submitted for this record, if anything. */
   async getSubmissionFor(localRef: string): Promise<Doc | undefined> {
     const r = await this.db.one<any>("SELECT * FROM derived_submissions WHERE local_ref = ?", [localRef]);
     return r ? ResearchStore.submissionRow(r) : undefined;
@@ -830,13 +543,13 @@ export class ResearchStore {
       .map(ResearchStore.submissionRow);
   }
 
-  /** Record (or replace) what was submitted for a local record. */
+  /** Record (or replace) what was submitted for a record. */
   async recordSubmission(doc: Doc): Promise<Doc> {
     const t = now();
     await this.db.run(
       `INSERT INTO derived_submissions (local_ref, submission_id, content_hash, kind, status, submitted_at)
        VALUES (?,?,?,?,?,?)
-       ON CONFLICT(local_ref) DO UPDATE SET submission_id=excluded.submission_id,
+       ON CONFLICT (user_id, local_ref) DO UPDATE SET submission_id=excluded.submission_id,
          content_hash=excluded.content_hash, kind=excluded.kind,
          status=excluded.status, submitted_at=excluded.submitted_at`,
       [doc.localRef, doc.submissionId, doc.contentHash, doc.kind ?? "", doc.status ?? "submitted", t],
@@ -857,7 +570,7 @@ export class ResearchStore {
     await this.db.run(
       `INSERT INTO derived_proposed_claims (subject_kind, subject_value, content_hash, proposed_at)
        VALUES (?,?,?,?)
-       ON CONFLICT(subject_kind, subject_value)
+       ON CONFLICT (user_id, subject_kind, subject_value)
          DO UPDATE SET content_hash=excluded.content_hash, proposed_at=excluded.proposed_at`,
       [doc.subjectKind, doc.subjectValue, doc.contentHash, now()],
     );
@@ -874,7 +587,7 @@ export class ResearchStore {
   async setSetting(key: string, value: unknown): Promise<void> {
     await this.db.run(
       `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+       ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
       [key, JSON.stringify(value ?? null), now()],
     );
   }

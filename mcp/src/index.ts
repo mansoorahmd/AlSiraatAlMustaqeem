@@ -20,7 +20,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
-import { openState, resolveDbs, WriteRefused } from "./core.js";
+import { openState, corpusMode, resolveQuranDb, WriteRefused } from "./core.js";
 import { ResearchRefused } from "./research-client.js";
 import { TOOLS } from "./tools.js";
 import { METHOD, PROMPTS, WRITE_POLICY } from "./method.js";
@@ -160,7 +160,8 @@ server.setRequestHandler(GetPromptRequestSchema, async (req) => {
 
 // ---- go ----------------------------------------------------------------------
 
-const { quran, research } = resolveDbs();
-process.stderr.write(`[alsiraat-mcp] corpus: ${quran}\n[alsiraat-mcp] research: ${research}\n`);
+const remoteUrl = process.env.REMOTE_URL ?? "http://localhost:8100";
+const corpusFrom = corpusMode() === "local" ? resolveQuranDb() : `${remoteUrl}/corpus`;
+process.stderr.write(`[alsiraat-mcp] corpus: ${corpusFrom}\n[alsiraat-mcp] research: ${remoteUrl}/research\n`);
 
 await server.connect(new StdioServerTransport());

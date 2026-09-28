@@ -10,7 +10,7 @@
 //     reader's items, verdict, status, established meanings and title stay exactly as they were
 //   • may not delete anything, accept proposals, publish, or change settings/comparisons/trails
 
-import { BoundaryError, type AiBoundary } from "./routes/research.js";
+import { BoundaryError, type AiBoundary } from "./routes.js";
 
 type Doc = Record<string, any>;
 const AI = "ai";

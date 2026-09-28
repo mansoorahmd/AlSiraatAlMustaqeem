@@ -41,7 +41,7 @@ export interface AppState {
   echoHighlight: { verseKey: string; start: number; end: number } | null;
   /** a root to open on the Roots tab's lexicon page (from Motifs, etc.) */
   openRoot: { buckwalter: string; arabic: string } | null;
-  /** the active comparison (saved in research.db); pins land here */
+  /** the active comparison (saved in the account); pins land here */
   activeCompareSetId: string | null;
   /** bumped whenever a comparison changes, so views re-fetch */
   compareTick: number;

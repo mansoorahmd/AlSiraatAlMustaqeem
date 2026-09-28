@@ -1,7 +1,7 @@
 // Comparison operations — a comparison is a named, saved board of pinned āyāt
 // and roots studied side by side. Pins always land in the *active* comparison,
 // chosen from anywhere an āyah or root is shown ("✚ Add to Compare"). The active
-// comparison's id is a device-local pref; the sets & items live in research.db.
+// comparison's id is a device-local pref; the sets & items live in the account.
 
 import { archive, newId } from "../persistence/db";
 import type { CompareSet } from "../api/types";

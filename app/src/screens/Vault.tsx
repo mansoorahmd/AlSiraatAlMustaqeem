@@ -1,5 +1,5 @@
 // The Vault: family pages — the product of the research, derived from
-// research.db. One entry per case: root, verdict, established forms.
+// your research. One entry per case: root, verdict, established forms.
 
 import { archive } from "../persistence/db";
 import { useAsync } from "../hooks/useAsync";

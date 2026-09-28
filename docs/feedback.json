@@ -70,6 +70,20 @@
       "section": "data",
       "text": "Done on feature/research-postgres. (1) Research is in Postgres: each account its own private schema, every request pinned to it from the sign-in alone — nobody else, staff included, can read it. Same code as a research.db file (78 calls proven identical). The app and the MCP read and write it as you; the server enforces the AI boundary on every token write. Settings → Your research: bring this computer's research.db in (a copy; the file stays), download a copy, import a file. (2) Roles are a ladder you edit: reader < student < researcher < scholar < moderator < maintainer; publishing's role is yours to set (researcher by default). (3) Every published result has an audience (min role + min plan), proposed by the author and confirmed or changed by the reviewer; every community read hides what a viewer's role and plan don't reach. Your own research is still in your local research.db until you bring it in.",
       "status": "open"
+    },
+    {
+      "ts": "2026-09-28T00:00:00Z",
+      "author": "Maintainer",
+      "section": "data",
+      "text": "As this is currently just a dev, keep things simple and manageable. There is nothing important in the research db — port the research into Postgres and drop the research db altogether.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-09-28T00:00:00Z",
+      "author": "Claude",
+      "section": "data",
+      "text": "Done: research lives only in Postgres. Removed the SQLite research driver, the local server's research routes, import/export and 'Bring it into my account', MQ_RESEARCH=local, the Electron backup/open-file dialogs, npm run backup. The research code moved to remote/src/research/ (store, routes, boundary). Migration 0011 drops the file-era owner table; author_id is now the account id. The old research.db files went to the Recycle Bin. SQLite remains only for the corpus (quran.db: the source, parity, MQ_CORPUS=local).",
+      "status": "done"
     }
   ]
 }

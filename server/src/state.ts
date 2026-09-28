@@ -1,61 +1,23 @@
-// Process-wide handles: the read-only content DB and the read-write research
-// DB, plus the content service. Mirrors the FastAPI lifespan state.
+// Process-wide handles: the read-only corpus (quran.db) and its services. The reader's research
+// is not here — it lives in their account on the research server (remote/src/research/).
 
 import { resolve } from "node:path";
 import { Db } from "./db.js";
-import { Databases } from "./databases.js";
-import { ResearchStore } from "./research.js";
-import { sqliteResearch } from "./research-db.js";
 import { sqliteCorpus } from "./corpus-db.js";
 import { createCorpusServices, type CorpusServices } from "./corpus-services.js";
 
 // project root = two levels up from server/src
 const ROOT = resolve(import.meta.dirname, "..", "..");
 const QURAN_DB = process.env.QF_QURAN_DB ?? resolve(ROOT, "quran.db");
-const RESEARCH_DB = process.env.QF_RESEARCH_DB ?? resolve(ROOT, "research.db");
 
-/** The corpus services (over quran.db, via the SQLite driver) plus the reader's research. */
+/** The corpus services over quran.db, via the SQLite driver. */
 export interface AppState extends CorpusServices {
   quran: Db;
-  /** Swappable at runtime — see `reopenResearch`. Routes must read it per request. */
-  researchDb: Db;
-  databases: Databases;
-  research: ResearchStore;
 }
 
-export async function createState(): Promise<AppState> {
+export function createState(): AppState {
   const quran = new Db(QURAN_DB, { readOnly: true });
-  // Which file to open is remembered per machine; WHO it belongs to lives inside the file.
-  const databases = new Databases(RESEARCH_DB);
-  const path = databases.currentPath();
-  // A test must never open the reader's real research (test/setup.ts isolates every file; this
-  // is the backstop if a runner is ever started without it).
-  if (process.env.VITEST && resolve(path) === resolve(ROOT, "research.db")) {
-    throw new Error("refusing to open the project's research.db under test — set QF_RESEARCH_DB");
-  }
-  const researchDb = new Db(path); // read-write
-  databases.use(researchDb.path); // remember it, so it appears in "recently opened"
-  return {
-    ...createCorpusServices(sqliteCorpus(quran)),
-    quran,
-    databases,
-    researchDb,
-    research: await ResearchStore.open(sqliteResearch(researchDb)),
-  };
-}
-
-/**
- * Point the running server at a different research.db — no restart. Used when the reader
- * switches profile, signs in (claiming their file), or opens a database explicitly.
- * The old handle is closed so its WAL is checkpointed before anything else touches the file.
- */
-export async function reopenResearch(state: AppState, path: string): Promise<void> {
-  const previous = state.researchDb;
-  const next = new Db(path);
-  const research = await ResearchStore.open(sqliteResearch(next));
-  state.researchDb = next;
-  state.research = research;
-  try { previous.close(); } catch { /* already gone */ }
+  return { ...createCorpusServices(sqliteCorpus(quran)), quran };
 }
 
 export const VERSION = "0.1.0";

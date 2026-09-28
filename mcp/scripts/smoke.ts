@@ -3,9 +3,9 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 // Smoke test: drives the stdio server through a real MCP client and asserts the
-// write guards hold. Writes proposals into whatever research.db is configured, so
-// point QF_RESEARCH_DB at a scratch file when running it:
-//   QF_RESEARCH_DB=/tmp/smoke.db npm run smoke -w @alsiraat/mcp
+// write guards hold. Writes proposals into the research of the account REMOTE_TOKEN belongs
+// to, so use a test account's token:
+//   REMOTE_URL=http://localhost:8100 REMOTE_TOKEN=mqrg_… npm run smoke -w @alsiraat/mcp
 const t = new StdioClientTransport({
   command: "npx",
   args: ["tsx", "src/index.ts"],

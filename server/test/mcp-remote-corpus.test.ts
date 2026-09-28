@@ -7,9 +7,7 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { Db } from "../src/db.js";
 import { sqliteCorpus } from "../src/corpus-db.js";
 import { createCorpusServices } from "../src/corpus-services.js";
@@ -18,8 +16,7 @@ import { contentRoutes } from "../src/routes/content.js";
 import { rootRoutes } from "../src/routes/roots.js";
 import { similarityRoutes } from "../src/routes/similarity.js";
 import { echoRoutes } from "../src/routes/echoes.js";
-import { ResearchStore } from "../src/research.js";
-import { sqliteResearch } from "../src/research-db.js";
+import { mcpTestState } from "./mcp-state.js";
 import { localReads, remoteReads, CorpusAccessError } from "../../mcp/src/corpus-client.js";
 import { TOOLS } from "../../mcp/src/tools.js";
 
@@ -34,7 +31,8 @@ beforeAll(async () => {
   for (const r of [contentRoutes(svc), rootRoutes(svc), similarityRoutes(svc), echoRoutes(svc)]) corpus.route("/", r);
   const app = new Hono().route("/corpus", corpus);
 
-  const research = await ResearchStore.open(sqliteResearch(new Db(join(mkdtempSync(join(tmpdir(), "alsiraat-mcpr-")), "r.db"))));
+  // an empty account's research, the same for both (study_root and read_ayah show the reader's own)
+  const { research } = (await mcpTestState()).state;
   local = { ...localReads(svc), research };
   remote = { ...remoteReads("http://corpus.test", "mqrg_test", async (url, init) => app.request(url, init)), research };
 });

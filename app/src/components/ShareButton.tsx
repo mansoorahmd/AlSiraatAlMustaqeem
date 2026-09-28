@@ -3,7 +3,7 @@
 // Deliberately quiet: the remote is optional, so this renders NOTHING unless you're signed in
 // with permission to submit. A reader who never joins should never see an action they can't use.
 //
-// Three states, driven by the local submission ledger (research.db `derived_submissions`) so
+// Three states, driven by the submission ledger (`derived_submissions`, in the account) so
 // they survive a restart:
 //   never submitted            → ↑        share it
 //   submitted, unchanged since → Shared   nothing to do
@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { remote, RemoteError, type AdditiveKind } from "../api/remote";
-import { submissionLog, contentHash, fetchIdentity, type SubmissionRecord } from "../persistence/db";
+import { submissionLog, contentHash, type SubmissionRecord } from "../persistence/db";
 
 interface Props {
   /** The local record's id — what the ledger keys on. */
@@ -33,11 +33,10 @@ type State = "idle" | "sending" | "error";
 
 export function ShareButton({ localRef, kind, payload, subjectKind, subjectValue, label }: Props) {
   const [allowed, setAllowed] = useState(false);
-  // Signed in as a publisher, owner matches, but no active plan: publishing is a paid action, so
+  // Signed in as a publisher, but no active plan: publishing is a paid action, so
   // show a quiet upgrade nudge rather than a button that fails with 402. (The leader wants the
   // upsell; readers and the signed-out still see nothing.)
   const [needsPlan, setNeedsPlan] = useState(false);
-  const [mismatch, setMismatch] = useState<string | null>(null);
   const [prior, setPrior] = useState<SubmissionRecord | null>(null);
   const [state, setState] = useState<State>("idle");
   const [detail, setDetail] = useState("");
@@ -45,18 +44,11 @@ export function ShareButton({ localRef, kind, payload, subjectKind, subjectValue
   const hash = contentHash(payload);
 
   useEffect(() => {
-    // Two conditions to publish. First the role: only researchers and above, so readers and the
-    // signed-out see nothing. Second — and this is the important one — the signed-in account
-    // must match the OWNER of the open database. Otherwise you'd be publishing someone else's
-    // research (a colleague's file, or a backup you opened) under your own name.
-    Promise.all([remote.me().catch(() => null), fetchIdentity().catch(() => null)])
-      .then(([me, id]) => {
+    // Publishing needs the role the server sets for it (readers and the signed-out see nothing)
+    // and an active plan. The research is always the signed-in account's own.
+    remote.me().catch(() => null)
+      .then((me) => {
         if (!me || me.canPublish !== true) return setAllowed(false);   // the server's rule, not a role name
-        const ownerEmail = id?.owner?.email;
-        if (ownerEmail && ownerEmail !== me.email) {
-          setMismatch(`This database belongs to ${ownerEmail}, but you're signed in as ${me.email}.`);
-          return setAllowed(false);
-        }
         if (!me.planActive) { setNeedsPlan(true); return setAllowed(false); }
         setAllowed(true);
       })
@@ -89,16 +81,13 @@ export function ShareButton({ localRef, kind, payload, subjectKind, subjectValue
   const changed = shared && prior.contentHash !== hash;
 
   // "Shared" is a FACT about this record, recorded locally — not a permission. It must show
-  // whether or not you can currently publish: signed out, remote down, or looking at someone
-  // else's database, it's still true that this was sent. Only the ACTION below needs a role.
+  // whether or not you can currently publish: signed out or remote down, it's still true that
+  // this was sent. Only the ACTION below needs a role.
   if (shared && !changed && state !== "error") {
     return (
       <span className="share-done" title={`Sent for review · ${prior.submissionId}`}>Shared</span>
     );
   }
-
-  // The database isn't yours: say so quietly rather than vanishing, so the reason is visible.
-  if (mismatch) return <span className="share-blocked" title={mismatch}>not yours</span>;
 
   // A publisher without an active plan: a quiet upsell (publishing to the community is paid).
   if (needsPlan) {

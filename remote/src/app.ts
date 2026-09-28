@@ -56,8 +56,7 @@ export function createApp(): Hono<Env> {
   // Credentialed CORS for the app's origins (must be an explicit list, never "*"). This has to
   // cover EVERY route the app calls — /me and /invites too, not just the auth endpoints — or the
   // browser blocks the request and the app can't tell that apart from the server being down.
-  // exposeHeaders: the app reads a download's filename (research export) across origins
-  app.use("*", cors({ origin: config.trustedOrigins, credentials: true, exposeHeaders: ["Content-Disposition"] }));
+  app.use("*", cors({ origin: config.trustedOrigins, credentials: true }));
 
   // Registration is invite-only, so the public sign-up endpoint is closed. Email+password is
   // enabled for SIGN-IN, and the only thing allowed to create an account is /invites/redeem,
@@ -257,11 +256,8 @@ export function createApp(): Hono<Env> {
   app.use("/corpus/*", requireResource("corpus", pgRunner));
   app.route("/corpus", corpusApp(cloudCorpus, pgRunner));
 
-  // --- each account's own research (research/serve.ts): private, in its own schema ---
-  app.route("/", researchApp(researchConnections, async (userId) => {
-    const u = (await pgRunner.query("SELECT email, display_name FROM users WHERE id = $1", [userId]))[0];
-    return { email: String(u?.email ?? ""), name: String(u?.display_name ?? "") };
-  }) as never);
+  // --- each account's own research (research/serve.ts): private, by row-level security ---
+  app.route("/", researchApp(researchConnections) as never);
 
   app.post("/me/name", requireRole("reader"), async (c) => {
     const { displayName } = (await c.req.json().catch(() => ({}))) as { displayName?: string };

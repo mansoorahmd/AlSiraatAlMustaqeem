@@ -93,7 +93,7 @@ plumbing. A reader should never have to *learn* how to sign in.
 - Errors appear in a tinted block near the top of the panel with `role="alert"` — not as a
   bare red sentence wherever the failure happened.
 - **A screen does one job.** Home is a workbench: what you were reading and what you have in
-  flight. Configuration (reading preferences, the research database, backups) lives in
+  flight. Configuration (reading preferences, where your research is kept) lives in
   **Settings**, behind the gear in the top bar. Mixing "what am I working on" with "how is the
   app set up" is what turns a page into a dumping ground — if a card doesn't answer the
   screen's question, it belongs somewhere else.
@@ -139,7 +139,6 @@ AlSiraatAlMustaqeem/
 ├── mcp/                  # MCP server (stdio) — lets an AI study the corpus with you
 ├── remote/               # the research server: the corpus (Postgres) at /corpus, accounts, community
 ├── quran.db              # read-only content (Quran text, words, roots, translations) — the corpus source
-├── research.db           # read-write user research (cases, trails, notes, established meanings)
 ├── package.json          # workspace root — the commands below live here
 ├── run-dev.bat / .sh     # convenience dev launchers
 ├── BACKEND_TS_MIGRATION.md
@@ -149,14 +148,14 @@ AlSiraatAlMustaqeem/
 - **`app/`** — the front end (React 18 + Vite + TypeScript). Reads the **corpus** from the
   research server (`${VITE_REMOTE_URL}/corpus`, default `http://localhost:8100/corpus`), and reads and
   writes your **research** in your account there (`${VITE_REMOTE_URL}/research`).
-- **`server/`** — the local back end (Hono + Node's built-in `node:sqlite`). Serves the same corpus
-  and research routes over local files (`quran.db`, `research.db`) for tests and local tools, and hands
-  the app a copy of an older `research.db` to bring into the account. Its corpus and research code is
-  the same code the research server runs, over a different driver (`server/src/corpus-db.ts`,
-  `research-db.ts`). Ported 1:1 from the original Python/FastAPI backend and verified by golden-parity
-  tests (`server/test/`).
+- **`server/`** — the corpus code (Hono + Node's built-in `node:sqlite`), and a small local server
+  that serves the same corpus routes over `quran.db` — for tests, local tools, and the desktop app's
+  window. The research server runs the same corpus code over Postgres (`server/src/corpus-db.ts` is
+  the SQLite driver). Ported 1:1 from the original Python/FastAPI backend and verified by
+  golden-parity tests (`server/test/`). It holds no research.
 - **`remote/`** — the research server (Hono + Postgres + Better Auth): the corpus, every account's
-  private research, accounts, roles, plans, the community. See `REMOTE.md` and `CORPUS.md`.
+  private research (`remote/src/research/`), accounts, roles, plans, the community. See `REMOTE.md`
+  and `CORPUS.md`.
 - **`mcp/`** — an MCP server over stdio so an AI client can study the corpus and your research with
   you. See "The MCP server" below.
 
@@ -189,116 +188,56 @@ npm start          # build + serve the SPA and API together on one port (:8000)
 
 `run-dev.bat` (Windows) and `run-dev.sh` (macOS/Linux) just wrap `npm run dev`.
 
-**Config (optional):** the server looks for the databases at the project root by default. Override
-with env vars if needed: `QF_QURAN_DB`, `QF_RESEARCH_DB`, `PORT` (default 8000), and
+**Config (optional):** the local server looks for `quran.db` at the project root by default. Override
+with env vars if needed: `QF_QURAN_DB`, `PORT` (default 8000), and
 `SERVE_STATIC=1` to also serve the built SPA (what `npm start` sets). CORS is open so a future
 mobile app can call `/api/v1` directly.
 
 ---
 
-## The two databases
+## The corpus and your research
 
 **In plain terms.** The app is one web build (optionally wrapped in a desktop window). It
 **reads** the fixed Qur'an corpus from the research server (Postgres, loaded from `quran.db` and
 proven identical), and **reads and writes** the reader's personal research **in their account** on
-the same server — private to each account by row-level security, with the same tables a `research.db` file
-has (REMOTE.md, "Your research, in your account"). Settings → *Your research* brings an older
-`research.db` in (as a copy; the file is untouched) and downloads a copy any time. Two jobs:
+the same server — private to each account by row-level security (REMOTE.md, "Your research, in
+your account"). Nothing of the research is kept on the reader's machine. Two jobs:
 
-- **`quran.db` is the reference material** — the Qur'an and everything known *about* its
+- **The corpus is the reference material** — the Qur'an and everything known *about* its
   words: the text in every script, each word's root and form (morphology), the roots and
   their derived forms, the classical dictionaries (Lane, Lisān, Maqāyīs, Mufradāt, etc.)
   keyed to each root, plus translations and search indexes. It never changes (corrections
   ship as signed patches) and is the shared factual ground everyone reasons from. Think
   *built-in dictionary and concordance*. Reading it is a plan-gated **resource** on the research
   server — the admin can make it free.
-- **`research.db` is what you build on top of it** — your cases and board layout, per-form
+- **Your research is what you build on top of it** — your cases and board layout, per-form
   established meanings (with revision history), trails, notes and questions, your own root
-  indications and motifs, saved comparisons, and UI settings. The corpus is fixed; this
-  file grows with your scholarship, and it's the one irreplaceable file. Think *your
-  personal, earned understanding of the Book*.
+  indications and motifs, saved comparisons, and UI settings. The corpus is fixed; your research
+  grows with your scholarship. Think *your personal, earned understanding of the Book*.
 
 Anything an AI proposes through the MCP is tagged (`source = 'ai'`) and stays a proposal
 until you accept it, so your own work and the AI's suggestions never blur together.
 
-### `quran.db` — content (read-only)
-The built corpus. The app never writes to it. Regenerating it requires the archived Python
-pipeline (see "How quran.db was built" below); day-to-day you just use the existing file.
+### `quran.db` — the corpus source (read-only)
+The built corpus, loaded into Postgres by `npm run corpus:migrate` (CORPUS.md) and the reference
+the parity checks compare against. The app never writes to it. Regenerating it requires the
+archived Python pipeline (see "How quran.db was built" below); day-to-day you just use the
+existing file.
 
-### `research.db` — the reader's own work (read-write)
-Created and migrated automatically by the server on first run. Holds everything the reader
-produces: cases (board layout, threads, clusters, slips, established meanings), trails,
-notes/questions, word indications, motifs and comparisons. **This is the one irreplaceable file.**
+### Your research — in your account (read-write)
+Schema `research` on the research server (`remote/migrations/0010_research_rls.sql`), one set of
+tables for every account, each row carrying its `user_id` and visible only to that account.
+The code is `remote/src/research/` (`store.ts` the queries, `routes.ts` the HTTP routes, `serve.ts`
+the per-request binding to the signed-in user).
 
 Tables: `cases`, `form_research`, `form_revisions`, `trails`, `notes`, `user_root_meanings`,
-`motifs`/`motif_roots`, `word_indications`, `compare_sets`/`compare_items`, `settings` (see
-`server/src/research.ts` for the schema). `notes` and `word_indications` carry a `source`
-column — `'me'` for your own work, `'ai'` for anything proposed through the MCP server.
+`motifs`/`motif_roots`, `word_indications`, `compare_sets`/`compare_items`, `settings`, and the
+outbox ledgers `derived_submissions`/`derived_proposed_claims`. `notes`, `word_indications` and
+`motifs` carry a `source` column — `'me'` for your own work, `'ai'` for anything proposed through
+the MCP server. Top-level records also carry `author_id` (your account id) and `origin`.
 
-Every top-level record you author (`cases`, `notes`, `trails`, `motifs`, `user_root_meanings`,
-`word_indications`, `compare_sets`) also carries `author_id` + `origin`: `author_id` is your
-account-independent **`local_id`** (a UUID minted on first run, kept in `settings`, exposed at
-`GET /research/identity`), and `origin` is `'local'` for your work vs `'remote'` for peer work
-pulled by a future sync. `source` says *who the agent was* (me/ai); `origin` says *where it came
-from* (local/remote). When accounts arrive, the account binds to this `local_id`, so work done
-before signing in stays correctly attributed. See `SHARED_RESEARCH_BUILD.md` (Phase 1).
-
-#### Whose research is it? (the `owner` record)
-
-**The database says who it belongs to, from inside itself.** `research.db` has a one-row `owner`
-table holding a **name**, an email, and a uuid **derived from the email** (`uuidv5`,
-`server/src/identity.ts`). That makes the file self-describing and portable: copy it to another
-machine, rename it, or hand it to a colleague, and it still knows whose research it is.
-
-- **Day 0 is whenever there's no usable database** — no file, or a file nobody has claimed. The
-  app asks for a **name and email** (`OwnerGate`) before anything else and stamps them, so
-  nothing is ever written un-attributed.
-- **The uuid is the `local_id`** that remote work binds to — same person, same id, any machine.
-- **It can be re-assigned.** You hold the file, so you may fix a typo or hand it on
-  (`PUT /research/owner`, name and/or email). The research in the file is untouched; changing
-  the email re-derives the uuid. Omitting the name keeps the existing one.
-- **Moving machines is deliberately manual**: back the file up, carry it, open it there. There
-  is no magic sync of local files.
-- **Opening a database COPIES it in.** Working on a backup in place turns that backup into a
-  live database (WAL sidecars appear beside it), so it stops being the untouched copy you took.
-  `Databases.adopt()` copies the file to the working path and you edit the copy; any database
-  already there is moved aside to `research-replaced-<timestamp>.db` — never overwritten — and
-  the UI says where it went. `inPlace: true` opts out.
-- **Home → Your data** shows the owner and the file, lets you change either, and can open any
-  `.db` (a backup, a colleague's) — the desktop uses a native file dialog.
-- **Publishing requires a match.** The share controls refuse when the signed-in account isn't
-  the database's owner, so you can't publish someone else's research under your name.
-
-`server/src/databases.ts` is deliberately dumb: it only remembers which files this *machine* has
-opened (`databases.json`) so the app knows what to open at startup. It is never the source of
-truth about identity — deleting it costs nothing but the recent-files list.
-
-Opening a different file reopens the server's handle (`reopenResearch`) rather than restarting,
-so the routes read `state.research` per request — never capture it.
-
-#### Backing it up
-
-`research.db` is **not** tracked in git — it's your personal data, so keep your own backups. Any
-of three ways, all producing a *complete* copy (the WAL is folded in for you, so you never end up
-with a half-written file):
-
-- **In the app** — Home → *Your data* → **Back up research**. On the desktop this opens a save
-  dialog; on the web build it drops a timestamped copy in a `backups/` folder next to the db.
-- **From the command line** (app can be closed or open):
-
-  ```bash
-  npm run backup                  # → backups/research-<timestamp>.db next to the db
-  npm run backup -- /path/out.db  # → an explicit location
-  ```
-
-  Honours `QF_RESEARCH_DB`, so it also backs up the desktop copy: `QF_RESEARCH_DB="<userData>/research.db" npm run backup`.
-- **Copy the file yourself** — fine too, but SQLite runs in **WAL mode**, so first fold the WAL in
-  (close the app for a clean shutdown, or `PRAGMA wal_checkpoint(TRUNCATE)`), else the copy misses
-  recent work.
-
-All three use SQLite's `VACUUM INTO` (see `server/src/backup.ts`), which writes a single merged
-copy atomically — safe to run while you're working. In the **desktop app**, `research.db` lives in
-the OS user-data dir (not the repo) — see `DESKTOP.md`.
+**Backing it up** is the research server's job: the nightly Postgres dump (DEPLOY.md, "Backups")
+covers every account's research.
 
 ---
 
@@ -310,7 +249,7 @@ it can read the corpus and your research, and propose notes and indications for 
 ```bash
 npm run mcp                       # run it directly (stdio; for a client to launch)
 npm run typecheck                 # includes the mcp workspace
-QF_RESEARCH_DB=/tmp/smoke.db npm run smoke -w @alsiraat/mcp   # end-to-end smoke test
+REMOTE_TOKEN=mqrg_… npm run smoke -w @alsiraat/mcp   # end-to-end smoke (writes into that account)
 ```
 
 ### Client configuration
@@ -340,8 +279,7 @@ the launcher by absolute path; no `cwd` needed):
 | `REMOTE_URL` | the research server (default `http://localhost:8100`) |
 | `REMOTE_TOKEN` | your personal API token (revoke it in the app to cut the AI off) |
 | `MQ_CORPUS=local` | read `quran.db` instead of the research server — offline work; no token needed |
-| `MQ_RESEARCH=local` | use a `research.db` file for your research instead of your account — offline work |
-| `QF_RESEARCH_DB` / `QF_QURAN_DB` | override the research file / the local corpus file |
+| `QF_QURAN_DB` | where `quran.db` is, for `MQ_CORPUS=local` |
 
 When it can't read the corpus it tells the AI why, in words it can pass on: no or revoked token →
 create one in the app; below the corpus tier → which plan is needed; server unreachable → set
@@ -362,14 +300,14 @@ worth knowing about, both hit in practice:
 
 The launcher sidesteps both: it is plain `.mjs` (no loader needed to start), registers tsx
 programmatically resolved **from its own location**, prints only to stderr, and says plainly
-what to do if dependencies are missing. Databases are likewise resolved from the file's location,
-not the working directory.
+what to do if dependencies are missing. `quran.db` (for `MQ_CORPUS=local`) is likewise resolved
+from the file's location, not the working directory.
 
 Your **research** is in your account: the MCP reads it, and writes proposals into it, through the
 research server with the same token — within the guard below, which the server also enforces for
-every token request (`mcp/src/research-client.ts`). `MQ_RESEARCH=local` uses a `research.db` file
-instead (the one the app's local server has open), for offline work and the tests.
-`server/test/mcp-remote-research.test.ts` runs the real tools against the cloud research.
+every token request (`mcp/src/research-client.ts`). There is no offline research: without the
+research server the tools that read or write your research say so.
+`server/test/mcp-remote-research.test.ts` runs the real tools against the research server.
 
 For running it by hand (not via a client), `npm run mcp` from the project root still works.
 
@@ -512,7 +450,7 @@ the project root.
 
 ---
 
-## Viewing the databases
+## Viewing the corpus file
 
-Open `quran.db` or `research.db` with **DB Browser for SQLite** (https://sqlitebrowser.org/) or the
+Open `quran.db` with **DB Browser for SQLite** (https://sqlitebrowser.org/) or the
 VS Code **SQLite Viewer** extension.

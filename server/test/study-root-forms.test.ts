@@ -5,24 +5,16 @@
 // ×45 Noun. The per-form counts then no longer summed to the root total.
 
 import { describe, it, expect, beforeAll } from "vitest";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 
-// isolate research writes to a throwaway db (study_root only reads, but createState
-// opens research.db read-write and migrates it)
 // these tests are about tool behaviour, against the local corpus reference (the remote path has its own test)
-process.env.MQ_CORPUS = "local";
-process.env.MQ_RESEARCH = "local";
-process.env.QF_RESEARCH_DB = join(mkdtempSync(join(tmpdir(), "alsiraat-sr-")), "r.db");
 
 let study: any;
 let state: any;
 
 beforeAll(async () => {
-  const { openState } = await import("../../mcp/src/core.js");
+  const { mcpTestState } = await import("./mcp-state.js");
   const { TOOLS } = await import("../../mcp/src/tools.js");
-  state = await openState();
+  ({ state } = await mcpTestState());
   study = TOOLS.find((t) => t.name === "study_root");
 });
 

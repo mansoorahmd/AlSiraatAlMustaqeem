@@ -139,9 +139,8 @@ sign-in — use the desktop app, or allow cookies for the server's domain.
 ### Backups
 
 The one thing to protect is the Postgres volume: **every reader's research**, accounts, plans and
-the community's readings (the corpus can be reloaded from `quran.db`). Readers can also download their
-own copy at any time (Settings → *Your research* → Download a copy). A nightly compressed dump, kept
-14 days:
+the community's readings (the corpus can be reloaded from `quran.db`). It is the only copy of the
+readers' research. A nightly compressed dump, kept 14 days:
 
 ```bash
 chmod +x /opt/mqrg/deploy/backup.sh

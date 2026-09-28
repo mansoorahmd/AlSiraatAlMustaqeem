@@ -1,17 +1,12 @@
-// The reader's research as the MCP's tools see it — exactly the reads and writes they make,
-// behind one interface, with two implementations (like corpus-client.ts):
-//
-//   remote (default)   the reader's research in their account on the research server, over HTTP
-//                      with REMOTE_TOKEN. The server applies the AI write boundary to every
-//                      token request (tagged 'ai', add-only, never primary, no deletes), on top of
-//                      the MCP's own guard (core.ts, cases.ts).
-//   local              a research.db file (MQ_RESEARCH=local) — offline work, and the tests.
-//
-// Same shapes either way: the routes are the local server's own (server/src/routes/research.ts).
+// The reader's research as the MCP's tools see it — exactly the reads and writes they make, in
+// their account on the research server, over HTTP with REMOTE_TOKEN
+// (remote/src/research/routes.ts). The server applies the AI write boundary to every token
+// request (tagged 'ai', add-only, never primary, no deletes), on top of the MCP's own guard
+// (core.ts, cases.ts).
 
 type Doc = Record<string, any>;
 
-/** What the tools use of the research store. ResearchStore itself satisfies it. */
+/** What the tools use of the reader's research. */
 export interface McpResearch {
   listNotes(opts?: { verse?: string; root?: string; lemma?: string }): Promise<Doc[]>;
   getNote(id: string): Promise<Doc | undefined>;
@@ -54,7 +49,7 @@ export function remoteResearch(base: string, token?: string, fetchImpl: Fetch = 
     try {
       res = await fetchImpl(`${root}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
     } catch {
-      throw new ResearchAccessError(`Can't reach the research server at ${base} — is it running? (Set REMOTE_URL, or MQ_RESEARCH=local to use a research.db file.)`);
+      throw new ResearchAccessError(`Can't reach the research server at ${base} — is it running? (Set REMOTE_URL.)`);
     }
     if (res.status === 401) {
       throw new ResearchAccessError(token

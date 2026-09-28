@@ -1,4 +1,4 @@
-// Typed records for the research archive (research.db via the API).
+// Typed records for the research archive (kept in the account, via the research server).
 // Mirrors DESIGN.md (research-first model).
 
 export type SubjectType = "root" | "phrase" | "ayah";

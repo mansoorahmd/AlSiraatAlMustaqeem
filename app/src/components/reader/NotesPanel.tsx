@@ -1,5 +1,5 @@
 // Notes & questions on an ayah or a specific word. Self-contained: loads its
-// target's notes from research.db, and lets the reader add / edit / resolve /
+// target's notes from your research, and lets the reader add / edit / resolve /
 // delete them. The very same panel is used while reading and on the
 // investigation board, so a note written in one place shows up in the other.
 

@@ -4,16 +4,12 @@
 // utility process, then opens a window pointed at it. Nothing about the web app
 // changes — this is just a native shell around the same server + SPA.
 //
-// Data:
-//   • quran.db ships read-only inside the app bundle (resources), copied nowhere.
-//   • research.db lives in the OS user-data dir so the reader's work survives app
-//     updates and isn't tied to any source checkout. Seeded from the bundle on first
-//     run if one is shipped, else created by the server on first write.
+// Data: quran.db ships read-only inside the app bundle (resources), copied nowhere. The
+// reader's research is in their account on the research server — nothing of it is on disk.
 
-import { app, BrowserWindow, Menu, dialog, ipcMain, shell, utilityProcess } from "electron";
+import { app, BrowserWindow, Menu, ipcMain, shell, utilityProcess } from "electron";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { existsSync, copyFileSync, mkdirSync } from "node:fs";
 import net from "node:net";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -55,35 +51,12 @@ async function waitForHealth(port, tries = 100) {
 }
 
 let child = null;
-let serverPort = null; // set once the server is up, so IPC handlers can reach it
 
 async function startServer() {
   const port = await stablePort();
-  serverPort = port;
 
   // read-only corpus from the bundle
   const quranDb = isDev ? join(here, "..", "quran.db") : join(RES, "quran.db");
-
-  // Where the reader's work lives.
-  //
-  //   packaged → the OS user-data dir. A shipped app must never write into a source checkout,
-  //              and this survives app updates.
-  //   dev      → the repo's ./research.db — the SAME file `npm run dev` (web) uses.
-  //              Otherwise the two ways of starting the app silently fork your research: you
-  //              share a question in the browser, then open Electron and it's not there.
-  //
-  // QF_RESEARCH_DB overrides either, so you can point a dev run at any file.
-  let researchDb;
-  if (isDev) {
-    researchDb = process.env.QF_RESEARCH_DB ?? join(here, "..", "research.db");
-  } else {
-    const dataDir = app.getPath("userData");
-    mkdirSync(dataDir, { recursive: true });
-    researchDb = join(dataDir, "research.db");
-    const seed = join(RES, "research.db");
-    if (!existsSync(researchDb) && existsSync(seed)) copyFileSync(seed, researchDb);
-  }
-  console.log(`[mqrg] research.db → ${researchDb}`);
 
   const staticRoot = isDev ? join(here, "..", "app", "dist") : join(RES, "app", "dist");
   // the bundle is asarUnpack'd, so run it from the unpacked path, not inside the asar
@@ -101,7 +74,6 @@ async function startServer() {
       //  to "better-sqlite3" here and drop the NODE_OPTIONS flag.)
       NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --experimental-sqlite`.trim(),
       QF_QURAN_DB: quranDb,
-      QF_RESEARCH_DB: researchDb,
       QF_STATIC_ROOT: staticRoot,
       NODE_NO_WARNINGS: "1",
     },
@@ -124,7 +96,7 @@ function createWindow(port) {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      preload: join(here, "preload.cjs"), // exposes window.desktop (backup save dialog)
+      preload: join(here, "preload.cjs"), // exposes window.desktop (sign-in window)
     },
   });
   win.setMenuBarVisibility(false);
@@ -138,7 +110,7 @@ function createWindow(port) {
   // browser treats localhost and 127.0.0.1 as different hosts — i.e. cross-site — so the
   // SameSite=Lax session cookie would never be sent back and the app could never appear signed
   // in. Same host (different port) is same-site, so the cookie flows. (Safe to change: reading
-  // prefs live in research.db now, not in per-origin browser storage.)
+  // prefs live in the account now, not in per-origin browser storage.)
   win.loadURL(`http://localhost:${port}/`);
 }
 
@@ -181,47 +153,6 @@ ipcMain.handle("auth:open-sign-in", async (_e, url) => {
     win.on("closed", () => resolve({ ok: verified }));
     win.loadURL(url).catch(() => settle());
   });
-});
-
-// Show a file in the OS file manager — after a backup, "where did it go?" should be one click.
-ipcMain.handle("shell:reveal", (_e, p) => { shell.showItemInFolder(String(p)); });
-
-// Choose an existing research database to open (a backup, or another researcher's file).
-// The renderer then asks the server to switch to it; only the picking needs to be native.
-ipcMain.handle("research:pick-db", async () => {
-  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
-  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-    title: "Open a research database",
-    properties: ["openFile"],
-    filters: [{ name: "Research database", extensions: ["db"] }],
-  });
-  return canceled || !filePaths[0] ? null : filePaths[0];
-});
-
-// Renderer asks to back up research.db → pick a location natively, then have the
-// running server write the copy there (the server owns the live db connection, so its
-// VACUUM INTO captures uncheckpointed WAL). Returns { path, bytes, at } or { canceled }.
-ipcMain.handle("research:backup", async () => {
-  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
-  const stamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
-  const { canceled, filePath } = await dialog.showSaveDialog(win, {
-    title: "Back up research",
-    defaultPath: `research-${stamp}.db`,
-    filters: [{ name: "SQLite database", extensions: ["db"] }],
-  });
-  if (canceled || !filePath) return { canceled: true };
-  const dest = filePath.endsWith(".db") ? filePath : `${filePath}.db`;
-  const res = await fetch(`http://127.0.0.1:${serverPort}/api/v1/research/backup`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    // the native dialog already confirmed any overwrite, so allow it
-    body: JSON.stringify({ dest, overwrite: true }),
-  });
-  if (!res.ok) {
-    const { detail } = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
-    throw new Error(detail ?? `HTTP ${res.status}`);
-  }
-  return res.json();
 });
 
 app.whenReady().then(async () => {

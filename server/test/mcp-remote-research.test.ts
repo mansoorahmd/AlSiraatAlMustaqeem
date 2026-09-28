@@ -1,48 +1,13 @@
 // The MCP writing to the reader's research IN THEIR ACCOUNT: the real tools, over HTTP with a
-// token, into the research server's per-account Postgres schema (PGlite here). The AI's writes
+// token, into the research server's `research` schema (PGlite here). The AI's writes
 // must land as proposals the reader then sees in their own session — and the server must refuse
 // what the MCP's guard would, even if something skipped the guard.
 
-process.env.MQ_CORPUS = "local";
-
 import { describe, it, expect, beforeAll } from "vitest";
-import { Hono } from "hono";
-import { resolve } from "node:path";
-import { PGlite } from "@electric-sql/pglite";
-import { Db } from "../src/db.js";
-import { sqliteCorpus } from "../src/corpus-db.js";
-import { createCorpusServices } from "../src/corpus-services.js";
-import { localReads } from "../../mcp/src/corpus-client.js";
-import { remoteResearch, ResearchRefused } from "../../mcp/src/research-client.js";
+import type { Hono } from "hono";
+import { ResearchRefused } from "../../mcp/src/research-client.js";
 import { TOOLS } from "../../mcp/src/tools.js";
-import { researchApp, type ResearchPool } from "../../remote/src/research/serve.js";
-import { forgetOwners } from "../../remote/src/research/schema.js";
-import { runMigrations } from "../../remote/src/migrate.js";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-
-const QURAN = process.env.QF_QURAN_DB ?? resolve(import.meta.dirname, "..", "..", "quran.db");
-const READER = { id: "44444444-4444-4444-8444-444444444444", email: "reader@example.org", name: "Reader" };
-
-let pglite: PGlite;
-let chain: Promise<void> = Promise.resolve();
-const pool: ResearchPool = {
-  connect: () => new Promise((resolve) => {
-    chain = chain.then(() => new Promise<void>((release) => resolve({
-      query: async (sql, params = []) => {
-        const r = await pglite.query(sql, params as unknown[]);
-        return { rows: r.rows as Record<string, unknown>[], rowCount: r.affectedRows ?? r.rows.length };
-      },
-      release,
-    })));
-  }),
-};
-const appAs = (via: "session" | "token") => {
-  const app = new Hono<any>();
-  app.use("*", async (c, next) => { c.set("user", { id: READER.id, role: "reader", plan: "free", via }); await next(); });
-  app.route("/", researchApp(pool, async () => READER) as never);
-  return app;
-};
+import { mcpTestState, READER } from "./mcp-state.js";
 
 let state: any;
 let reader: Hono<any>;
@@ -51,20 +16,9 @@ const call = (name: string, args: Record<string, unknown>) => tool(name).run(sta
 const asReader = async (path: string, init?: RequestInit) => (await reader.request(path, init)).json() as Promise<any>;
 
 beforeAll(async () => {
-  pglite = new PGlite();
-  // the research tables, their row-level security and the account the rows belong to
-  await runMigrations({
-    exec: async (sql: string) => { await pglite.exec(sql); },
-    query: async (sql: string, params: unknown[] = []) => (await pglite.query(sql, params)).rows as Record<string, unknown>[],
-  }, join(dirname(fileURLToPath(import.meta.url)), "..", "..", "remote", "migrations"));
-  await pglite.query("INSERT INTO users (id, email, display_name) VALUES ($1, $2, $3)", [READER.id, READER.email, READER.name]);
-  forgetOwners();
-  const mcp = appAs("token");
-  reader = appAs("session");
-  state = {
-    ...localReads(createCorpusServices(sqliteCorpus(new Db(QURAN, { readOnly: true })))),
-    research: remoteResearch("http://research.test", "mqrg_test", async (url, init) => mcp.request(url, init)),
-  };
+  const t = await mcpTestState();
+  state = t.state;
+  reader = t.harness.as(READER);   // the reader's own session, straight at /research
 });
 
 describe("the MCP's proposals land in the reader's account, as proposals", () => {

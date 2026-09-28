@@ -81,7 +81,7 @@ What's sent is a **frozen snapshot**: editing the note afterwards doesn't change
 submitted. Submissions are content-addressed, so sending the identical thing twice returns the
 same submission rather than duplicating it. Items over 1 MB are rejected — split them.
 
-The control has three states, remembered in `research.db` (`derived_submissions`) so they survive
+The control has three states, remembered in your research (`derived_submissions`) so they survive
 a restart:
 
 | | |
@@ -147,8 +147,7 @@ reader's `localhost` — different sites — so over HTTPS the session cookie is
 | `GET /submissions` | any account — your outbox |
 | `GET /submissions/:id` | its author, or staff |
 | `POST /claims/:id/versions/:v/review` · `…/establish` | moderator · maintainer — `{…, audience}` confirms or changes who may see it |
-| `GET\|PUT\|DELETE /research/*` | any account — **your own research** (same paths and JSON as the local `/api/v1/research`) |
-| `GET /research/export` · `POST /research/import` | any account — download a research.db · merge one in (session only) |
+| `GET\|PUT\|DELETE /research/*` | any account — **your own research** (`src/research/routes.ts`) |
 | `GET /roles` · `PUT\|DELETE /roles/:name` | public · maintainer — the role ladder |
 | `GET /feature-access` · `PUT /feature-access/:feature` | public · maintainer — publishing's minimum role |
 
@@ -270,27 +269,27 @@ parameter taken only from the authenticated principal, and `SET LOCAL search_pat
 (`src/research/schema.ts`). All three end with the transaction, so a pooled connection can't carry
 them into someone else's request. `research-cloud.test.ts` tries SQL written to reach across accounts
 (explicit `WHERE user_id = <other>`, planting or moving rows, `row_security = off`) and every attempt
-is refused. A drift test checks the Postgres columns equal a research.db file's, plus `user_id`.
+is refused, and every table in the schema must have RLS enabled and forced.
 
 **What it doesn't stop.** Whoever runs the database server with a superuser login can read the
 tables directly, as with any hosted app. Protecting against that would need encryption the server
 can't read, which rules out server-side search and the AI boundary on your research.
 
-**The same code as a file.** `ResearchStore` (`server/src/research.ts`) is async over a small driver
-interface: SQLite for a research.db, Postgres here (`src/research/pg-research.ts`). The routes are the
-local server's own (`server/src/routes/research.ts`). `remote/test/research-cloud.test.ts` runs 78
-scripted research calls against both and requires identical answers.
+**The code.** `src/research/store.ts` holds the queries (`ResearchStore`, one per request, over that
+request's connection), `routes.ts` the HTTP routes, `serve.ts` the per-request transaction.
+No query names a user: row-level security and the `user_id` default do that. Records you write are
+stamped with your account id as their author. `remote/test/research-store.test.ts` covers what the
+research does, `research-cloud.test.ts` the privacy and the AI boundary.
 
 **The AI boundary, on the server.** A request made with an API token (the MCP) may only propose:
 records are tagged `ai` and are never primary; nothing is deleted or overwritten; on a case (even
 yours) it may add its own items but never touch yours, the verdict, the status or established
 meanings; it can't publish, accept its own proposals, or change settings
-(`server/src/research-boundary.ts`).
+(`src/research/boundary.ts`).
 
-**In and out.** `POST /research/import` merges a research.db into the account: it adds what isn't
-there, never overwrites or deletes, is atomic, and accepts up to 100 MB; importing twice adds nothing.
-The app offers it as *Bring it into my account* (reading the local server's research.db, which is left
-untouched) and *Import a research.db…*. `GET /research/export` downloads a complete research.db.
+**No file.** Research lives only in the account — there is no research.db, no import or export.
+(Migration 0011 removed what existed for files: the `owner` record, and author ids derived from
+a file owner's email.) It is backed up with the rest of the database (DEPLOY.md, "Backups").
 
 ## The corpus, served from the cloud
 

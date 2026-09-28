@@ -1,19 +1,8 @@
-// Research routes, in two builders:
-//
-//   researchDataRoutes(store)   the research itself — cases, notes, indications, motifs,
-//                               comparisons, settings, the outbox. Shared: the local server
-//                               passes its research.db, the research server passes the signed-in
-//                               user's own Postgres schema (remote/src/research/). Same paths,
-//                               same JSON, either way.
-//   researchFileRoutes(state)   local only: which research.db FILE is open, whose it is, backup.
+// The research routes — cases, notes, indications, motifs, comparisons, settings, the outbox —
+// over the request's store (serve.ts builds it, bound to the signed-in user).
 
 import { Hono, type Context } from "hono";
-import { reopenResearch, type AppState } from "../state.js";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { backupResearch, defaultBackupPath } from "../backup.js";
-import type { ResearchStore } from "../research.js";
+import type { ResearchStore } from "./store.js";
 
 type Doc = Record<string, any>;
 
@@ -308,110 +297,6 @@ export function researchDataRoutes(
     const body = (await c.req.json().catch(() => ({}))) as { value?: unknown };
     await (await storeFor(c)).setSetting(c.req.param("key"), body.value ?? null);
     return c.json({ ok: true });
-  });
-
-  return r;
-}
-
-/** Local only: the research.db FILE — which one is open, whose it is, and backing it up. */
-export function researchFileRoutes(state: AppState): Hono {
-  const r = new Hono();
-  // NB: read the store per request — `state.research` is swapped when the reader opens another
-  // file, and a captured reference would keep writing to the old one.
-  const s = () => state.research;
-
-  // the reader's account-independent local identity (minted on first run). Sign-in binds an
-  // account to this id, so pre-account work stays correctly attributed.
-  r.get("/research/identity", async (c) => c.json({
-    localId: s().localId,
-    // which research.db this server is actually using — never leave this a mystery
-    databasePath: state.researchDb.path,
-    // whose research this file is, read from inside the file itself. null until claimed.
-    owner: (await s().getOwner()) ?? null,
-  }));
-
-  /**
-   * Claim this database, or re-assign it. You hold the file, so you may correct a typo or hand
-   * it on; the uuid is re-derived from the email and becomes the id remote work binds to.
-   */
-  r.put("/research/owner", async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { email?: string; name?: string };
-    try {
-      const owner = await s().setOwner(body.email ?? "", body.name);
-      // label the recent-files entry with the person, not the filename
-      state.databases.label(state.researchDb.path, (owner.name as string) || (owner.email as string));
-      return c.json(owner);
-    } catch (e) {
-      return c.json({ detail: (e as Error).message }, 422);
-    }
-  });
-
-  // --- which database file is open (identity lives inside each file, not here) ---
-  r.get("/research/databases", async (c) => c.json({
-    current: { path: state.researchDb.path, owner: (await s().getOwner()) ?? null },
-    recent: state.databases.recent(),
-  }));
-
-  /**
-   * Open another .db — a backup, a colleague's file, your own from another machine.
-   *
-   * By default the file is COPIED to the working location and you edit the copy: opening a
-   * backup in place would turn it into a live database (WAL sidecars appear beside it) and it
-   * would stop being the untouched copy you took. Any existing working database is moved aside,
-   * never overwritten, and its new path is reported. `inPlace: true` opts out.
-   */
-  r.post("/research/databases/open", async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { path?: string; inPlace?: boolean };
-    if (!body.path) return c.json({ detail: "path is required" }, 422);
-    const previous = state.researchDb.path;
-    try {
-      let full: string;
-      let replaced: string | null = null;
-      if (body.inPlace) {
-        full = state.databases.use(body.path);
-      } else {
-        state.researchDb.close();          // release the working file before replacing it
-        ({ path: full, replaced } = state.databases.adopt(body.path));
-      }
-      await reopenResearch(state, full);
-      const owner = await s().getOwner();
-      if (owner) state.databases.label(full, (owner.name as string) || (owner.email as string));
-      return c.json({ path: state.researchDb.path, owner: owner ?? null, replaced });
-    } catch (e) {
-      try { await reopenResearch(state, previous); } catch { /* nothing more to do */ }
-      return c.json({ detail: (e as Error).message }, 400);
-    }
-  });
-
-  /**
-   * The open research.db itself, as one clean file (WAL folded in) — what the app uploads to
-   * the research server to bring this computer's research into the reader's account. The file
-   * on disk is left exactly as it is.
-   */
-  r.get("/research/file", async (c) => {
-    const dir = mkdtempSync(join(tmpdir(), "alsiraat-file-"));
-    try {
-      const copy = join(dir, "research.db");
-      backupResearch(state.researchDb, copy);
-      return c.body(readFileSync(copy), 200, {
-        "content-type": "application/vnd.sqlite3", "cache-control": "no-store",
-      });
-    } finally {
-      try { rmSync(dir, { recursive: true, force: true, maxRetries: 3 }); } catch { /* temp */ }
-    }
-  });
-
-  // one-click backup: a clean, complete copy of research.db (WAL folded in).
-  // `dest` (absolute, ending .db) is optional; the default sits in a sibling
-  // backups/ folder next to the live db. Desktop passes a user-chosen path.
-  r.post("/research/backup", async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { dest?: string; overwrite?: boolean };
-    const dest = body.dest?.trim() ? body.dest.trim() : defaultBackupPath(state.researchDb.path);
-    try {
-      return c.json(backupResearch(state.researchDb, dest, { overwrite: body.overwrite === true }));
-    } catch (e) {
-      return c.json({ detail: (e as Error).message }, 400);
-    }
   });
 
   return r;

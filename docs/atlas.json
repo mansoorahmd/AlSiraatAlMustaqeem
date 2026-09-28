@@ -1,13 +1,13 @@
 {
   "$doc": "MQ Research Gate — architecture & monetization atlas. Machine-readable source of truth for AI chats. Human view: docs/atlas.html. Feedback log: docs/feedback.json.",
-  "updated": "2026-09-27",
+  "updated": "2026-09-28",
   "branch": "feature/research-postgres (on main)",
   "app": {
     "name": "MQ Research Gate",
     "repoName": "AlSiraatAlMustaqeem",
     "arabic": "الصراط المستقيم",
     "oneLiner": "A detective's study for the Qur'an: meaning is earned from within the text (the organic Qur'anic methodology). Notice a word, open a case on its root family, gather every place the Book uses it, form a hypothesis, then weigh the classical dictionaries.",
-    "stack": "React + Vite + TypeScript SPA (app/), run on the reader's machine (desktop, or npm start). The research server (remote/, Hono + Postgres + Better Auth) holds the Qur'an corpus, every account's private research, and the community. MCP server (mcp/) lets an AI study and propose, as its user. The local server (server/) remains for local tools, tests and bringing an old research.db in. Electron desktop wrapper (electron/)."
+    "stack": "React + Vite + TypeScript SPA (app/), run on the reader's machine (desktop, or npm start). The research server (remote/, Hono + Postgres + Better Auth) holds the Qur'an corpus, every account's private research, and the community. MCP server (mcp/) lets an AI study and propose, as its user. The local server (server/) serves the corpus over quran.db for tests, local tools and the desktop window; it holds no research. Electron desktop wrapper (electron/)."
   },
   "principle": {
     "core": "Features are ROLE-based (what you may do); resources are PLAN-based (what you may read). Your research is private to your account; only what you publish is shared, only once approved, and only with the audience it names.",
@@ -19,21 +19,21 @@
       "id": "app",
       "name": "App",
       "runtime": "React 18 + Vite SPA (on the reader's machine)",
-      "role": "Reads the corpus (${REMOTE_URL}/corpus) and reads/writes the reader's research (${REMOTE_URL}/research) with the session cookie; the community likewise. Settings → Your research: download a copy, import a research.db, bring this computer's old research in. Maintainers get an Admin tab.",
+      "role": "Reads the corpus (${REMOTE_URL}/corpus) and reads/writes the reader's research (${REMOTE_URL}/research) with the session cookie; the community likewise. Nothing of the research is kept on the machine. Maintainers get an Admin tab.",
       "path": "app/"
     },
     {
       "id": "server",
       "name": "Local server",
       "runtime": "Hono on node:sqlite",
-      "role": "No longer where research lives. Serves the same corpus and research routes over local files — for tests, local tools, and GET /api/v1/research/file, which the app uploads to bring an old research.db into the account.",
+      "role": "The corpus code, and a local server over quran.db — for tests, local tools (MQ_CORPUS=local) and the desktop app's window. It holds no research.",
       "path": "server/"
     },
     {
       "id": "mcp",
       "name": "MCP",
       "runtime": "stdio MCP server",
-      "role": "An AI studies the corpus and proposes into the reader's research, AS the reader (REMOTE_TOKEN). The server enforces the AI boundary on every token write. MQ_CORPUS=local / MQ_RESEARCH=local use local files instead.",
+      "role": "An AI studies the corpus and proposes into the reader's research, AS the reader (REMOTE_TOKEN). The server enforces the AI boundary on every token write. MQ_CORPUS=local reads quran.db instead; research is always the account's.",
       "path": "mcp/"
     },
     {
@@ -48,7 +48,7 @@
       "id": "electron",
       "name": "Desktop",
       "runtime": "Electron",
-      "role": "Wraps the built SPA + local server in a desktop window.",
+      "role": "Wraps the built SPA + the local corpus server in a desktop window. Keeps no research on disk.",
       "path": "electron/"
     }
   ],
@@ -69,23 +69,16 @@
       "holds": "The same corpus in SQLite. Now the SOURCE for corpus:migrate, the local driver (MQ_CORPUS=local, tests, offline MCP) and the parity reference. The app no longer reads it.",
       "corrections": "Signed, versioned patch files (CORPUS.md)."
     },
-    "research.db": {
-      "kind": "personal research (local file)",
-      "access": "read-write",
-      "location": "the reader's machine — before research moved to the account",
-      "holds": "The same tables. Now: what 'Bring it into my account' uploads (the file itself is never changed), the local driver for tests and MQ_RESEARCH=local, and the format of 'Download a copy'.",
-      "ownership": "A one-row owner table (name, email, uuidv5-of-email) — the same uuid the account's research carries, so imported work stays theirs."
-    },
     "research (Postgres, row-level security)": {
       "kind": "personal research",
       "access": "private to its account; read-write by that account (and its AI, within the boundary)",
       "location": "the research server — schema `research`, shared, every row carrying its user_id",
       "holds": "cases + board layout, form_research + form_revisions, trails, notes, word_indications (+ refinements), user_root_meanings, motifs, comparisons, settings, and the outbox of what was published.",
       "isolation": "Row-level security, enabled and FORCED on every table, one policy: user_id = the request's user (app.user_id), for reads and writes. Requests SET LOCAL ROLE mqrg_research (not a superuser, no BYPASSRLS), set app.user_id via set_config with a bound parameter from the principal, and search_path to research — all LOCAL to the transaction. No user bound = nothing visible, nothing writable. A draft is reachable only by its owner (and their own AI); staff included. Deleting an account cascades to its research.",
-      "shape": "The research.db columns plus user_id, which leads every key (migrations/0010_research_rls.sql). The driver adds user_id to each ON CONFLICT target, so the shared SQL is unchanged. Tests: 78 calls identical to a file; cross-account SQL refused; column drift checked.",
-      "transfer": "POST /research/import merges a research.db in (adds, never overwrites or deletes; twice adds nothing); GET /research/export downloads a complete research.db.",
-      "code": "server/src/research.ts, remote/src/research/{schema,pg-research,serve}.ts, migrations/0010_research_rls.sql",
-      "notProtectedAgainst": "A database superuser (the operator) can read the tables directly, as in any hosted app."
+      "shape": "Every row carries user_id, which leads every key (migrations/0010_research_rls.sql). The store's SQL names no user: RLS filters and the user_id default fills it in. author_id = the account id. Tests: research-store.test.ts (what it does), research-cloud.test.ts (cross-account SQL refused, RLS forced on every table, the AI boundary).",
+      "code": "remote/src/research/{store,routes,boundary,pg-research,schema,serve}.ts, migrations/0010_research_rls.sql, 0011_research_account_only.sql",
+      "notProtectedAgainst": "A database superuser (the operator) can read the tables directly, as in any hosted app.",
+      "noFile": "Research lives only in the account: no research.db, no import/export (removed 2026-09-28; migration 0011 dropped the file-era owner table). Backed up with the database (deploy/backup.sh)."
     }
   },
   "accessModel": {
@@ -155,7 +148,7 @@
       "REMOTE_URL": "research server (default http://localhost:8100)",
       "REMOTE_TOKEN": "a personal API token",
       "MQ_CORPUS": "'local' = read quran.db instead",
-      "QF_RESEARCH_DB": "research.db path (default: the repo's; the app's current file is used)"
+      "QF_QURAN_DB": "quran.db path, for MQ_CORPUS=local"
     }
   },
   "remoteEndpoints": [
@@ -282,19 +275,7 @@
       "method": "GET|PUT|DELETE",
       "path": "/research/*",
       "role": "reader",
-      "note": "the signed-in account's own research — same paths/JSON as the local /api/v1/research (cases, notes, indications, motifs, comparisons, settings, outbox). Token requests get the AI boundary."
-    },
-    {
-      "method": "GET",
-      "path": "/research/export",
-      "role": "reader",
-      "note": "a complete research.db download"
-    },
-    {
-      "method": "POST",
-      "path": "/research/import",
-      "role": "reader",
-      "note": "merge a research.db in (session only; ≤100 MB)"
+      "note": "the signed-in account's own research (cases, notes, indications, motifs, comparisons, settings, outbox). Token requests get the AI boundary."
     },
     {
       "method": "GET",
@@ -387,7 +368,7 @@
       "id": "research-cloud",
       "title": "Research in Postgres, private per account",
       "status": "done",
-      "summary": "One research codebase over a driver (SQLite/Postgres); one shared schema under row-level security; the app and the MCP read/write it as the user; import/export; the AI boundary enforced by the server."
+      "summary": "Research in Postgres only: one shared schema under row-level security; the app and the MCP read/write it as the user; the AI boundary enforced by the server. research.db, its SQLite driver, import/export and the local research routes removed (2026-09-28)."
     },
     {
       "id": "roles-audience",
@@ -462,6 +443,11 @@
       "id": "last-maintainer",
       "decision": "The last maintainer can't be demoted.",
       "why": "It would lock everyone out of administering the community."
+    },
+    {
+      "id": "research-account-only",
+      "decision": "No research.db: research exists only in the account, in Postgres.",
+      "why": "The maintainer's call, 2026-09-28: still in development, nothing important in the file, so keep one place and one code path. Dropped with it: the SQLite research driver, the local server's research routes, import/export and 'Bring it into my account', MQ_RESEARCH=local, the file's owner record. Cost: no offline research and no file copy — the database backup is the copy."
     }
   ],
   "fileMap": [
@@ -551,7 +537,7 @@
     },
     {
       "path": "mcp/src/core.ts",
-      "purpose": "openState: corpus (remote|local) + local research; the write guard"
+      "purpose": "openState: corpus (remote|local) + the account's research; the write guard"
     },
     {
       "path": "server/test/mcp-remote-corpus.test.ts",
@@ -570,20 +556,8 @@
       "purpose": "the deeper references"
     },
     {
-      "path": "server/src/research.ts, research-db.ts",
-      "purpose": "ResearchStore — async, one codebase over SQLite or Postgres"
-    },
-    {
-      "path": "server/src/research-boundary.ts",
-      "purpose": "the AI write boundary the server enforces for token requests"
-    },
-    {
-      "path": "server/src/research-transfer.ts",
-      "purpose": "copyResearch — import (merge) and export (a research.db)"
-    },
-    {
-      "path": "remote/src/research/{schema,pg-research,serve}.ts",
-      "purpose": "binding a request to its user (role, app.user_id, search_path), the Postgres driver, /research with the per-request transaction"
+      "path": "remote/src/research/{store,routes,boundary,schema,pg-research,serve}.ts",
+      "purpose": "the research queries (ResearchStore), its routes, the AI boundary for token requests, binding a request to its user (role, app.user_id, search_path), the driver, /research with the per-request transaction"
     },
     {
       "path": "remote/src/role-ladder.ts",
@@ -595,19 +569,23 @@
     },
     {
       "path": "mcp/src/research-client.ts",
-      "purpose": "the MCP's research over HTTP (or a local file)"
+      "purpose": "the MCP's research, over HTTP as the reader"
     },
     {
       "path": "app/src/components/AudiencePicker.tsx",
       "purpose": "who can see it once approved"
     },
     {
-      "path": "remote/test/{research-cloud,audience}.test.ts, server/test/mcp-remote-research.test.ts",
-      "purpose": "parity/privacy/boundary; ladder/publish/audiences; the MCP over cloud research"
+      "path": "remote/test/{research-store,research-cloud,audience}.test.ts, server/test/mcp-remote-research.test.ts",
+      "purpose": "what research does; privacy/RLS/AI boundary; ladder/publish/audiences; the MCP over the account's research"
     },
     {
       "path": "remote/migrations/0010_research_rls.sql",
       "purpose": "the research schema, row-level security, the mqrg_research role"
+    },
+    {
+      "path": "remote/migrations/0011_research_account_only.sql",
+      "purpose": "research without files: drops the owner table and file-era settings; author_id = the account"
     }
   ],
   "glossary": {
@@ -616,14 +594,14 @@
     "tier": "A rung on the plan ladder (plan_tiers). Higher rank unlocks more.",
     "min_plan": "A resource's requirement: a tier, 'free' (signed in), or NULL (public).",
     "API token": "mqrg_… — a revocable credential that acts as its user; how the MCP signs in.",
-    "locally established": "A form meaning YOU established, in your own research.db.",
+    "locally established": "A form meaning YOU established, in your own research.",
     "globally established": "The reading moderators accepted as the group's; lives on the cloud.",
     "dissent": "A recorded disagreement with a globally established reading, preserved not resolved.",
     "divergence (⚖)": "A form you established whose meaning differs from the group's. Computed live on the remote.",
     "audience": "Who may see a published result: at least a role and at least a plan. Proposed by the author, confirmed by the reviewer.",
     "role ladder": "reader < student < researcher < scholar < moderator < maintainer — data the maintainer edits; the three fixed rungs carry the staff powers."
   },
-  "notice": "The maintainer account (mansoor@wimetrix.com) is maintainer · free, and the corpus + community rules are pro — so the app will say reading needs the pro plan. Admin → People → Change → Pro, or Admin → Who can read. Their existing research is still in the local research.db: Settings → Your research → 'Bring it into my account' moves a copy into the account (the file stays as it is).",
+  "notice": "The maintainer account (mansoor@wimetrix.com) is maintainer · free, and the corpus + community rules are pro — so the app will say reading needs the pro plan. Admin → People → Change → Pro, or Admin → Who can read. The old research.db files are gone (in the Recycle Bin); research starts empty in the account.",
   "openQuestions": [
     "Billing provider integration (the plan-grant seam) — next.",
     "Should maintainers bypass resource gates automatically?",

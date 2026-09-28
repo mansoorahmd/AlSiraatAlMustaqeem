@@ -1,18 +1,11 @@
 // Minimal, sandbox-safe bridge. A sandboxed preload must be CommonJS (hence .cjs),
 // and may only use `electron`'s contextBridge + ipcRenderer. The renderer stays a
-// normal web page talking to the local server over HTTP; the only thing it can't do
-// from the page is open a native save dialog, so that's all we expose here.
+// normal web page; the only thing it can't do from the page is sign in inside the app.
 
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("desktop", {
-  // → { path, bytes, at } on success, or { canceled: true } if the dialog was dismissed
-  backupResearch: () => ipcRenderer.invoke("research:backup"),
   // Open the remote's sign-in page in an IN-APP window, so the Better Auth session cookie
   // is stored in this app's session rather than the system browser's.
   openSignIn: (url) => ipcRenderer.invoke("auth:open-sign-in", url),
-  // Choose a research database to open → absolute path, or null if cancelled.
-  pickResearchDb: () => ipcRenderer.invoke("research:pick-db"),
-  // Reveal a file in the OS file manager (used after a backup, so "where did it go?" is one click).
-  revealPath: (p) => ipcRenderer.invoke("shell:reveal", p),
 });

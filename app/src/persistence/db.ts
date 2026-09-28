@@ -1,10 +1,7 @@
 // Persistence layer. All research (cases, trails, notes, indications, comparisons, motifs) and
-// device-independent UI prefs live on the research server, in the signed-in account's own
-// private Postgres schema, reached through /research/* with the session cookie. Nothing of it
+// device-independent UI prefs live on the research server, in the signed-in account (private
+// by row-level security), reached through /research/* with the session cookie. Nothing of it
 // is shared unless the reader publishes it. There is no browser-side storage.
-//
-// (The same routes are still served by the local server over a research.db file — that is what
-// "bring research from this computer" reads from, see migrate below.)
 
 import type { CaseRecord, TrailRecord, NoteRecord, UserRootMeaning, Motif } from "./types";
 import type { CompareSet, CompareItemRow, WordIndication, IndicationsForWord, IndicationGloss, Proposed } from "../api/types";
@@ -13,8 +10,6 @@ import { announceAccess } from "../api/client";
 import { cachedMe } from "../hooks/useMe";
 
 const API = `${REMOTE_URL}/research`;
-/** The local server's research.db, for bringing an existing file into the account. */
-const LOCAL_API = "/api/v1/research";
 
 export function newId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -63,89 +58,11 @@ async function srvDelete(path: string): Promise<void> {
   if (!res.ok && res.status !== 404) return fail(res, `DELETE ${path}`);
 }
 
-// ---- your research as a whole: whose it is, a copy out, research brought in --------
-
-export interface Owner {
-  name: string;
-  email: string;
-  uuid: string;
-  claimedAt: number;
-  updatedAt: number;
-}
-
-/** Whose research this is — the signed-in account. */
-export async function fetchIdentity(): Promise<{
-  localId: string; databasePath?: string | null; owner: Owner | null;
-}> {
-  return srvGet("/identity");
-}
-
-/** What an import added, per table. */
-export interface ImportReport {
-  copied: number;
-  tables: Record<string, { copied: number; alreadyThere: number }>;
-}
-
-export const myResearch = {
-  /** A complete copy of your research as a research.db file (opens in DB Browser; re-importable). */
-  async download(): Promise<{ blob: Blob; filename: string }> {
-    const res = await research("/export");
-    if (!res.ok) return fail(res, "download");
-    const cd = res.headers.get("content-disposition") ?? "";
-    return { blob: await res.blob(), filename: cd.match(/filename="([^"]+)"/)?.[1] ?? "research.db" };
-  },
-
-  /**
-   * Bring a research.db into your account — the file from this computer, a backup, an earlier
-   * download. Merges: adds what isn't there yet, never overwrites or deletes; twice adds nothing.
-   */
-  /** Remember that this computer's file has been brought in, so it isn't offered again. */
-  markBroughtIn(path: string): Promise<unknown> {
-    return srvPut("/settings/local_file_brought_in", { value: path });
-  },
-
-  async importFile(file: Blob): Promise<ImportReport> {
-    const res = await research("/import", {
-      method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file,
-    });
-    if (!res.ok) return fail(res, "import");
-    return res.json() as Promise<ImportReport>;
-  },
-
-  /**
-   * The research.db this computer's local server has open (the app's research before it moved
-   * to the account), or null when there's no local server or nothing in it. Read-only: the file
-   * stays exactly as it is.
-   */
-  async localFile(): Promise<{ owner: Owner | null; path: string; read: () => Promise<Blob> } | null> {
-    try {
-      const idRes = await fetch(`${LOCAL_API}/identity`);
-      if (!idRes.ok) return null;
-      const id = (await idRes.json()) as { owner: Owner | null; databasePath: string };
-      const cases = await fetch(`${LOCAL_API}/cases`).then((r) => (r.ok ? r.json() : [])) as unknown[];
-      const notes = await fetch(`${LOCAL_API}/notes`).then((r) => (r.ok ? r.json() : [])) as unknown[];
-      const gloss = await fetch(`${LOCAL_API}/indications/gloss`).then((r) => (r.ok ? r.json() : { roots: [] })) as { roots: unknown[] };
-      if (!cases.length && !notes.length && !gloss.roots.length) return null;   // nothing worth bringing
-      // already brought in (the account remembers which file): don't keep offering
-      const done = await srvGet<{ value: unknown }>("/settings/local_file_brought_in").catch(() => ({ value: null }));
-      if (done.value === id.databasePath) return null;
-      return {
-        owner: id.owner, path: id.databasePath,
-        read: async () => {
-          const res = await fetch(`${LOCAL_API}/file`);
-          if (!res.ok) throw new Error(`couldn't read this computer's research.db → ${res.status}`);
-          return res.blob();
-        },
-      };
-    } catch { return null; }
-  },
-};
-
 // ---- the community layer: read LIVE from the remote, never mirrored locally ----
 //
 // Monetization: the group's readings are a PAID, ONLINE layer. They are fetched from the remote
 // on demand and gated behind a plan (api/remote.ts + REMOTE.md); nothing of the group's is ever
-// stored in research.db. A free, signed-out, or offline reader simply sees their own work — the
+// stored with the reader's research. A free, signed-out, or offline reader simply sees their own work — the
 // boundary is now the network, not a local table.
 
 export interface Divergence {
@@ -278,7 +195,7 @@ export const submissionLog = {
 // ---- typed access ---------------------------------------------------------------
 
 export const archive = {
-  /** Cases — stored in research.db via the API. */
+  /** Cases. */
   cases: {
     get: async (id: string): Promise<CaseRecord | undefined> => {
       try {
@@ -301,7 +218,7 @@ export const archive = {
     },
   },
 
-  /** Trails — stored in research.db via the API. */
+  /** Trails. */
   trails: {
     get: async (id: string): Promise<TrailRecord | undefined> => {
       const all = await srvGet<TrailRecord[]>("/trails");
@@ -321,7 +238,7 @@ export const archive = {
     },
   },
 
-  /** Notes & questions on ayahs/words — research.db via the API.
+  /** Notes & questions on ayahs/words.
    *  Shared between the reader and the investigation board. */
   notes: {
     all: async (): Promise<NoteRecord[]> => {
@@ -347,7 +264,7 @@ export const archive = {
     },
   },
 
-  /** The reader's own meaning per root — research.db, alongside the lexicons. */
+  /** The reader's own meaning per root, alongside the lexicons. */
   rootMeanings: {
     get: async (root: string): Promise<UserRootMeaning> => {
       return srvGet<UserRootMeaning>(`/root-meanings/${encodeURIComponent(root)}`);
@@ -363,7 +280,7 @@ export const archive = {
     },
   },
 
-  /** Motifs (بيوت) — reader-defined root collections, research.db. */
+  /** Motifs (بيوت) — reader-defined root collections. */
   motifs: {
     all: async (): Promise<Motif[]> => {
       return srvGet<Motif[]>("/motifs");
@@ -451,7 +368,7 @@ export const archive = {
     },
   },
 
-  /** Comparisons (saveable boards of pinned āyāt & roots) — research.db. */
+  /** Comparisons (saveable boards of pinned āyāt & roots). */
   compare: {
     sets: async (): Promise<CompareSet[]> => {
       return srvGet<CompareSet[]>("/compare-sets");
@@ -482,8 +399,7 @@ export const archive = {
     },
   },
 
-  /** UI prefs (font size, script, active comparison) — stored in research.db via the
-   *  server so they persist with the reader's data and are shared between the web and
+  /** UI prefs (font size, script, active comparison) — stored in the account so they persist with the reader's data and are shared between the web and
    *  desktop builds. */
   prefs: {
     get: async <T>(key: string): Promise<T | undefined> => {
