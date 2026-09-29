@@ -32,6 +32,8 @@ export interface RoleLevel { name: string; rank: number; label: string; fixed: b
 export interface AdminUser {
   id: string; email: string; displayName: string; role: Role;
   plan: string; planExpiresAt: string | null; createdAt: string;
+  /** from the sign-up form — null for accounts made by invite or the CLIs */
+  birthDate: string | null; region: string | null; gender: string | null;
 }
 export interface AdminResources {
   translations: { id: number; name: string; language: string; author: string; minPlan: string | null; ruled: boolean }[];

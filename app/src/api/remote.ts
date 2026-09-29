@@ -187,6 +187,17 @@ export const remote = {
     return call("/invites/redeem", { method: "POST", body: JSON.stringify(opts) });
   },
 
+  /**
+   * Open sign-up: creates a reader account on the free plan (a maintainer promotes it). The
+   * server checks the profile; afterwards you sign in with email + password.
+   */
+  signup(opts: {
+    email: string; password: string; displayName?: string;
+    birthDate: string; region: string; gender?: "female" | "male";
+  }): Promise<{ userId: string; email: string; role: Role; plan: string }> {
+    return call("/signup", { method: "POST", body: JSON.stringify(opts) });
+  },
+
   /** The role ladder, lowest first — public, so the app can name rungs and requirements. */
   roles(): Promise<RoleLevel[]> {
     return call<RoleLevel[]>("/roles");

@@ -20,17 +20,23 @@ export class AdminError extends Error {
 export interface AdminUser {
   id: string; email: string; displayName: string; role: Role;
   plan: string; planExpiresAt: string | null; createdAt: string;
+  /** from the sign-up form (signup.ts) — null for accounts made by invite or the CLIs */
+  birthDate: string | null; region: string | null; gender: string | null;
 }
 
 export async function listUsers(r: SqlRunner): Promise<AdminUser[]> {
   const rows = await r.query(
-    `SELECT id, email, display_name, role, plan, plan_expires_at, created_at
+    `SELECT id, email, display_name, role, plan, plan_expires_at, created_at,
+            to_char(birth_date, 'YYYY-MM-DD') AS birth_date, region, gender
        FROM users ORDER BY created_at, email`);
   return rows.map((u) => ({
     id: String(u.id), email: String(u.email), displayName: String(u.display_name ?? ""),
     role: u.role as Role, plan: String(u.plan ?? "free"),
     planExpiresAt: u.plan_expires_at == null ? null : new Date(u.plan_expires_at as string).toISOString(),
     createdAt: new Date(u.created_at as string).toISOString(),
+    birthDate: (u.birth_date as string | null) ?? null,
+    region: (u.region as string | null) ?? null,
+    gender: (u.gender as string | null) ?? null,
   }));
 }
 

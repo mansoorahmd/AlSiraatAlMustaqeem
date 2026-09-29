@@ -2,6 +2,7 @@
 //
 //   /api/auth/*            Better Auth (magic-link sign-in, session) — mounted raw
 //   POST /invites          issue an invite            [maintainer]
+//   POST /signup           open sign-up: a free reader (signup.ts)   [public]
 //   POST /invites/redeem   redeem one (creates the account)   [public — the code IS the auth]
 //   GET  /me               who am I, and what may I do        [any signed-in user]
 //   POST /me/local-id      bind this device's local_id        [any signed-in user]
@@ -26,6 +27,7 @@ import {
 import { createToken, listTokens, revokeToken } from "./api-tokens.js";
 import { RESET_PAGE, RESET_PAGE_HEADERS } from "./reset-page.js";
 import { listUsers, setRole, listResources, isUserId, AdminError } from "./admin.js";
+import { SignupError, validProfile, saveProfile, signupLimiter } from "./signup.js";
 import { corpusApp } from "./corpus/serve.js";
 import { pgCorpus } from "./corpus/pg-corpus.js";
 import { createCorpusServices, type CorpusServices } from "../../corpus-core/src/corpus-services.js";
@@ -59,12 +61,12 @@ export function createApp(): Hono<Env> {
   // browser blocks the request and the app can't tell that apart from the server being down.
   app.use("*", cors({ origin: config.trustedOrigins, credentials: true }));
 
-  // Registration is invite-only, so the public sign-up endpoint is closed. Email+password is
-  // enabled for SIGN-IN, and the only thing allowed to create an account is /invites/redeem,
-  // which calls auth.api.signUpEmail internally (a server-side call, not this HTTP route).
+  // Better Auth's own sign-up endpoint stays closed: accounts are created only by /signup (which
+  // also records the profile the form asks for, signup.ts) and /invites/redeem — both call
+  // auth.api.signUpEmail internally (a server-side call, not this HTTP route).
   // This must be registered BEFORE the catch-all below.
   app.post("/api/auth/sign-up/email", (c) =>
-    c.json({ detail: "registration is invite-only — redeem an invite code" }, 403));
+    c.json({ detail: "create an account with POST /signup" }, 403));
 
   // Better Auth speaks Web-standard Request/Response — hand it the raw request
   app.all("/api/auth/*", (c) => auth.handler(c.req.raw));
@@ -511,6 +513,36 @@ export function createApp(): Hono<Env> {
       // Better Auth rejects e.g. too-short passwords with its own APIError
       const msg = (e as Error).message || "could not create the account";
       return c.json({ detail: msg }, 400);
+    }
+  });
+
+  // Public: open sign-up. The account starts as a reader on the free plan (the column defaults)
+  // and a maintainer promotes it. The profile is validated BEFORE the account exists, so a bad
+  // form never leaves a half-made account behind.
+  const signupAllowed = signupLimiter();
+  app.post("/signup", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as {
+      email?: string; password?: string; displayName?: string;
+      birthDate?: string; region?: string; gender?: string;
+    };
+    const email = body.email?.trim().toLowerCase() ?? "";
+    try {
+      if (!email.includes("@")) throw new SignupError("a valid email is required");
+      if (!body.password || body.password.length < 10) throw new SignupError("the password must be at least 10 characters");
+      const profile = validProfile(body);
+      // Caddy sets X-Forwarded-For to the real client address (deploy/Caddyfile)
+      const from = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "direct";
+      if (!signupAllowed(from)) throw new SignupError("too many sign-ups from this address — try again later", 429);
+      if (await emailTaken(pgRunner, email)) throw new SignupError("an account already exists for that email — sign in instead", 409);
+      const created = await auth.api.signUpEmail({
+        body: { email, password: body.password, name: body.displayName?.trim() || "" },
+      });
+      const userId = String(created.user.id);
+      await saveProfile(pgRunner, userId, profile);
+      return c.json({ userId, email, role: "reader", plan: FREE }, 201);
+    } catch (e) {
+      if (e instanceof SignupError) return c.json({ detail: e.message }, e.status as 422);
+      return c.json({ detail: (e as Error).message || "could not create the account" }, 400);
     }
   });
 

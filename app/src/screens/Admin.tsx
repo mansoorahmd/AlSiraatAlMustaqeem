@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { admin, type Tier, type Rule, type AdminUser, type AdminResources, type Role, type RoleLevel } from "../api/admin";
 import { useMe, refreshMe } from "../hooks/useMe";
+import { regionName, ageFrom } from "../lib/regions";
 
 /** What the fixed rungs do — the learner rungs between them are the maintainer's to define. */
 const FIXED_HINT: Record<string, string> = {
@@ -296,6 +297,12 @@ function UserRow({ u, tiers, roles, meId, onSaved }: { u: AdminUser; tiers: Tier
         <strong>{u.displayName || u.email}</strong>
         {u.displayName && <span className="admin-sub">{u.email}</span>}
         {u.id === meId && <span className="admin-sub">(you)</span>}
+        {(u.region || u.birthDate || u.gender) && (
+          <span className="admin-sub">
+            {[u.region && regionName(u.region), u.birthDate && `age ${ageFrom(u.birthDate)}`, u.gender,
+              `joined ${new Date(u.createdAt).toLocaleDateString()}`].filter(Boolean).join(" · ")}
+          </span>
+        )}
       </span>
       {editing ? (
         <div className="admin-edit">

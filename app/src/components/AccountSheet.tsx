@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { remote, RemoteOffline, type Me, type Role, type RoleLevel, type InviteOut, type ApiToken } from "../api/remote";
 import { cachedMe, refreshMe } from "../hooks/useMe";
+import { REGIONS, ageFrom } from "../lib/regions";
 
 type Status = "loading" | "offline" | "blocked" | "signed-out" | "signed-in";
 
@@ -150,8 +151,18 @@ export function AccountSheet() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showRedeem, setShowRedeem] = useState(false);
+  // signed out: sign in, create an account (open sign-up), or redeem an invite
+  const [mode, setMode] = useState<"signin" | "signup" | "redeem">("signin");
+  const showRedeem = mode === "redeem";
+  const creating = mode !== "signin";
   const [code, setCode] = useState("");
+  // the sign-up profile (server/src/signup.ts checks it again)
+  const [name, setName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [region, setRegion] = useState("");
+  const [gender, setGender] = useState<"" | "female" | "male">("");
+  const age = ageFrom(birthDate);
+  const profileOk = age != null && age >= 5 && age <= 120 && !!region;
   // forgotten password: true once the reset email has been requested
   const [resetSent, setResetSent] = useState(false);
   // profile editing — closed by default, opened with the pencil
@@ -207,7 +218,17 @@ export function AccountSheet() {
       code: code.trim(), email: email.trim(), password,
     });
     await remote.signIn(email.trim(), password);
-    setShowRedeem(false); setCode(""); setPassword("");
+    setMode("signin"); setCode(""); setPassword("");
+    await refresh();
+  });
+
+  const doSignup = () => guard(async () => {
+    await remote.signup({
+      email: email.trim(), password, displayName: name.trim() || undefined,
+      birthDate, region, gender: gender || undefined,
+    });
+    await remote.signIn(email.trim(), password);
+    setMode("signin"); setPassword("");
     await refresh();
   });
 
@@ -244,9 +265,11 @@ export function AccountSheet() {
       {status === "signed-out" && (
         <>
           <p className="acct-note">
-            {showRedeem
+            {mode === "redeem"
               ? "Your invite creates the account. Choose a password now — you’ll use it every time after."
-              : "Sign in to publish research for review and pull the group’s established readings."}
+              : mode === "signup"
+                ? "Create your account. It starts on the free plan — a maintainer can upgrade it."
+                : "Sign in to publish research for review and pull the group’s established readings."}
           </p>
 
           <div className="acct-field">
@@ -262,13 +285,50 @@ export function AccountSheet() {
             <label htmlFor="acct-pw">Password</label>
             <input
               id="acct-pw" type="password"
-              autoComplete={showRedeem ? "new-password" : "current-password"}
-              placeholder={showRedeem ? "at least 10 characters" : ""}
+              autoComplete={creating ? "new-password" : "current-password"}
+              placeholder={creating ? "at least 10 characters" : ""}
               value={password} onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !showRedeem && canSignIn) doSignIn(); }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !creating && canSignIn) doSignIn(); }}
             />
-            {showRedeem && <span className="acct-hint">At least 10 characters.</span>}
+            {creating && <span className="acct-hint">At least 10 characters.</span>}
           </div>
+
+          {mode === "signup" && (
+            <>
+              <div className="acct-field">
+                <label htmlFor="acct-name">Name <span className="acct-muted">(optional)</span></label>
+                <input id="acct-name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div className="acct-field">
+                <label htmlFor="acct-dob">Date of birth</label>
+                <input id="acct-dob" type="date" autoComplete="bday"
+                  max={new Date().toISOString().slice(0, 10)}
+                  value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+                {age != null && (
+                  <span className="acct-hint">
+                    {age >= 5 && age <= 120 ? `Age: ${age}` : "Check the date — that age isn’t possible."}
+                  </span>
+                )}
+              </div>
+              <div className="acct-field">
+                <label htmlFor="acct-region">Region</label>
+                <select id="acct-region" autoComplete="country" value={region}
+                  onChange={(e) => setRegion(e.target.value)}>
+                  <option value="">Choose…</option>
+                  {REGIONS.map((r) => <option key={r.code} value={r.code}>{r.name}</option>)}
+                </select>
+              </div>
+              <div className="acct-field">
+                <label htmlFor="acct-gender">Gender <span className="acct-muted">(optional)</span></label>
+                <select id="acct-gender" value={gender}
+                  onChange={(e) => setGender(e.target.value as typeof gender)}>
+                  <option value="">Prefer not to say</option>
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                </select>
+              </div>
+            </>
+          )}
 
           {showRedeem && (
             <div className="acct-field">
@@ -281,8 +341,12 @@ export function AccountSheet() {
           )}
 
           <div className="acct-actions">
-            {showRedeem ? (
+            {mode === "redeem" ? (
               <button className="ctl primary" disabled={busy || !code.trim() || !canSignIn} onClick={doRedeem}>
+                {busy ? "Creating your account…" : "Create account"}
+              </button>
+            ) : mode === "signup" ? (
+              <button className="ctl primary" disabled={busy || !canSignIn || !profileOk} onClick={doSignup}>
                 {busy ? "Creating your account…" : "Create account"}
               </button>
             ) : (
@@ -293,16 +357,22 @@ export function AccountSheet() {
           </div>
 
           <p className="acct-alt">
-            {showRedeem ? (
+            {creating ? (
               <>Already have an account?{" "}
-                <button className="linkish" onClick={() => setShowRedeem(false)}>Sign in</button></>
+                <button className="linkish" onClick={() => setMode("signin")}>Sign in</button></>
             ) : (
-              <>Have an invite code?{" "}
-                <button className="linkish" onClick={() => setShowRedeem(true)}>Create your account</button></>
+              <>New here?{" "}
+                <button className="linkish" onClick={() => setMode("signup")}>Create an account</button></>
             )}
           </p>
+          {mode !== "redeem" && (
+            <p className="acct-alt">
+              Have an invite code?{" "}
+              <button className="linkish" onClick={() => setMode("redeem")}>Use it</button>
+            </p>
+          )}
 
-          {!showRedeem && (
+          {!creating && (
             resetSent ? (
               <p className="acct-hint" role="status">
                 If <strong>{email.trim()}</strong> has an account, a reset link is on its way — it
