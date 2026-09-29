@@ -58,6 +58,8 @@ export function remoteResearch(base: string, token?: string, fetchImpl: Fetch = 
     }
     const detail = async () => ((await res.json().catch(() => ({}))) as { detail?: string }).detail;
     if (res.status === 403) throw new ResearchRefused((await detail()) ?? "the research server refused this write");
+    // a feature this plan has read-only (server/src/plan-features.ts): say so, don't retry
+    if (res.status === 402) throw new ResearchRefused(`${(await detail()) ?? "this needs a higher plan"} — the reader's plan has it read-only.`);
     if (res.status === 404 && missing !== undefined) {
       const d = await detail();
       if (typeof d === "string") return missing;   // the route's own "not found"

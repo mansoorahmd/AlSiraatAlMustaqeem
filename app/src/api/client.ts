@@ -30,6 +30,17 @@ export type CorpusAccessState =
   | { kind: "offline"; message: string };
 
 export const CORPUS_ACCESS_EVENT = "corpus-access";
+
+/** A feature this plan doesn't include was refused (a read-assist tool, or a write to a
+ *  read-only feature) — PlanLockNotice shows it as a short toast. */
+export const PLAN_LOCK_EVENT = "plan-lock";
+let lastLock = { message: "", at: 0 };
+export function announcePlanLock(message: string): void {
+  // the reader fires several requests at once; say it once
+  if (message === lastLock.message && Date.now() - lastLock.at < 4000) return;
+  lastLock = { message, at: Date.now() };
+  window.dispatchEvent(new CustomEvent<string>(PLAN_LOCK_EVENT, { detail: message }));
+}
 let last: CorpusAccessState["kind"] = "ok";
 /** Also used by the research client (persistence/db.ts) for sign-in / offline — never for "ok". */
 export function announceAccess(state: CorpusAccessState): void { announce(state); }
@@ -58,7 +69,13 @@ async function corpusFetch(path: string, init: RequestInit = {}): Promise<Respon
     throw new ApiError(0, `cannot reach the corpus at ${CORPUS}`);
   }
   if (res.status === 401 || res.status === 402) {
-    const body = (await res.json().catch(() => ({}))) as { detail?: string; plan?: string | null };
+    const body = (await res.json().catch(() => ({}))) as { detail?: string; plan?: string | null; feature?: string };
+    // One locked TOOL (search, echoes, …) is that tool's business: a short notice, not the banner
+    // that says the Qur'an itself can't be read. Only the text (or an older server) is that.
+    if (body.feature && body.feature !== "text") {
+      announcePlanLock(body.detail ?? "This feature needs a higher plan.");
+      throw new ApiError(res.status, body.detail ?? `${init.method ?? "GET"} ${path} → ${res.status}`);
+    }
     announce({
       kind: res.status === 401 ? "signin" : "upgrade",
       plan: body.plan ?? null,

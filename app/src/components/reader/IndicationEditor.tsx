@@ -16,6 +16,8 @@ import { AudiencePicker, EVERYONE } from "../AudiencePicker";
 import { useMe } from "../../hooks/useMe";
 import { proposals, readingHash, type Refinement } from "../../persistence/db";
 import { tokenizeVerse } from "./format";
+import { useFeature } from "../../lib/features";
+import { PlanLock } from "../PlanLock";
 
 /** the first occurrence of a form, for the click-to-peek */
 interface Occ { ref: string | null; text: string | null; pos: number | null }
@@ -92,6 +94,8 @@ interface SurfaceForm {
 }
 
 export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props) {
+  // locked indications are read-only (lib/features.ts): everything shows, nothing edits
+  const canEdit = useFeature("indications");
   const [version, setVersion] = useState(0);
   const bump = () => { setVersion((v) => v + 1); onChanged?.(); };
 
@@ -170,6 +174,12 @@ export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props
           </div>
         </header>
 
+        {!canEdit && (
+          <p className="plan-readonly-note ie-pad">
+            <PlanLock feature="indications" /> Your indications stay readable — adding or changing them
+            needs a higher plan.
+          </p>
+        )}
         <div className="ie-body">
           {/* indications of the root */}
           <aside className="ie-indications">
@@ -184,12 +194,13 @@ export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props
                   indication={s}
                   active={selected?.id === s.id}
                   onSelect={() => setSelectedId(s.id)}
+                  readOnly={!canEdit}
                   onPrimary={async () => { await archive.indications.setPrimary(s.id); bump(); }}
                   onDelete={async () => { await archive.indications.remove(s.id); if (selectedId === s.id) setSelectedId(null); bump(); }}
                 />
               ))}
             </div>
-            <div className="ie-add">
+            {canEdit && <div className="ie-add">
               <input
                 className="board-input"
                 placeholder="name an indication (e.g. attain / triumph)"
@@ -198,7 +209,7 @@ export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props
                 onKeyDown={(e) => { if (e.key === "Enter") addIndication(); }}
               />
               <button className="ctl establish-btn" disabled={!newLabel.trim()} onClick={addIndication}>＋ Add indication</button>
-            </div>
+            </div>}
 
             {/* what others hold — selectable, so their per-form reading shows on the right */}
             <CommunityChips
@@ -219,6 +230,7 @@ export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props
                 focusLemma={focusLemma ?? null}
               />
             ) : selected ? (
+              <fieldset className="plan-fieldset" disabled={!canEdit}>
               <IndicationForms
                 key={selected.id}
                 indication={selected}
@@ -226,6 +238,7 @@ export function IndicationEditor({ root, focusLemma, onClose, onChanged }: Props
                 focusLemma={focusLemma ?? null}
                 onChanged={bump}
               />
+              </fieldset>
             ) : (
               <p className="indications-empty ie-pad">Pick or add an indication to give each form its meaning.</p>
             )}
@@ -457,13 +470,14 @@ function CommunityForms({
 }
 
 function IndicationChip({
-  indication, active, onSelect, onPrimary, onDelete,
+  indication, active, readOnly, onSelect, onPrimary, onDelete,
 }: {
-  indication: RootIndicationWithRefinement; active: boolean; onSelect: () => void; onPrimary: () => void; onDelete: () => void;
+  indication: RootIndicationWithRefinement; active: boolean; readOnly?: boolean;
+  onSelect: () => void; onPrimary: () => void; onDelete: () => void;
 }) {
   return (
     <div className={`ie-chip${active ? " active" : ""}`}>
-      <button className={`indication-primary${indication.primary ? " on" : ""}`} title={indication.primary ? "Primary (default gloss)" : "Make primary"} onClick={onPrimary}>
+      <button className={`indication-primary${indication.primary ? " on" : ""}`} disabled={readOnly} title={indication.primary ? "Primary (default gloss)" : "Make primary"} onClick={onPrimary}>
         {indication.primary ? "★" : "☆"}
       </button>
       <button className="ie-chip-label" onClick={onSelect}>
@@ -473,7 +487,7 @@ function IndicationChip({
           {indication.source === "ai" && <span className="ai-badge" title="Proposed by an AI — accept it in ✦ Proposed">AI</span>}
         </span>
       </button>
-      <button className="indication-del" title="Delete indication" onClick={onDelete}>✕</button>
+      {!readOnly && <button className="indication-del" title="Delete indication" onClick={onDelete}>✕</button>}
     </div>
   );
 }

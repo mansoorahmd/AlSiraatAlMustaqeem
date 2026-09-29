@@ -4,7 +4,9 @@
 // no case yet / under investigation / established (your meaning).
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { api } from "../../api/client";
+import { api, announcePlanLock } from "../../api/client";
+import { useFeature, useFeatureCatalog, lockReason, type PlanFeature } from "../../lib/features";
+import { PlanLock } from "../PlanLock";
 import { useAsync } from "../../hooks/useAsync";
 import { useAppState, useAppDispatch } from "../../state/store";
 import {
@@ -52,6 +54,17 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
   const [coreOpen, setCoreOpen] = useState(false);
   const [lexOpenIdx, setLexOpenIdx] = useState<Set<number>>(new Set());
 
+  // plan features (lib/features.ts): a locked action shows 🔒 and says why instead of failing
+  const catalog = useFeatureCatalog();
+  const can = {
+    roots: useFeature("roots"), meanings: useFeature("meanings"), wazn: useFeature("wazn"),
+    spelling: useFeature("spelling"), cases: useFeature("cases"), followRoot: useFeature("follow-root"),
+    followWord: useFeature("follow-word"), search: useFeature("search"),
+  };
+  /** the action itself when allowed; otherwise a click that explains the lock */
+  const gate = <A extends unknown[]>(ok: boolean, f: PlanFeature, fn: (...a: A) => unknown) =>
+    ok ? fn : () => announcePlanLock(lockReason(f, catalog));
+
   // every case that can still receive evidence (open or partial)
   const openCases = useAsync(async () => {
     const all = await archive.cases.all();
@@ -90,20 +103,20 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
   };
 
   const rootInfo = useAsync(
-    async () => (root ? api.root(root) : null),
-    [root],
+    async () => (root && can.roots ? api.root(root) : null),
+    [root, can.roots],
   );
 
   // wazn (صرف pattern) of the tapped word
   const wazn = useAsync(
-    async () => (target.word ? api.wazn(target.verseKey, target.position) : null),
-    [target.verseKey, target.position, target.word !== null],
+    async () => (target.word && can.wazn ? api.wazn(target.verseKey, target.position) : null),
+    [target.verseKey, target.position, target.word !== null, can.wazn],
   );
 
   // rasm spelling variants of the tapped word (same word written ≥2 ways)
   const spelling = useAsync(
-    async () => (target.word ? api.spelling(target.verseKey, target.position) : []),
-    [target.verseKey, target.position, target.word !== null],
+    async () => (target.word && can.spelling ? api.spelling(target.verseKey, target.position) : []),
+    [target.verseKey, target.position, target.word !== null, can.spelling],
   );
   const variants = spelling.data ?? [];
 
@@ -316,47 +329,48 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
       {/* actions — a neat wrapping grid that uses the full width */}
       <div className="wm-actions-grid">
         {root && (
-          <button className="wm-act" onClick={openCase}>
-            ⚖ {research ? "Open case" : "Open a case"}
+          <button className={`wm-act${can.cases || research ? "" : " plan-locked"}`}
+            onClick={gate(can.cases || !!research, "cases", openCase)}>
+            ⚖ {research ? "Open case" : "Open a case"}{!can.cases && !research && <> <PlanLock feature="cases" /></>}
           </button>
         )}
         {root && (
           <button
-            className="wm-act"
+            className={`wm-act${can.followRoot ? "" : " plan-locked"}`}
             title="Walk every form of this root, occurrence by occurrence"
-            onClick={async () => {
+            onClick={gate(can.followRoot, "follow-root", async () => {
               const t = await startTrail(root, target.verseKey, target.position);
               dispatch({ type: "setActiveTrail", trailId: t.id });
               dispatch({ type: "jumpToVerse", verseKey: target.verseKey, wordPosition: target.position });
               onClose();
-            }}
-          >➶ Follow root</button>
+            })}
+          >➶ Follow root{!can.followRoot && <> <PlanLock feature="follow-root" /></>}</button>
         )}
         {/* the exact written word — the only thread available for particles and names */}
         <button
-          className="wm-act"
+          className={`wm-act${can.followWord ? "" : " plan-locked"}`}
           title="Walk only this exact written spelling, occurrence by occurrence"
-          onClick={async () => {
+          onClick={gate(can.followWord, "follow-word", async () => {
             const t = await startWordTrail(target.token, target.verseKey, target.position);
             dispatch({ type: "setActiveTrail", trailId: t.id });
             dispatch({ type: "jumpToVerse", verseKey: target.verseKey, wordPosition: target.position });
             onClose();
-          }}
-        >➶ Follow this word</button>
+          })}
+        >➶ Follow this word{!can.followWord && <> <PlanLock feature="follow-word" /></>}</button>
         <button
-          className="wm-act"
-          onClick={async () => {
+          className={`wm-act${can.cases ? "" : " plan-locked"}`}
+          onClick={gate(can.cases, "cases", async () => {
             const c = await openOrCreateAyahCase(target.verseKey);
             dispatch({ type: "setActiveCase", caseId: c.id });
             dispatch({ type: "setTab", tab: "investigate" });
             onClose();
-          }}
-        >⚖ Case on {target.verseKey}</button>
+          })}
+        >⚖ Case on {target.verseKey}{!can.cases && <> <PlanLock feature="cases" /></>}</button>
         <button
-          className="wm-act"
+          className={`wm-act${can.search ? "" : " plan-locked"}`}
           title="Find āyāt where this word co-occurs with others"
-          onClick={() => dispatch({ type: "pinExpr", term: { surface: target.token, root: target.word?.root ?? null } })}
-        >⊕ Expression</button>
+          onClick={gate(can.search, "search", () => dispatch({ type: "pinExpr", term: { surface: target.token, root: target.word?.root ?? null } }))}
+        >⊕ Expression{!can.search && <> <PlanLock feature="search" /></>}</button>
         {(lemma || root) && (
           <button
             className={`wm-act${indicationsOpen ? " active" : ""}`}
@@ -371,6 +385,11 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
         {root && rootInfo.data && rootInfo.data.meanings.length > 0 && (
           <button className={`wm-act${lexOpen ? " active" : ""}`} onClick={() => setLexOpen(!lexOpen)}>
             📖 Lexicons ({rootInfo.data.meanings.length})
+          </button>
+        )}
+        {root && !can.meanings && (
+          <button className="wm-act plan-locked" onClick={gate(false, "meanings", () => {})}>
+            📖 Lexicons <PlanLock feature="meanings" />
           </button>
         )}
       </div>
@@ -448,7 +467,7 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
           ) : (
             <span className="wm-case-name">{targetCase.title}</span>
           )}
-          <button className="wm-act" onClick={addAyahToCase} disabled={added === targetCaseId}>
+          <button className={`wm-act${can.cases ? "" : " plan-locked"}`} onClick={gate(can.cases, "cases", addAyahToCase)} disabled={added === targetCaseId}>
             {added === targetCaseId ? "✓ added" : `⊕ Add ${target.verseKey} as evidence`}
           </button>
         </div>

@@ -15,6 +15,9 @@ import {
 import type { SubjectType, TrailRecord } from "../persistence/types";
 import { useAppState, useAppDispatch } from "../state/store";
 import { ShareButton } from "../components/ShareButton";
+import { useFeature, useFeatureCatalog, lockReason } from "../lib/features";
+import { announcePlanLock } from "../api/client";
+import { PlanLock } from "../components/PlanLock";
 
 const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 const vsort = (k: string) => {
@@ -32,6 +35,8 @@ export function Home() {
   const chapter = useAsync(() => api.chapter(contSurah), [contSurah]);
   // "＋ new" — a case on a phrase or a theme, not anchored to a root or an āyah
   const [newCaseOpen, setNewCaseOpen] = useState(false);
+  const canCases = useFeature("cases");
+  const catalog = useFeatureCatalog();
   const [newType, setNewType] = useState<SubjectType>("phrase");
   const [newSubject, setNewSubject] = useState("");
   const [newTitle, setNewTitle] = useState("");
@@ -110,8 +115,8 @@ export function Home() {
             <button
               className="ctl home-card-act"
               title="Open a case on a phrase or a theme — not tied to one root or āyah"
-              onClick={() => setNewCaseOpen((o) => !o)}
-            >＋ new</button>
+              onClick={() => (canCases ? setNewCaseOpen((o) => !o) : announcePlanLock(lockReason("cases", catalog)))}
+            >＋ new{!canCases && <> <PlanLock feature="cases" /></>}</button>
           </h2>
 
           {/* a case that isn't anchored to a root or an āyah: a phrase, or a theme */}

@@ -7,6 +7,7 @@ import { api } from "../../api/client";
 import { useAsync } from "../../hooks/useAsync";
 import { useAppDispatch } from "../../state/store";
 import { useAddToCompare } from "../../compare/useAddToCompare";
+import { useFeature } from "../../lib/features";
 import type { Verse, Word } from "../../api/types";
 import type { FormStatusRow } from "../../persistence/db";
 import { VerseText } from "../VerseText";
@@ -130,6 +131,8 @@ export const AyahBlock = memo(function AyahBlock({
   const dispatch = useAppDispatch();
   const addToCompare = useAddToCompare();
   const [casesOpen, setCasesOpen] = useState(false);
+  const canEchoes = useFeature("echoes");
+  const canCompare = useFeature("compare");
   const [whyOpen, setWhyOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [echoOpen, setEchoOpen] = useState(false);
@@ -301,7 +304,7 @@ export const AyahBlock = memo(function AyahBlock({
             onClick={() => setVariantOpen((o) => !o)}
           >✍</button>
         )}
-        {echo.has && (
+        {echo.has && canEchoes && (
           <button
             className={`rootecho-mark${echo.adjacent ? " adjacent" : ""}${rootEchoOpen ? " active" : ""}`}
             title={
@@ -312,11 +315,13 @@ export const AyahBlock = memo(function AyahBlock({
             onClick={() => setRootEchoOpen((o) => !o)}
           >↻</button>
         )}
-        <button
-          className="cmp-pin"
-          title="Add this ayah to your active comparison"
-          onClick={() => addToCompare("ayah", verse.verse_key)}
-        >⇋</button>
+        {canCompare && (
+          <button
+            className="cmp-pin"
+            title="Add this ayah to your active comparison"
+            onClick={() => addToCompare("ayah", verse.verse_key)}
+          >⇋</button>
+        )}
       </p>
 
       {echoOpen && <EchoPanel echoes={echoData.data ?? []} loading={echoData.loading} />}

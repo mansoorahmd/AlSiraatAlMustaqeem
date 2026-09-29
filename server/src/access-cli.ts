@@ -7,9 +7,9 @@
 //   npm run access -w @alsiraat/server -- tier scholar 200 "Scholar"   # add / change a tier
 //   npm run access -w @alsiraat/server -- tier-remove student          # remove an unused tier
 //
-//   npm run access -w @alsiraat/server -- corpus public                # anyone may read the Qur'an
-//   npm run access -w @alsiraat/server -- corpus free                  # any signed-in account
-//   npm run access -w @alsiraat/server -- community scholar            # scholar or higher
+//   npm run access -w @alsiraat/server -- feature text public          # anyone may read the Qur'an
+//   npm run access -w @alsiraat/server -- feature search free          # any signed-in account
+//   npm run access -w @alsiraat/server -- feature notes pro            # pro or higher (plan-features.ts)
 //   npm run access -w @alsiraat/server -- translation 131 scholar      # one translation
 //   npm run access -w @alsiraat/server -- lexicon lane student         # one dictionary
 //   npm run access -w @alsiraat/server -- translation 131 none         # drop a per-item rule
@@ -45,11 +45,10 @@ try {
       await removeTier(r, a);
       console.log(`✔ removed tier ${a}`);
       break;
-    case "corpus":
-    case "community": {
-      if (!a) throw new Error(`usage: access ${cmd} <public|free|tier>`);
-      const rule = await setRule(r, cmd, "*", tierArg(a));
-      console.log(`✔ ${cmd}: ${show(rule.minPlan)}`);
+    case "feature": {
+      if (!a || !b) throw new Error("usage: access feature <key> <public|free|tier>   (keys: see access show)");
+      const rule = await setRule(r, "feature", a, tierArg(b));
+      console.log(`✔ ${a}: ${show(rule.minPlan)}`);
       break;
     }
     case "translation":
@@ -57,7 +56,7 @@ try {
       if (!a || !b) throw new Error(`usage: access ${cmd} <${cmd === "translation" ? "resource-id" : "source"}> <public|free|tier|none>`);
       if (b === "none") {
         await removeRule(r, cmd, a);
-        console.log(`✔ ${cmd} ${a}: no extra rule (needs only what the corpus needs)`);
+        console.log(`✔ ${cmd} ${a}: no extra rule (needs only what its feature needs)`);
       } else {
         const rule = await setRule(r, cmd, a, tierArg(b));
         console.log(`✔ ${cmd} ${a}: ${show(rule.minPlan)}`);
@@ -65,7 +64,7 @@ try {
       break;
     }
     default:
-      throw new Error(`unknown command "${cmd}" — try: show | tier | tier-remove | corpus | community | translation | lexicon`);
+      throw new Error(`unknown command "${cmd}" — try: show | tier | tier-remove | feature | translation | lexicon`);
   }
 } catch (e) {
   console.error(`access: ${(e as Error).message}`);

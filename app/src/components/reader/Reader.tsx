@@ -4,6 +4,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api/client";
 import { useAsync } from "../../hooks/useAsync";
+import { useFeature } from "../../lib/features";
+import { PlanLock } from "../PlanLock";
 import { archive, fetchFormStatus, type FormStatusRow } from "../../persistence/db";
 import { normalizeCase } from "../../cases/ops";
 import { useAppState, useAppDispatch } from "../../state/store";
@@ -101,11 +103,15 @@ export function Reader({ chapters, onBackToIndex }: Props) {
   const bumpNotes = useCallback(() => setNotesVersion((v) => v + 1), []);
 
   // verbatim-echo marks: which ayahs in this surah carry a repeated phrase
-  const echoKeys = useAsync(() => api.chapterEchoes(surahId), [surahId]);
+  // a locked tool (lib/features.ts) isn't fetched at all: its marks simply don't appear
+  const canEchoes = useFeature("echoes");
+  const canSpelling = useFeature("spelling");
+  const canLens = useFeature("lens");
+  const echoKeys = useAsync(async () => (canEchoes ? api.chapterEchoes(surahId) : []), [surahId, canEchoes]);
   const echoSet = useMemo(() => new Set(echoKeys.data ?? []), [echoKeys.data]);
 
   // rasm-variant marks: ayahs with words written more than one way + positions
-  const variantData = useAsync(() => api.chapterVariants(surahId), [surahId]);
+  const variantData = useAsync(async () => (canSpelling ? api.chapterVariants(surahId) : []), [surahId, canSpelling]);
   const variantMap = useMemo(() => {
     const m = new Map<string, number[]>();
     for (const v of variantData.data ?? []) m.set(v.verse_key, v.positions);
@@ -380,8 +386,9 @@ export function Reader({ chapters, onBackToIndex }: Props) {
 
             {chapter && (
               <label className="fab-ayah">
-                <span className="ctl-hint">focus an ayah (lens)</span>
+                <span className="ctl-hint">focus an ayah (lens){!canLens && <> <PlanLock feature="lens" /></>}</span>
                 <select
+                  disabled={!canLens}
                   className="ayah-jump"
                   value={focusAyahKey && focusAyahKey.startsWith(`${surahId}:`) ? focusAyahKey : ""}
                   onChange={(e) => {
@@ -398,8 +405,9 @@ export function Reader({ chapters, onBackToIndex }: Props) {
             )}
 
             <label className="fab-ayah">
-              <span className="ctl-hint">focus case (lens)</span>
+              <span className="ctl-hint">focus case (lens){!canLens && <> <PlanLock feature="lens" /></>}</span>
               <select
+                disabled={!canLens}
                 className="ayah-jump"
                 value={focusCaseId ?? ""}
                 onChange={(e) => dispatch({ type: "setFocusCase", caseId: e.target.value || null })}

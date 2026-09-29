@@ -7,6 +7,8 @@ import { AccountButton } from "./AccountButton";
 import { SideSheet } from "./SideSheet";
 import { SettingsSheet } from "./SettingsSheet";
 import { archive } from "../persistence/db";
+import type { PlanFeature } from "../lib/features";
+import { PlanLock } from "./PlanLock";
 
 // the rooms the reader inhabits — always visible
 const PRIMARY: { id: Tab; label: string }[] = [
@@ -16,6 +18,11 @@ const PRIMARY: { id: Tab; label: string }[] = [
 ];
 
 // the reference tools — collected under one "Study" menu
+/** the plan feature behind each Study screen (lib/features.ts) — the Vault is only a view */
+const STUDY_FEATURE: Partial<Record<Tab, PlanFeature>> = {
+  roots: "roots", motifs: "motifs", compare: "compare", diverge: "divergences",
+};
+
 const STUDY: { id: Tab; label: string; desc: string }[] = [
   { id: "roots", label: "Roots", desc: "Browse roots and their lexicon entries" },
   { id: "motifs", label: "Motifs", desc: "Recurring root groupings (بيوت)" },
@@ -115,6 +122,9 @@ export function TopBar() {
                     {s.label}
                     {s.id === "compare" && (compareCount.data ?? 0) > 0 && (
                       <span className="tab-badge">{compareCount.data}</span>
+                    )}
+                    {STUDY_FEATURE[s.id] && me?.features && me.features[STUDY_FEATURE[s.id]!] === false && (
+                      <> <PlanLock feature={STUDY_FEATURE[s.id]!} /></>
                     )}
                   </span>
                   <span className="study-item-desc">{s.desc}</span>

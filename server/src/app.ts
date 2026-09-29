@@ -22,12 +22,14 @@ import {
 } from "./role-ladder.js";
 import { loadTiers, rankOf, setTier, removeTier, TierError, FREE } from "./plans.js";
 import {
-  requireResource, wholeMin, canRead, listRules, setRule, removeRule, isResourceKind,
+  requirePlanFeature, requireCorpusFeature, requireResearchFeature, featureMin, featuresFor, canRead,
+  listRules, setRule, removeRule, isResourceKind,
 } from "./resource-access.js";
 import { createToken, listTokens, revokeToken } from "./api-tokens.js";
 import { RESET_PAGE, RESET_PAGE_HEADERS } from "./reset-page.js";
 import { listUsers, setRole, listResources, isUserId, AdminError } from "./admin.js";
 import { SignupError, validProfile, saveProfile, signupLimiter } from "./signup.js";
+import { FEATURES, FEATURE_GROUPS } from "./plan-features.js";
 import { corpusApp } from "./corpus/serve.js";
 import { pgCorpus } from "./corpus/pg-corpus.js";
 import { createCorpusServices, type CorpusServices } from "../../corpus-core/src/corpus-services.js";
@@ -109,7 +111,9 @@ export function createApp(): Hono<Env> {
       planLabel: tiers.get(plan)?.label ?? plan,
       planRank: rankOf(tiers, plan),
       planExpiresAt: me.planExpiresAt ?? null,
-      planActive: canRead(me, await wholeMin(pgRunner, "community"), tiers),
+      planActive: canRead(me, await featureMin(pgRunner, "community"), tiers),
+      // every plan feature → may this account use it (plan-features.ts); the app shows the locks
+      features: await featuresFor(pgRunner, me),
       // the role axis: its place on the ladder, and whether publishing is open to it
       roleRank: p?.roleRank ?? null,
       roleLabel: (await listRoles(pgRunner)).find((x) => x.name === me.role)?.label || me.role,
@@ -162,6 +166,11 @@ export function createApp(): Hono<Env> {
   // --- resources are plan-based (resource-access.ts); features below are role-based ---
   // Public read, so the app can say what a resource needs BEFORE the reader hits a 401/402.
   app.get("/resource-access", async (c) => c.json(await listRules(pgRunner)));
+  // every plan feature, in its group, with what it needs — the Admin screen's list
+  app.get("/plan-features", async (c) => c.json({
+    groups: FEATURE_GROUPS,
+    features: await Promise.all(FEATURES.map(async (f) => ({ ...f, minPlan: await featureMin(pgRunner, f.key) }))),
+  }));
 
   /** Set a resource's minimum tier: {minPlan: "<tier>" | "free" | null (= public)}. */
   app.put("/resource-access/:kind/:key", requireRole("maintainer"), async (c) => {
@@ -258,10 +267,12 @@ export function createApp(): Hono<Env> {
     c.json(await listResources(corpusRunner, pgRunner)));
 
   // The Qur'an corpus itself, from Postgres — a RESOURCE, so its gate is the corpus plan rule.
-  app.use("/corpus/*", requireResource("corpus", pgRunner));
+  app.use("/corpus/*", requireCorpusFeature(pgRunner));
   app.route("/corpus", corpusApp(cloudCorpus, pgRunner));
 
   // --- each account's own research (research/serve.ts): private, by row-level security ---
+  // a locked interaction / research feature is read-only: its writes are refused here
+  app.use("/research/*", requireResearchFeature(pgRunner));
   app.route("/", researchApp(researchConnections) as never);
 
   app.post("/me/name", requireRole("reader"), async (c) => {
@@ -278,7 +289,7 @@ export function createApp(): Hono<Env> {
     c.json(await listTokens(pgRunner, c.get("user")!.id)));
 
   /** Mint a token. Its secret is in this response and nowhere else — show it once. */
-  app.post("/me/tokens", requireRole("reader"), requireSession, async (c) => {
+  app.post("/me/tokens", requireRole("reader"), requireSession, requirePlanFeature("ai", pgRunner), async (c) => {
     const { label } = (await c.req.json().catch(() => ({}))) as { label?: unknown };
     const name = typeof label === "string" && label.trim() ? label.trim().slice(0, 80) : "MCP";
     return c.json(await createToken(pgRunner, c.get("user")!.id, name), 201);
@@ -300,7 +311,7 @@ export function createApp(): Hono<Env> {
   // Publishing is a FEATURE, so it is role-based: at least the role the maintainer set for it
   // (feature_access; researcher by default). The publisher proposes who may see it (audience).
   const publish = requireFeature("publish", pgRunner);
-  app.post("/submissions", requireRole("reader"), publish, async (c) => {
+  app.post("/submissions", requireRole("reader"), publish, requirePlanFeature("publish", pgRunner), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { items?: SubmissionItemInput[]; supersedes?: string | null; audience?: unknown };
     try {
@@ -332,7 +343,7 @@ export function createApp(): Hono<Env> {
   // --- claims: contending readings, review, establishment, dissent (Phase 5) ---
 
   /** Offer your reading of a form or root. Must carry its argument (§12.1). A feature → role. */
-  app.post("/claims", requireRole("reader"), publish, async (c) => {
+  app.post("/claims", requireRole("reader"), publish, requirePlanFeature("publish", pgRunner), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { subjectKind?: SubjectKind; subjectValue?: string; payload?: never; audience?: unknown };
     try {
@@ -351,7 +362,7 @@ export function createApp(): Hono<Env> {
 
   // Everything below that READS the community's work is the community RESOURCE — plan-based,
   // one rule. (These were role-only before, which let a free account read paid readings.)
-  const community = requireResource("community", pgRunner);
+  const community = requirePlanFeature("community", pgRunner);
 
   /** Every reading of a subject, and the group's current one — what a reader compares. */
   // Each published result has an audience (a minimum role and plan); every read below shows the
@@ -384,7 +395,7 @@ export function createApp(): Hono<Env> {
    * readings and return the differences. The community resource — the group's readings never
    * land on the client's disk, so the gate is real.
    */
-  app.post("/divergences", community, async (c) => {
+  app.post("/divergences", requirePlanFeature("divergences", pgRunner), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as { forms?: unknown };
     const forms = body.forms ?? [];
     // shape-checked and capped: each form costs queries, so an unbounded list could tie up the pool

@@ -49,7 +49,7 @@ export function ShareButton({ localRef, kind, payload, subjectKind, subjectValue
     remote.me().catch(() => null)
       .then((me) => {
         if (!me || me.canPublish !== true) return setAllowed(false);   // the server's rule, not a role name
-        if (!me.planActive) { setNeedsPlan(true); return setAllowed(false); }
+        if (!me.features?.publish) { setNeedsPlan(true); return setAllowed(false); }
         setAllowed(true);
       })
       .catch(() => setAllowed(false));

@@ -111,8 +111,11 @@ export function remoteReads(base: string, token?: string, fetchImpl: Fetch = fet
         : "Reading the corpus needs a sign-in. Create a token in the app (Account → Connect an AI assistant) and set REMOTE_TOKEN in this MCP's config.");
     }
     if (res.status === 402) {
-      const body = (await res.json().catch(() => ({}))) as { plan?: string };
-      throw new CorpusAccessError(`Reading the corpus needs the ${body.plan ?? "right"} plan, which this user doesn't have.`);
+      // the server names the locked feature and its plan (server/src/plan-features.ts)
+      const body = (await res.json().catch(() => ({}))) as { plan?: string; detail?: string };
+      throw new CorpusAccessError(body.detail
+        ? `${body.detail} — this user's plan doesn't include it.`
+        : `This needs the ${body.plan ?? "right"} plan, which this user doesn't have.`);
     }
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { detail?: string };

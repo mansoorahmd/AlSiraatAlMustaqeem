@@ -19,12 +19,14 @@ import { remoteResearch } from "../../mcp/src/research-client.js";
 import { pgRunner } from "./db.js";
 import { config } from "./config.js";
 import { userForToken, TOKEN_PREFIX } from "./api-tokens.js";
+import { loadPrincipal } from "./invites.js";
+import { mayUse, featureMin } from "./resource-access.js";
 import type { Env } from "./roles.js";
 
 /** The origin in-process calls are addressed to; they never leave this process. */
 const SELF = "http://mcp.internal";
 
-const rpcError = (c: Context, status: 401 | 405, message: string) =>
+const rpcError = (c: Context, status: 401 | 402 | 405, message: string) =>
   c.json({ jsonrpc: "2.0", error: { code: -32000, message }, id: null }, status);
 
 export function mountMcp(app: Hono<Env>): void {
@@ -32,9 +34,15 @@ export function mountMcp(app: Hono<Env>): void {
 
   const handle = async (c: Context<Env>, token: string | undefined) => {
     if (c.req.method !== "POST") return rpcError(c, 405, "POST MCP messages to this URL (stateless server)");
-    if (!token?.startsWith(TOKEN_PREFIX) || !(await userForToken(pgRunner, token))) {
+    const userId = token?.startsWith(TOKEN_PREFIX) ? await userForToken(pgRunner, token) : null;
+    if (!userId) {
       c.header("WWW-Authenticate", 'Bearer realm="mcp"');
       return rpcError(c, 401, "a valid API token is required — create one in the app (Account → Connect an AI assistant)");
+    }
+    // the AI assistant is a plan feature (plan-features.ts): a plan that lapsed stops it here
+    const p = await loadPrincipal(pgRunner, userId);
+    if (!p || !(await mayUse(pgRunner, { id: p.id, role: p.role, plan: p.plan, planExpiresAt: p.planExpiresAt }, "ai"))) {
+      return rpcError(c, 402, `the AI assistant needs an active ${await featureMin(pgRunner, "ai")} plan`);
     }
     const server = createMcpServer({
       ...remoteReads(SELF, token, inProcess),

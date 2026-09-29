@@ -6,7 +6,7 @@
 import type { CaseRecord, TrailRecord, NoteRecord, UserRootMeaning, Motif } from "./types";
 import type { CompareSet, CompareItemRow, WordIndication, IndicationsForWord, IndicationGloss, Proposed } from "../api/types";
 import { remote, REMOTE_URL } from "../api/remote";
-import { announceAccess } from "../api/client";
+import { announceAccess, announcePlanLock } from "../api/client";
 import { cachedMe } from "../hooks/useMe";
 
 const API = `${REMOTE_URL}/research`;
@@ -28,6 +28,11 @@ async function research(path: string, init: RequestInit = {}): Promise<Response>
   }
   if (res.status === 401) {
     announceAccess({ kind: "signin", plan: null, message: "Sign in to see and save your research." });
+  }
+  // a write to a feature this plan has read-only (plan-features.ts) — say why it didn't save
+  if (res.status === 402) {
+    const body = (await res.clone().json().catch(() => ({}))) as { detail?: string };
+    announcePlanLock(body.detail ?? "This needs a higher plan — it was not saved.");
   }
   return res;
 }

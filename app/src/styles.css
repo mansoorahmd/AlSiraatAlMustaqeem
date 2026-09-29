@@ -3585,3 +3585,19 @@ a { color: var(--lapis); }
 .audience-row .board-input { flex: 1 1 10rem; width: auto; }
 .review-actions .audience { flex-basis: 100%; }
 .admin-subhead { margin: 0.9rem 0.6rem 0.2rem; font-size: var(--fs-small); font-weight: 600; color: var(--ink); }
+
+/* ---- plan features (lib/features.ts): Admin groups and the lock on a locked control ---- */
+.admin-group { margin-top: 0.9rem; }
+.admin-group:first-of-type { margin-top: 0.4rem; }
+.admin-group-head { border-bottom: 1px solid var(--rule, rgba(0, 0, 0, 0.12)); }
+.admin-group > .admin-list { padding-left: 0.9rem; }
+.plan-lock {
+  display: inline-flex; align-items: center; gap: 0.2em;
+  font-size: 0.72em; font-weight: 600; letter-spacing: 0.02em;
+  padding: 0.05em 0.45em; border-radius: 999px; vertical-align: middle;
+  color: var(--ink-faint); border: 1px solid currentColor; white-space: nowrap;
+}
+.plan-locked { opacity: 0.55; cursor: not-allowed; }
+.plan-readonly-note { font-size: 0.85em; color: var(--ink-faint); margin: 0.3rem 0; }
+/* a locked feature's editor: every field inside turns read-only at once */
+.plan-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }

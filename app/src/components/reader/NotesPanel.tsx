@@ -7,6 +7,8 @@ import { useState } from "react";
 import { useAsync } from "../../hooks/useAsync";
 import { archive, newId } from "../../persistence/db";
 import type { NoteKind, NoteRecord } from "../../persistence/types";
+import { useFeature } from "../../lib/features";
+import { PlanLock } from "../PlanLock";
 
 interface Props {
   verseKey: string;
@@ -26,6 +28,7 @@ export function NotesPanel({
   verseKey, wordPosition, wordLemma, wordRoot, tokenFor, onChanged, compact,
 }: Props) {
   const wordScope = typeof wordPosition === "number";
+  const canNotes = useFeature("notes");   // locked: read-only (lib/features.ts)
   const [version, setVersion] = useState(0);
   const notes = useAsync(() => archive.notes.forVerse(verseKey), [verseKey, version]);
 
@@ -99,6 +102,12 @@ export function NotesPanel({
 
   return (
     <div className={`notes-panel${compact ? " compact" : ""}`}>
+      {!canNotes && (
+        <p className="plan-readonly-note">
+          <PlanLock feature="notes" /> {shown.length ? "Your notes stay readable" : "Notes and questions"} — adding or
+          changing them needs a higher plan.
+        </p>
+      )}
       {shown.length > 0 && (
         <ul className="note-list">
           {shown.map((n) => (
@@ -133,23 +142,23 @@ export function NotesPanel({
 
                 <div className="note-meta">
                   {!wordScope && label(n)}
-                  {n.kind === "question" && answering !== n.id && (
+                  {canNotes && n.kind === "question" && answering !== n.id && (
                     <button className="note-mini" onClick={() => openAnswer(n)}>
                       {n.answer ? "edit answer" : "✍ answer"}
                     </button>
                   )}
-                  {n.kind === "question" && n.resolved && (
+                  {canNotes && n.kind === "question" && n.resolved && (
                     <button className="note-mini" onClick={() => toggleResolved(n)}>reopen</button>
                   )}
                 </div>
               </div>
-              <button className="note-del" title="Delete" onClick={() => remove(n)}>✕</button>
+              {canNotes && <button className="note-del" title="Delete" onClick={() => remove(n)}>✕</button>}
             </li>
           ))}
         </ul>
       )}
 
-      <div className="note-compose">
+      {canNotes && <div className="note-compose">
         <div className="note-kind-toggle">
           <button
             className={`nk ${kind === "note" ? "active" : ""}`}
@@ -180,7 +189,7 @@ export function NotesPanel({
             Add
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

@@ -1,9 +1,9 @@
 // Admin — the maintainer's console, in the app instead of a command line.
 //
-// One rule runs through it: FEATURES are role-based, RESOURCES are plan-based.
-//   • Plan tiers        the ladder resources are measured against (free < … < scholar)
-//   • Who can read      each resource's minimum: the corpus, the community's readings,
-//                       each translation, each dictionary
+// One rule runs through it: ROLES say what someone may do, PLANS what they may use.
+//   • Plan tiers        the ladder plans are measured against (free < … < scholar)
+//   • Plan features     each feature's minimum, in its group (server/src/plan-features.ts),
+//                       and extra rules on single translations and dictionaries
 //   • People            each account's role (what they may do) and plan (what they've paid for)
 //
 // Visible only to maintainers (TopBar), and guarded here too; every change is also enforced
@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { admin, type Tier, type Rule, type AdminUser, type AdminResources, type Role, type RoleLevel } from "../api/admin";
 import { useMe, refreshMe } from "../hooks/useMe";
+import { useFeatureCatalog, refreshFeatureCatalog } from "../lib/features";
 import { regionName, ageFrom } from "../lib/regions";
 
 /** What the fixed rungs do — the learner rungs between them are the maintainer's to define. */
@@ -24,7 +25,7 @@ type Pick = string | null | "none";
 
 function accessLabel(v: Pick | undefined, tiers: Tier[]): string {
   if (v === undefined) return "Unknown — couldn't load the rules";
-  if (v === "none") return "No extra rule — same as the corpus";
+  if (v === "none") return "No extra rule — same as its feature";
   if (v === null) return "Anyone — no sign-in";
   if (v === "free") return "Any signed-in account";
   const t = tiers.find((x) => x.name === v);
@@ -32,8 +33,11 @@ function accessLabel(v: Pick | undefined, tiers: Tier[]): string {
 }
 
 /** Show the value; open a picker only to change it (Save / Cancel). */
-function AccessPicker({ value, tiers, allowNone, onSave }: {
-  value: Pick | undefined; tiers: Tier[]; allowNone?: boolean; onSave: (v: Pick) => Promise<void>;
+function AccessPicker({ value, tiers, allowNone, mixedLabel, onSave }: {
+  value: Pick | undefined; tiers: Tier[]; allowNone?: boolean;
+  /** a group whose members differ: shown instead of a value, and the picker may still open */
+  mixedLabel?: string;
+  onSave: (v: Pick) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string>("");
@@ -57,9 +61,12 @@ function AccessPicker({ value, tiers, allowNone, onSave }: {
   if (!editing) {
     return (
       <div className="admin-access">
-        <span className="admin-access-value">{accessLabel(value, tiers)}</span>
-        <button className="ctl" disabled={value === undefined}
-          onClick={() => { if (value !== undefined) { setDraft(enc(value)); setEditing(true); } }}>Change</button>
+        <span className="admin-access-value">{value === undefined && mixedLabel ? mixedLabel : accessLabel(value, tiers)}</span>
+        <button className="ctl" disabled={value === undefined && !mixedLabel}
+          onClick={() => {
+            if (value !== undefined) { setDraft(enc(value)); setEditing(true); }
+            else if (mixedLabel) { setDraft(""); setEditing(true); }
+          }}>Change</button>
       </div>
     );
   }
@@ -67,7 +74,8 @@ function AccessPicker({ value, tiers, allowNone, onSave }: {
     <div className="admin-access editing">
       <select className="board-input" value={draft} onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Escape") setEditing(false); if (e.key === "Enter") void save(); }}>
-        {allowNone && <option value="__none">No extra rule — same as the corpus</option>}
+        {draft === "" && <option value="">Choose…</option>}
+        {allowNone && <option value="__none">No extra rule — same as its feature</option>}
         <option value="__public">Anyone — no sign-in</option>
         <option value="free">Any signed-in account</option>
         {tiers.filter((t) => t.name !== "free").map((t) => (
@@ -342,6 +350,7 @@ function UserRow({ u, tiers, roles, meId, onSaved }: { u: AdminUser; tiers: Tier
 
 export function Admin() {
   const { me, loading } = useMe();
+  const catalog = useFeatureCatalog();
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [res, setRes] = useState<AdminResources | null>(null);
@@ -371,11 +380,13 @@ export function Admin() {
   useEffect(() => { if (isAdmin) void load(); }, [isAdmin, load]);
 
   /** undefined until the rules have loaded — the picker then refuses to open */
-  const whole = (kind: "corpus" | "community") => rules.find((r) => r.kind === kind && r.key === "*")?.minPlan;
-  const setWhole = (kind: "corpus" | "community") => async (v: Pick) => {
-    if (v === "none") throw new Error("the corpus and the community always have a rule");
-    await admin.setRule(kind, "*", v);
+  const featureRule = (key: string) => rules.find((r) => r.kind === "feature" && r.key === key)?.minPlan;
+  const setFeatures = (keys: string[]) => async (v: Pick) => {
+    if (v === "none") throw new Error("a feature always has a rule");
+    for (const key of keys) await admin.setRule("feature", key, v);
     await load();
+    void refreshFeatureCatalog();
+    void refreshMe();   // your own locks follow at once
   };
   const setItem = (kind: "translation" | "lexicon", key: string) => async (v: Pick) => {
     if (v === "none") await admin.removeRule(kind, key); else await admin.setRule(kind, key, v);
@@ -404,8 +415,8 @@ export function Admin() {
       <header className="home-hero">
         <h1 className="admin-title">Admin</h1>
         <p className="acct-hint">
-          <strong>Features</strong> are role-based — what someone may do. <strong>Resources</strong> are
-          plan-based — what they may read. Changes apply at once.
+          <strong>Roles</strong> say what someone may do (review, administer). <strong>Plans</strong> say
+          which features they may use. Changes apply at once.
         </p>
         {err && <p className="acct-error" role="alert">{err}</p>}
       </header>
@@ -438,26 +449,38 @@ export function Admin() {
       </section>
 
       <section className="home-card">
-        <h2 className="home-card-title">Who can read</h2>
-        <ul className="admin-list">
-          <li className="admin-row">
-            <span className="admin-name"><strong>The Qur'an corpus</strong>
-              <span className="admin-sub">text, words, roots, dictionaries, search</span></span>
-            <AccessPicker value={whole("corpus")} tiers={tiers}
-              onSave={setWhole("corpus")} />
-          </li>
-          <li className="admin-row">
-            <span className="admin-name"><strong>The community's readings</strong>
-              <span className="admin-sub">readings, dissents, where you stand apart</span></span>
-            <AccessPicker value={whole("community")} tiers={tiers}
-              onSave={setWhole("community")} />
-          </li>
-        </ul>
+        <h2 className="home-card-title">What each plan may use</h2>
+        <p className="acct-hint">Every feature has its own rule. A locked read-assist tool is refused; a
+          locked interaction or research feature turns read-only — people keep seeing what they made,
+          but can't add or change it.</p>
+        {(catalog?.groups ?? []).map((g) => {
+          const members = (catalog?.features ?? []).filter((f) => f.group === g.key);
+          const values = new Set(members.map((f) => featureRule(f.key)));
+          return (
+            <div key={g.key} className="admin-group">
+              <div className="admin-row admin-group-head">
+                <span className="admin-name"><strong>{g.label}</strong>
+                  <span className="admin-sub">set every feature in this group at once</span></span>
+                <AccessPicker value={values.size === 1 ? [...values][0] : undefined} tiers={tiers}
+                  mixedLabel="Mixed — set below, or all at once" onSave={setFeatures(members.map((f) => f.key))} />
+              </div>
+              <ul className="admin-list">
+                {members.map((f) => (
+                  <li key={f.key} className="admin-row">
+                    <span className="admin-name"><strong>{f.label}</strong>
+                      <span className="admin-sub">{f.description}</span></span>
+                    <AccessPicker value={featureRule(f.key)} tiers={tiers} onSave={setFeatures([f.key])} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
       </section>
 
       <section className="home-card">
         <h2 className="home-card-title">Translations <span className="admin-count">{res?.translations.length ?? 0}</span></h2>
-        <p className="acct-hint">A translation can need more than the corpus does. Below its tier it's left
+        <p className="acct-hint">A translation can need more than the Translations feature does. Below its tier it's left
           out of a reader's results; nothing else changes.</p>
         <input className="board-input admin-filter" placeholder="Filter by name, author or language…"
           value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter translations" />

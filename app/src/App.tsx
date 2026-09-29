@@ -13,19 +13,22 @@ import { Shortcuts } from "./components/Shortcuts";
 import { CommandPalette } from "./components/CommandPalette";
 import { ExpressionBar } from "./components/ExpressionBar";
 import { Toast } from "./components/Toast";
+import { PlanLockNotice } from "./components/PlanLockNotice";
+import { FeatureGate } from "./components/FeatureGate";
 import { AppProvider, useAppState } from "./state/store";
 import { CorpusAccessBanner } from "./components/CorpusAccessBanner";
 
 function Screen() {
   const { tab } = useAppState();
   if (tab === "home") return <Home />;
-  if (tab === "search") return <Search />;
-  if (tab === "investigate") return <Investigate />;
+  // screens behind a plan feature (lib/features.ts): a tool is locked, your own work read-only
+  if (tab === "search") return <FeatureGate feature="search" mode="lock"><Search /></FeatureGate>;
+  if (tab === "investigate") return <FeatureGate feature="cases" mode="readonly"><Investigate /></FeatureGate>;
   if (tab === "vault") return <Vault />;
-  if (tab === "roots") return <RootsExplorer />;
-  if (tab === "motifs") return <Motifs />;
-  if (tab === "compare") return <Compare />;
-  if (tab === "diverge") return <Divergences />;
+  if (tab === "roots") return <FeatureGate feature="roots" mode="lock"><RootsExplorer /></FeatureGate>;
+  if (tab === "motifs") return <FeatureGate feature="motifs" mode="readonly"><Motifs /></FeatureGate>;
+  if (tab === "compare") return <FeatureGate feature="compare" mode="lock"><Compare /></FeatureGate>;
+  if (tab === "diverge") return <FeatureGate feature="divergences" mode="lock"><Divergences /></FeatureGate>;
   if (tab === "admin") return <Admin />;
   return <ReadingRoom />;
 }
@@ -45,6 +48,7 @@ export default function App() {
         </main>
         <ExpressionBar />
         <Toast />
+        <PlanLockNotice />
       </div>
     </AppProvider>
   );

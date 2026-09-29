@@ -37,6 +37,8 @@ export interface Me {
   roleLabel?: string;
   canPublish?: boolean;
   publishRole?: string;
+  /** every plan feature → may this account use it (lib/features.ts; the server enforces it) */
+  features?: Partial<Record<import("../lib/features").PlanFeature, boolean>>;
 }
 /** A rung on the role ladder (e.g. "student", "scholar"). */
 export type Role = string;

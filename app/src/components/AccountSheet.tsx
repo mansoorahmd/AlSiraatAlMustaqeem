@@ -12,6 +12,8 @@ import { useCallback, useEffect, useState } from "react";
 import { remote, RemoteOffline, type Me, type Role, type RoleLevel, type InviteOut, type ApiToken } from "../api/remote";
 import { cachedMe, refreshMe } from "../hooks/useMe";
 import { REGIONS, ageFrom } from "../lib/regions";
+import { useFeature } from "../lib/features";
+import { PlanLock } from "./PlanLock";
 
 type Status = "loading" | "offline" | "blocked" | "signed-out" | "signed-in";
 
@@ -55,6 +57,7 @@ const when = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString() :
  * your plan allows. The secret is shown once, at creation; after that only its prefix.
  */
 function AiAssistantSection() {
+  const canAi = useFeature("ai");
   const [tokens, setTokens] = useState<ApiToken[] | null>(null);
   const [label, setLabel] = useState("");
   const [fresh, setFresh] = useState<string | null>(null);
@@ -98,6 +101,10 @@ function AiAssistantSection() {
         </ul>
       )}
 
+      {!canAi ? (
+        <p className="plan-readonly-note"><PlanLock feature="ai" /> Connecting an AI assistant needs a higher
+          plan — a maintainer can upgrade your account.</p>
+      ) : <>
       <div className="acct-field">
         <label htmlFor="acct-token-label">Name it</label>
         <input id="acct-token-label" placeholder="e.g. Claude on my laptop"
@@ -112,6 +119,7 @@ function AiAssistantSection() {
           {busy ? "Creating…" : "Create token"}
         </button>
       </div>
+      </>}
 
       {fresh && (
         <div className="acct-code-box acct-token-fresh">

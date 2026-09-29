@@ -10,6 +10,8 @@ import { api } from "../../api/client";
 import { archive, newId } from "../../persistence/db";
 import { useAsync } from "../../hooks/useAsync";
 import type { RootIndicationWithRefinement, PeerIndication } from "../../api/types";
+import { useFeature } from "../../lib/features";
+import { PlanLock } from "../PlanLock";
 
 const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 
@@ -69,6 +71,7 @@ interface Props {
 }
 
 export function IndicationsPanel({ lemma, root, onChanged }: Props) {
+  const canEdit = useFeature("indications");   // locked: read-only (lib/features.ts)
   const [version, setVersion] = useState(0);
   const bump = () => { setVersion((v) => v + 1); onChanged?.(); };
 
@@ -94,6 +97,12 @@ export function IndicationsPanel({ lemma, root, onChanged }: Props) {
 
   return (
     <div className="indications-panel">
+      {!canEdit && (
+        <p className="plan-readonly-note">
+          <PlanLock feature="indications" /> Readable — adding or changing indications needs a higher plan.
+        </p>
+      )}
+      <fieldset className="plan-fieldset" disabled={!canEdit}>
       {root ? (
         <>
           {rootIndications.length === 0 && !data.loading && (
@@ -135,6 +144,7 @@ export function IndicationsPanel({ lemma, root, onChanged }: Props) {
           onChanged={bump}
         />
       )}
+      </fieldset>
     </div>
   );
 }

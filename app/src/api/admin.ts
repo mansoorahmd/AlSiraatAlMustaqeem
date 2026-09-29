@@ -25,7 +25,7 @@ const send = (method: string, body?: unknown): RequestInit =>
   ({ method, body: body === undefined ? undefined : JSON.stringify(body) });
 
 export interface Tier { name: string; rank: number; label: string }
-export type ResourceKind = "corpus" | "community" | "translation" | "lexicon";
+export type ResourceKind = "feature" | "translation" | "lexicon";
 export interface Rule { kind: ResourceKind; key: string; minPlan: string | null }
 export type Role = string;
 export interface RoleLevel { name: string; rank: number; label: string; fixed: boolean }

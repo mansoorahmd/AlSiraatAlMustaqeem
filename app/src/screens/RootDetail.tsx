@@ -8,6 +8,8 @@ import { useAsync } from "../hooks/useAsync";
 import { archive, newId } from "../persistence/db";
 import { useAppState, useAppDispatch } from "../state/store";
 import { useAddToCompare } from "../compare/useAddToCompare";
+import { useFeature } from "../lib/features";
+import { PlanLock } from "../components/PlanLock";
 
 const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 const vsort = (k: string) => {
@@ -38,19 +40,25 @@ interface Props {
 }
 
 export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: Props) {
+  // your own meaning and motifs are read-only when the plan doesn't include them (lib/features.ts)
+  const canMine = useFeature("my-meanings");
+  const canMotifs = useFeature("motifs");
   const { reading } = useAppState();
   const dispatch = useAppDispatch();
   const addToCompare = useAddToCompare();
 
   const detail = useAsync(() => api.root(rootBuckwalter), [rootBuckwalter]);
+  // every occurrence is the Follow root tool; the company a root keeps is Where roots meet
+  const canOcc = useFeature("follow-root");
+  const canLinks = useFeature("linkages");
   const occ = useAsync(
-    () => api.rootOccurrences(rootBuckwalter, reading.script, 800),
-    [rootBuckwalter, reading.script],
+    async () => (canOcc ? api.rootOccurrences(rootBuckwalter, reading.script, 800) : []),
+    [rootBuckwalter, reading.script, canOcc],
   );
   const saved = useAsync(() => archive.rootMeanings.get(rootBuckwalter), [rootBuckwalter]);
   const links = useAsync(
-    () => api.rootLinkages(rootBuckwalter, { scope: "ayah", limit: 16 }),
-    [rootBuckwalter],
+    async () => (canLinks ? api.rootLinkages(rootBuckwalter, { scope: "ayah", limit: 16 }) : []),
+    [rootBuckwalter, canLinks],
   );
 
   // motifs (بيوت) this root belongs to, + all motifs for the picker
@@ -157,11 +165,12 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: P
       <section className="root-mine">
         <div className="root-mine-head">
           <h2 className="root-section-title">✒ My meaning</h2>
-          {!editing && (
+          {!editing && canMine && (
             <button className="ctl root-mine-edit" onClick={startEdit}>
               {current ? "✎ Edit" : "✎ Add meaning"}
             </button>
           )}
+          {!canMine && <PlanLock feature="my-meanings" />}
         </div>
 
         {editing ? (
@@ -196,14 +205,14 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: P
           {(motifsIn.data ?? []).map((m) => (
             <span key={m.id} className="motif-chip in">
               {m.name || "untitled"}
-              <button className="motif-x" title="Remove from motif" onClick={() => removeFromMotif(m.id)}>✕</button>
+              {canMotifs && <button className="motif-x" title="Remove from motif" onClick={() => removeFromMotif(m.id)}>✕</button>}
             </span>
           ))}
           {(motifsIn.data ?? []).length === 0 && (
             <span className="root-mine-empty">Not in any motif yet.</span>
           )}
         </div>
-        <div className="root-motif-add">
+        {canMotifs && <div className="root-motif-add">
           {available.length > 0 && (
             <select
               className="settings-select"
@@ -224,12 +233,12 @@ export function RootDetail({ rootBuckwalter, rootArabic, onBack, onOpenRoot }: P
             onKeyDown={(e) => { if (e.key === "Enter") createMotif(); }}
           />
           <button className="ink-action" onClick={createMotif} disabled={!newMotif.trim()}>＋ Create</button>
-        </div>
+        </div>}
       </section>
 
       {/* collocations — the roots this one keeps company with */}
       <section>
-        <h2 className="root-section-title">Collocations · the company it keeps</h2>
+        <h2 className="root-section-title">Collocations · the company it keeps{!canLinks && <> <PlanLock feature="linkages" /></>}</h2>
         {links.loading && <p className="loading">Weighing co-occurrences…</p>}
         {links.data && links.data.length === 0 && (
           <p className="home-empty">No strong co-occurring roots.</p>
