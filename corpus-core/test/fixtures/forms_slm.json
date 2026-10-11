@@ -1,0 +1,191 @@
+[
+  {
+    "lemma_buckwalter": "sala`m",
+    "lemma_arabic": "سَلَٰم",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 41
+  },
+  {
+    "lemma_buckwalter": "musolim",
+    "lemma_arabic": "مُسْلِم",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 24
+  },
+  {
+    "lemma_buckwalter": ">asolama",
+    "lemma_arabic": "أَسْلَمَ",
+    "pos": "V",
+    "pos_english": "Verb",
+    "pos_arabic": "فعل",
+    "pos_class": "Verbs",
+    "occurrence_count": 22
+  },
+  {
+    "lemma_buckwalter": "musolim",
+    "lemma_arabic": "مُسْلِم",
+    "pos": "PN",
+    "pos_english": "Proper noun",
+    "pos_arabic": "اسم علم",
+    "pos_class": "Nouns",
+    "occurrence_count": 14
+  },
+  {
+    "lemma_buckwalter": "<isola`m",
+    "lemma_arabic": "إِسْلَٰم",
+    "pos": "PN",
+    "pos_english": "Proper noun",
+    "pos_arabic": "اسم علم",
+    "pos_class": "Nouns",
+    "occurrence_count": 6
+  },
+  {
+    "lemma_buckwalter": "sal~ama",
+    "lemma_arabic": "سَلَّمَ",
+    "pos": "V",
+    "pos_english": "Verb",
+    "pos_arabic": "فعل",
+    "pos_class": "Verbs",
+    "occurrence_count": 6
+  },
+  {
+    "lemma_buckwalter": "salam",
+    "lemma_arabic": "سَلَم",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 5
+  },
+  {
+    "lemma_buckwalter": "m~usal~amap",
+    "lemma_arabic": "مُّسَلَّمَة",
+    "pos": "ADJ",
+    "pos_english": "Adjective",
+    "pos_arabic": "صفة",
+    "pos_class": "Nominals",
+    "occurrence_count": 3
+  },
+  {
+    "lemma_buckwalter": "tasoliym",
+    "lemma_arabic": "تَسْلِيم",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 3
+  },
+  {
+    "lemma_buckwalter": "<isola`m",
+    "lemma_arabic": "إِسْلَٰم",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 2
+  },
+  {
+    "lemma_buckwalter": "saliym",
+    "lemma_arabic": "سَلِيم",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 2
+  },
+  {
+    "lemma_buckwalter": "sul~am",
+    "lemma_arabic": "سُلَّم",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 2
+  },
+  {
+    "lemma_buckwalter": "s~alom",
+    "lemma_arabic": "سَّلْم",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 2
+  },
+  {
+    "lemma_buckwalter": "musolim",
+    "lemma_arabic": "مُسْلِم",
+    "pos": "ADJ",
+    "pos_english": "Adjective",
+    "pos_arabic": "صفة",
+    "pos_class": "Nominals",
+    "occurrence_count": 1
+  },
+  {
+    "lemma_buckwalter": "musolima`t",
+    "lemma_arabic": "مُسْلِمَٰت",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 1
+  },
+  {
+    "lemma_buckwalter": "musolima`t",
+    "lemma_arabic": "مُسْلِمَٰت",
+    "pos": "ADJ",
+    "pos_english": "Adjective",
+    "pos_arabic": "صفة",
+    "pos_class": "Nominals",
+    "occurrence_count": 1
+  },
+  {
+    "lemma_buckwalter": "musotasolimuwn",
+    "lemma_arabic": "مُسْتَسْلِمُون",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 1
+  },
+  {
+    "lemma_buckwalter": "m~usolimap",
+    "lemma_arabic": "مُّسْلِمَة",
+    "pos": "ADJ",
+    "pos_english": "Adjective",
+    "pos_arabic": "صفة",
+    "pos_class": "Nominals",
+    "occurrence_count": 1
+  },
+  {
+    "lemma_buckwalter": "sa`limuwn",
+    "lemma_arabic": "سَٰلِمُون",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 1
+  },
+  {
+    "lemma_buckwalter": "sala`m",
+    "lemma_arabic": "سَلَٰم",
+    "pos": "ADJ",
+    "pos_english": "Adjective",
+    "pos_arabic": "صفة",
+    "pos_class": "Nominals",
+    "occurrence_count": 1
+  },
+  {
+    "lemma_buckwalter": "s~ilom",
+    "lemma_arabic": "سِّلْم",
+    "pos": "PN",
+    "pos_english": "Proper noun",
+    "pos_arabic": "اسم علم",
+    "pos_class": "Nouns",
+    "occurrence_count": 1
+  }
+]

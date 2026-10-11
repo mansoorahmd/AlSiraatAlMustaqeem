@@ -1,0 +1,110 @@
+[
+  {
+    "lemma_buckwalter": "hadaY",
+    "lemma_arabic": "هَدَى",
+    "pos": "V",
+    "pos_english": "Verb",
+    "pos_arabic": "فعل",
+    "pos_class": "Verbs",
+    "occurrence_count": 144
+  },
+  {
+    "lemma_buckwalter": "hudFY",
+    "lemma_arabic": "هُدًى",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 85
+  },
+  {
+    "lemma_buckwalter": "{hotadaY`",
+    "lemma_arabic": "ٱهْتَدَىٰ",
+    "pos": "V",
+    "pos_english": "Verb",
+    "pos_arabic": "فعل",
+    "pos_class": "Verbs",
+    "occurrence_count": 40
+  },
+  {
+    "lemma_buckwalter": "m~uhotaduwn",
+    "lemma_arabic": "مُّهْتَدُون",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 17
+  },
+  {
+    "lemma_buckwalter": ">ahodaY`",
+    "lemma_arabic": "أَهْدَىٰ",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 7
+  },
+  {
+    "lemma_buckwalter": "haAd",
+    "lemma_arabic": "هَاد",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 7
+  },
+  {
+    "lemma_buckwalter": "hadoy",
+    "lemma_arabic": "هَدْي",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 7
+  },
+  {
+    "lemma_buckwalter": "m~uhotad",
+    "lemma_arabic": "مُّهْتَد",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 3
+  },
+  {
+    "lemma_buckwalter": "haAdiy",
+    "lemma_arabic": "هَادِي",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 2
+  },
+  {
+    "lemma_buckwalter": "hadiy~ap",
+    "lemma_arabic": "هَدِيَّة",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 2
+  },
+  {
+    "lemma_buckwalter": "ha`diY",
+    "lemma_arabic": "هَٰدِى",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 1
+  },
+  {
+    "lemma_buckwalter": "muhotadiY",
+    "lemma_arabic": "مُهْتَدِى",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 1
+  }
+]

@@ -1,0 +1,2111 @@
+[
+  {
+    "query": "ربنا الله",
+    "result": {
+      "query": "ربنا الله",
+      "resolved": [
+        {
+          "token": "ربنا",
+          "root": "ربب",
+          "pos": "Nouns"
+        },
+        {
+          "token": "الله",
+          "root": "اله",
+          "pos": "Nouns"
+        }
+      ],
+      "unresolved": [],
+      "matches": [
+        {
+          "verse_key": "7:122",
+          "chapter_id": 7,
+          "verse_number": 122,
+          "text": "رَبِّ مُوسَىٰ وَهَـٰرُونَ",
+          "score": 0.6085,
+          "overlap": 0.8036,
+          "phrase": 0.25,
+          "morphology": 0.6876,
+          "shared": [
+            "ربب"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "26:48",
+          "chapter_id": 26,
+          "verse_number": 48,
+          "text": "رَبِّ مُوسَىٰ وَهَـٰرُونَ",
+          "score": 0.6085,
+          "overlap": 0.8036,
+          "phrase": 0.25,
+          "morphology": 0.6876,
+          "shared": [
+            "ربب"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "6:102",
+          "chapter_id": 6,
+          "verse_number": 102,
+          "text": "ذَٰلِكُمُ ٱللَّهُ رَبُّكُمْ ۖ لَآ إِلَـٰهَ إِلَّا هُوَ ۖ خَـٰلِقُ كُلِّ شَىْءٍ فَٱعْبُدُوهُ ۚ وَهُوَ عَلَىٰ كُلِّ شَىْءٍ وَكِيلٌ",
+          "score": 0.5638,
+          "overlap": 0.3459,
+          "phrase": 1.0,
+          "morphology": 0.4324,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Pronouns",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Particles",
+            "Pronouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Pronouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "10:3",
+          "chapter_id": 10,
+          "verse_number": 3,
+          "text": "إِنَّ رَبَّكُمُ ٱللَّهُ ٱلَّذِى خَلَقَ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضَ فِى سِتَّةِ أَيَّامٍ ثُمَّ ٱسْتَوَىٰ عَلَى ٱلْعَرْشِ ۖ يُدَبِّرُ ٱلْأَمْرَ ۖ مَا مِن شَفِيعٍ إِلَّا مِنۢ بَعْدِ إِذْنِهِۦ ۚ ذَٰلِكُمُ ٱللَّهُ رَبُّكُمْ فَٱعْبُدُوهُ ۚ أَفَلَا تَذَكَّرُونَ",
+          "score": 0.5583,
+          "overlap": 0.3602,
+          "phrase": 1.0,
+          "morphology": 0.3849,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Conjunctions",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Particles",
+            "Prepositions",
+            "Nouns",
+            "Particles",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Pronouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Particles",
+            "Verbs"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "46:13",
+          "chapter_id": 46,
+          "verse_number": 13,
+          "text": "إِنَّ ٱلَّذِينَ قَالُوا۟ رَبُّنَا ٱللَّهُ ثُمَّ ٱسْتَقَـٰمُوا۟ فَلَا خَوْفٌ عَلَيْهِمْ وَلَا هُمْ يَحْزَنُونَ",
+          "score": 0.5535,
+          "overlap": 0.3843,
+          "phrase": 1.0,
+          "morphology": 0.3224,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Conjunctions",
+            "Verbs",
+            "Particles",
+            "Nouns",
+            "Prepositions",
+            "Particles",
+            "Pronouns",
+            "Verbs"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "22:40",
+          "chapter_id": 22,
+          "verse_number": 40,
+          "text": "ٱلَّذِينَ أُخْرِجُوا۟ مِن دِيَـٰرِهِم بِغَيْرِ حَقٍّ إِلَّآ أَن يَقُولُوا۟ رَبُّنَا ٱللَّهُ ۗ وَلَوْلَا دَفْعُ ٱللَّهِ ٱلنَّاسَ بَعْضَهُم بِبَعْضٍ لَّهُدِّمَتْ صَوَٰمِعُ وَبِيَعٌ وَصَلَوَٰتٌ وَمَسَـٰجِدُ يُذْكَرُ فِيهَا ٱسْمُ ٱللَّهِ كَثِيرًا ۗ وَلَيَنصُرَنَّ ٱللَّهُ مَن يَنصُرُهُۥٓ ۗ إِنَّ ٱللَّهَ لَقَوِىٌّ عَزِيزٌ",
+          "score": 0.5525,
+          "overlap": 0.2933,
+          "phrase": 1.0,
+          "morphology": 0.482,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Pronouns",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Conjunctions",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Nominals",
+            "Verbs",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Nominals"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "3:199",
+          "chapter_id": 3,
+          "verse_number": 199,
+          "text": "وَإِنَّ مِنْ أَهْلِ ٱلْكِتَـٰبِ لَمَن يُؤْمِنُ بِٱللَّهِ وَمَآ أُنزِلَ إِلَيْكُمْ وَمَآ أُنزِلَ إِلَيْهِمْ خَـٰشِعِينَ لِلَّهِ لَا يَشْتَرُونَ بِـَٔايَـٰتِ ٱللَّهِ ثَمَنًا قَلِيلًا ۗ أُو۟لَـٰٓئِكَ لَهُمْ أَجْرُهُمْ عِندَ رَبِّهِمْ ۗ إِنَّ ٱللَّهَ سَرِيعُ ٱلْحِسَابِ",
+          "score": 0.5518,
+          "overlap": 0.3383,
+          "phrase": 1.0,
+          "morphology": 0.3982,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Prepositions",
+            "Pronouns",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nominals",
+            "Pronouns",
+            "Pronouns",
+            "Nouns",
+            "Adverbs",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "7:54",
+          "chapter_id": 7,
+          "verse_number": 54,
+          "text": "إِنَّ رَبَّكُمُ ٱللَّهُ ٱلَّذِى خَلَقَ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضَ فِى سِتَّةِ أَيَّامٍ ثُمَّ ٱسْتَوَىٰ عَلَى ٱلْعَرْشِ يُغْشِى ٱلَّيْلَ ٱلنَّهَارَ يَطْلُبُهُۥ حَثِيثًا وَٱلشَّمْسَ وَٱلْقَمَرَ وَٱلنُّجُومَ مُسَخَّرَٰتٍۭ بِأَمْرِهِۦٓ ۗ أَلَا لَهُ ٱلْخَلْقُ وَٱلْأَمْرُ ۗ تَبَارَكَ ٱللَّهُ رَبُّ ٱلْعَـٰلَمِينَ",
+          "score": 0.5427,
+          "overlap": 0.2517,
+          "phrase": 1.0,
+          "morphology": 0.5178,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Conjunctions",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Pronouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "45:36",
+          "chapter_id": 45,
+          "verse_number": 36,
+          "text": "فَلِلَّهِ ٱلْحَمْدُ رَبِّ ٱلسَّمَـٰوَٰتِ وَرَبِّ ٱلْأَرْضِ رَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.5201,
+          "overlap": 0.6819,
+          "phrase": 0.25,
+          "morphology": 0.5532,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "2:105",
+          "chapter_id": 2,
+          "verse_number": 105,
+          "text": "مَّا يَوَدُّ ٱلَّذِينَ كَفَرُوا۟ مِنْ أَهْلِ ٱلْكِتَـٰبِ وَلَا ٱلْمُشْرِكِينَ أَن يُنَزَّلَ عَلَيْكُم مِّنْ خَيْرٍ مِّن رَّبِّكُمْ ۗ وَٱللَّهُ يَخْتَصُّ بِرَحْمَتِهِۦ مَن يَشَآءُ ۚ وَٱللَّهُ ذُو ٱلْفَضْلِ ٱلْعَظِيمِ",
+          "score": 0.519,
+          "overlap": 0.2733,
+          "phrase": 1.0,
+          "morphology": 0.384,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Verbs",
+            "Pronouns",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Conjunctions",
+            "Verbs",
+            "Prepositions",
+            "Prepositions",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nominals"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "40:28",
+          "chapter_id": 40,
+          "verse_number": 28,
+          "text": "وَقَالَ رَجُلٌ مُّؤْمِنٌ مِّنْ ءَالِ فِرْعَوْنَ يَكْتُمُ إِيمَـٰنَهُۥٓ أَتَقْتُلُونَ رَجُلًا أَن يَقُولَ رَبِّىَ ٱللَّهُ وَقَدْ جَآءَكُم بِٱلْبَيِّنَـٰتِ مِن رَّبِّكُمْ ۖ وَإِن يَكُ كَـٰذِبًا فَعَلَيْهِ كَذِبُهُۥ ۖ وَإِن يَكُ صَادِقًا يُصِبْكُم بَعْضُ ٱلَّذِى يَعِدُكُمْ ۖ إِنَّ ٱللَّهَ لَا يَهْدِى مَنْ هُوَ مُسْرِفٌ كَذَّابٌ",
+          "score": 0.5099,
+          "overlap": 0.2752,
+          "phrase": 1.0,
+          "morphology": 0.3442,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Conjunctions",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Verbs",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Particles",
+            "Verbs",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Particles",
+            "Verbs",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Particles",
+            "Nouns",
+            "Particles",
+            "Verbs",
+            "Pronouns",
+            "Pronouns",
+            "Nouns",
+            "Nominals"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "41:30",
+          "chapter_id": 41,
+          "verse_number": 30,
+          "text": "إِنَّ ٱلَّذِينَ قَالُوا۟ رَبُّنَا ٱللَّهُ ثُمَّ ٱسْتَقَـٰمُوا۟ تَتَنَزَّلُ عَلَيْهِمُ ٱلْمَلَـٰٓئِكَةُ أَلَّا تَخَافُوا۟ وَلَا تَحْزَنُوا۟ وَأَبْشِرُوا۟ بِٱلْجَنَّةِ ٱلَّتِى كُنتُمْ تُوعَدُونَ",
+          "score": 0.4959,
+          "overlap": 0.2577,
+          "phrase": 1.0,
+          "morphology": 0.3199,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Conjunctions",
+            "Verbs",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Conjunctions",
+            "Verbs",
+            "Particles",
+            "Verbs",
+            "Verbs",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Verbs"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "37:126",
+          "chapter_id": 37,
+          "verse_number": 126,
+          "text": "ٱللَّهَ رَبَّكُمْ وَرَبَّ ءَابَآئِكُمُ ٱلْأَوَّلِينَ",
+          "score": 0.4958,
+          "overlap": 0.6483,
+          "phrase": 0.25,
+          "morphology": 0.5161,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nominals"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "6:106",
+          "chapter_id": 6,
+          "verse_number": 106,
+          "text": "ٱتَّبِعْ مَآ أُوحِىَ إِلَيْكَ مِن رَّبِّكَ ۖ لَآ إِلَـٰهَ إِلَّا هُوَ ۖ وَأَعْرِضْ عَنِ ٱلْمُشْرِكِينَ",
+          "score": 0.4902,
+          "overlap": 0.3394,
+          "phrase": 1.0,
+          "morphology": 0.15,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Verbs",
+            "Pronouns",
+            "Verbs",
+            "Prepositions",
+            "Prepositions",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Particles",
+            "Pronouns",
+            "Verbs",
+            "Prepositions",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "33:2",
+          "chapter_id": 33,
+          "verse_number": 2,
+          "text": "وَٱتَّبِعْ مَا يُوحَىٰٓ إِلَيْكَ مِن رَّبِّكَ ۚ إِنَّ ٱللَّهَ كَانَ بِمَا تَعْمَلُونَ خَبِيرًا",
+          "score": 0.4878,
+          "overlap": 0.3339,
+          "phrase": 1.0,
+          "morphology": 0.15,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Verbs",
+            "Pronouns",
+            "Verbs",
+            "Prepositions",
+            "Prepositions",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Verbs",
+            "Pronouns",
+            "Verbs",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "2:149",
+          "chapter_id": 2,
+          "verse_number": 149,
+          "text": "وَمِنْ حَيْثُ خَرَجْتَ فَوَلِّ وَجْهَكَ شَطْرَ ٱلْمَسْجِدِ ٱلْحَرَامِ ۖ وَإِنَّهُۥ لَلْحَقُّ مِن رَّبِّكَ ۗ وَمَا ٱللَّهُ بِغَـٰفِلٍ عَمَّا تَعْمَلُونَ",
+          "score": 0.4717,
+          "overlap": 0.2031,
+          "phrase": 1.0,
+          "morphology": 0.3211,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Prepositions",
+            "Nouns",
+            "Verbs",
+            "Verbs",
+            "Nouns",
+            "Adverbs",
+            "Nouns",
+            "Nominals",
+            "Particles",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Prepositions",
+            "Verbs"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "13:30",
+          "chapter_id": 13,
+          "verse_number": 30,
+          "text": "كَذَٰلِكَ أَرْسَلْنَـٰكَ فِىٓ أُمَّةٍ قَدْ خَلَتْ مِن قَبْلِهَآ أُمَمٌ لِّتَتْلُوَا۟ عَلَيْهِمُ ٱلَّذِىٓ أَوْحَيْنَآ إِلَيْكَ وَهُمْ يَكْفُرُونَ بِٱلرَّحْمَـٰنِ ۚ قُلْ هُوَ رَبِّى لَآ إِلَـٰهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَإِلَيْهِ مَتَابِ",
+          "score": 0.4682,
+          "overlap": 0.1985,
+          "phrase": 1.0,
+          "morphology": 0.3156,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Pronouns",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Particles",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Prepositions",
+            "Pronouns",
+            "Verbs",
+            "Prepositions",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Verbs",
+            "Pronouns",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Particles",
+            "Pronouns",
+            "Prepositions",
+            "Verbs",
+            "Prepositions",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "18:38",
+          "chapter_id": 18,
+          "verse_number": 38,
+          "text": "لَّـٰكِنَّا۠ هُوَ ٱللَّهُ رَبِّى وَلَآ أُشْرِكُ بِرَبِّىٓ أَحَدًا",
+          "score": 0.461,
+          "overlap": 0.636,
+          "phrase": 0.25,
+          "morphology": 0.3991,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Pronouns",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Verbs",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "19:36",
+          "chapter_id": 19,
+          "verse_number": 36,
+          "text": "وَإِنَّ ٱللَّهَ رَبِّى وَرَبُّكُمْ فَٱعْبُدُوهُ ۚ هَـٰذَا صِرَٰطٌ مُّسْتَقِيمٌ",
+          "score": 0.4547,
+          "overlap": 0.5954,
+          "phrase": 0.25,
+          "morphology": 0.4473,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Pronouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "1:2",
+          "chapter_id": 1,
+          "verse_number": 2,
+          "text": "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.4517,
+          "overlap": 0.4969,
+          "phrase": 0.25,
+          "morphology": 0.6124,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "37:182",
+          "chapter_id": 37,
+          "verse_number": 182,
+          "text": "وَٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.4517,
+          "overlap": 0.4969,
+          "phrase": 0.25,
+          "morphology": 0.6124,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "114:3",
+          "chapter_id": 114,
+          "verse_number": 3,
+          "text": "إِلَـٰهِ ٱلنَّاسِ",
+          "score": 0.4464,
+          "overlap": 0.2698,
+          "phrase": 0.25,
+          "morphology": 1.0,
+          "shared": [
+            "اله"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "20:49",
+          "chapter_id": 20,
+          "verse_number": 49,
+          "text": "قَالَ فَمَن رَّبُّكُمَا يَـٰمُوسَىٰ",
+          "score": 0.4451,
+          "overlap": 0.6141,
+          "phrase": 0.25,
+          "morphology": 0.3752,
+          "shared": [
+            "ربب"
+          ],
+          "pattern": [
+            "Verbs",
+            "Pronouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "3:51",
+          "chapter_id": 3,
+          "verse_number": 51,
+          "text": "إِنَّ ٱللَّهَ رَبِّى وَرَبُّكُمْ فَٱعْبُدُوهُ ۗ هَـٰذَا صِرَٰطٌ مُّسْتَقِيمٌ",
+          "score": 0.4411,
+          "overlap": 0.5954,
+          "phrase": 0.25,
+          "morphology": 0.3928,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Pronouns",
+            "Nouns",
+            "Nominals"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "43:64",
+          "chapter_id": 43,
+          "verse_number": 64,
+          "text": "إِنَّ ٱللَّهَ هُوَ رَبِّى وَرَبُّكُمْ فَٱعْبُدُوهُ ۚ هَـٰذَا صِرَٰطٌ مُّسْتَقِيمٌ",
+          "score": 0.4354,
+          "overlap": 0.5954,
+          "phrase": 0.25,
+          "morphology": 0.37,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Nouns",
+            "Pronouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Pronouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "2:144",
+          "chapter_id": 2,
+          "verse_number": 144,
+          "text": "قَدْ نَرَىٰ تَقَلُّبَ وَجْهِكَ فِى ٱلسَّمَآءِ ۖ فَلَنُوَلِّيَنَّكَ قِبْلَةً تَرْضَىٰهَا ۚ فَوَلِّ وَجْهَكَ شَطْرَ ٱلْمَسْجِدِ ٱلْحَرَامِ ۚ وَحَيْثُ مَا كُنتُمْ فَوَلُّوا۟ وُجُوهَكُمْ شَطْرَهُۥ ۗ وَإِنَّ ٱلَّذِينَ أُوتُوا۟ ٱلْكِتَـٰبَ لَيَعْلَمُونَ أَنَّهُ ٱلْحَقُّ مِن رَّبِّهِمْ ۗ وَمَا ٱللَّهُ بِغَـٰفِلٍ عَمَّا يَعْمَلُونَ",
+          "score": 0.4323,
+          "overlap": 0.1125,
+          "phrase": 1.0,
+          "morphology": 0.3268,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Verbs",
+            "Verbs",
+            "Nouns",
+            "Adverbs",
+            "Nouns",
+            "Nominals",
+            "Particles",
+            "Particles",
+            "Verbs",
+            "Verbs",
+            "Nouns",
+            "Adverbs",
+            "Particles",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Verbs",
+            "Particles",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Prepositions",
+            "Verbs"
+          ],
+          "phrase_run": [
+            "ربب",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "26:26",
+          "chapter_id": 26,
+          "verse_number": 26,
+          "text": "قَالَ رَبُّكُمْ وَرَبُّ ءَابَآئِكُمُ ٱلْأَوَّلِينَ",
+          "score": 0.4176,
+          "overlap": 0.5046,
+          "phrase": 0.25,
+          "morphology": 0.4619,
+          "shared": [
+            "ربب"
+          ],
+          "pattern": [
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nominals"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "55:17",
+          "chapter_id": 55,
+          "verse_number": 17,
+          "text": "رَبُّ ٱلْمَشْرِقَيْنِ وَرَبُّ ٱلْمَغْرِبَيْنِ",
+          "score": 0.4159,
+          "overlap": 0.4173,
+          "phrase": 0.25,
+          "morphology": 0.6124,
+          "shared": [
+            "ربب"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "44:8",
+          "chapter_id": 44,
+          "verse_number": 8,
+          "text": "لَآ إِلَـٰهَ إِلَّا هُوَ يُحْىِۦ وَيُمِيتُ ۖ رَبُّكُمْ وَرَبُّ ءَابَآئِكُمُ ٱلْأَوَّلِينَ",
+          "score": 0.4063,
+          "overlap": 0.5282,
+          "phrase": 0.25,
+          "morphology": 0.3743,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Nouns",
+            "Particles",
+            "Pronouns",
+            "Verbs",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nominals"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "5:72",
+          "chapter_id": 5,
+          "verse_number": 72,
+          "text": "لَقَدْ كَفَرَ ٱلَّذِينَ قَالُوٓا۟ إِنَّ ٱللَّهَ هُوَ ٱلْمَسِيحُ ٱبْنُ مَرْيَمَ ۖ وَقَالَ ٱلْمَسِيحُ يَـٰبَنِىٓ إِسْرَٰٓءِيلَ ٱعْبُدُوا۟ ٱللَّهَ رَبِّى وَرَبَّكُمْ ۖ إِنَّهُۥ مَن يُشْرِكْ بِٱللَّهِ فَقَدْ حَرَّمَ ٱللَّهُ عَلَيْهِ ٱلْجَنَّةَ وَمَأْوَىٰهُ ٱلنَّارُ ۖ وَمَا لِلظَّـٰلِمِينَ مِنْ أَنصَارٍ",
+          "score": 0.403,
+          "overlap": 0.4829,
+          "phrase": 0.25,
+          "morphology": 0.4427,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Verbs",
+            "Pronouns",
+            "Verbs",
+            "Particles",
+            "Nouns",
+            "Pronouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Particles",
+            "Verbs",
+            "Nouns",
+            "Particles",
+            "Verbs",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Prepositions",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "query": "الحمد لله رب العالمين",
+    "result": {
+      "query": "الحمد لله رب العالمين",
+      "resolved": [
+        {
+          "token": "الحمد",
+          "root": "حمد",
+          "pos": "Nouns"
+        },
+        {
+          "token": "لله",
+          "root": "اله",
+          "pos": "Nouns"
+        },
+        {
+          "token": "رب",
+          "root": "ربب",
+          "pos": "Nouns"
+        },
+        {
+          "token": "العالمين",
+          "root": "علم",
+          "pos": "Verbs"
+        }
+      ],
+      "unresolved": [],
+      "matches": [
+        {
+          "verse_key": "1:2",
+          "chapter_id": 1,
+          "verse_number": 2,
+          "text": "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.9112,
+          "overlap": 1.0,
+          "phrase": 1.0,
+          "morphology": 0.6446,
+          "shared": [
+            "اله",
+            "حمد",
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله",
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "37:182",
+          "chapter_id": 37,
+          "verse_number": 182,
+          "text": "وَٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.9112,
+          "overlap": 1.0,
+          "phrase": 1.0,
+          "morphology": 0.6446,
+          "shared": [
+            "اله",
+            "حمد",
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله",
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "39:75",
+          "chapter_id": 39,
+          "verse_number": 75,
+          "text": "وَتَرَى ٱلْمَلَـٰٓئِكَةَ حَآفِّينَ مِنْ حَوْلِ ٱلْعَرْشِ يُسَبِّحُونَ بِحَمْدِ رَبِّهِمْ ۖ وَقُضِىَ بَيْنَهُم بِٱلْحَقِّ وَقِيلَ ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.7104,
+          "overlap": 0.5919,
+          "phrase": 1.0,
+          "morphology": 0.5764,
+          "shared": [
+            "اله",
+            "حمد",
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Adverbs",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله",
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "6:45",
+          "chapter_id": 6,
+          "verse_number": 45,
+          "text": "فَقُطِعَ دَابِرُ ٱلْقَوْمِ ٱلَّذِينَ ظَلَمُوا۟ ۚ وَٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.6783,
+          "overlap": 0.5943,
+          "phrase": 1.0,
+          "morphology": 0.4436,
+          "shared": [
+            "اله",
+            "حمد",
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله",
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "40:65",
+          "chapter_id": 40,
+          "verse_number": 65,
+          "text": "هُوَ ٱلْحَىُّ لَآ إِلَـٰهَ إِلَّا هُوَ فَٱدْعُوهُ مُخْلِصِينَ لَهُ ٱلدِّينَ ۗ ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.6699,
+          "overlap": 0.6024,
+          "phrase": 1.0,
+          "morphology": 0.3952,
+          "shared": [
+            "اله",
+            "حمد",
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Pronouns",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Particles",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Pronouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله",
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "10:10",
+          "chapter_id": 10,
+          "verse_number": 10,
+          "text": "دَعْوَىٰهُمْ فِيهَا سُبْحَـٰنَكَ ٱللَّهُمَّ وَتَحِيَّتُهُمْ فِيهَا سَلَـٰمٌ ۚ وَءَاخِرُ دَعْوَىٰهُمْ أَنِ ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.6433,
+          "overlap": 0.5179,
+          "phrase": 1.0,
+          "morphology": 0.441,
+          "shared": [
+            "اله",
+            "حمد",
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Conjunctions",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله",
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "45:36",
+          "chapter_id": 45,
+          "verse_number": 36,
+          "text": "فَلِلَّهِ ٱلْحَمْدُ رَبِّ ٱلسَّمَـٰوَٰتِ وَرَبِّ ٱلْأَرْضِ رَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.6399,
+          "overlap": 0.7898,
+          "phrase": 0.4167,
+          "morphology": 0.638,
+          "shared": [
+            "اله",
+            "حمد",
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "27:15",
+          "chapter_id": 27,
+          "verse_number": 15,
+          "text": "وَلَقَدْ ءَاتَيْنَا دَاوُۥدَ وَسُلَيْمَـٰنَ عِلْمًا ۖ وَقَالَا ٱلْحَمْدُ لِلَّهِ ٱلَّذِى فَضَّلَنَا عَلَىٰ كَثِيرٍ مِّنْ عِبَادِهِ ٱلْمُؤْمِنِينَ",
+          "score": 0.4921,
+          "overlap": 0.5244,
+          "phrase": 0.4167,
+          "morphology": 0.5244,
+          "shared": [
+            "اله",
+            "حمد",
+            "علم"
+          ],
+          "pattern": [
+            "Particles",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Nominals"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "40:64",
+          "chapter_id": 40,
+          "verse_number": 64,
+          "text": "ٱللَّهُ ٱلَّذِى جَعَلَ لَكُمُ ٱلْأَرْضَ قَرَارًا وَٱلسَّمَآءَ بِنَآءً وَصَوَّرَكُمْ فَأَحْسَنَ صُوَرَكُمْ وَرَزَقَكُم مِّنَ ٱلطَّيِّبَـٰتِ ۚ ذَٰلِكُمُ ٱللَّهُ رَبُّكُمْ ۖ فَتَبَارَكَ ٱللَّهُ رَبُّ ٱلْعَـٰلَمِينَ",
+          "score": 0.491,
+          "overlap": 0.2517,
+          "phrase": 0.7083,
+          "morphology": 0.6609,
+          "shared": [
+            "اله",
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Pronouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Verbs",
+            "Nouns",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Pronouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "اله",
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "6:162",
+          "chapter_id": 6,
+          "verse_number": 162,
+          "text": "قُلْ إِنَّ صَلَاتِى وَنُسُكِى وَمَحْيَاىَ وَمَمَاتِى لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.4678,
+          "overlap": 0.2466,
+          "phrase": 0.7083,
+          "morphology": 0.5772,
+          "shared": [
+            "اله",
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Verbs",
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "اله",
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "31:25",
+          "chapter_id": 31,
+          "verse_number": 25,
+          "text": "وَلَئِن سَأَلْتَهُم مَّنْ خَلَقَ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضَ لَيَقُولُنَّ ٱللَّهُ ۚ قُلِ ٱلْحَمْدُ لِلَّهِ ۚ بَلْ أَكْثَرُهُمْ لَا يَعْلَمُونَ",
+          "score": 0.4563,
+          "overlap": 0.5146,
+          "phrase": 0.4167,
+          "morphology": 0.3991,
+          "shared": [
+            "اله",
+            "حمد",
+            "علم"
+          ],
+          "pattern": [
+            "Particles",
+            "Verbs",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Particles",
+            "Verbs"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "81:29",
+          "chapter_id": 81,
+          "verse_number": 29,
+          "text": "وَمَا تَشَآءُونَ إِلَّآ أَن يَشَآءَ ٱللَّهُ رَبُّ ٱلْعَـٰلَمِينَ",
+          "score": 0.4498,
+          "overlap": 0.3627,
+          "phrase": 0.7083,
+          "morphology": 0.2962,
+          "shared": [
+            "اله",
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Particles",
+            "Verbs",
+            "Particles",
+            "Conjunctions",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "اله",
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "14:39",
+          "chapter_id": 14,
+          "verse_number": 39,
+          "text": "ٱلْحَمْدُ لِلَّهِ ٱلَّذِى وَهَبَ لِى عَلَى ٱلْكِبَرِ إِسْمَـٰعِيلَ وَإِسْحَـٰقَ ۚ إِنَّ رَبِّى لَسَمِيعُ ٱلدُّعَآءِ",
+          "score": 0.4427,
+          "overlap": 0.4917,
+          "phrase": 0.4167,
+          "morphology": 0.3857,
+          "shared": [
+            "اله",
+            "حمد",
+            "ربب"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Pronouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "27:93",
+          "chapter_id": 27,
+          "verse_number": 93,
+          "text": "وَقُلِ ٱلْحَمْدُ لِلَّهِ سَيُرِيكُمْ ءَايَـٰتِهِۦ فَتَعْرِفُونَهَا ۚ وَمَا رَبُّكَ بِغَـٰفِلٍ عَمَّا تَعْمَلُونَ",
+          "score": 0.4417,
+          "overlap": 0.4696,
+          "phrase": 0.4167,
+          "morphology": 0.4213,
+          "shared": [
+            "اله",
+            "حمد",
+            "ربب"
+          ],
+          "pattern": [
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Verbs",
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Prepositions",
+            "Verbs"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "7:54",
+          "chapter_id": 7,
+          "verse_number": 54,
+          "text": "إِنَّ رَبَّكُمُ ٱللَّهُ ٱلَّذِى خَلَقَ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضَ فِى سِتَّةِ أَيَّامٍ ثُمَّ ٱسْتَوَىٰ عَلَى ٱلْعَرْشِ يُغْشِى ٱلَّيْلَ ٱلنَّهَارَ يَطْلُبُهُۥ حَثِيثًا وَٱلشَّمْسَ وَٱلْقَمَرَ وَٱلنُّجُومَ مُسَخَّرَٰتٍۭ بِأَمْرِهِۦٓ ۗ أَلَا لَهُ ٱلْخَلْقُ وَٱلْأَمْرُ ۗ تَبَارَكَ ٱللَّهُ رَبُّ ٱلْعَـٰلَمِينَ",
+          "score": 0.4364,
+          "overlap": 0.1705,
+          "phrase": 0.7083,
+          "morphology": 0.5887,
+          "shared": [
+            "اله",
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Conjunctions",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Pronouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "اله",
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "34:1",
+          "chapter_id": 34,
+          "verse_number": 1,
+          "text": " ٱلْحَمْدُ لِلَّهِ ٱلَّذِى لَهُۥ مَا فِى ٱلسَّمَـٰوَٰتِ وَمَا فِى ٱلْأَرْضِ وَلَهُ ٱلْحَمْدُ فِى ٱلْـَٔاخِرَةِ ۚ وَهُوَ ٱلْحَكِيمُ ٱلْخَبِيرُ",
+          "score": 0.4352,
+          "overlap": 0.6029,
+          "phrase": 0.4167,
+          "morphology": 0.1557,
+          "shared": [
+            "اله",
+            "حمد"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Pronouns",
+            "Pronouns",
+            "Pronouns",
+            "Prepositions",
+            "Nouns",
+            "Pronouns",
+            "Prepositions",
+            "Nouns",
+            "Pronouns",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Pronouns",
+            "Nouns",
+            "Nominals"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "35:1",
+          "chapter_id": 35,
+          "verse_number": 1,
+          "text": " ٱلْحَمْدُ لِلَّهِ فَاطِرِ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضِ جَاعِلِ ٱلْمَلَـٰٓئِكَةِ رُسُلًا أُو۟لِىٓ أَجْنِحَةٍ مَّثْنَىٰ وَثُلَـٰثَ وَرُبَـٰعَ ۚ يَزِيدُ فِى ٱلْخَلْقِ مَا يَشَآءُ ۚ إِنَّ ٱللَّهَ عَلَىٰ كُلِّ شَىْءٍ قَدِيرٌ",
+          "score": 0.4188,
+          "overlap": 0.2467,
+          "phrase": 0.4167,
+          "morphology": 0.7312,
+          "shared": [
+            "اله",
+            "حمد"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Particles",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "26:192",
+          "chapter_id": 26,
+          "verse_number": 192,
+          "text": "وَإِنَّهُۥ لَتَنزِيلُ رَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.4186,
+          "overlap": 0.4181,
+          "phrase": 0.4167,
+          "morphology": 0.4218,
+          "shared": [
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "15:98",
+          "chapter_id": 15,
+          "verse_number": 98,
+          "text": "فَسَبِّحْ بِحَمْدِ رَبِّكَ وَكُن مِّنَ ٱلسَّـٰجِدِينَ",
+          "score": 0.4129,
+          "overlap": 0.5343,
+          "phrase": 0.125,
+          "morphology": 0.5397,
+          "shared": [
+            "حمد",
+            "ربب"
+          ],
+          "pattern": [
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Prepositions",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "حمد"
+          ]
+        },
+        {
+          "verse_key": "19:36",
+          "chapter_id": 19,
+          "verse_number": 36,
+          "text": "وَإِنَّ ٱللَّهَ رَبِّى وَرَبُّكُمْ فَٱعْبُدُوهُ ۚ هَـٰذَا صِرَٰطٌ مُّسْتَقِيمٌ",
+          "score": 0.4106,
+          "overlap": 0.2959,
+          "phrase": 0.4167,
+          "morphology": 0.61,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Pronouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "اله",
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "27:8",
+          "chapter_id": 27,
+          "verse_number": 8,
+          "text": "فَلَمَّا جَآءَهَا نُودِىَ أَنۢ بُورِكَ مَن فِى ٱلنَّارِ وَمَنْ حَوْلَهَا وَسُبْحَـٰنَ ٱللَّهِ رَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.4094,
+          "overlap": 0.2209,
+          "phrase": 0.7083,
+          "morphology": 0.3901,
+          "shared": [
+            "اله",
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Adverbs",
+            "Verbs",
+            "Verbs",
+            "Particles",
+            "Verbs",
+            "Pronouns",
+            "Prepositions",
+            "Nouns",
+            "Pronouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "اله",
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "6:1",
+          "chapter_id": 6,
+          "verse_number": 1,
+          "text": " ٱلْحَمْدُ لِلَّهِ ٱلَّذِى خَلَقَ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضَ وَجَعَلَ ٱلظُّلُمَـٰتِ وَٱلنُّورَ ۖ ثُمَّ ٱلَّذِينَ كَفَرُوا۟ بِرَبِّهِمْ يَعْدِلُونَ",
+          "score": 0.4094,
+          "overlap": 0.429,
+          "phrase": 0.4167,
+          "morphology": 0.3654,
+          "shared": [
+            "اله",
+            "حمد",
+            "ربب"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Conjunctions",
+            "Pronouns",
+            "Verbs",
+            "Nouns",
+            "Verbs"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "3:51",
+          "chapter_id": 3,
+          "verse_number": 51,
+          "text": "إِنَّ ٱللَّهَ رَبِّى وَرَبُّكُمْ فَٱعْبُدُوهُ ۗ هَـٰذَا صِرَٰطٌ مُّسْتَقِيمٌ",
+          "score": 0.4025,
+          "overlap": 0.2959,
+          "phrase": 0.4167,
+          "morphology": 0.5775,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Pronouns",
+            "Nouns",
+            "Nominals"
+          ],
+          "phrase_run": [
+            "اله",
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "37:126",
+          "chapter_id": 37,
+          "verse_number": 126,
+          "text": "ٱللَّهَ رَبَّكُمْ وَرَبَّ ءَابَآئِكُمُ ٱلْأَوَّلِينَ",
+          "score": 0.3988,
+          "overlap": 0.3222,
+          "phrase": 0.4167,
+          "morphology": 0.5152,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Nominals"
+          ],
+          "phrase_run": [
+            "اله",
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "26:23",
+          "chapter_id": 26,
+          "verse_number": 23,
+          "text": "قَالَ فِرْعَوْنُ وَمَا رَبُّ ٱلْعَـٰلَمِينَ",
+          "score": 0.3944,
+          "overlap": 0.5037,
+          "phrase": 0.4167,
+          "morphology": 0.171,
+          "shared": [
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Verbs",
+            "Nouns",
+            "Pronouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "52:48",
+          "chapter_id": 52,
+          "verse_number": 48,
+          "text": "وَٱصْبِرْ لِحُكْمِ رَبِّكَ فَإِنَّكَ بِأَعْيُنِنَا ۖ وَسَبِّحْ بِحَمْدِ رَبِّكَ حِينَ تَقُومُ",
+          "score": 0.3934,
+          "overlap": 0.4437,
+          "phrase": 0.125,
+          "morphology": 0.6248,
+          "shared": [
+            "حمد",
+            "ربب"
+          ],
+          "pattern": [
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs"
+          ],
+          "phrase_run": [
+            "حمد"
+          ]
+        },
+        {
+          "verse_key": "37:87",
+          "chapter_id": 37,
+          "verse_number": 87,
+          "text": "فَمَا ظَنُّكُم بِرَبِّ ٱلْعَـٰلَمِينَ",
+          "score": 0.3889,
+          "overlap": 0.352,
+          "phrase": 0.4167,
+          "morphology": 0.4218,
+          "shared": [
+            "ربب",
+            "علم"
+          ],
+          "pattern": [
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "ربب",
+            "علم"
+          ]
+        },
+        {
+          "verse_key": "29:63",
+          "chapter_id": 29,
+          "verse_number": 63,
+          "text": "وَلَئِن سَأَلْتَهُم مَّن نَّزَّلَ مِنَ ٱلسَّمَآءِ مَآءً فَأَحْيَا بِهِ ٱلْأَرْضَ مِنۢ بَعْدِ مَوْتِهَا لَيَقُولُنَّ ٱللَّهُ ۚ قُلِ ٱلْحَمْدُ لِلَّهِ ۚ بَلْ أَكْثَرُهُمْ لَا يَعْقِلُونَ",
+          "score": 0.3855,
+          "overlap": 0.3225,
+          "phrase": 0.4167,
+          "morphology": 0.4616,
+          "shared": [
+            "اله",
+            "حمد"
+          ],
+          "pattern": [
+            "Particles",
+            "Verbs",
+            "Pronouns",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Pronouns",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Particles",
+            "Verbs"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله"
+          ]
+        },
+        {
+          "verse_key": "5:72",
+          "chapter_id": 5,
+          "verse_number": 72,
+          "text": "لَقَدْ كَفَرَ ٱلَّذِينَ قَالُوٓا۟ إِنَّ ٱللَّهَ هُوَ ٱلْمَسِيحُ ٱبْنُ مَرْيَمَ ۖ وَقَالَ ٱلْمَسِيحُ يَـٰبَنِىٓ إِسْرَٰٓءِيلَ ٱعْبُدُوا۟ ٱللَّهَ رَبِّى وَرَبَّكُمْ ۖ إِنَّهُۥ مَن يُشْرِكْ بِٱللَّهِ فَقَدْ حَرَّمَ ٱللَّهُ عَلَيْهِ ٱلْجَنَّةَ وَمَأْوَىٰهُ ٱلنَّارُ ۖ وَمَا لِلظَّـٰلِمِينَ مِنْ أَنصَارٍ",
+          "score": 0.3808,
+          "overlap": 0.24,
+          "phrase": 0.4167,
+          "morphology": 0.5912,
+          "shared": [
+            "اله",
+            "ربب"
+          ],
+          "pattern": [
+            "Particles",
+            "Verbs",
+            "Pronouns",
+            "Verbs",
+            "Particles",
+            "Nouns",
+            "Pronouns",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Particles",
+            "Verbs",
+            "Nouns",
+            "Particles",
+            "Verbs",
+            "Nouns",
+            "Prepositions",
+            "Nouns",
+            "Nouns",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Prepositions",
+            "Nouns"
+          ],
+          "phrase_run": [
+            "اله",
+            "ربب"
+          ]
+        },
+        {
+          "verse_key": "35:34",
+          "chapter_id": 35,
+          "verse_number": 34,
+          "text": "وَقَالُوا۟ ٱلْحَمْدُ لِلَّهِ ٱلَّذِىٓ أَذْهَبَ عَنَّا ٱلْحَزَنَ ۖ إِنَّ رَبَّنَا لَغَفُورٌ شَكُورٌ",
+          "score": 0.3796,
+          "overlap": 0.4674,
+          "phrase": 0.4167,
+          "morphology": 0.177,
+          "shared": [
+            "اله",
+            "حمد",
+            "ربب"
+          ],
+          "pattern": [
+            "Verbs",
+            "Nouns",
+            "Nouns",
+            "Pronouns",
+            "Verbs",
+            "Prepositions",
+            "Nouns",
+            "Particles",
+            "Nouns",
+            "Nouns",
+            "Nominals"
+          ],
+          "phrase_run": [
+            "حمد",
+            "اله"
+          ]
+        }
+      ]
+    }
+  }
+]

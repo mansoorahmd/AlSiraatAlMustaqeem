@@ -1,0 +1,24 @@
+appId: com.mqresearchgate.app
+productName: MQ Research Gate
+directories:
+  output: dist-desktop
+
+# Ship only the shell; the built web app goes in resources. Everything else is on the
+# research server.
+files:
+  - electron/main.mjs
+  - electron/preload.cjs
+  - package.json
+
+extraResources:
+  - from: app/dist
+    to: app/dist
+
+win:
+  target: nsis
+mac:
+  target: dmg
+  category: public.app-category.education
+linux:
+  target: AppImage
+  category: Education

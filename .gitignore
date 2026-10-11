@@ -1,0 +1,53 @@
+# --- secrets ---
+.env
+
+# --- node ---
+node_modules/
+app/dist/
+*.log
+
+# --- content database: too large for GitHub (143 MB > 100 MB limit) ---
+# kept local only; rebuildable from the archived Python pipeline / your backup.
+quran.db
+
+# --- sqlite runtime sidecars (transient) ---
+# research.db is NOT tracked — it's the reader's personal data (back it up yourself).
+research.db
+*.db-wal
+*.db-shm
+
+# --- python (legacy pipeline, kept in a separate backup) ---
+.venv/
+__pycache__/
+*.pyc
+
+# --- os / mount artifacts ---
+.DS_Store
+.fuse_hidden*
+Thumbs.db
+
+# --- mcp workspace ---
+mcp/node_modules/
+
+# desktop (Electron) build artifacts
+dist-desktop/
+
+# research backups (copies of research.db — personal data, same reason it isn't tracked)
+backups/
+
+# corpus signing — the maintainer's PRIVATE key must never be committed
+# (the public key corpus/trusted-key.pub.pem is committed and trusted by clients)
+corpus/*.priv.pem
+corpus/maintainer-key*.pem
+
+# which database files this machine has opened — personal, per-machine
+databases.json
+profiles.json
+research-*.db
+research-*.db-*
+
+# deployment — secrets and the corpus file live on the server, not in git
+deploy/corpus/
+
+# test logins (passwords for the deployed server) — see server/src/test-users-cli.ts
+test-users.csv

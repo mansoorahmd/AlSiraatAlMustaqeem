@@ -1,0 +1,780 @@
+<title>Research Gate Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Amiri:wght@400;700&display=swap">
+<style>
+  :root{
+    --paper:#ece7da; --surface:#f6f2e8; --surface-2:#efe9db;
+    --ink:#2a2620; --ink-soft:#6c6355; --line:#d7cebb; --line-strong:#c3b79d;
+    --lapis:#2f4c82; --lapis-soft:#4a6bab; --gold:#a9781f; --gold-soft:#c99a3a;
+    --free:#3d6a4c; --paid:#a56a15; --gate:#9c3a2c;
+    --shadow:0 1px 2px rgba(42,38,32,.06),0 6px 20px rgba(42,38,32,.05);
+    --r:12px; --maxw:1040px; --prose:66ch;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+    --serif:"Fraunces",Georgia,"Times New Roman",serif;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --arabic:"Amiri",serif;
+  }
+  :root:not([data-theme="light"]){ @media (prefers-color-scheme:dark){
+    --paper:#16130e; --surface:#1e1a13; --surface-2:#241f16;
+    --ink:#ece3d1; --ink-soft:#a99c85; --line:#352d20; --line-strong:#463b29;
+    --lapis:#89abe0; --lapis-soft:#6f93cf; --gold:#d7ab54; --gold-soft:#e4c072;
+    --free:#7bb389; --paid:#d6a24e; --gate:#d9776a;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 26px rgba(0,0,0,.34);
+  }}
+  :root[data-theme="dark"]{
+    --paper:#16130e; --surface:#1e1a13; --surface-2:#241f16;
+    --ink:#ece3d1; --ink-soft:#a99c85; --line:#352d20; --line-strong:#463b29;
+    --lapis:#89abe0; --lapis-soft:#6f93cf; --gold:#d7ab54; --gold-soft:#e4c072;
+    --free:#7bb389; --paid:#d6a24e; --gate:#d9776a;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 26px rgba(0,0,0,.34);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+    font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(rgba(120,105,80,.05) 1px,transparent 1px);
+    background-size:22px 22px;}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+  /* ---- header ---- */
+  header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;
+    background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);}
+  .top-in{max-width:var(--maxw);margin:0 auto;padding:10px 20px;display:flex;gap:14px;
+    align-items:center;flex-wrap:wrap;}
+  .brand{display:flex;flex-direction:column;line-height:1.15;margin-right:auto;min-width:0}
+  .brand .k{font-family:var(--serif);font-weight:900;font-size:19px;letter-spacing:.01em}
+  .brand .s{font-size:11.5px;color:var(--ink-soft);font-family:var(--mono);letter-spacing:.02em}
+  .brand .ar{font-family:var(--arabic);font-size:15px;color:var(--gold)}
+  .hactions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .namebox{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;
+    padding:3px 4px 3px 10px;background:var(--surface)}
+  .namebox label{font-size:11px;color:var(--ink-soft);font-family:var(--mono)}
+  .namebox input{border:0;background:transparent;color:var(--ink);font:inherit;font-size:13px;width:9ch}
+  .namebox input:focus{outline:none}
+  .btn{font:inherit;font-size:12.5px;border:1px solid var(--line-strong);background:var(--surface);
+    color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer;white-space:nowrap;
+    display:inline-flex;align-items:center;gap:6px}
+  .btn:hover{border-color:var(--lapis);color:var(--lapis)}
+  .btn:focus-visible{outline:2px solid var(--lapis);outline-offset:2px}
+
+  /* ---- layout ---- */
+  .wrap{max-width:var(--maxw);margin:0 auto;padding-inline:20px;padding-block:0 64px;
+    display:grid;grid-template-columns:210px minmax(0,1fr);gap:38px;align-items:start}
+  nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 70px);align-self:start;
+    padding-top:26px;font-size:13px}
+  nav.toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+  nav.toc a{display:block;padding:5px 0 5px 14px;color:var(--ink-soft);text-decoration:none;
+    border-left:2px solid transparent;margin-left:-1px}
+  nav.toc a:hover{color:var(--ink)}
+  nav.toc a.on{color:var(--lapis);border-left-color:var(--lapis);font-weight:600}
+  main{min-width:0;padding-top:26px}
+
+  h1{font-family:var(--serif);font-weight:900;font-size:clamp(30px,5vw,46px);line-height:1.05;
+    margin:.1em 0 .1em;text-wrap:balance;letter-spacing:-.01em}
+  .lead{font-size:17px;color:var(--ink-soft);max-width:var(--prose);margin:0 0 8px}
+  section{scroll-margin-top:90px;padding-block:26px;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:0}
+  h2{font-family:var(--serif);font-weight:600;font-size:26px;margin:0 0 4px;letter-spacing:-.01em}
+  h2 .num{font-family:var(--mono);font-size:14px;color:var(--gold);font-weight:500;margin-right:10px;
+    vertical-align:middle}
+  h3{font-family:var(--serif);font-weight:600;font-size:18px;margin:22px 0 6px}
+  p{max-width:var(--prose)} p,li{overflow-wrap:break-word}
+  a{color:var(--lapis)}
+  code{font-family:var(--mono);font-size:.88em;background:var(--surface-2);border:1px solid var(--line);
+    border-radius:5px;padding:.05em .4em}
+  strong{font-weight:600}
+  em{font-style:italic;color:var(--ink)}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--gold);margin:0 0 6px}
+
+  /* ---- figures ---- */
+  figure{margin:20px 0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+    box-shadow:var(--shadow);overflow:hidden}
+  .figbody{overflow-x:auto;padding:18px}
+  figure svg{display:block;max-width:100%;height:auto;color:var(--ink);min-width:520px;margin:0 auto}
+  figcaption{border-top:1px solid var(--line);padding:10px 16px;font-size:12.5px;color:var(--ink-soft);
+    background:var(--surface-2)}
+  figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- panels / cards ---- */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;
+    box-shadow:var(--shadow)}
+  .card.free{border-top:3px solid var(--free)}
+  .card.paid{border-top:3px solid var(--paid)}
+  .card h4{margin:0 0 4px;font-family:var(--serif);font-size:17px;display:flex;align-items:center;gap:8px}
+  .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+    padding:2px 7px;border-radius:999px;border:1px solid currentColor}
+  .tag.free{color:var(--free)} .tag.paid{color:var(--paid)}
+  .checks{list-style:none;margin:8px 0 0;padding:0}
+  .checks li{padding:5px 0 5px 24px;position:relative;border-bottom:1px dashed var(--line)}
+  .checks li:last-child{border-bottom:0}
+  .checks li::before{position:absolute;left:0;top:5px;font-family:var(--mono);font-weight:600}
+  .card.free .checks li::before{content:"✓";color:var(--free)}
+  .card.paid .checks li::before{content:"◆";color:var(--paid)}
+
+  .callout{border:1px solid var(--line);border-left:3px solid var(--lapis);background:var(--surface);
+    border-radius:8px;padding:12px 16px;margin:16px 0;font-size:14px}
+  .callout .h{font-weight:600;font-family:var(--serif)}
+
+  table.matrix{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;min-width:460px}
+  .tblwrap{overflow-x:auto}
+  table.matrix th,table.matrix td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  table.matrix thead th{background:var(--surface-2);font-family:var(--mono);font-size:11.5px;
+    text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft)}
+  table.matrix td code{background:transparent;border:0;padding:0}
+  .pill{font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:999px;white-space:nowrap}
+  .pill.y{color:var(--free);border:1px solid var(--free)}
+  .pill.n{color:var(--ink-soft);border:1px solid var(--line-strong)}
+
+  /* ---- roadmap ---- */
+  .road{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  .step{display:grid;grid-template-columns:168px 1fr;gap:14px;align-items:start;
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--surface)}
+  .step .st{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:999px;
+    align-self:start;text-align:center;white-space:nowrap}
+  .st.done{color:var(--free);border:1px solid var(--free)}
+  .st.defer{color:var(--paid);border:1px solid var(--paid)}
+  .step h4{margin:0 0 2px;font-family:var(--serif);font-size:16px}
+  .step p{margin:0;font-size:13.5px;color:var(--ink-soft)}
+  .step code{font-size:12px}
+
+  /* ---- feedback threads ---- */
+  .thread{margin:22px 0 4px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);
+    overflow:hidden}
+  .thread > .th-h{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+  .thread > .th-h .dot{width:7px;height:7px;border-radius:999px;background:var(--gold)}
+  .th-list{display:flex;flex-direction:column;gap:10px;padding:14px}
+  .th-empty{color:var(--ink-soft);font-size:13px;font-style:italic;padding:2px}
+  .msg{border:1px solid var(--line);border-radius:9px;padding:9px 12px;background:var(--surface);max-width:100%}
+  .msg.claude{border-left:3px solid var(--lapis)}
+  .msg.you{border-left:3px solid var(--gold)}
+  .msg .meta{display:flex;gap:8px;align-items:baseline;font-size:11.5px;margin-bottom:3px;flex-wrap:wrap}
+  .msg .who{font-weight:600;font-family:var(--mono);font-size:11.5px}
+  .msg.claude .who{color:var(--lapis)} .msg.you .who{color:var(--gold)}
+  .msg .when{color:var(--ink-soft);font-family:var(--mono);font-size:10.5px}
+  .msg .body{font-size:14px;white-space:pre-wrap;word-break:break-word}
+  .composer{display:flex;flex-direction:column;gap:8px;padding:0 14px 14px}
+  .composer textarea{width:100%;resize:vertical;min-height:62px;font:inherit;font-size:14px;
+    border:1px solid var(--line-strong);border-radius:8px;padding:9px 11px;background:var(--surface);color:var(--ink)}
+  .composer textarea:focus{outline:none;border-color:var(--lapis)}
+  .composer .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .composer .send{background:var(--lapis);color:#fff;border:1px solid var(--lapis);border-radius:999px;
+    padding:7px 16px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+  .composer .send:hover{background:var(--lapis-soft);border-color:var(--lapis-soft)}
+  .composer .send:disabled{opacity:.5;cursor:not-allowed}
+  .composer .note{font-size:12px;color:var(--ink-soft)}
+  .composer .note.err{color:var(--gate)}
+  .status-chip{font-family:var(--mono);font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--line-strong);color:var(--ink-soft)}
+  .status-chip.live{color:var(--free);border-color:var(--free)}
+  .status-chip.off{color:var(--gate);border-color:var(--gate)}
+
+  .foot{max-width:var(--maxw);margin:0 auto;padding:26px 20px 8px;color:var(--ink-soft);font-size:12.5px;
+    border-top:1px solid var(--line)}
+  .kbd{font-family:var(--mono);font-size:.85em;border:1px solid var(--line-strong);border-bottom-width:2px;
+    border-radius:5px;padding:0 5px;background:var(--surface)}
+
+  @media (max-width:820px){
+    .wrap{grid-template-columns:1fr;gap:0}
+    nav.toc{display:none}
+    main{padding-top:16px}
+    .grid2{grid-template-columns:1fr}
+  }
+  .card.role{border-top:3px solid var(--lapis)}
+  .card.role .checks li::before{content:"▸";color:var(--lapis)}
+  .tag.role{color:var(--lapis)}
+  .card .checks li::before{content:"·";color:var(--ink-soft)}
+  .card.free .checks li::before{content:"✓";color:var(--free)}
+  .card.paid .checks li::before{content:"◆";color:var(--paid)}
+  .card.role .checks li::before{content:"▸";color:var(--lapis)}
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <span class="k">Research Gate Atlas</span>
+      <span class="s">MQ Research Gate · architecture &amp; monetization · <span class="ar">الصراط المستقيم</span></span>
+    </div>
+    <div class="hactions">
+      <span id="dbStatus" class="status-chip">connecting…</span>
+      <span class="namebox"><label for="who">you are</label><input id="who" placeholder="name…" autocomplete="off" spellcheck="false"></span>
+      <button class="btn" id="themeBtn" type="button" aria-label="Switch colour theme"><span id="themeIcon">◑</span> <span id="themeLbl">System</span></button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="toc" aria-label="Contents">
+    <ol id="tocList">
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#system">System map</a></li>
+      <li><a href="#data">The databases</a></li>
+      <li><a href="#money">Features &amp; resources</a></li>
+      <li><a href="#gate">The gates</a></li>
+      <li><a href="#community">Community</a></li>
+      <li><a href="#publishing">Publishing &amp; audience</a></li>
+      <li><a href="#mcp">The MCP</a></li>
+      <li><a href="#admin">Admin</a></li>
+      <li><a href="#roadmap">Roadmap &amp; status</a></li>
+      <li><a href="#log">Communication log</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="overview">
+      <p class="eyebrow">Working document</p>
+      <h1>Research Gate Atlas</h1>
+      <p class="lead">A map of how <strong>MQ Research Gate</strong>, a detective's study for the Qur'an, is
+        built, and how access and monetization work. It is also our shared notebook: every section has a feedback
+        thread, and the whole history is kept so we can settle changes here rather than in chat.</p>
+      <div class="callout">
+        <span class="h">How to use this page.</span> Type your name once (top right), then leave notes in the
+        <em>Notes &amp; feedback</em> box under any section. Entries are saved to this page and persist — I read them
+        back and reply in the same threads, marked <span style="color:var(--lapis);font-weight:600">Claude</span>.
+        The <a href="#log">Communication log</a> at the end shows everything in one place.
+      </div>
+      <p style="font-size:13px;color:var(--ink-soft)">The one rule to hold onto: <strong>features are role-based, resources are plan-based</strong> — and your
+        research is <em>yours</em>: private in your account until you publish it, and then seen only by the audience it
+        names, once a reviewer approves it.</p>
+    </section>
+
+    <section id="system">
+      <h2><span class="num">01</span>System map</h2>
+      <p>Everything lives on the <strong>research server</strong>: the Qur'an corpus, <strong>your research</strong>
+        (private to you — row-level security) and the community. The app on your machine and the AI (through the MCP) read and
+        write it as you — the app with your sign-in, the AI with a token that acts as you. Every request passes the same
+        gates.</p>
+      <figure>
+        <div class="figbody">
+          <svg viewBox="0 0 940 480" role="img" aria-label="On your machine: the app and the MCP, which store nothing of yours. On the cloud: the research server with sign-in, the gates, admin, the corpus, each account's private research, and the community. The app and MCP reach it over the network with a session or token.">
+            <defs>
+              <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0L10 5L0 10z" fill="currentColor"/>
+              </marker>
+              <marker id="ahL" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0L10 5L0 10z" fill="var(--lapis)"/>
+              </marker>
+              <marker id="ahG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0L10 5L0 10z" fill="var(--gold)"/>
+              </marker>
+            </defs>
+            <rect x="16" y="40" width="404" height="420" rx="14" fill="var(--surface-2)" stroke="var(--free)" stroke-width="1.5"/>
+            <text x="30" y="30" font-family="var(--mono)" font-size="13" fill="var(--free)">YOUR MACHINE</text>
+            <rect x="470" y="40" width="454" height="420" rx="14" fill="var(--surface-2)" stroke="var(--lapis)" stroke-width="1.5"/>
+            <text x="484" y="30" font-family="var(--mono)" font-size="13" fill="var(--lapis)">THE CLOUD · research server</text>
+            <line x1="445" y1="26" x2="445" y2="470" stroke="var(--gold)" stroke-width="1.5" stroke-dasharray="3 5"/>
+            <text x="445" y="477" text-anchor="middle" font-family="var(--mono)" font-size="10.5" fill="var(--gold)">network · role &amp; plan gates</text>
+
+            <g font-family="var(--sans)" font-size="14">
+              <rect x="52" y="80" width="170" height="56" rx="9" fill="var(--surface)" stroke="currentColor"/>
+              <text x="137" y="104" text-anchor="middle" font-weight="600">App</text>
+              <text x="137" y="122" text-anchor="middle" font-size="11" fill="var(--ink-soft)">desktop or npm start</text>
+
+              <rect x="52" y="250" width="170" height="56" rx="9" fill="var(--surface)" stroke="currentColor"/>
+              <text x="137" y="274" text-anchor="middle" font-weight="600">MCP</text>
+              <text x="137" y="292" text-anchor="middle" font-size="11" fill="var(--ink-soft)">AI study · stdio</text>
+
+              <text x="52" y="405" font-size="11.5" fill="var(--ink-soft)">nothing of yours is stored here</text>
+            </g>
+
+            <g font-family="var(--sans)">
+              <rect x="490" y="70" width="414" height="370" rx="10" fill="var(--surface)" stroke="var(--lapis)"/>
+              <text x="697" y="94" text-anchor="middle" font-weight="600" font-size="15">Research server</text>
+              <text x="697" y="111" text-anchor="middle" font-size="11" fill="var(--ink-soft)">Hono · Postgres · Better Auth</text>
+              <rect x="506" y="124" width="382" height="46" rx="8" fill="var(--surface-2)" stroke="currentColor"/>
+              <text x="518" y="143" font-size="12.5" font-weight="600">Sign-in</text>
+              <text x="518" y="160" font-size="11" fill="var(--ink-soft)">session cookie (app) · API token mqrg_… (MCP)</text>
+              <rect x="506" y="178" width="382" height="52" rx="8" fill="var(--surface-2)" stroke="var(--paid)"/>
+              <text x="518" y="198" font-size="12.5" font-weight="600" fill="var(--paid)">The gates</text>
+              <text x="518" y="216" font-size="11" fill="var(--ink-soft)">features → role (ladder) · resources → plan · results → audience</text>
+              <rect x="506" y="238" width="382" height="44" rx="8" fill="var(--surface-2)" stroke="currentColor"/>
+              <text x="518" y="257" font-size="12.5" font-weight="600">Admin · maintainers</text>
+              <text x="518" y="273" font-size="11" fill="var(--ink-soft)">roles · plan tiers · who can read what · people</text>
+              <rect x="506" y="292" width="122" height="134" rx="8" fill="var(--surface-2)" stroke="var(--gold)"/>
+              <text x="516" y="313" font-size="12.5" font-weight="600" fill="var(--gold)">Corpus</text>
+              <text x="516" y="331" font-size="10.5" fill="var(--ink-soft)">/corpus</text>
+              <text x="516" y="347" font-size="10.5" fill="var(--ink-soft)">text · roots</text>
+              <text x="516" y="363" font-size="10.5" fill="var(--ink-soft)">lexicons</text>
+              <text x="516" y="379" font-size="10.5" fill="var(--ink-soft)">search</text>
+              <rect x="636" y="292" width="122" height="134" rx="8" fill="var(--surface-2)" stroke="var(--free)"/>
+              <text x="646" y="313" font-size="12.5" font-weight="600" fill="var(--free)">Your research</text>
+              <text x="646" y="331" font-size="10.5" fill="var(--ink-soft)">/research</text>
+              <text x="646" y="347" font-size="10.5" fill="var(--ink-soft)">private: each</text>
+              <text x="646" y="363" font-size="10.5" fill="var(--ink-soft)">row its owner's</text>
+              <text x="646" y="379" font-size="10.5" fill="var(--ink-soft)">(row-level security)</text>
+              <rect x="766" y="292" width="122" height="134" rx="8" fill="var(--surface-2)" stroke="var(--lapis)"/>
+              <text x="776" y="313" font-size="12.5" font-weight="600" fill="var(--lapis)">Community</text>
+              <text x="776" y="331" font-size="10.5" fill="var(--ink-soft)">published,</text>
+              <text x="776" y="347" font-size="10.5" fill="var(--ink-soft)">reviewed,</text>
+              <text x="776" y="363" font-size="10.5" fill="var(--ink-soft)">each with its</text>
+              <text x="776" y="379" font-size="10.5" fill="var(--ink-soft)">audience</text>
+            </g>
+
+            <path d="M222 100 C 330 70, 400 110, 504 140" stroke="var(--lapis)" stroke-width="2.4" fill="none" marker-end="url(#ahL)"/>
+            <text x="300" y="74" text-anchor="middle" font-size="11" fill="var(--lapis)" font-family="var(--mono)">everything · your sign-in</text>
+            <path d="M222 272 C 320 250, 400 190, 504 160" stroke="var(--lapis)" stroke-width="2" fill="none" marker-end="url(#ahL)"/>
+            <text x="240" y="302" font-size="11" fill="var(--lapis)" font-family="var(--mono)">as you, by token</text>
+          </svg>
+        </div>
+        <figcaption><b>The whole system.</b> The app and the MCP hold nothing of their own: the corpus, your research
+          and the community are all on the research server, reached with your sign-in (or a token that acts as you). Your
+          research is kept apart by row-level security — every row carries your account, and nobody else's request can reach it.</figcaption>
+      </figure>
+      <div class="thread" data-section="system"></div>
+    </section>
+
+    <section id="data">
+      <h2><span class="num">02</span>The databases</h2>
+      <p>All on the research server, in one Postgres.</p>
+      <div class="grid2">
+        <div class="card">
+          <h4>📖 The corpus <span class="tag paid">plan-gated</span></h4>
+          <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">The Book and everything known about its
+            words — schema <code>corpus</code>.</p>
+          <ul class="checks">
+            <li>Text in four scripts, morphology, roots, ~10 classical lexicons, translations</li>
+            <li>Loaded from <code>quran.db</code> and verified exact; the same corpus code answers over both, identically</li>
+            <li>Proven: <strong>77,439</strong> requests compared with the local copy — all identical</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>✒️ Your research <span class="tag free">private</span></h4>
+          <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">What you build — your earned
+            understanding. One shared schema, <code>research</code>, kept apart by row-level security.</p>
+          <ul class="checks">
+            <li>Cases &amp; board, established meanings, trails, notes, indications, motifs, comparisons</li>
+            <li>Every row carries your account; the database itself shows each request only its own user's rows — a draft is yours alone, staff included</li>
+            <li>Only here — nothing of it is kept on your computer; the server's nightly backup is its copy</li>
+            <li>The AI's proposals land here, tagged <code>ai</code>, for you to accept</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout"><span class="h">Private unless published.</span> Nothing in your research is visible to anyone
+        else. Publishing makes a <em>frozen copy</em> for review; it becomes the group's only once approved — and even
+        then only for the audience it names (§04).</div>
+      <div class="thread" data-section="data"></div>
+    </section>
+
+    <section id="money">
+      <h2><span class="num">03</span>Features and resources</h2>
+      <p>Everything gated falls into one of two kinds, and each kind has exactly one question.</p>
+      <div class="grid2">
+        <div class="card role">
+          <h4>Features <span class="tag role">role</span></h4>
+          <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">What you may <strong>do</strong>. A ladder you edit:
+            <code>reader ‹ student ‹ researcher ‹ scholar ‹ moderator ‹ maintainer</code></p>
+          <ul class="checks">
+            <li>Keep your own research · any account</li>
+            <li>Publish — submit notes, propose readings · <em>the role you choose</em> (researcher by default)</li>
+            <li>Review — approve / object · <code>moderator</code> (fixed)</li>
+            <li>Establish, invite, the Admin tab · <code>maintainer</code> (fixed)</li>
+          </ul>
+        </div>
+        <div class="card paid">
+          <h4>Resources <span class="tag paid">plan</span></h4>
+          <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">What you may <strong>read</strong>.
+            e.g. <code>free (0) ‹ pro (100) ‹ …</code></p>
+          <ul class="checks">
+            <li>The Qur'an corpus — text, words, roots, dictionaries, search</li>
+            <li>The community — readings, dissent, ⚖ divergence, chips</li>
+            <li>Each translation, each dictionary — can need more than the corpus</li>
+          </ul>
+        </div>
+      </div>
+      <h3>The whole matrix</h3>
+      <div class="tblwrap">
+      <table class="matrix">
+        <thead><tr><th>Action</th><th>Kind</th><th>Needs</th></tr></thead>
+        <tbody>
+          <tr><td>Your own research — cases, notes, meanings</td><td>feature</td><td>any account · private to you</td></tr>
+          <tr><td>Read the Qur'an corpus</td><td>resource <code>corpus</code></td><td><span class="pill y">its rule</span> default pro</td></tr>
+          <tr><td>A translation / a dictionary's entries</td><td>resource</td><td><span class="pill y">its own tier</span> or the corpus's</td></tr>
+          <tr><td>Community readings, dissent, divergence</td><td>resource <code>community</code></td><td><span class="pill y">its rule</span> + each result's <em>audience</em></td></tr>
+          <tr><td>Publish (submit / propose)</td><td>feature</td><td>the publish role (researcher by default)</td></tr>
+          <tr><td>Review</td><td>feature</td><td><code>moderator</code></td></tr>
+          <tr><td>Establish, invite, administer</td><td>feature</td><td><code>maintainer</code></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p style="font-size:13.5px">Roles and plans are independent: a scholar on free can do what scholars do, but reads only
+        what free reaches; a paying reader reads more but can't publish until their role allows it.</p>
+      <div class="thread" data-section="money"></div>
+    </section>
+
+    <section id="gate">
+      <h2><span class="num">04</span>The gates</h2>
+      <p>Two middlewares, one per kind. <code>requireRole(min)</code> guards features;
+        <code>requireResource(kind)</code> guards resources by reading the rule from <code>resource_access</code> —
+        so changing who may read something is a row, not a deploy. Everything fails closed: an unknown tier never
+        passes, and a lapsed plan counts as <em>free</em>.</p>
+      <figure>
+        <div class="figbody">
+          <svg viewBox="0 0 900 300" role="img" aria-label="A request for a feature passes requireRole: 401 signed out, 403 role too low, else OK. A request for a resource passes requireResource: 401 sign in needed, 402 higher plan needed, else OK with items above your tier left out.">
+            <defs>
+              <marker id="g_ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0L10 5L0 10z" fill="currentColor"/>
+              </marker>
+            </defs>
+            <g font-family="var(--sans)" font-size="13.5">
+              <rect x="20" y="125" width="120" height="50" rx="9" fill="var(--surface-2)" stroke="currentColor"/>
+              <text x="80" y="155" text-anchor="middle" font-weight="600">request</text>
+
+              <rect x="240" y="40" width="170" height="58" rx="9" fill="var(--surface)" stroke="var(--lapis)"/>
+              <text x="325" y="64" text-anchor="middle" font-weight="600" fill="var(--lapis)">requireRole</text>
+              <text x="325" y="82" text-anchor="middle" font-size="11" fill="var(--ink-soft)">may you DO this?</text>
+
+              <rect x="240" y="190" width="170" height="58" rx="9" fill="var(--surface)" stroke="var(--paid)"/>
+              <text x="325" y="214" text-anchor="middle" font-weight="600" fill="var(--paid)">requireResource</text>
+              <text x="325" y="232" text-anchor="middle" font-size="11" fill="var(--ink-soft)">may you READ this?</text>
+
+              <rect x="710" y="44" width="150" height="50" rx="9" fill="var(--surface)" stroke="var(--free)"/>
+              <text x="785" y="67" text-anchor="middle" font-weight="600" fill="var(--free)">200 OK</text>
+              <text x="785" y="84" text-anchor="middle" font-size="10.5" fill="var(--ink-soft)">the feature runs</text>
+
+              <rect x="710" y="194" width="150" height="50" rx="9" fill="var(--surface)" stroke="var(--free)"/>
+              <text x="785" y="217" text-anchor="middle" font-weight="600" fill="var(--free)">200 OK</text>
+              <text x="785" y="234" text-anchor="middle" font-size="10.5" fill="var(--ink-soft)">the read, filtered</text>
+            </g>
+            <g stroke="currentColor" stroke-width="1.6" fill="none">
+              <path d="M140 140 C 190 140, 190 69, 238 69" marker-end="url(#g_ah)"/>
+              <path d="M140 160 C 190 160, 190 219, 238 219" marker-end="url(#g_ah)"/>
+              <line x1="410" y1="69" x2="708" y2="69" marker-end="url(#g_ah)"/>
+              <line x1="410" y1="219" x2="708" y2="219" marker-end="url(#g_ah)"/>
+            </g>
+            <g font-family="var(--mono)" font-size="11">
+              <text x="242" y="32" fill="var(--ink-soft)" letter-spacing=".08em">FEATURES</text>
+              <text x="242" y="182" fill="var(--ink-soft)" letter-spacing=".08em">RESOURCES</text>
+              <text x="426" y="92" fill="var(--gate)">401 signed out · 403 role too low</text>
+              <text x="426" y="242" fill="var(--paid)">401 sign in · 402 needs a plan → upgrade</text>
+              <text x="426" y="280" fill="var(--ink-soft)">a translation or dictionary above your tier is left out, not refused</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption><b>One question per gate.</b> The 402 names the plan it needs, and the app turns it into a single
+          banner at the top — <em>Sign in to read</em>, <em>Reading this needs the pro plan</em>, or, after a grant,
+          <em>Your access has changed — reload</em> — instead of an error on every screen.</figcaption>
+      </figure>
+      <p style="font-size:13.5px;color:var(--ink-soft)">Billing isn't wired yet — a maintainer grants a plan in the
+        Admin tab (or <code>npm run set-plan -w @alsiraat/server -- you@example.org pro 30</code>). That's the one seam a
+        payment provider slots into later.</p>
+      <div class="thread" data-section="gate"></div>
+    </section>
+
+    <section id="community">
+      <h2><span class="num">05</span>Community: read live, never mirrored</h2>
+      <p><strong>Before</strong>, the group's readings were <em>pulled down and mirrored</em> into local
+        <code>derived_*</code> tables so they'd work offline — which also meant they sat on the user's disk, forever,
+        un-gateable. <strong>Now</strong> they're read <em>live</em> from the research server, behind
+        <code>requireResource('community')</code>, and never stored locally.</p>
+      <figure>
+        <div class="figbody">
+          <svg viewBox="0 0 900 330" role="img" aria-label="Before, the remote pulled into a local derived copy read by the app. After, the app reads the remote live through the community gate with no local copy.">
+            <defs>
+              <marker id="c_ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0L10 5L0 10z" fill="currentColor"/>
+              </marker>
+              <marker id="c_ahL" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0L10 5L0 10z" fill="var(--lapis)"/>
+              </marker>
+            </defs>
+            <text x="20" y="30" font-family="var(--mono)" font-size="12" fill="var(--gate)">BEFORE — mirrored to disk (un-gateable)</text>
+            <g font-family="var(--sans)" font-size="13">
+              <rect x="20" y="46" width="150" height="48" rx="9" fill="var(--surface)" stroke="var(--lapis)"/>
+              <text x="95" y="75" text-anchor="middle" font-weight="600">Remote</text>
+              <rect x="270" y="46" width="190" height="48" rx="9" fill="var(--surface)" stroke="var(--gate)" stroke-dasharray="5 4"/>
+              <text x="365" y="68" text-anchor="middle" font-size="12.5" font-weight="600">local derived_* copy</text>
+              <text x="365" y="84" text-anchor="middle" font-size="10.5" fill="var(--ink-soft)">on the reader's disk</text>
+              <rect x="560" y="46" width="150" height="48" rx="9" fill="var(--surface)" stroke="currentColor"/>
+              <text x="635" y="75" text-anchor="middle" font-weight="600">App</text>
+            </g>
+            <g stroke="currentColor" stroke-width="1.6" fill="none">
+              <line x1="170" y1="70" x2="268" y2="70" marker-end="url(#c_ah)"/>
+              <line x1="460" y1="70" x2="558" y2="70" marker-end="url(#c_ah)"/>
+            </g>
+            <text x="219" y="38" text-anchor="middle" font-size="10.5" font-family="var(--mono)" fill="var(--ink-soft)">pull</text>
+            <text x="509" y="38" text-anchor="middle" font-size="10.5" font-family="var(--mono)" fill="var(--ink-soft)">read</text>
+            <text x="365" y="116" text-anchor="middle" font-size="11" fill="var(--gate)">↑ once here, it's theirs forever — cancelling changes nothing</text>
+
+            <line x1="20" y1="150" x2="880" y2="150" stroke="var(--line)"/>
+
+            <text x="20" y="188" font-family="var(--mono)" font-size="12" fill="var(--free)">NOW — live from the research server, gated (enforceable)</text>
+            <g font-family="var(--sans)" font-size="13">
+              <rect x="20" y="206" width="150" height="52" rx="9" fill="var(--surface)" stroke="currentColor"/>
+              <text x="95" y="236" text-anchor="middle" font-weight="600">App</text>
+              <rect x="330" y="200" width="180" height="64" rx="9" fill="var(--surface)" stroke="var(--paid)"/>
+              <text x="420" y="226" text-anchor="middle" font-weight="600" fill="var(--paid)">community gate</text>
+              <text x="420" y="244" text-anchor="middle" font-size="10.5" fill="var(--ink-soft)">requireResource('community')</text>
+              <text x="420" y="257" text-anchor="middle" font-size="10.5" fill="var(--ink-soft)">402 below its tier</text>
+              <rect x="660" y="206" width="180" height="52" rx="9" fill="var(--surface)" stroke="var(--lapis)"/>
+              <text x="750" y="230" text-anchor="middle" font-weight="600">Research server</text>
+              <text x="750" y="247" text-anchor="middle" font-size="10.5" fill="var(--ink-soft)">the only copy</text>
+            </g>
+            <g stroke="var(--lapis)" stroke-width="2.2" fill="none">
+              <line x1="170" y1="232" x2="328" y2="232" marker-end="url(#c_ahL)"/>
+              <line x1="510" y1="232" x2="658" y2="232" marker-end="url(#c_ahL)"/>
+            </g>
+            <text x="20" y="286" font-size="11" fill="var(--free)">no access → you simply see your own work</text>
+            <text x="750" y="286" text-anchor="middle" font-size="11" fill="var(--free)">nothing lands on disk → the gate is real</text>
+          </svg>
+        </div>
+        <figcaption><b>Before vs now.</b> The <code>derived_global_forms / dissents / peer_indications</code> tables
+          and the pull path are gone. The ⚖ divergence list and the reader's community chips call
+          <code>POST /divergences</code> and <code>GET /community/readings</code> live. Your own established meanings
+          stay in your own research.</figcaption>
+      </figure>
+      <div class="thread" data-section="community"></div>
+    </section>
+
+    <section id="publishing">
+      <h2><span class="num">06</span>Publishing — and who sees it</h2>
+      <p>Publishing is a <strong>feature</strong>: you need the role the maintainer set for it (researcher by default;
+        it could be student). Every published result then carries an <strong>audience</strong>: at least a role
+        <em>and</em> at least a plan — e.g. <em>scholars and above, on Pro</em>.</p>
+      <div class="grid2">
+        <div class="card">
+          <h4>Who decides</h4>
+          <ul class="checks">
+            <li>The <strong>author proposes</strong> the audience when publishing</li>
+            <li>The <strong>reviewer confirms or changes it</strong> when approving</li>
+            <li>Nothing is visible before approval — except to its author and the reviewers</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Where it applies</h4>
+          <ul class="checks">
+            <li>Every community read: readings, the group's reading, dissents, chips, ⚖ divergence, the pull</li>
+            <li>Below the audience, a result simply isn't there for you</li>
+            <li>Authors always see their own; moderators and maintainers see everything</li>
+          </ul>
+        </div>
+      </div>
+      <div class="thread" data-section="publishing"></div>
+    </section>
+
+    <section id="mcp">
+      <h2><span class="num">07</span>The MCP — studies as you, proposes into your research</h2>
+      <p>The MCP lets an AI study the Book <em>with</em> you. It reads the corpus <strong>and your research</strong> from the
+        research server as you (a personal API token), and writes only <strong>proposals</strong> into your research —
+        tagged <code>ai</code>, for you to accept in the app.</p>
+      <div class="grid2">
+        <div class="card">
+          <h4>The boundary — enforced by the server</h4>
+          <ul class="checks">
+            <li>May add notes, indications, motifs, cases, and its own items on your cases</li>
+            <li>Never overwrites or deletes your records; never sets your primary gloss</li>
+            <li>Never touches your verdicts, status or established meanings; can't publish or change settings</li>
+            <li>A token can't administer or mint tokens — revoke it to cut the AI off</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Its environment</h4>
+          <ul class="checks">
+            <li><code>REMOTE_URL</code> — the research server</li>
+            <li><code>REMOTE_TOKEN</code> — from Account → <em>Connect an AI assistant</em></li>
+            <li><code>MQ_CORPUS=local</code> — read <code>quran.db</code> instead (offline); your research is always your account's</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout"><span class="h">Belt and braces.</span> The MCP keeps its own guard, and the server applies the
+        same rules to every token request — so they hold even if something calls the API directly. A test runs the real
+        tools against the cloud research and checks both.</div>
+      <div class="thread" data-section="mcp"></div>
+    </section>
+
+    <section id="admin">
+      <h2><span class="num">08</span>Admin — in the app, for maintainers</h2>
+      <p>Signed in as a maintainer, an <strong>Admin</strong> tab appears. Every value reads as text with one
+        <em>Change</em>; changes apply at once, and the server enforces all of it again.</p>
+      <div class="grid2">
+        <div class="card">
+          <h4>Roles</h4>
+          <ul class="checks">
+            <li>The ladder: add learner rungs (student, scholar, …) between reader and moderator, rename, re-rank, remove</li>
+            <li><em>What each role may do</em>: the role publishing needs</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Plan tiers · Who can read</h4>
+          <ul class="checks">
+            <li>The plan ladder; the corpus and the community: anyone / signed in / a tier</li>
+            <li>Each translation and dictionary: its own tier, or the corpus's</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>People</h4>
+          <ul class="checks">
+            <li>Everyone's role (standing) and plan (paid), with an optional expiry</li>
+            <li>The last maintainer can't be demoted</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Also scriptable</h4>
+          <ul class="checks">
+            <li><code>npm run access -- …</code>, <code>npm run set-plan -- …</code></li>
+            <li>On the VPS: <code>docker compose run --rm server access show</code></li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout"><span class="h">Heads-up for you.</span> Your research starts empty in your account — the old
+        <code>research.db</code> files are gone (in the Recycle Bin). And your account is <em>maintainer · free</em> while the corpus rule is <em>pro</em> — grant
+        yourself Pro in Admin → People, or open the corpus in Who can read.</div>
+      <div class="thread" data-section="admin"></div>
+    </section>
+
+    <section id="roadmap">
+      <h2><span class="num">09</span>Roadmap &amp; status</h2>
+      <p>Corpus code 116/116, research server 250/250 tests; the corpus parity sweep 77,439/77,439. Two things run: Postgres and the research server — <code>npm run dev</code> starts the server and the web app.</p>
+      <div class="road">
+        <div class="step"><span class="st done">corpus · done</span><div><h4>The corpus on the research server</h4><p>Loaded and proven identical; the app and MCP read it from <code>/corpus</code>.</p></div></div>
+        <div class="step"><span class="st done">access · done</span><div><h4>Features by role, resources by plan</h4><p>Resource rules for the corpus, the community, each translation and dictionary; the Admin tab.</p></div></div>
+        <div class="step"><span class="st done">deploy · ready</span><div><h4>Deployable to a VPS</h4><p>Docker + Caddy HTTPS + SMTP password reset + backups (<code>DEPLOY.md</code>). Waiting on a server and a domain.</p></div></div>
+        <div class="step"><span class="st done">research · done</span><div><h4>Your research in your account</h4><p>In Postgres only, private to each account by row-level security; the app and the MCP read and write it as you. No <code>research.db</code> any more — no local file, no import or export.</p></div></div>
+        <div class="step"><span class="st done">tidy · done</span><div><h4>One server</h4><p>No <code>research.db</code> and no local server: the research server is the only back end. The desktop app just serves the built web app to its own window.</p></div></div>
+        <div class="step"><span class="st done">roles · done</span><div><h4>Roles as data; audiences on results</h4><p>reader ‹ student ‹ researcher ‹ scholar ‹ moderator ‹ maintainer; publishing's role is yours to set; each published result is seen only by its audience — proposed by its author, confirmed by the reviewer.</p></div></div>
+        <div class="step"><span class="st defer">next</span><div><h4>Billing provider</h4><p>Slots into the plan grant with no rework of the gates. Also open: deleting an account (and its research), a review screen for submissions.</p></div></div>
+      </div>
+      <div class="thread" data-section="roadmap"></div>
+    </section>
+
+    <section id="log">
+      <h2><span class="num">10</span>Communication log</h2>
+      <p>Everything left across the page, newest first — the shared record of what we've decided and what's still
+        open. Add a general note below; use the per-section boxes above for anything tied to one topic.</p>
+      <div class="thread" data-section="general"></div>
+      <div id="allLog" style="margin-top:22px"></div>
+    </section>
+  </main>
+</div>
+
+<div class="foot">
+  Research Gate Atlas · a living map of MQ Research Gate. Feedback is stored on this page and read back by Claude.
+  Press <span class="kbd">T</span> to cycle the theme.
+</div>
+
+<script>
+(function(){
+  "use strict";
+  // ---------- theme ----------
+  var root=document.documentElement, tIcon=document.getElementById("themeIcon"), tLbl=document.getElementById("themeLbl");
+  var modes=["system","light","dark"], icons={system:"◑",light:"☀",dark:"☾"}, labels={system:"System",light:"Light",dark:"Dark"};
+  function readTheme(){try{return localStorage.getItem("rga-theme")||"system";}catch(e){return "system";}}
+  function applyTheme(m){ if(m==="system"){root.removeAttribute("data-theme");} else {root.setAttribute("data-theme",m);} tIcon.textContent=icons[m]; tLbl.textContent=labels[m]; try{localStorage.setItem("rga-theme",m);}catch(e){} }
+  var theme=readTheme(); applyTheme(theme);
+  document.getElementById("themeBtn").addEventListener("click",function(){ theme=modes[(modes.indexOf(theme)+1)%3]; applyTheme(theme); });
+  document.addEventListener("keydown",function(e){ if((e.key==="t"||e.key==="T")&&!/input|textarea/i.test(document.activeElement.tagName)){ theme=modes[(modes.indexOf(theme)+1)%3]; applyTheme(theme);} });
+
+  // ---------- author name ----------
+  var whoInput=document.getElementById("who");
+  function getName(){try{return localStorage.getItem("rga-author")||"";}catch(e){return "";}}
+  function setName(v){try{localStorage.setItem("rga-author",v);}catch(e){}}
+  whoInput.value=getName();
+  whoInput.addEventListener("input",function(){ setName(whoInput.value.trim()); });
+
+  // ---------- toc scrollspy ----------
+  var links=[].slice.call(document.querySelectorAll("nav.toc a"));
+  var secs=links.map(function(a){return document.getElementById(a.getAttribute("href").slice(1));});
+  if("IntersectionObserver" in window){
+    var io=new IntersectionObserver(function(es){ es.forEach(function(en){ if(en.isIntersecting){ var id=en.target.id; links.forEach(function(a){a.classList.toggle("on",a.getAttribute("href")==="#"+id);}); } }); },{rootMargin:"-40% 0px -55% 0px"});
+    secs.forEach(function(s){if(s)io.observe(s);});
+  }
+
+  // ---------- feedback (db capability) ----------
+  var SECTION_LABEL={system:"System map",data:"Databases",money:"Features & resources",gate:"The gates",community:"Community",publishing:"Publishing",mcp:"MCP",admin:"Admin",roadmap:"Roadmap",general:"General"};
+  var threads=[].slice.call(document.querySelectorAll(".thread"));
+  var statusEl=document.getElementById("dbStatus");
+  var db=null, entries=[], ready=false;
+
+  function esc(s){return String(s==null?"":s);}
+  function fmt(ts){ try{ var d=new Date(ts); return d.toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}); }catch(e){return "";} }
+  function isClaude(a){ return /^claude$/i.test((a||"").trim()); }
+
+  function msgNode(e){
+    var wrap=document.createElement("div");
+    wrap.className="msg "+(isClaude(e.author)?"claude":"you");
+    var meta=document.createElement("div"); meta.className="meta";
+    var who=document.createElement("span"); who.className="who"; who.textContent=(e.author&&e.author.trim())?e.author.trim():"Someone";
+    var when=document.createElement("span"); when.className="when"; when.textContent=fmt(e.ts);
+    meta.appendChild(who); meta.appendChild(when);
+    var body=document.createElement("div"); body.className="body"; body.textContent=esc(e.text);
+    wrap.appendChild(meta); wrap.appendChild(body);
+    return wrap;
+  }
+
+  function renderAll(){
+    threads.forEach(function(t){
+      var sec=t.getAttribute("data-section");
+      var list=t.querySelector(".th-list"); if(!list) return;
+      var mine=entries.filter(function(e){return e.section===sec;}).sort(function(a,b){return a.ts-b.ts;});
+      list.textContent="";
+      if(!mine.length){ var em=document.createElement("div"); em.className="th-empty"; em.textContent=ready?"No notes yet — add the first.":"Loading…"; list.appendChild(em); }
+      else mine.forEach(function(e){ list.appendChild(msgNode(e)); });
+    });
+    // global log
+    var log=document.getElementById("allLog"); if(log){
+      log.textContent="";
+      var all=entries.slice().sort(function(a,b){return b.ts-a.ts;});
+      if(!all.length){ var e0=document.createElement("div"); e0.className="th-empty"; e0.textContent=ready?"Nothing logged yet.":"Loading…"; log.appendChild(e0); }
+      all.forEach(function(e){
+        var n=msgNode(e);
+        var tag=document.createElement("span"); tag.className="when"; tag.style.marginLeft="auto";
+        tag.textContent="§ "+(SECTION_LABEL[e.section]||e.section);
+        n.querySelector(".meta").appendChild(tag);
+        log.appendChild(n);
+      });
+    }
+  }
+
+  // build composer UIs
+  threads.forEach(function(t){
+    var sec=t.getAttribute("data-section");
+    var head=document.createElement("div"); head.className="th-h";
+    var dot=document.createElement("span"); dot.className="dot"; head.appendChild(dot);
+    var ht=document.createElement("span"); ht.textContent="Notes & feedback · "+(SECTION_LABEL[sec]||sec); head.appendChild(ht);
+    var list=document.createElement("div"); list.className="th-list";
+    var em=document.createElement("div"); em.className="th-empty"; em.textContent="Loading…"; list.appendChild(em);
+    var comp=document.createElement("div"); comp.className="composer";
+    var ta=document.createElement("textarea"); ta.placeholder="Leave a note, question, or change request…"; ta.id="ta-"+sec; ta.setAttribute("aria-label","Feedback on "+(SECTION_LABEL[sec]||sec));
+    var row=document.createElement("div"); row.className="row";
+    var note=document.createElement("span"); note.className="note";
+    var send=document.createElement("button"); send.className="send"; send.type="button"; send.textContent="Send"; send.disabled=true;
+    row.appendChild(note); row.appendChild(send);
+    comp.appendChild(ta); comp.appendChild(row);
+    t.appendChild(head); t.appendChild(list); t.appendChild(comp);
+
+    send.addEventListener("click",function(){ submit(sec,ta,note,send); });
+    ta.addEventListener("keydown",function(e){ if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){ submit(sec,ta,note,send); } });
+    // restore per-section draft
+    try{ var d=localStorage.getItem("rga-draft-"+sec); if(d) ta.value=d; }catch(e){}
+    ta.addEventListener("input",function(){ try{localStorage.setItem("rga-draft-"+sec,ta.value);}catch(e){} });
+  });
+
+  function setSendEnabled(on){ document.querySelectorAll(".composer .send").forEach(function(b){ b.disabled=!on; }); }
+
+  function submit(sec,ta,note,send){
+    var text=(ta.value||"").trim();
+    if(!text){ ta.focus(); return; }
+    if(!db){ note.textContent="Not connected — can't save."; note.className="note err"; return; }
+    var author=getName()||"You";
+    send.disabled=true; note.className="note"; note.textContent="Sending…";
+    db.collection("feedback").add({text:text,author:author,section:sec,ts:Date.now()})
+      .then(function(){ ta.value=""; try{localStorage.removeItem("rga-draft-"+sec);}catch(e){} note.textContent="Saved."; setTimeout(function(){note.textContent="";},1600); })
+      .catch(function(err){ note.className="note err"; note.textContent = (err&&err.code==="invalid_argument")?"This view is read-only — can't post.":"Couldn't save — try again."; })
+      .then(function(){ if(db) send.disabled=false; });
+  }
+
+  function statusOff(msg){ statusEl.textContent=msg; statusEl.className="status-chip off"; ready=true; renderAll(); }
+
+  if(!(window.claude&&typeof window.claude.use==="function")){ statusOff("feedback offline"); return; }
+  window.claude.use("db").then(function(ns){
+    if(!ns){ statusOff("feedback offline"); return; }
+    db=ns; statusEl.textContent="feedback live"; statusEl.className="status-chip live";
+    setSendEnabled(true);
+    db.collection("feedback").orderBy("ts").onSnapshot(function(snap){
+      entries = snap.docs.map(function(d){ var v=d.data()||{}; return {id:d.id,text:v.text,author:v.author,section:v.section||"general",ts:typeof v.ts==="number"?v.ts:0}; });
+      ready=true; renderAll();
+    }, function(err){ statusOff("feedback error"); });
+  }).catch(function(){ statusOff("feedback offline"); });
+})();
+</script>

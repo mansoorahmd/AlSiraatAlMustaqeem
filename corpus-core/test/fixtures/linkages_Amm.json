@@ -1,0 +1,402 @@
+[
+  {
+    "root_buckwalter": "Emm",
+    "root_arabic": "عمم",
+    "cooccur": 2,
+    "score": 0.4535,
+    "pmi": 5.2615,
+    "npmi": 0.4535,
+    "jaccard": 0.0183,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "nsk",
+    "root_arabic": "نسك",
+    "cooccur": 3,
+    "score": 0.4399,
+    "pmi": 4.8464,
+    "npmi": 0.4399,
+    "jaccard": 0.027,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "xlw",
+    "root_arabic": "خلو",
+    "cooccur": 8,
+    "score": 0.4207,
+    "pmi": 4.0391,
+    "npmi": 0.4207,
+    "jaccard": 0.0625,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "wzE",
+    "root_arabic": "وزع",
+    "cooccur": 2,
+    "score": 0.39,
+    "pmi": 4.5245,
+    "npmi": 0.39,
+    "jaccard": 0.018,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "wHd",
+    "root_arabic": "وحد",
+    "cooccur": 12,
+    "score": 0.3732,
+    "pmi": 3.3653,
+    "npmi": 0.3732,
+    "jaccard": 0.0736,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "nkv",
+    "root_arabic": "نكث",
+    "cooccur": 2,
+    "score": 0.3673,
+    "pmi": 4.2615,
+    "npmi": 0.3673,
+    "jaccard": 0.0179,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "rDE",
+    "root_arabic": "رضع",
+    "cooccur": 2,
+    "score": 0.3673,
+    "pmi": 4.2615,
+    "npmi": 0.3673,
+    "jaccard": 0.0179,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "xwl",
+    "root_arabic": "خول",
+    "cooccur": 2,
+    "score": 0.3673,
+    "pmi": 4.2615,
+    "npmi": 0.3673,
+    "jaccard": 0.0179,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "Erj",
+    "root_arabic": "عرج",
+    "cooccur": 2,
+    "score": 0.3169,
+    "pmi": 3.6765,
+    "npmi": 0.3169,
+    "jaccard": 0.0174,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "gmm",
+    "root_arabic": "غمم",
+    "cooccur": 2,
+    "score": 0.3038,
+    "pmi": 3.5245,
+    "npmi": 0.3038,
+    "jaccard": 0.0172,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "Avr",
+    "root_arabic": "اثر",
+    "cooccur": 3,
+    "score": 0.2759,
+    "pmi": 3.0391,
+    "npmi": 0.2759,
+    "jaccard": 0.0238,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "wSy",
+    "root_arabic": "وصي",
+    "cooccur": 3,
+    "score": 0.2759,
+    "pmi": 3.0391,
+    "npmi": 0.2759,
+    "jaccard": 0.0238,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "ktb",
+    "root_arabic": "كتب",
+    "cooccur": 21,
+    "score": 0.2576,
+    "pmi": 2.1146,
+    "npmi": 0.2576,
+    "jaccard": 0.0574,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "blw",
+    "root_arabic": "بلو",
+    "cooccur": 4,
+    "score": 0.2563,
+    "pmi": 2.7171,
+    "npmi": 0.2563,
+    "jaccard": 0.0288,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "sbq",
+    "root_arabic": "سبق",
+    "cooccur": 4,
+    "score": 0.2563,
+    "pmi": 2.7171,
+    "npmi": 0.2563,
+    "jaccard": 0.0288,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "fAd",
+    "root_arabic": "فاد",
+    "cooccur": 2,
+    "score": 0.2534,
+    "pmi": 2.9395,
+    "npmi": 0.2534,
+    "jaccard": 0.0165,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "rbw",
+    "root_arabic": "ربو",
+    "cooccur": 2,
+    "score": 0.2534,
+    "pmi": 2.9395,
+    "npmi": 0.2534,
+    "jaccard": 0.0165,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "bTn",
+    "root_arabic": "بطن",
+    "cooccur": 3,
+    "score": 0.253,
+    "pmi": 2.7875,
+    "npmi": 0.253,
+    "jaccard": 0.0231,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "*rr",
+    "root_arabic": "ذرر",
+    "cooccur": 4,
+    "score": 0.2525,
+    "pmi": 2.6765,
+    "npmi": 0.2525,
+    "jaccard": 0.0286,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "jEl",
+    "root_arabic": "جعل",
+    "cooccur": 22,
+    "score": 0.2487,
+    "pmi": 2.0251,
+    "npmi": 0.2487,
+    "jaccard": 0.0554,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "nkr",
+    "root_arabic": "نكر",
+    "cooccur": 4,
+    "score": 0.2487,
+    "pmi": 2.637,
+    "npmi": 0.2487,
+    "jaccard": 0.0284,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "qrr",
+    "root_arabic": "قرر",
+    "cooccur": 4,
+    "score": 0.2487,
+    "pmi": 2.637,
+    "npmi": 0.2487,
+    "jaccard": 0.0284,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "bEv",
+    "root_arabic": "بعث",
+    "cooccur": 6,
+    "score": 0.2427,
+    "pmi": 2.4314,
+    "npmi": 0.2427,
+    "jaccard": 0.0361,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "Ans",
+    "root_arabic": "انس",
+    "cooccur": 8,
+    "score": 0.2403,
+    "pmi": 2.3073,
+    "npmi": 0.2403,
+    "jaccard": 0.0415,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "vlv",
+    "root_arabic": "ثلث",
+    "cooccur": 3,
+    "score": 0.2382,
+    "pmi": 2.624,
+    "npmi": 0.2382,
+    "jaccard": 0.0226,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "Axw",
+    "root_arabic": "اخو",
+    "cooccur": 7,
+    "score": 0.2381,
+    "pmi": 2.3318,
+    "npmi": 0.2381,
+    "jaccard": 0.0387,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "$hr",
+    "root_arabic": "شهر",
+    "cooccur": 2,
+    "score": 0.2378,
+    "pmi": 2.759,
+    "npmi": 0.2378,
+    "jaccard": 0.0163,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "Hzb",
+    "root_arabic": "حزب",
+    "cooccur": 2,
+    "score": 0.2378,
+    "pmi": 2.759,
+    "npmi": 0.2378,
+    "jaccard": 0.0163,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "rAs",
+    "root_arabic": "راس",
+    "cooccur": 2,
+    "score": 0.2378,
+    "pmi": 2.759,
+    "npmi": 0.2378,
+    "jaccard": 0.0163,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "kll",
+    "root_arabic": "كلل",
+    "cooccur": 23,
+    "score": 0.235,
+    "pmi": 1.8983,
+    "npmi": 0.235,
+    "jaccard": 0.0523,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "Hjr",
+    "root_arabic": "حجر",
+    "cooccur": 2,
+    "score": 0.2307,
+    "pmi": 2.6765,
+    "npmi": 0.2307,
+    "jaccard": 0.0161,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "wHy",
+    "root_arabic": "وحي",
+    "cooccur": 6,
+    "score": 0.2298,
+    "pmi": 2.3021,
+    "npmi": 0.2298,
+    "jaccard": 0.0349,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "brk",
+    "root_arabic": "برك",
+    "cooccur": 3,
+    "score": 0.2207,
+    "pmi": 2.4314,
+    "npmi": 0.2207,
+    "jaccard": 0.0219,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "jnH",
+    "root_arabic": "جنح",
+    "cooccur": 3,
+    "score": 0.2207,
+    "pmi": 2.4314,
+    "npmi": 0.2207,
+    "jaccard": 0.0219,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "tlw",
+    "root_arabic": "تلو",
+    "cooccur": 5,
+    "score": 0.2177,
+    "pmi": 2.2376,
+    "npmi": 0.2177,
+    "jaccard": 0.0305,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "nzE",
+    "root_arabic": "نزع",
+    "cooccur": 2,
+    "score": 0.2176,
+    "pmi": 2.5245,
+    "npmi": 0.2176,
+    "jaccard": 0.0159,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "snw",
+    "root_arabic": "سنو",
+    "cooccur": 2,
+    "score": 0.2176,
+    "pmi": 2.5245,
+    "npmi": 0.2176,
+    "jaccard": 0.0159,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "Ajl",
+    "root_arabic": "اجل",
+    "cooccur": 4,
+    "score": 0.2133,
+    "pmi": 2.2615,
+    "npmi": 0.2133,
+    "jaccard": 0.0263,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "Eyn",
+    "root_arabic": "عين",
+    "cooccur": 5,
+    "score": 0.2132,
+    "pmi": 2.1911,
+    "npmi": 0.2132,
+    "jaccard": 0.0301,
+    "cosine": null
+  },
+  {
+    "root_buckwalter": "hdy",
+    "root_arabic": "هدي",
+    "cooccur": 16,
+    "score": 0.207,
+    "pmi": 1.7803,
+    "npmi": 0.207,
+    "jaccard": 0.0444,
+    "cosine": null
+  }
+]

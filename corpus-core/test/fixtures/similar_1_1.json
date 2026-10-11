@@ -1,0 +1,1150 @@
+[
+  {
+    "verse_key": "27:30",
+    "chapter_id": 27,
+    "verse_number": 30,
+    "text": "إِنَّهُۥ مِن سُلَيْمَـٰنَ وَإِنَّهُۥ بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+    "score": 0.9462,
+    "overlap": 1.0,
+    "phrase": 1.0,
+    "morphology": 0.7849,
+    "shared": [
+      "اله",
+      "سمو",
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Prepositions",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nominals",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "سمو",
+      "اله",
+      "رحم",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "1:3",
+    "chapter_id": 1,
+    "verse_number": 3,
+    "text": "ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+    "score": 0.6599,
+    "overlap": 0.8733,
+    "phrase": 0.4167,
+    "morphology": 0.5677,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Nominals",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "رحم",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "2:163",
+    "chapter_id": 2,
+    "verse_number": 163,
+    "text": "وَإِلَـٰهُكُمْ إِلَـٰهٌ وَٰحِدٌ ۖ لَّآ إِلَـٰهَ إِلَّا هُوَ ٱلرَّحْمَـٰنُ ٱلرَّحِيمُ",
+    "score": 0.6295,
+    "overlap": 0.7288,
+    "phrase": 0.7083,
+    "morphology": 0.3562,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Nouns",
+      "Nouns",
+      "Nominals",
+      "Particles",
+      "Nouns",
+      "Particles",
+      "Pronouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله",
+      "رحم",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "41:2",
+    "chapter_id": 41,
+    "verse_number": 2,
+    "text": "تَنزِيلٌ مِّنَ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+    "score": 0.5302,
+    "overlap": 0.7733,
+    "phrase": 0.4167,
+    "morphology": 0.229,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "رحم",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "24:20",
+    "chapter_id": 24,
+    "verse_number": 20,
+    "text": "وَلَوْلَا فَضْلُ ٱللَّهِ عَلَيْكُمْ وَرَحْمَتُهُۥ وَأَنَّ ٱللَّهَ رَءُوفٌ رَّحِيمٌ",
+    "score": 0.4986,
+    "overlap": 0.6312,
+    "phrase": 0.4167,
+    "morphology": 0.3584,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "12:92",
+    "chapter_id": 12,
+    "verse_number": 92,
+    "text": "قَالَ لَا تَثْرِيبَ عَلَيْكُمُ ٱلْيَوْمَ ۖ يَغْفِرُ ٱللَّهُ لَكُمْ ۖ وَهُوَ أَرْحَمُ ٱلرَّٰحِمِينَ",
+    "score": 0.487,
+    "overlap": 0.5253,
+    "phrase": 0.7083,
+    "morphology": 0.1524,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Verbs",
+      "Particles",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Pronouns",
+      "Pronouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "اله",
+      "رحم",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "7:151",
+    "chapter_id": 7,
+    "verse_number": 151,
+    "text": "قَالَ رَبِّ ٱغْفِرْ لِى وَلِأَخِى وَأَدْخِلْنَا فِى رَحْمَتِكَ ۖ وَأَنتَ أَرْحَمُ ٱلرَّٰحِمِينَ",
+    "score": 0.472,
+    "overlap": 0.6864,
+    "phrase": 0.4167,
+    "morphology": 0.1525,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "رحم",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "59:22",
+    "chapter_id": 59,
+    "verse_number": 22,
+    "text": "هُوَ ٱللَّهُ ٱلَّذِى لَآ إِلَـٰهَ إِلَّا هُوَ ۖ عَـٰلِمُ ٱلْغَيْبِ وَٱلشَّهَـٰدَةِ ۖ هُوَ ٱلرَّحْمَـٰنُ ٱلرَّحِيمُ",
+    "score": 0.466,
+    "overlap": 0.6571,
+    "phrase": 0.4167,
+    "morphology": 0.1813,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Pronouns",
+      "Nouns",
+      "Pronouns",
+      "Particles",
+      "Nouns",
+      "Particles",
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "رحم",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "36:5",
+    "chapter_id": 36,
+    "verse_number": 5,
+    "text": "تَنزِيلَ ٱلْعَزِيزِ ٱلرَّحِيمِ",
+    "score": 0.4579,
+    "overlap": 0.4564,
+    "phrase": 0.125,
+    "morphology": 0.8602,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Nouns",
+      "Nominals",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "55:1",
+    "chapter_id": 55,
+    "verse_number": 1,
+    "text": " ٱلرَّحْمَـٰنُ",
+    "score": 0.4492,
+    "overlap": 0.8733,
+    "phrase": 0.125,
+    "morphology": 0.075,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Nominals"
+    ],
+    "phrase_run": [
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "44:42",
+    "chapter_id": 44,
+    "verse_number": 42,
+    "text": "إِلَّا مَن رَّحِمَ ٱللَّهُ ۚ إِنَّهُۥ هُوَ ٱلْعَزِيزُ ٱلرَّحِيمُ",
+    "score": 0.4338,
+    "overlap": 0.776,
+    "phrase": 0.125,
+    "morphology": 0.1884,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Pronouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "12:64",
+    "chapter_id": 12,
+    "verse_number": 64,
+    "text": "قَالَ هَلْ ءَامَنُكُمْ عَلَيْهِ إِلَّا كَمَآ أَمِنتُكُمْ عَلَىٰٓ أَخِيهِ مِن قَبْلُ ۖ فَٱللَّهُ خَيْرٌ حَـٰفِظًا ۖ وَهُوَ أَرْحَمُ ٱلرَّٰحِمِينَ",
+    "score": 0.4287,
+    "overlap": 0.5093,
+    "phrase": 0.4167,
+    "morphology": 0.2981,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Verbs",
+      "Particles",
+      "Verbs",
+      "Prepositions",
+      "Particles",
+      "Conjunctions",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Nominals",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "رحم",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "32:6",
+    "chapter_id": 32,
+    "verse_number": 6,
+    "text": "ذَٰلِكَ عَـٰلِمُ ٱلْغَيْبِ وَٱلشَّهَـٰدَةِ ٱلْعَزِيزُ ٱلرَّحِيمُ",
+    "score": 0.4189,
+    "overlap": 0.337,
+    "phrase": 0.125,
+    "morphology": 0.9192,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Pronouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nominals",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "9:99",
+    "chapter_id": 9,
+    "verse_number": 99,
+    "text": "وَمِنَ ٱلْأَعْرَابِ مَن يُؤْمِنُ بِٱللَّهِ وَٱلْيَوْمِ ٱلْـَٔاخِرِ وَيَتَّخِذُ مَا يُنفِقُ قُرُبَـٰتٍ عِندَ ٱللَّهِ وَصَلَوَٰتِ ٱلرَّسُولِ ۚ أَلَآ إِنَّهَا قُرْبَةٌ لَّهُمْ ۚ سَيُدْخِلُهُمُ ٱللَّهُ فِى رَحْمَتِهِۦٓ ۗ إِنَّ ٱللَّهَ غَفُورٌ رَّحِيمٌ",
+    "score": 0.4176,
+    "overlap": 0.4108,
+    "phrase": 0.4167,
+    "morphology": 0.431,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Prepositions",
+      "Nouns",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Adverbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Particles",
+      "Nouns",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Nominals",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "24:10",
+    "chapter_id": 24,
+    "verse_number": 10,
+    "text": "وَلَوْلَا فَضْلُ ٱللَّهِ عَلَيْكُمْ وَرَحْمَتُهُۥ وَأَنَّ ٱللَّهَ تَوَّابٌ حَكِيمٌ",
+    "score": 0.4069,
+    "overlap": 0.4273,
+    "phrase": 0.4167,
+    "morphology": 0.3584,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "21:83",
+    "chapter_id": 21,
+    "verse_number": 83,
+    "text": "۞ وَأَيُّوبَ إِذْ نَادَىٰ رَبَّهُۥٓ أَنِّى مَسَّنِىَ ٱلضُّرُّ وَأَنتَ أَرْحَمُ ٱلرَّٰحِمِينَ",
+    "score": 0.4044,
+    "overlap": 0.5361,
+    "phrase": 0.4167,
+    "morphology": 0.1527,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Nouns",
+      "Adverbs",
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "رحم",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "11:41",
+    "chapter_id": 11,
+    "verse_number": 41,
+    "text": "۞ وَقَالَ ٱرْكَبُوا۟ فِيهَا بِسْمِ ٱللَّهِ مَجْر۪ىٰهَا وَمُرْسَىٰهَآ ۚ إِنَّ رَبِّى لَغَفُورٌ رَّحِيمٌ",
+    "score": 0.3986,
+    "overlap": 0.3985,
+    "phrase": 0.4167,
+    "morphology": 0.377,
+    "shared": [
+      "اله",
+      "سمو",
+      "رحم"
+    ],
+    "pattern": [
+      "Verbs",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "سمو",
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "4:96",
+    "chapter_id": 4,
+    "verse_number": 96,
+    "text": "دَرَجَـٰتٍ مِّنْهُ وَمَغْفِرَةً وَرَحْمَةً ۚ وَكَانَ ٱللَّهُ غَفُورًا رَّحِيمًا",
+    "score": 0.3855,
+    "overlap": 0.5308,
+    "phrase": 0.125,
+    "morphology": 0.4367,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "23:118",
+    "chapter_id": 23,
+    "verse_number": 118,
+    "text": "وَقُل رَّبِّ ٱغْفِرْ وَٱرْحَمْ وَأَنتَ خَيْرُ ٱلرَّٰحِمِينَ",
+    "score": 0.3632,
+    "overlap": 0.6386,
+    "phrase": 0.125,
+    "morphology": 0.1532,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "9:27",
+    "chapter_id": 9,
+    "verse_number": 27,
+    "text": "ثُمَّ يَتُوبُ ٱللَّهُ مِنۢ بَعْدِ ذَٰلِكَ عَلَىٰ مَن يَشَآءُ ۗ وَٱللَّهُ غَفُورٌ رَّحِيمٌ",
+    "score": 0.3577,
+    "overlap": 0.4197,
+    "phrase": 0.125,
+    "morphology": 0.5252,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Conjunctions",
+      "Verbs",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Pronouns",
+      "Prepositions",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Nominals",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "12:53",
+    "chapter_id": 12,
+    "verse_number": 53,
+    "text": "۞ وَمَآ أُبَرِّئُ نَفْسِىٓ ۚ إِنَّ ٱلنَّفْسَ لَأَمَّارَةٌۢ بِٱلسُّوٓءِ إِلَّا مَا رَحِمَ رَبِّىٓ ۚ إِنَّ رَبِّى غَفُورٌ رَّحِيمٌ",
+    "score": 0.3566,
+    "overlap": 0.425,
+    "phrase": 0.125,
+    "morphology": 0.5114,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Nominals",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "2:218",
+    "chapter_id": 2,
+    "verse_number": 218,
+    "text": "إِنَّ ٱلَّذِينَ ءَامَنُوا۟ وَٱلَّذِينَ هَاجَرُوا۟ وَجَـٰهَدُوا۟ فِى سَبِيلِ ٱللَّهِ أُو۟لَـٰٓئِكَ يَرْجُونَ رَحْمَتَ ٱللَّهِ ۚ وَٱللَّهُ غَفُورٌ رَّحِيمٌ",
+    "score": 0.3522,
+    "overlap": 0.5121,
+    "phrase": 0.125,
+    "morphology": 0.3369,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Pronouns",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Pronouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "2:192",
+    "chapter_id": 2,
+    "verse_number": 192,
+    "text": "فَإِنِ ٱنتَهَوْا۟ فَإِنَّ ٱللَّهَ غَفُورٌ رَّحِيمٌ",
+    "score": 0.3493,
+    "overlap": 0.4684,
+    "phrase": 0.125,
+    "morphology": 0.404,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "48:14",
+    "chapter_id": 48,
+    "verse_number": 14,
+    "text": "وَلِلَّهِ مُلْكُ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضِ ۚ يَغْفِرُ لِمَن يَشَآءُ وَيُعَذِّبُ مَن يَشَآءُ ۚ وَكَانَ ٱللَّهُ غَفُورًا رَّحِيمًا",
+    "score": 0.3488,
+    "overlap": 0.4014,
+    "phrase": 0.125,
+    "morphology": 0.5228,
+    "shared": [
+      "اله",
+      "سمو",
+      "رحم"
+    ],
+    "pattern": [
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Verbs",
+      "Nouns",
+      "Nominals",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "سمو"
+    ]
+  },
+  {
+    "verse_key": "57:28",
+    "chapter_id": 57,
+    "verse_number": 28,
+    "text": "يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُوا۟ ٱتَّقُوا۟ ٱللَّهَ وَءَامِنُوا۟ بِرَسُولِهِۦ يُؤْتِكُمْ كِفْلَيْنِ مِن رَّحْمَتِهِۦ وَيَجْعَل لَّكُمْ نُورًا تَمْشُونَ بِهِۦ وَيَغْفِرْ لَكُمْ ۚ وَٱللَّهُ غَفُورٌ رَّحِيمٌ",
+    "score": 0.3372,
+    "overlap": 0.41,
+    "phrase": 0.125,
+    "morphology": 0.4609,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Nouns",
+      "Pronouns",
+      "Verbs",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Verbs",
+      "Pronouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Nominals",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "38:9",
+    "chapter_id": 38,
+    "verse_number": 9,
+    "text": "أَمْ عِندَهُمْ خَزَآئِنُ رَحْمَةِ رَبِّكَ ٱلْعَزِيزِ ٱلْوَهَّابِ",
+    "score": 0.3305,
+    "overlap": 0.271,
+    "phrase": 0.125,
+    "morphology": 0.6842,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Conjunctions",
+      "Adverbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nominals",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "49:5",
+    "chapter_id": 49,
+    "verse_number": 5,
+    "text": "وَلَوْ أَنَّهُمْ صَبَرُوا۟ حَتَّىٰ تَخْرُجَ إِلَيْهِمْ لَكَانَ خَيْرًا لَّهُمْ ۚ وَٱللَّهُ غَفُورٌ رَّحِيمٌ",
+    "score": 0.328,
+    "overlap": 0.3707,
+    "phrase": 0.125,
+    "morphology": 0.4947,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Particles",
+      "Verbs",
+      "Prepositions",
+      "Verbs",
+      "Prepositions",
+      "Verbs",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Nominals",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "21:107",
+    "chapter_id": 21,
+    "verse_number": 107,
+    "text": "وَمَآ أَرْسَلْنَـٰكَ إِلَّا رَحْمَةً لِّلْعَـٰلَمِينَ",
+    "score": 0.3261,
+    "overlap": 0.5557,
+    "phrase": 0.125,
+    "morphology": 0.1541,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Particles",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "2:64",
+    "chapter_id": 2,
+    "verse_number": 64,
+    "text": "ثُمَّ تَوَلَّيْتُم مِّنۢ بَعْدِ ذَٰلِكَ ۖ فَلَوْلَا فَضْلُ ٱللَّهِ عَلَيْكُمْ وَرَحْمَتُهُۥ لَكُنتُم مِّنَ ٱلْخَـٰسِرِينَ",
+    "score": 0.3244,
+    "overlap": 0.3586,
+    "phrase": 0.4167,
+    "morphology": 0.1521,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Conjunctions",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Pronouns",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Verbs",
+      "Prepositions",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "اله",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "3:157",
+    "chapter_id": 3,
+    "verse_number": 157,
+    "text": "وَلَئِن قُتِلْتُمْ فِى سَبِيلِ ٱللَّهِ أَوْ مُتُّمْ لَمَغْفِرَةٌ مِّنَ ٱللَّهِ وَرَحْمَةٌ خَيْرٌ مِّمَّا يَجْمَعُونَ",
+    "score": 0.3216,
+    "overlap": 0.3499,
+    "phrase": 0.4167,
+    "morphology": 0.1565,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Conjunctions",
+      "Verbs",
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Prepositions",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "اله",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "19:93",
+    "chapter_id": 19,
+    "verse_number": 93,
+    "text": "إِن كُلُّ مَن فِى ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضِ إِلَّآ ءَاتِى ٱلرَّحْمَـٰنِ عَبْدًا",
+    "score": 0.3207,
+    "overlap": 0.5418,
+    "phrase": 0.125,
+    "morphology": 0.1577,
+    "shared": [
+      "سمو",
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Nouns",
+      "Pronouns",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "سمو"
+    ]
+  },
+  {
+    "verse_key": "27:77",
+    "chapter_id": 27,
+    "verse_number": 77,
+    "text": "وَإِنَّهُۥ لَهُدًى وَرَحْمَةٌ لِّلْمُؤْمِنِينَ",
+    "score": 0.3172,
+    "overlap": 0.5311,
+    "phrase": 0.125,
+    "morphology": 0.1628,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nouns"
+    ],
+    "phrase_run": [
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "48:7",
+    "chapter_id": 48,
+    "verse_number": 7,
+    "text": "وَلِلَّهِ جُنُودُ ٱلسَّمَـٰوَٰتِ وَٱلْأَرْضِ ۚ وَكَانَ ٱللَّهُ عَزِيزًا حَكِيمًا",
+    "score": 0.3168,
+    "overlap": 0.227,
+    "phrase": 0.125,
+    "morphology": 0.7086,
+    "shared": [
+      "اله",
+      "سمو"
+    ],
+    "pattern": [
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Nominals",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "سمو"
+    ]
+  },
+  {
+    "verse_key": "49:8",
+    "chapter_id": 49,
+    "verse_number": 8,
+    "text": "فَضْلًا مِّنَ ٱللَّهِ وَنِعْمَةً ۚ وَٱللَّهُ عَلِيمٌ حَكِيمٌ",
+    "score": 0.3159,
+    "overlap": 0.1054,
+    "phrase": 0.125,
+    "morphology": 0.9241,
+    "shared": [
+      "اله"
+    ],
+    "pattern": [
+      "Nouns",
+      "Prepositions",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Nominals",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "10:58",
+    "chapter_id": 10,
+    "verse_number": 58,
+    "text": "قُلْ بِفَضْلِ ٱللَّهِ وَبِرَحْمَتِهِۦ فَبِذَٰلِكَ فَلْيَفْرَحُوا۟ هُوَ خَيْرٌ مِّمَّا يَجْمَعُونَ",
+    "score": 0.3143,
+    "overlap": 0.3344,
+    "phrase": 0.4167,
+    "morphology": 0.1554,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Pronouns",
+      "Verbs",
+      "Pronouns",
+      "Nouns",
+      "Prepositions",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "اله",
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "5:98",
+    "chapter_id": 5,
+    "verse_number": 98,
+    "text": "ٱعْلَمُوٓا۟ أَنَّ ٱللَّهَ شَدِيدُ ٱلْعِقَابِ وَأَنَّ ٱللَّهَ غَفُورٌ رَّحِيمٌ",
+    "score": 0.3138,
+    "overlap": 0.4133,
+    "phrase": 0.125,
+    "morphology": 0.3611,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Verbs",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Nouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "5:74",
+    "chapter_id": 5,
+    "verse_number": 74,
+    "text": "أَفَلَا يَتُوبُونَ إِلَى ٱللَّهِ وَيَسْتَغْفِرُونَهُۥ ۚ وَٱللَّهُ غَفُورٌ رَّحِيمٌ",
+    "score": 0.3136,
+    "overlap": 0.3785,
+    "phrase": 0.125,
+    "morphology": 0.4231,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Verbs",
+      "Prepositions",
+      "Nouns",
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "3:132",
+    "chapter_id": 3,
+    "verse_number": 132,
+    "text": "وَأَطِيعُوا۟ ٱللَّهَ وَٱلرَّسُولَ لَعَلَّكُمْ تُرْحَمُونَ",
+    "score": 0.3118,
+    "overlap": 0.5228,
+    "phrase": 0.125,
+    "morphology": 0.1564,
+    "shared": [
+      "اله",
+      "رحم"
+    ],
+    "pattern": [
+      "Verbs",
+      "Nouns",
+      "Nouns",
+      "Particles",
+      "Verbs"
+    ],
+    "phrase_run": [
+      "اله"
+    ]
+  },
+  {
+    "verse_key": "26:9",
+    "chapter_id": 26,
+    "verse_number": 9,
+    "text": "وَإِنَّ رَبَّكَ لَهُوَ ٱلْعَزِيزُ ٱلرَّحِيمُ",
+    "score": 0.3113,
+    "overlap": 0.495,
+    "phrase": 0.125,
+    "morphology": 0.2041,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "رحم"
+    ]
+  },
+  {
+    "verse_key": "26:159",
+    "chapter_id": 26,
+    "verse_number": 159,
+    "text": "وَإِنَّ رَبَّكَ لَهُوَ ٱلْعَزِيزُ ٱلرَّحِيمُ",
+    "score": 0.3113,
+    "overlap": 0.495,
+    "phrase": 0.125,
+    "morphology": 0.2041,
+    "shared": [
+      "رحم"
+    ],
+    "pattern": [
+      "Particles",
+      "Nouns",
+      "Pronouns",
+      "Nouns",
+      "Nominals"
+    ],
+    "phrase_run": [
+      "رحم"
+    ]
+  }
+]

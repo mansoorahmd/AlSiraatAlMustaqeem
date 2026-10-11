@@ -1,0 +1,72 @@
+/* ============================================================
+   Modern light theme — clean, open, focused.
+   Same variable names as the original illuminated-archive
+   tokens, so every component recolors from here.
+   ============================================================ */
+
+:root {
+  /* --- surfaces --- */
+  --paper: #ffffff;            /* cards, sheets, menus */
+  --paper-warm: #fafafa;       /* secondary surfaces (drawer, trail dock) */
+  --paper-edge: #e4e4e7;       /* borders / dividers */
+  --desk: #f4f4f5;             /* app background */
+  --leather: #6b4f35;          /* legacy (trail manzil tint only) */
+  --leather-dark: #52392a;
+
+  /* --- inks --- */
+  --ink: #27272a;              /* primary text */
+  --ink-soft: #52525b;         /* secondary text */
+  --ink-faint: #a1a1aa;        /* tertiary / disabled */
+  --lapis: #2563eb;            /* your ink: links, glosses, actions */
+  --lapis-soft: #93c5fd;
+  --graphite: #a1a1aa;         /* machine/pencil suggestions */
+  --gold: #b45309;             /* subject-word accent (amber, dark enough on white) */
+  --gold-bright: #d97706;
+  --wax: #dc2626;              /* seals / danger */
+  --wax-dark: #b91c1c;
+
+  /* --- semantic --- */
+  --ok: #16a34a;
+  --warn: #d97706;
+  --error: #dc2626;
+
+  /* --- type --- */
+  --font-quran-uthmani: "Amiri Quran", "Amiri", serif;
+  --font-quran-naskh: "Noto Naskh Arabic", "Amiri", serif;
+  --font-quran-indopak: "Noto Nastaliq Urdu", serif;
+  --font-arabic-ui: "Scheherazade New", "Amiri", serif;
+  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-hand: "Caveat", cursive; /* the researcher's hand */
+
+  --fs-quran: 2.1rem;          /* base reading size (scaled by --reader-scale) */
+  --fs-quran-focus: 2.8rem;
+  --fs-ui: 0.95rem;
+  --fs-small: 0.85rem;
+  --fs-label: 0.74rem;         /* stamps, keys, badges */
+
+  --reader-scale: 1;
+
+  /* --- geometry --- */
+  --radius-sheet: 12px;
+  --radius-card: 10px;
+  --shadow-sheet: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-lift: 0 8px 22px rgba(0, 0, 0, 0.14);
+
+  /* --- texture: none — flat, open surfaces --- */
+  --grain: none;
+
+  /* --- motion --- */
+  --ease-paper: cubic-bezier(0.22, 0.8, 0.36, 1);
+  --t-fast: 120ms;
+  --t-med: 220ms;
+  --t-slow: 400ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0ms;
+    --t-med: 0ms;
+    --t-slow: 0ms;
+  }
+}

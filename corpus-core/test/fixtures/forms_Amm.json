@@ -1,0 +1,65 @@
+[
+  {
+    "lemma_buckwalter": ">um~ap",
+    "lemma_arabic": "أُمَّة",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 64
+  },
+  {
+    "lemma_buckwalter": ">um~",
+    "lemma_arabic": "أُمّ",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 35
+  },
+  {
+    "lemma_buckwalter": "<imaAm",
+    "lemma_arabic": "إِمَام",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 12
+  },
+  {
+    "lemma_buckwalter": ">um~iY~",
+    "lemma_arabic": "أُمِّىّ",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 4
+  },
+  {
+    "lemma_buckwalter": ">um~iY~",
+    "lemma_arabic": "أُمِّىّ",
+    "pos": "ADJ",
+    "pos_english": "Adjective",
+    "pos_arabic": "صفة",
+    "pos_class": "Nominals",
+    "occurrence_count": 2
+  },
+  {
+    "lemma_buckwalter": ">amaAm",
+    "lemma_arabic": "أَمَام",
+    "pos": "T",
+    "pos_english": "Time adverb",
+    "pos_arabic": "ظرف زمان",
+    "pos_class": "Adverbs",
+    "occurrence_count": 1
+  },
+  {
+    "lemma_buckwalter": "A^m~iyn",
+    "lemma_arabic": "آمِّين",
+    "pos": "N",
+    "pos_english": "Noun",
+    "pos_arabic": "اسم",
+    "pos_class": "Nouns",
+    "occurrence_count": 1
+  }
+]

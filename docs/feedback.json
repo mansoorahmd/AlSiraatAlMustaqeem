@@ -1,0 +1,117 @@
+{
+  "$doc": "Feedback & communication log between the maintainer and Claude about MQ Research Gate. The repo-side, chat-extractable mirror of the conversation. The live version is the feedback threads in the published docs/atlas.html (backed by the artifact db capability); Claude reconciles new entries here.",
+  "entryShape": {
+    "ts": "ISO 8601 string",
+    "author": "who wrote it",
+    "section": "atlas section id (system|data|money|gate|community|publishing|mcp|admin|roadmap|general)",
+    "text": "the note",
+    "status": "open | answered | done (optional)"
+  },
+  "entries": [
+    {
+      "ts": "2026-09-19T00:00:00Z",
+      "author": "Claude",
+      "section": "general",
+      "text": "Monetization Phases A–D shipped on branch feature/monetization-entitlements: plan/entitlement layer + 402 gate, community moved live-remote with the local mirror removed, publishing gated. MCP kept local (Phase E deferred by decision — the cloud has none of the corpus). This atlas (docs/atlas.json for AI, docs/atlas.html for humans) is the shared map. Leave feedback per section in the published page or here; I read it back.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-09-26T00:00:00Z",
+      "author": "Maintainer",
+      "section": "roadmap",
+      "text": "Let's make things simple first: migrate quran.db to Postgres.",
+      "status": "answered"
+    },
+    {
+      "ts": "2026-09-26T00:00:01Z",
+      "author": "Claude",
+      "section": "roadmap",
+      "text": "Corpus step 1 done on branch feature/corpus-postgres: quran.db is in Postgres schema `corpus` (294,804 rows, 18 s) and verified exact on every row of every table, the view, FKs and indexes. Text is COLLATE \"C\" so Arabic sorts as it does in SQLite — the هدي forms query returns the identical answer in identical order on both. Nothing reads the Postgres copy yet; step 2 ports the query layer (sync→async) and decides Arabic full-text. Open question for you: should cloud corpus reads be free, or plan-gated?",
+      "status": "answered"
+    },
+    {
+      "ts": "2026-09-26T01:00:00Z",
+      "author": "Maintainer",
+      "section": "money",
+      "text": "Go with step 2. Corpus reading: yes, gated, but configurable — if the admin sets it free it's free; whether sign-in is needed is configurable too. Plans can be tiers (student, researcher, scholar, admin…) and translations can be plan-based.",
+      "status": "answered"
+    },
+    {
+      "ts": "2026-09-26T01:00:01Z",
+      "author": "Claude",
+      "section": "money",
+      "text": "Done. Plan tiers are now data (plan_tiers: name + rank), edited with `npm run access -- tier …`. Reading the cloud corpus follows a runtime policy — public, signed_in, or plan ≥ a tier (default plan ≥ pro). Each translation can require its own tier; below it the translation is left out, and GET /corpus-access says what's locked. Step 2's first piece is live: chapters/verses/words/translations at /corpus/*, and corpus:parity compared 7,152 answers with SQLite — all identical. Note: a tier named 'admin' is only what's paid for; administering stays the maintainer role.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-09-26T02:00:00Z",
+      "author": "Maintainer",
+      "section": "roadmap",
+      "text": "Do step 2, and yes — the app and the MCP now read from /corpus. Every feature is role-based, every resource is plan-based; it will be easier. And instead of a CLI for admin, add a UI in the app if the logged-in user is an admin.",
+      "status": "answered"
+    },
+    {
+      "ts": "2026-09-26T03:00:00Z",
+      "author": "Claude",
+      "section": "admin",
+      "text": "All done on feature/corpus-postgres. (1) Access: features are role-based (publish = researcher, review = moderator, administer = maintainer); resources are plan-based — the corpus, the community, each translation and each dictionary, each with a rule: a tier, 'signed in', or public. (2) Step 2: one corpus codebase with SQLite and Postgres drivers; the cloud serves ALL of it at /corpus; the full parity sweep compared 77,439 requests — every one identical. (3) The app reads the Qur'an from /corpus, with one banner when it can't (offline / sign in / needs a plan). (4) The MCP reads it as you, with a personal API token from Account → Connect an AI assistant; research stays in your local research.db. (5) Admin tab for maintainers: plan tiers, who can read what, people (role + plan). Heads-up: your account is maintainer · free and the corpus rule is pro, so the app will tell you it needs the pro plan — grant yourself pro in Admin → People, or set the corpus to 'Signed in'. Open: should maintainers bypass resource gates automatically?",
+      "status": "open"
+    },
+    {
+      "ts": "2026-09-27T04:00:00Z",
+      "author": "Maintainer",
+      "section": "data",
+      "text": "Yes, the research is on Postgres also — but a research is still private unless published and approved. And any published result is gated and maintained by roles: a publish could be for a role scholar or student, and again scholar with a pro plan. (Decided: student/scholar are ROLES; the publisher proposes the audience, the reviewer confirms.)",
+      "status": "answered"
+    },
+    {
+      "ts": "2026-09-27T09:00:00Z",
+      "author": "Claude",
+      "section": "data",
+      "text": "Done on feature/research-postgres. (1) Research is in Postgres: each account its own private schema, every request pinned to it from the sign-in alone — nobody else, staff included, can read it. Same code as a research.db file (78 calls proven identical). The app and the MCP read and write it as you; the server enforces the AI boundary on every token write. Settings → Your research: bring this computer's research.db in (a copy; the file stays), download a copy, import a file. (2) Roles are a ladder you edit: reader < student < researcher < scholar < moderator < maintainer; publishing's role is yours to set (researcher by default). (3) Every published result has an audience (min role + min plan), proposed by the author and confirmed or changed by the reviewer; every community read hides what a viewer's role and plan don't reach. Your own research is still in your local research.db until you bring it in.",
+      "status": "open"
+    },
+    {
+      "ts": "2026-09-28T00:00:00Z",
+      "author": "Maintainer",
+      "section": "data",
+      "text": "As this is currently just a dev, keep things simple and manageable. There is nothing important in the research db — port the research into Postgres and drop the research db altogether.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-09-28T00:00:00Z",
+      "author": "Claude",
+      "section": "data",
+      "text": "Done: research lives only in Postgres. Removed the SQLite research driver, the local server's research routes, import/export and 'Bring it into my account', MQ_RESEARCH=local, the Electron backup/open-file dialogs, npm run backup. The research code moved to remote/src/research/ (store, routes, boundary). Migration 0011 drops the file-era owner table; author_id is now the account id. The old research.db files went to the Recycle Bin. SQLite remains only for the corpus (quran.db: the source, parity, MQ_CORPUS=local).",
+      "status": "done"
+    },
+    {
+      "ts": "2026-09-28T01:00:00Z",
+      "author": "Maintainer",
+      "section": "system",
+      "text": "No need for local server — keep things tidy and manageable.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-09-28T01:00:00Z",
+      "author": "Claude",
+      "section": "system",
+      "text": "Done: the local server is gone (server/src/{server,app,state}.ts, run-dev scripts, the Electron server bundle, the Vite proxy). Two things run: Postgres and the research server; npm run dev starts it with the web app, npm test runs both suites. The desktop app serves app/dist from a tiny built-in file server and ships no quran.db. server/ remains as the corpus code the research server runs (renaming it is open).",
+      "status": "done"
+    },
+    {
+      "ts": "2026-09-28T02:00:00Z",
+      "author": "Maintainer",
+      "section": "system",
+      "text": "Rename: yes. Directory renaming is a good idea now because the remote directory is also misleading.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-09-28T02:00:00Z",
+      "author": "Claude",
+      "section": "system",
+      "text": "Done: server/ -> corpus-core/ (the corpus code), then remote/ -> server/ (the research server), REMOTE.md -> SERVER.md, npm scripts remote:* -> server:*, the compose service and image -> server / mqrg-server. REMOTE_* env vars unchanged.",
+      "status": "done"
+    }
+  ]
+}

@@ -1,0 +1,184 @@
+// On-device SQLite access.
+//
+// The pure query modules (content, roots, linkages, search) depend only on the
+// small `Db` interface below — exactly like the server's modules depend on its
+// `Db` adapter. On the phone that interface is backed by expo-sqlite; in the
+// Node parity harness it's backed by node:sqlite. Same SQL, same transforms,
+// same results.
+//
+// The read-only corpus is bundled as an asset and copied into place by
+// expo-sqlite's own <SQLiteProvider assetSource=…> (see state/DbContext.tsx),
+// which uses the native importer so the file lands exactly where
+// openDatabaseAsync looks for it.
+
+import { openDatabaseSync, type SQLiteDatabase } from "expo-sqlite";
+
+export interface Db {
+  query<T = Record<string, unknown>>(sql: string, params?: unknown[]): T[];
+  /** Async read that runs off the JS thread (native) — used by index warm-ups. */
+  queryAsync<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
+  one<T = Record<string, unknown>>(sql: string, params?: unknown[]): T | undefined;
+  scalar<T = unknown>(sql: string, params?: unknown[]): T | undefined;
+  run(sql: string, params?: unknown[]): { changes: number | bigint };
+  exec(sql: string): void;
+}
+
+/** Name of the bundled corpus on the device. Bump the suffix whenever
+ *  scripts/build-db.mjs regenerates a materially different corpus so a fresh
+ *  copy replaces the old one. */
+export const QURAN_DB_NAME = "quran-mobile-v2.db";
+
+/** Adapts an expo-sqlite database to the shared `Db` interface. */
+export class ExpoDb implements Db {
+  constructor(private raw: SQLiteDatabase) {}
+  query<T = Record<string, unknown>>(sql: string, params: unknown[] = []): T[] {
+    return this.raw.getAllSync(sql, params as never[]) as T[];
+  }
+  queryAsync<T = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T[]> {
+    return this.raw.getAllAsync(sql, params as never[]) as Promise<T[]>;
+  }
+  one<T = Record<string, unknown>>(sql: string, params: unknown[] = []): T | undefined {
+    return (this.raw.getFirstSync(sql, params as never[]) as T | null) ?? undefined;
+  }
+  scalar<T = unknown>(sql: string, params: unknown[] = []): T | undefined {
+    const row = this.raw.getFirstSync(sql, params as never[]) as Record<string, unknown> | null;
+    if (!row) return undefined;
+    return Object.values(row)[0] as T;
+  }
+  run(sql: string, params: unknown[] = []): { changes: number | bigint } {
+    const r = this.raw.runSync(sql, params as never[]);
+    return { changes: r.changes };
+  }
+  exec(sql: string): void {
+    this.raw.execSync(sql);
+  }
+}
+
+/** Writable research DB (the reader's own notes & meanings). Created on first use. */
+let researchDb: Db | null = null;
+let researchPath: string | null = null;
+export function openResearchDb(): Db {
+  if (researchDb) return researchDb;
+  const raw = openDatabaseSync("research.db");
+  researchPath = raw.databasePath; // absolute on-device path, for backup/export
+  const db = new ExpoDb(raw);
+  db.exec(RESEARCH_SCHEMA);
+  migrateResearch(db);
+  researchDb = db;
+  return db;
+}
+
+/** One-off migrations for existing on-device research DBs. Idempotent. */
+function migrateResearch(db: Db): void {
+  // compare → comparison "sets": give each compare row a set_id, moving any
+  // legacy (setless) rows into a first named comparison.
+  const cols = db.query<{ name: string }>("PRAGMA table_info(compare)").map((c) => c.name);
+  if (!cols.includes("set_id")) {
+    db.exec("ALTER TABLE compare RENAME TO compare_legacy;");
+    db.exec(`CREATE TABLE compare (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      set_id INTEGER NOT NULL,
+      kind TEXT NOT NULL,
+      ref TEXT NOT NULL,
+      label TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(set_id, kind, ref)
+    );`);
+    const legacy = db.scalar<number>("SELECT COUNT(*) FROM compare_legacy") ?? 0;
+    if (legacy > 0) {
+      db.run("INSERT INTO compare_sets (title) VALUES ('My comparison')");
+      const sid = db.scalar<number>("SELECT last_insert_rowid()") ?? 0;
+      db.run(
+        "INSERT INTO compare (set_id, kind, ref, label, created_at) SELECT ?, kind, ref, label, created_at FROM compare_legacy",
+        [sid],
+      );
+      db.run(
+        "INSERT INTO prefs (key, value) VALUES ('activeCompareSet', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        [String(sid)],
+      );
+    }
+    db.exec("DROP TABLE compare_legacy;");
+  }
+}
+
+/** Absolute path of the on-device research.db (once opened) — used for backup. */
+export function researchDbPath(): string | null {
+  return researchPath;
+}
+
+const RESEARCH_SCHEMA = `
+CREATE TABLE IF NOT EXISTS notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL DEFAULT 'note',       -- 'note' | 'question'
+  verse_key TEXT,
+  word_position INTEGER,
+  lemma TEXT,
+  root TEXT,
+  text TEXT NOT NULL,
+  answer TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_notes_verse ON notes(verse_key);
+CREATE INDEX IF NOT EXISTS idx_notes_root ON notes(root);
+
+CREATE TABLE IF NOT EXISTS user_root_meanings (
+  root_buckwalter TEXT PRIMARY KEY,
+  meaning TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS prefs (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS compare_sets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS compare (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,   -- which comparison this pin belongs to
+  kind TEXT NOT NULL,        -- 'ayah' | 'root'
+  ref TEXT NOT NULL,         -- verse_key or root_buckwalter
+  label TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(set_id, kind, ref)
+);
+
+CREATE TABLE IF NOT EXISTS focus (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL,        -- 'ayah' | 'root'
+  ref TEXT NOT NULL,         -- verse_key or root_buckwalter
+  label TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(kind, ref)
+);
+
+CREATE TABLE IF NOT EXISTS motifs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS motif_roots (
+  motif_id INTEGER NOT NULL,
+  root_buckwalter TEXT NOT NULL,
+  root_arabic TEXT,
+  PRIMARY KEY (motif_id, root_buckwalter)
+);
+
+CREATE TABLE IF NOT EXISTS trails (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
+  root_buckwalter TEXT,
+  root_arabic TEXT,
+  hops TEXT NOT NULL,           -- JSON: [{ verseKey, wordPosition }]
+  pos INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`;
