@@ -71,7 +71,8 @@ export interface TranslationResource {
 }
 
 /** One rasm spelling of a word (same word written a particular way). */
-export interface SpellingVariant { surface: string; count: number; verses: string[] }
+/** `here`: the spelling the asked-about occurrence is written in */
+export interface SpellingVariant { surface: string; count: number; verses: string[]; here?: boolean }
 
 /** One of the reader's own meanings for a word (lemma). A word may hold several
  *  indications ("feels"); one is primary (the default gloss). Global to the lemma. */

@@ -29,6 +29,8 @@ interface Props {
   focusFor?: (position: number) => "shared" | "linked" | null;
   /** a word that carries a note or question → gets a small margin dot */
   hasNoteFor?: (position: number) => boolean;
+  /** small text shown above a word (its other spellings); `strong` for the unusual one */
+  aboveFor?: (position: number) => { text: string; strong: boolean } | null;
   className?: string;
 }
 
@@ -41,6 +43,7 @@ export const VerseText = memo(function VerseText({
   highlightRanges,
   focusFor,
   hasNoteFor,
+  aboveFor,
   className,
 }: Props) {
   const tokens = tokenizeVerse(text);
@@ -54,6 +57,7 @@ export const VerseText = memo(function VerseText({
         const mark = tok.position !== null && markFor ? markFor(tok.position) : null;
         const focus = tok.position !== null && focusFor ? focusFor(tok.position) : null;
         const noted = tok.position !== null && hasNoteFor ? hasNoteFor(tok.position) : false;
+        const above = tok.position !== null && aboveFor ? aboveFor(tok.position) : null;
         const paint =
           tok.position !== null && highlightRanges
             ? highlightRanges.find(
@@ -105,10 +109,11 @@ export const VerseText = memo(function VerseText({
                   : undefined
               }
             >
-              {gloss ? (
+              {gloss || above ? (
                 <span className="word-stack">
+                  {above && <span className={`word-above${above.strong ? " strong" : ""}`}>{above.text}</span>}
                   <span>{tok.text}</span>
-                  <span className="my-gloss">{gloss}</span>
+                  {gloss && <span className="my-gloss">{gloss}</span>}
                 </span>
               ) : (
                 tok.text

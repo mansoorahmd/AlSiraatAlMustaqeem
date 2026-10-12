@@ -130,7 +130,8 @@ export const api = {
     get<{ verse_key: string; word_position: number }[]>("/words/occurrences", { surface, limit }),
   chapterEchoes: (id: number) => get<string[]>(`/chapters/${id}/echoes`),
   chapterVariants: (id: number) =>
-    get<{ verse_key: string; positions: number[] }[]>(`/chapters/${id}/variants`),
+    // positions: written the unusual way here; common: spelled other ways elsewhere, usual here
+    get<{ verse_key: string; positions: number[]; common: number[] }[]>(`/chapters/${id}/variants`),
   verseEchoes: (key: string) => get<Echo[]>(`/verses/${encodeURIComponent(key)}/echoes`),
   neighbours: (key: string, radius = 2, script: Script = "uthmani") =>
     get<Verse[]>(`/verses/${encodeURIComponent(key)}/neighbours`, { radius, script }),

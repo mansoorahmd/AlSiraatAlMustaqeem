@@ -18,7 +18,6 @@ import type { NoteRecord, HighlightRange } from "../../persistence/types";
 
 const ECHO_WASH = "#fde68a"; // amber highlight for repeated phrase spans
 const ROOT_ECHO_WASH = "#fcd34d"; // gold highlight for a root repeated in an āyah
-const VARIANT_WASH = "#ddd6fe"; // violet highlight for rasm-variant words
 
 // Root echo (↻): a root occurring 2+ times in one āyah. `adjacent` flags a tight
 // repeat at neighbouring word positions (cognate accusative مفعول مطلق, emphatic).
@@ -89,8 +88,9 @@ interface Props {
   onNotesChanged?: () => void;
   /** this ayah contains a phrase repeated verbatim elsewhere (V10 echoes) */
   hasEcho?: boolean;
-  /** word positions in this ayah whose spelling varies across the mushaf (✍) */
-  variantPositions?: number[] | null;
+  /** spelling variants (✍): word positions written the unusual way here, and those that are
+   *  spelled other ways elsewhere but the usual way here */
+  variants?: { positions: number[]; common: number[] } | null;
   /** echo-lens: a word-position span to keep lit in this verse after a jump */
   echoHighlightRange?: { start: number; end: number } | null;
   onWordTap: (
@@ -121,10 +121,17 @@ const chapterOf = (verseKey: string) => parseInt(verseKey.split(":")[0] ?? "", 1
 // an ambiguous blob. A hair space keeps the letters apart without joining.
 const spacedRoot = (r: string) => r.split("").join(" ");
 
+const nWords = (n: number) => `${n} word${n > 1 ? "s" : ""}`;
+/** The ✍ mark's tooltip for this ayah. */
+const variantTitle = ({ positions, common }: { positions: number[]; common: number[] }) =>
+  `${nWords(positions.length)} written an unusual way here` +
+  (common.length ? `, ${nWords(common.length)} spelled differently elsewhere` : "") +
+  ". Tap to show the other spellings above each word.";
+
 export const AyahBlock = memo(function AyahBlock({
   verse, translationOn, translationId, myGlossOn, formStatus, indicationRefine, indicationRootText, indicationLemmaText, caseRefs, rareRoots, highlightWord,
   focusRoots, focusLinked, focusPattern, focusTarget, focusReason, focusBase, focusBaseSurah,
-  focusThisSurah, surahName, verseNotes, onNotesChanged, hasEcho, variantPositions, echoHighlightRange, onWordTap,
+  focusThisSurah, surahName, verseNotes, onNotesChanged, hasEcho, variants, echoHighlightRange, onWordTap,
 }: Props) {
   const text = typeof verse.text === "string" ? verse.text : "";
   const words = verse.words ?? null;
@@ -165,10 +172,20 @@ export const AyahBlock = memo(function AyahBlock({
       }
     }
   }
-  // rasm variants: light every word written more than one way in the mushaf
-  if (variantOpen && variantPositions) {
-    for (const p of variantPositions) echoRanges.push({ start: p, end: p, color: VARIANT_WASH });
-  }
+  // rasm variants: while ✍ is open, every word written more than one way in the mushaf shows
+  // its OTHER spellings above it, strongly for the word written the unusual way here
+  const variantWords = useAsync(async () => {
+    if (!variantOpen || !variants) return new Map<number, { text: string; strong: boolean }>();
+    const unusual = new Set(variants.positions);
+    const all = [...variants.positions, ...variants.common];
+    const lists = await Promise.all(all.map((p) => api.spelling(verse.verse_key, p)));
+    const m = new Map<number, { text: string; strong: boolean }>();
+    all.forEach((p, i) => {
+      const others = lists[i]!.filter((v) => !v.here);
+      if (others.length) m.set(p, { text: others.map((v) => `${v.surface} ×${v.count}`).join("  "), strong: unusual.has(p) });
+    });
+    return m;
+  }, [variantOpen, variants, verse.verse_key]);
 
   const noteCount = verseNotes?.length ?? 0;
   const notedWords = new Set(
@@ -206,6 +223,7 @@ export const AyahBlock = memo(function AyahBlock({
             return null;
           }}
           hasNoteFor={(position) => notedWords.has(position)}
+          aboveFor={variantOpen ? (position) => variantWords.data?.get(position) ?? null : undefined}
           onWordTap={(position, token, rect) => {
             onWordTap(verse.verse_key, position, token, wordByPos.get(position) ?? null, rect);
           }}
@@ -297,10 +315,10 @@ export const AyahBlock = memo(function AyahBlock({
             onClick={() => setEchoOpen((o) => !o)}
           >≡</button>
         )}
-        {variantPositions && variantPositions.length > 0 && (
+        {variants && variants.positions.length > 0 && (
           <button
             className={`variant-mark${variantOpen ? " active" : ""}`}
-            title={`${variantPositions.length} word${variantPositions.length > 1 ? "s are" : " is"} written more than one way in the mushaf. Tap to highlight; tap the word for details.`}
+            title={variantTitle(variants)}
             onClick={() => setVariantOpen((o) => !o)}
           >✍</button>
         )}

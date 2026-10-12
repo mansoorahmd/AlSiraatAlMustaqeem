@@ -10,6 +10,8 @@ export interface SpellingVariant {
   surface: string;
   count: number;
   verses: string[];
+  /** this is the spelling the asked-about occurrence is written in */
+  here?: boolean;
 }
 
 // RASM key: keep only base rasm letters + dagger-alif + wasla + small wāw/yāʾ.
@@ -164,11 +166,60 @@ export class WordFormIndex {
 const CASES = new Set(["NOM", "ACC", "GEN"]);
 const caseless = (raw: string) => raw.split("|").filter((t) => !CASES.has(t)).join("|");
 
+// A hamza's seat is decided by what is ATTACHED to the stem, not by how the word is spelled:
+// it follows its new neighbour (لِقَآء, لِقَآئِهِ; إِذَا, أَءِذَا). That is a rule of the script,
+// so it is not a spelling variant. A stem with a suffix has its last hamza, and a stem with a
+// prefix its first, read as the word's bare spelling: the commonest seat its group shows where
+// nothing is attached on that side. A seat that differs with nothing attached (بِلِقَآئِ رَبِّهِمْ,
+// 30:8) is a genuine variant and stays. Tāʾ-marbūṭa and the long tāʾ (ة, ت) are deliberately
+// left alone: both are kept as variants.
+const CONTEXTUAL = [new Set(["ء", "أ", "إ", "ؤ", "ئ"])];
+const classOf = (ch: string | undefined) => (ch ? CONTEXTUAL.find((c) => c.has(ch)) : undefined);
+
+interface StemWord {
+  vk: string; pos: number; surface: string; raw: string; lemma: string; lemmas: Set<string>;
+  prefixed: boolean; suffixed: boolean;
+}
+type Spelled = { w: StemWord; rk: string };
+
+/** The commonest first (or last) letter, within `cls`, among the group's words with nothing
+ *  attached on that side. */
+function bareLetter(words: Spelled[], side: "first" | "last", cls: Set<string>): string | undefined {
+  const n = new Map<string, number>();
+  for (const { w, rk } of words) {
+    if (side === "first" ? w.prefixed : w.suffixed) continue;
+    const ch = side === "first" ? rk[0] : rk[rk.length - 1];
+    if (ch && cls.has(ch)) n.set(ch, (n.get(ch) ?? 0) + 1);
+  }
+  return [...n.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+}
+
+/** A word's rasm with the attachment-decided letters read as its bare spelling. */
+function bareRasm({ w, rk }: Spelled, words: Spelled[]): string {
+  let out = rk;
+  const last = classOf(out[out.length - 1]);
+  if (w.suffixed && last) {
+    const ch = bareLetter(words, "last", last);
+    if (ch) out = out.slice(0, -1) + ch;
+  }
+  const first = classOf(out[0]);
+  if (w.prefixed && first) {
+    const ch = bareLetter(words, "first", first);
+    if (ch) out = ch + out.slice(1);
+  }
+  return out;
+}
+
+/** An āyah's variant words: written the unusual way here (`positions`), and having other
+ *  spellings elsewhere while written the usual way here (`common`). */
+export interface VerseVariants { verse_key: string; positions: number[]; common: number[] }
+
 export class SpellingIndex {
-  private byVerse = new Map<string, Set<number>>(); // verse_key → variant word positions
+  private unusual = new Map<string, Set<number>>(); // verse_key → words written the minority way
+  private usual = new Map<string, Set<number>>();   // verse_key → variant words written the majority way
   private meta = new Map<string, [number, number]>(); // verse_key → [chapter, verseNo]
-  private groupOf = new Map<string, string>();       // "verse#pos" → group key
-  private groupVariants = new Map<string, SpellingVariant[]>(); // group key → variants
+  private groupOf = new Map<string, [string, string]>(); // "verse#pos" → [group key, its spelling's key]
+  private groupVariants = new Map<string, { key: string; variant: SpellingVariant }[]>(); // group key → variants
   /** Built once, on first use; concurrent callers share the one build. */
   readonly build: () => Promise<void>;
 
@@ -178,77 +229,92 @@ export class SpellingIndex {
 
   private async load(): Promise<void> {
     const rows = await this.db.query<{
-      verse_key: string; word_position: number; form_arabic: string | null;
+      verse_key: string; word_position: number; segment_type: string; form_arabic: string | null;
       raw_features: string | null; lemma_buckwalter: string | null;
       chapter_id: number; verse_number: number;
     }>(
-      `SELECT ws.verse_key, ws.word_position, ws.form_arabic, ws.raw_features, ws.lemma_buckwalter,
-              v.chapter_id, v.verse_number
+      `SELECT ws.verse_key, ws.word_position, ws.segment_type, ws.form_arabic, ws.raw_features,
+              ws.lemma_buckwalter, v.chapter_id, v.verse_number
        FROM word_segments ws JOIN verses v ON v.verse_key = ws.verse_key
-       WHERE ws.segment_type = 'STEM'
        ORDER BY v.chapter_id, v.verse_number, ws.word_position, ws.segment_number`,
     );
-    // reassemble each word from its STEM segments (surface + first lemma/raw,
-    // and the set of distinct stem-lemmas so compounds can be excluded)
-    const per = new Map<string, { vk: string; pos: number; surface: string; raw: string; lemma: string; lemmas: Set<string> }>();
+    // reassemble each word from its STEM segments (surface + first lemma/raw, and the set
+    // of distinct stem-lemmas so compounds can be excluded), noting what is attached
+    const per = new Map<string, StemWord>();
     for (const r of rows) {
       const k = `${r.verse_key}#${r.word_position}`;
       let e = per.get(k);
-      if (!e) { e = { vk: r.verse_key, pos: r.word_position, surface: "", raw: "", lemma: "", lemmas: new Set() }; per.set(k, e); }
+      if (!e) {
+        e = { vk: r.verse_key, pos: r.word_position, surface: "", raw: "", lemma: "", lemmas: new Set(), prefixed: false, suffixed: false };
+        per.set(k, e);
+      }
+      if (!this.meta.has(r.verse_key)) this.meta.set(r.verse_key, [r.chapter_id, r.verse_number]);
+      if (r.segment_type === "PREFIX") { if (!e.surface) e.prefixed = true; continue; }
+      if (r.segment_type === "SUFFIX") { if (e.surface) e.suffixed = true; continue; }
+      if (r.segment_type !== "STEM") continue;
       e.surface += r.form_arabic ?? "";
       if (!e.raw && r.raw_features) e.raw = r.raw_features;
       if (!e.lemma && r.lemma_buckwalter) e.lemma = r.lemma_buckwalter;
       if (r.lemma_buckwalter) e.lemmas.add(r.lemma_buckwalter);
-      if (!this.meta.has(r.verse_key)) this.meta.set(r.verse_key, [r.chapter_id, r.verse_number]);
     }
-    // group by (lemma | raw | skeleton); track each rasm's surface/count/verses
-    const groups = new Map<string, {
-      rasm: Map<string, { surface: string; count: number; verses: string[] }>;
-      words: { vk: string; pos: number; rasm: string }[];
-    }>();
+    // group by (lemma | raw | skeleton)
+    const groups = new Map<string, Spelled[]>();
     for (const w of per.values()) {
       // skip compounds/assimilations (مِمَّا = مِن+مَا): not simple spelling variants
-      if (!w.lemma || w.lemmas.size > 1) continue;
+      if (!w.surface || !w.lemma || w.lemmas.size > 1) continue;
       const rk = rasmKey(w.surface);
       const gk = `${w.lemma}|${caseless(w.raw)}|${skeleton(rk)}`;
-      let g = groups.get(gk);
-      if (!g) { g = { rasm: new Map(), words: [] }; groups.set(gk, g); }
-      let e = g.rasm.get(rk);
-      if (!e) { e = { surface: w.surface, count: 0, verses: [] }; g.rasm.set(rk, e); }
-      e.count++;
-      if (e.verses.length < 100) e.verses.push(w.vk);
-      g.words.push({ vk: w.vk, pos: w.pos, rasm: rk });
+      const g = groups.get(gk);
+      if (g) g.push({ w, rk });
+      else groups.set(gk, [{ w, rk }]);
     }
-    for (const [gk, g] of groups) {
-      if (g.rasm.size < 2) continue; // no variation
-      const variants = [...g.rasm.values()].sort((a, b) => b.count - a.count);
-      this.groupVariants.set(gk, variants);
-      const majorityRasm = [...g.rasm.entries()].sort((a, b) => b[1].count - a[1].count)[0]![0];
-      for (const { vk, pos, rasm } of g.words) {
-        this.groupOf.set(`${vk}#${pos}`, gk);
-        // flag only the MINORITY spellings (the word written unusually here)
-        if (rasm === majorityRasm) continue;
-        let s = this.byVerse.get(vk);
-        if (!s) { s = new Set(); this.byVerse.set(vk, s); }
-        s.add(pos);
+    for (const [gk, words] of groups) {
+      // each distinct bare spelling, shown as a word written exactly that way when one exists
+      const rasm = new Map<string, { surface: string; count: number; verses: string[]; asWritten: boolean }>();
+      const keyed = words.map((sp) => {
+        const key = bareRasm(sp, words);
+        let e = rasm.get(key);
+        if (!e) { e = { surface: sp.w.surface, count: 0, verses: [], asWritten: key === sp.rk }; rasm.set(key, e); }
+        else if (!e.asWritten && key === sp.rk) { e.surface = sp.w.surface; e.asWritten = true; }
+        e.count++;
+        if (e.verses.length < 100) e.verses.push(sp.w.vk);
+        return { w: sp.w, key };
+      });
+      if (rasm.size < 2) continue; // no variation
+      const ranked = [...rasm.entries()].sort((a, b) => b[1].count - a[1].count);
+      this.groupVariants.set(gk, ranked.map(([key, { surface, count, verses }]) => ({ key, variant: { surface, count, verses } })));
+      const majority = ranked[0]![0];
+      for (const { w, key } of keyed) {
+        this.groupOf.set(`${w.vk}#${w.pos}`, [gk, key]);
+        // the MINORITY spellings are the word written unusually here
+        const into = key === majority ? this.usual : this.unusual;
+        let s = into.get(w.vk);
+        if (!s) { s = new Set(); into.set(w.vk, s); }
+        s.add(w.pos);
       }
     }
   }
 
   /** The rasm variants of the word at (verseKey, wordPosition), from the same
-   *  grouping the ✍ marks use — so the two always agree. [] when no variation. */
+   *  grouping the ✍ marks use — so the two always agree. [] when no variation. `here`
+   *  marks the spelling this occurrence is written in. */
   async variantsForWord(verseKey: string, wordPosition: number): Promise<SpellingVariant[]> {
     await this.build();
-    const gk = this.groupOf.get(`${verseKey}#${wordPosition}`);
-    return gk ? this.groupVariants.get(gk) ?? [] : [];
+    const at = this.groupOf.get(`${verseKey}#${wordPosition}`);
+    if (!at) return [];
+    return (this.groupVariants.get(at[0]) ?? []).map(({ key, variant }) => ({ ...variant, here: key === at[1] }));
   }
 
-  /** Verses in a chapter that contain variant words + those word positions. */
-  async chapterVariants(chapterId: number): Promise<{ verse_key: string; positions: number[] }[]> {
+  /** Verses in a chapter with a word written unusually, plus their words that have other
+   *  spellings but are written the usual way here. A verse whose variant words are all
+   *  written the usual way isn't listed: nearly every āyah has one (إِلَىٰ, قَالَ), and the
+   *  ✍ mark would stop meaning anything. */
+  async chapterVariants(chapterId: number): Promise<VerseVariants[]> {
     await this.build();
-    const out: { verse_key: string; positions: number[] }[] = [];
-    for (const [vk, set] of this.byVerse) {
-      if (this.meta.get(vk)?.[0] === chapterId) out.push({ verse_key: vk, positions: [...set].sort((a, b) => a - b) });
+    const sorted = (s: Set<number> | undefined) => [...(s ?? [])].sort((a, b) => a - b);
+    const out: VerseVariants[] = [];
+    for (const [vk, set] of this.unusual) {
+      if (this.meta.get(vk)?.[0] === chapterId) out.push({ verse_key: vk, positions: sorted(set), common: sorted(this.usual.get(vk)) });
     }
     out.sort((a, b) => (this.meta.get(a.verse_key)![1]) - (this.meta.get(b.verse_key)![1]));
     return out;

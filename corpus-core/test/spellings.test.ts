@@ -8,7 +8,7 @@ import { rasmKey } from "../src/spellings.js";
 let app: Hono;
 const spelling = async (key: string, pos: number) =>
   (await (await app.request(`/corpus/verses/${key}/spelling?pos=${pos}`)).json()) as {
-    surface: string; count: number; verses: string[];
+    surface: string; count: number; verses: string[]; here?: boolean;
   }[];
 
 beforeAll(async () => { app = corpusTestApp(); });
@@ -51,6 +51,40 @@ describe("spelling variants", () => {
 
   it("a compound (مِمَّا, 2:3 w6) is not treated as a spelling variant", async () => {
     expect((await spelling("2:3", 6)).length).toBe(0);
+  });
+
+  it("a hamza seat changed only by what is attached is not a variant", async () => {
+    // إِذَا after the question prefix is written أَءِذَا (13:5 w5): the same spelling
+    expect(await spelling("39:71", 8)).toEqual([]);
+    expect(await spelling("13:5", 5)).toEqual([]);
+    // لِقَآئِهِۦ (18:105 w6) is لِقَآء with a pronoun on it, counted with لِقَآءِ (39:71 w24)
+    const attached = await spelling("18:105", 6);
+    expect(attached.find((v) => v.here)?.surface).toBe((await spelling("39:71", 24)).find((v) => v.here)?.surface);
+    // ...but بِلِقَآئِ رَبِّهِمْ (30:8 w20), with nothing after it, is a genuine variant
+    const bare = await spelling("30:8", 20);
+    expect(bare.length).toBe(2);
+    expect(rasmKey(bare.find((v) => v.here)!.surface)).toBe("لقائ");
+  });
+
+  it("tāʾ-marbūṭa and the long tāʾ stay variants (خَزَنَتُهَا, 39:71 w14)", async () => {
+    expect((await spelling("39:71", 14)).map((v) => rasmKey(v.surface))).toEqual(["خزنت", "خزنة"]);
+  });
+
+  it("`here` marks the spelling this occurrence is written in", async () => {
+    const v = await spelling("39:71", 33); // عَلَى without the small alif, before ٱلْكَٰفِرِينَ
+    expect(v.filter((x) => x.here).length).toBe(1);
+    expect(rasmKey(v.find((x) => x.here)!.surface)).toBe("على");
+    expect(v[0]!.here).toBe(false); // the usual spelling is the other one
+  });
+
+  it("an ayah lists the word written unusually, and its other variant words apart", async () => {
+    const ch = (await (await app.request("/corpus/chapters/39/variants")).json()) as
+      { verse_key: string; positions: number[]; common: number[] }[];
+    const v = ch.find((x) => x.verse_key === "39:71")!;
+    expect(v.positions).toEqual([33]);
+    expect(v.common).toEqual(expect.arrayContaining([4, 12, 14, 21, 24]));
+    expect(v.common).not.toContain(8);
+    expect(ch.every((x) => x.positions.length > 0)).toBe(true);
   });
 
   it("missing pos → 422", async () => {

@@ -110,7 +110,7 @@ export function Guide() {
           <ul className="guide-marks">
             <li><K>✎</K> notes and questions on this āyah</li>
             <li><K>≡</K> a phrase in it is repeated elsewhere in the Book (echoes)</li>
-            <li><K>✍</K> a word in it is written more than one way in the mushaf</li>
+            <li><K>✍</K> a word in it is written an unusual way here; tap it to see the other spellings above every word that has them</li>
             <li><K>↻</K> a root repeats within the āyah</li>
             <li><K>⇋</K> add the āyah to your comparison</li>
             <li><K>⚖</K> the āyah is evidence in one of your cases</li>

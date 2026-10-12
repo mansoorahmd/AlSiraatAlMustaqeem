@@ -110,11 +110,11 @@ export function Reader({ chapters, onBackToIndex }: Props) {
   const echoKeys = useAsync(async () => (canEchoes ? api.chapterEchoes(surahId) : []), [surahId, canEchoes]);
   const echoSet = useMemo(() => new Set(echoKeys.data ?? []), [echoKeys.data]);
 
-  // rasm-variant marks: ayahs with words written more than one way + positions
+  // rasm-variant marks: ayahs with a word written unusually, and their other variant words
   const variantData = useAsync(async () => (canSpelling ? api.chapterVariants(surahId) : []), [surahId, canSpelling]);
   const variantMap = useMemo(() => {
-    const m = new Map<string, number[]>();
-    for (const v of variantData.data ?? []) m.set(v.verse_key, v.positions);
+    const m = new Map<string, { positions: number[]; common: number[] }>();
+    for (const v of variantData.data ?? []) m.set(v.verse_key, { positions: v.positions, common: v.common ?? [] });
     return m;
   }, [variantData.data]);
 
@@ -526,7 +526,7 @@ export function Reader({ chapters, onBackToIndex }: Props) {
             verseNotes={notesMap.get(v.verse_key) ?? null}
             onNotesChanged={bumpNotes}
             hasEcho={echoSet.has(v.verse_key)}
-            variantPositions={variantMap.get(v.verse_key) ?? null}
+            variants={variantMap.get(v.verse_key) ?? null}
             echoHighlightRange={
               echoHighlight?.verseKey === v.verse_key
                 ? { start: echoHighlight.start, end: echoHighlight.end }
