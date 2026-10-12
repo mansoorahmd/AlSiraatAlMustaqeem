@@ -152,6 +152,14 @@ export function TopBar() {
       {/* one place for everything awaiting the reader */}
       <ActivityBell />
 
+      {/* the walkthrough (screens/Guide.tsx) — open to everyone, signed in or not */}
+      <button
+        className={`icon-btn topbar-icon${tab === "guide" ? " active" : ""}`}
+        title="Guide — how to use the app"
+        aria-label="Guide"
+        onClick={() => dispatch({ type: "setTab", tab: "guide" })}
+      >?</button>
+
       {/* how the app behaves and where the work is kept — not on the workbench */}
       <button
         className="icon-btn topbar-icon"

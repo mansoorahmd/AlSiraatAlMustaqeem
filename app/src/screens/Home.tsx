@@ -35,6 +35,9 @@ export function Home() {
   const chapter = useAsync(() => api.chapter(contSurah), [contSurah]);
   // "＋ new" — a case on a phrase or a theme, not anchored to a root or an āyah
   const [newCaseOpen, setNewCaseOpen] = useState(false);
+  // "New here?" — offers the walkthrough (screens/Guide.tsx) until it's dismissed on this device
+  const [guideHidden, setGuideHidden] = useState(() => { try { return localStorage.getItem("guide.hidden") === "1"; } catch { return false; } });
+  const hideGuide = () => { setGuideHidden(true); try { localStorage.setItem("guide.hidden", "1"); } catch { /* private window */ } };
   const canCases = useFeature("cases");
   const catalog = useFeatureCatalog();
   const [newType, setNewType] = useState<SubjectType>("phrase");
@@ -92,6 +95,15 @@ export function Home() {
           </span>
           <span className="resume-go" aria-hidden>→</span>
         </button>
+
+        {!guideHidden && (
+          <div className="guide-invite">
+            <span><strong>New here?</strong> A short walkthrough shows you around — reading, following a root,
+              your own study, and what your plan includes.</span>
+            <button className="ctl primary" onClick={() => dispatch({ type: "setTab", tab: "guide" })}>Open the guide</button>
+            <button className="ctl" title="Hide — the guide stays under ? in the top bar" onClick={hideGuide}>Not now</button>
+          </div>
+        )}
 
         <div className="home-counts">
           <button className="count" onClick={() => dispatch({ type: "setTab", tab: "investigate" })}>

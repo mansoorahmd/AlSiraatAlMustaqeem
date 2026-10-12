@@ -28,6 +28,7 @@ const DESTINATIONS: { tab: Tab; label: string }[] = [
   { tab: "vault", label: "Vault" },
   { tab: "search", label: "Advanced search" },
   { tab: "home", label: "Home" },
+  { tab: "guide", label: "Guide — how to use the app" },
 ];
 
 export function CommandPalette() {

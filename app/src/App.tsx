@@ -15,6 +15,7 @@ import { ExpressionBar } from "./components/ExpressionBar";
 import { Toast } from "./components/Toast";
 import { PlanLockNotice } from "./components/PlanLockNotice";
 import { FeatureGate } from "./components/FeatureGate";
+import { Guide } from "./screens/Guide";
 import { AppProvider, useAppState } from "./state/store";
 import { CorpusAccessBanner } from "./components/CorpusAccessBanner";
 
@@ -30,6 +31,7 @@ function Screen() {
   if (tab === "compare") return <FeatureGate feature="compare" mode="lock"><Compare /></FeatureGate>;
   if (tab === "diverge") return <FeatureGate feature="divergences" mode="lock"><Divergences /></FeatureGate>;
   if (tab === "admin") return <Admin />;
+  if (tab === "guide") return <Guide />;
   return <ReadingRoom />;
 }
 
