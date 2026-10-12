@@ -3,8 +3,9 @@
 // deliberately NOT declared to Better Auth: our session middleware reads them straight from
 // the users table. "Buy authentication, build authorization" (SHARED_RESEARCH.md §4).
 //
-// Invite-only is enforced two ways: `disableSignUp: true` means Better Auth will never create
-// a user, and the only path that creates one is redeemInvite() (src/invites.ts).
+// Accounts are created by our own code only, never by Better Auth (`disableSignUp: true`): open
+// sign-up (POST /signup, src/signup.ts) makes a free reader, and redeeming an invite
+// (src/invites.ts) makes an account with the invite's role.
 
 import { betterAuth } from "better-auth";
 import { magicLink } from "better-auth/plugins";
@@ -50,13 +51,13 @@ export const auth = betterAuth({
 
   // Passwords are the everyday sign-in: no email transport needed, and on the desktop the app
   // can post credentials and get a session directly (a magic link would open in the system
-  // browser and sign THAT in). Registration stays invite-only — the public /sign-up/email route
-  // is blocked in app.ts, and the only caller of signUpEmail is the invite redemption endpoint.
+  // browser and sign THAT in). Better Auth's own /sign-up/email route is blocked in app.ts; the only
+  // callers of signUpEmail are /signup and the invite redemption endpoint.
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 10,
     autoSignIn: false,          // redeeming an invite shouldn't silently sign you in
-    requireEmailVerification: false, // accounts come from invites, so the address is already vouched for
+    requireEmailVerification: false, // not yet: open sign-up doesn't verify the email address
     // Forgotten password: POST /api/auth/request-password-reset {email, redirectTo} emails a
     // one-time link; it lands on this server's own /reset-password page (app.ts), which sets the
     // new password. Better Auth only sends when the account exists, and answers the same either
@@ -84,12 +85,12 @@ export const auth = betterAuth({
 
   plugins: [
     magicLink({
-      // Registration is invite-only: an invite must already have created the user.
+      // A magic link only signs in an existing account; it never creates one.
       disableSignUp: true,
       expiresIn: 60 * 15,
       sendMagicLink: async ({ email, url }: { email: string; url: string }) => {
         // `disableSignUp` only stops account creation at VERIFY time, so Better Auth would
-        // still issue a link for any address typed in. Registration is invite-only, so refuse
+        // still issue a link for any address typed in. A link can't create an account, so refuse
         // to send unless an account already exists — otherwise this is a spam vector and the
         // reader gets a link that silently fails later. We stay quiet about which addresses
         // exist (the API response is identical either way).
@@ -97,7 +98,7 @@ export const auth = betterAuth({
           email.trim().toLowerCase(),
         ]);
         if (!rowCount) {
-          console.log(`[magic-link] not sent — no account for ${email} (invite-only)`);
+          console.log(`[magic-link] not sent: no account for ${email}`);
           return;
         }
         await sendMail(magicLinkEmail(email, url));   // console transport: printed to the log

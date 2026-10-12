@@ -1,5 +1,5 @@
-// The review's must-fixes, pinned: an API token can't manage tokens or use maintainer powers
-// (so revoking a leaked one contains it); expiry days are validated, not handed to Postgres;
+// The review's must-fixes, pinned: an API token can't manage tokens, publish, or use staff powers
+// (so revoking a leaked one contains it, and an AI assistant only ever suggests); expiry days are validated, not handed to Postgres;
 // a resource rule's key must be canonical, or it would protect nothing while looking set.
 
 import { describe, it, expect, beforeAll } from "vitest";
@@ -21,6 +21,8 @@ function appAs(user: Principal | undefined) {
   app.use("*", async (c, next) => { if (user) c.set("user", user); await next(); });
   app.post("/me/tokens", requireRole("reader"), requireSession, (c) => c.json({ ok: true }));
   app.get("/admin/users", requireRole("maintainer"), (c) => c.json({ ok: true }));
+  app.post("/review", requireRole("moderator"), (c) => c.json({ ok: true }));
+  app.post("/publish", requireRole("reader"), requireSession, (c) => c.json({ ok: true }));
   app.get("/claims", requireRole("reader"), (c) => c.json({ ok: true }));
   return app;
 }
@@ -35,8 +37,22 @@ describe("what an API token may not do", () => {
   it("can't use maintainer powers, even for a maintainer", async () => {
     const res = await appAs(boss("token")).request("/admin/users");
     expect(res.status).toBe(403);
-    expect(((await res.json()) as { detail: string }).detail).toMatch(/sign in to the app/);
+    expect(((await res.json()) as { detail: string }).detail).toMatch(/sign in to the app/i);
     expect((await appAs(boss("session")).request("/admin/users")).status).toBe(200);
+  });
+
+  it("can't review, even for a moderator or a maintainer", async () => {
+    for (const role of ["moderator", "maintainer"]) {
+      const as = (via: "session" | "token") => appAs({ id: "u2", role, plan: "pro", via });
+      expect((await as("token").request("/review", { method: "POST" })).status, role).toBe(403);
+      expect((await as("session").request("/review", { method: "POST" })).status, role).toBe(200);
+    }
+  });
+
+  it("can't publish, even when its user may", async () => {
+    const author = (via: "session" | "token"): Principal => ({ id: "u3", role: "researcher", plan: "pro", via });
+    expect((await appAs(author("token")).request("/publish", { method: "POST" })).status).toBe(403);
+    expect((await appAs(author("session")).request("/publish", { method: "POST" })).status).toBe(200);
   });
 
   it("still reads as its user — that's what it's for", async () => {

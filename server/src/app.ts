@@ -310,8 +310,9 @@ export function createApp(): Hono<Env> {
   // --- submissions: local research offered upstream (Phase 4, additive kinds only) ---
   // Publishing is a FEATURE, so it is role-based: at least the role the maintainer set for it
   // (feature_access; researcher by default). The publisher proposes who may see it (audience).
+  // Only from a signed-in session: an AI assistant's token may suggest, never publish.
   const publish = requireFeature("publish", pgRunner);
-  app.post("/submissions", requireRole("reader"), publish, requirePlanFeature("publish", pgRunner), async (c) => {
+  app.post("/submissions", requireRole("reader"), requireSession, publish, requirePlanFeature("publish", pgRunner), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { items?: SubmissionItemInput[]; supersedes?: string | null; audience?: unknown };
     try {
@@ -343,7 +344,7 @@ export function createApp(): Hono<Env> {
   // --- claims: contending readings, review, establishment, dissent (Phase 5) ---
 
   /** Offer your reading of a form or root. Must carry its argument (§12.1). A feature → role. */
-  app.post("/claims", requireRole("reader"), publish, requirePlanFeature("publish", pgRunner), async (c) => {
+  app.post("/claims", requireRole("reader"), requireSession, publish, requirePlanFeature("publish", pgRunner), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { subjectKind?: SubjectKind; subjectValue?: string; payload?: never; audience?: unknown };
     try {

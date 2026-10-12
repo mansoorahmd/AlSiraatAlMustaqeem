@@ -1,6 +1,7 @@
-// Invite-only registration. Deliberately NOT a Better Auth hook: redemption is our own
-// explicit step, so the rule is plain, testable SQL and Better Auth stays a hard gate
-// (`disableSignUp: true` — it will never create a user we didn't invite).
+// Invites: a maintainer's way to bring someone in straight at a chosen role (open sign-up, in
+// signup.ts, makes a free reader). Deliberately NOT a Better Auth hook: redemption is our own
+// explicit step, so the rule is plain, testable SQL and Better Auth never creates a user itself
+// (`disableSignUp: true`).
 //
 // Flow:
 //   1. a maintainer issues an invite (a code carrying the role to grant)
@@ -43,7 +44,7 @@ export async function createInvite(
   r: SqlRunner,
   opts: { issuedBy: string; role?: Role; expiresInDays?: number; code?: string },
 ): Promise<Invite> {
-  const role: Role = opts.role ?? "researcher";
+  const role: Role = opts.role ?? "researcher";   // the same default as invites.role (migration 0014)
   if (!(await roleExists(r, role))) throw new InviteError(`unknown role: ${role}`, 422);
   const code = opts.code ?? newInviteCode();
   const days = expiryDays(opts.expiresInDays);

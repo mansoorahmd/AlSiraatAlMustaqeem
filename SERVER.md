@@ -1,6 +1,6 @@
 # The research server (`server/`)
 
-The invite-only research server. It holds **everything**: the **Qur'an corpus**, **each account's own
+The research server. It holds **everything**: the **Qur'an corpus**, **each account's own
 research** (private to each account, by row-level security), and the **community**, where research is
 published, reviewed, and agreed (`SHARED_RESEARCH.md`). The app and the MCP read and write it as the
 signed-in user.
@@ -25,7 +25,8 @@ identical (`CORPUS.md`); every account's research in schema `research`, under ro
   permissions library.
 - **Authentication** — `src/auth.ts`: Better Auth with the **magic-link** plugin, mapped onto our
   snake_case `users` table, year-long sessions (sign in once, then work offline).
-- **Invite-only registration** — `src/invites.ts`: issue / redeem / bind, single-use, expiring.
+- **Registration** — open sign-up (`src/signup.ts`: a free reader) and invites (`src/invites.ts`:
+  issue / redeem, single-use, expiring, carrying a role).
 - **Routes** — `src/app.ts` (below).
 
 ### The division of labour
@@ -35,16 +36,17 @@ Better Auth owns **authentication** — identity, sessions, magic-link tokens. O
 to Better Auth, and the session middleware reads the role straight from the `users` table. This is
 the "buy authentication, build authorization" decision (`SHARED_RESEARCH.md` §4).
 
-### How invite-only is enforced
+### How accounts are created
 
-Two independent locks:
+Better Auth never creates a user (`disableSignUp: true`); our own code does, in two places:
 
-1. `disableSignUp: true` — Better Auth will **never** create a user.
-2. The only code path that creates one is `redeemInvite()`, which requires a valid, unexpired,
-   unredeemed code and grants **the role carried by the invite** (never a role from the request).
+1. **Open sign-up**, `POST /signup` (`src/signup.ts`): anyone, as a **reader on the free plan**,
+   with a profile (birth date, region), rate-limited per address.
+2. **An invite**, `POST /invites/redeem` (`src/invites.ts`): a valid, unexpired, unredeemed code
+   grants **the role carried by the invite** (never a role from the request; researcher when the
+   maintainer named none).
 
-So the flow is: maintainer issues a code → invitee redeems it (account created) → invitee signs in
-by magic link. An uninvited email can request a link but no account will ever exist for it.
+A magic link only signs in an account that already exists; it never creates one.
 
 ## Using it from the app (no curl needed)
 
@@ -97,9 +99,8 @@ the **desktop** it's worse than that: a link opened from a mail client signs in 
 browser*, not the app. Passwords avoid both problems — the app posts credentials and gets a
 session cookie directly.
 
-Registration stays invite-only through two locks: the public `POST /api/auth/sign-up/email` route
-is closed (403), and the only caller of Better Auth's `signUpEmail` is `/invites/redeem`, which
-requires a valid code and grants **the role carried by the invite**.
+Better Auth's own `POST /api/auth/sign-up/email` route is closed (403); the only callers of its
+`signUpEmail` are `/signup` (a free reader) and `/invites/redeem` (the invite's role).
 
 The desktop window loads `http://localhost:<port>` (not `127.0.0.1`) so it is *same-site* with
 the remote on `localhost:8100` — otherwise the browser refuses to send the `SameSite=Lax` session
@@ -153,8 +154,10 @@ reader's `localhost` — different sites — so over HTTPS the session cookie is
 
 **Signing in.** The app uses the Better Auth session cookie. A headless client — the MCP — uses a
 **personal API token** instead: `Authorization: Bearer mqrg_…`. Tokens are made in the app (Account →
-*Connect an AI assistant*), shown once, stored only as a SHA-256 hash, and revocable; a token acts
-exactly as its user, roles and plan included (`src/api-tokens.ts`, `src/session.ts`).
+*Connect an AI assistant*), shown once, stored only as a SHA-256 hash, and revocable; a token reads
+as its user, roles and plan included (`src/api-tokens.ts`, `src/session.ts`). It can never publish
+(`/submissions`, `/claims`), review or establish, administer, or manage tokens: those need a signed-in
+session (`requireSession`, and `requireRole` for every staff rung). An AI assistant only suggests.
 
 ## Access: features are role-based, resources are plan-based
 

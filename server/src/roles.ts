@@ -48,21 +48,22 @@ export const atLeast = (p: Pick<Principal, "role" | "roleRank">, min: FixedRole)
 export const isStaff = (p: Pick<Principal, "role" | "roleRank"> | undefined): boolean =>
   !!p && atLeast(p, "moderator");
 
-const TOKEN_REFUSED = "an API token can't do this — sign in to the app";
+const TOKEN_REFUSED = "an API token can't do this. Sign in to the app instead.";
 
 /**
  * Guard a route at a fixed rung. 401 if unauthenticated, 403 if below it.
  *
- * Maintainer powers need a signed-in SESSION, never an API token: a token lives in an AI
- * client's config, where it can leak or be steered by a prompt, and administering (roles, plans,
- * access rules, invites) is exactly what a leaked credential must not reach.
+ * Staff powers (moderator and maintainer) need a signed-in SESSION, never an API token: a token
+ * lives in an AI client's config, where it can leak or be steered by a prompt, and reviewing or
+ * administering (roles, plans, access rules, invites) is exactly what a leaked credential must
+ * not reach. An AI assistant only ever suggests.
  */
 export function requireRole(min: FixedRole): MiddlewareHandler<Env> {
   return async (c, next) => {
     const user = c.get("user");
     if (!user) return c.json({ detail: "authentication required" }, 401);
     if (!atLeast(user, min)) return c.json({ detail: `requires role: ${min}` }, 403);
-    if (min === "maintainer" && user.via === "token") return c.json({ detail: TOKEN_REFUSED }, 403);
+    if (FIXED_ROLES[min] >= FIXED_ROLES.moderator && user.via === "token") return c.json({ detail: TOKEN_REFUSED }, 403);
     await next();
   };
 }

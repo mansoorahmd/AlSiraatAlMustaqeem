@@ -1,4 +1,4 @@
-// Invite-only registration is the gate on the whole remote. These run against real Postgres
+// Invites bring someone in at a chosen role (open sign-up makes a free reader). These run against real Postgres
 // (PGlite, in-process) and cover the rules that matter: single use, expiry, no duplicate
 // accounts, and that the granted role comes from the INVITE — never from the request.
 
