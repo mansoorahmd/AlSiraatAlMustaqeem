@@ -3211,7 +3211,7 @@ a { color: var(--lapis); }
   font-size: var(--fs-small); color: var(--ink-soft); }
 
 /* ============ account panel ============
-   Deliberately conventional (see INSTRUCTIONS.md → UI conventions): avatar + name + role
+   Deliberately conventional (see CLAUDE.md → UI conventions): avatar + name + role
    badge, values as text with a pencil to edit, every label and control on ONE left edge,
    full-width inputs, one primary action per section. */
 .acct { display: flex; flex-direction: column; align-items: stretch; gap: 0.9rem; }
@@ -3233,7 +3233,7 @@ a { color: var(--lapis); }
 .corpus-banner-text { display: flex; flex-direction: column; min-width: 0; }
 .corpus-banner-text strong { font-weight: 600; }
 .corpus-banner-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
-/* a secondary action outside a toolbar needs an edge, or it reads as absent (INSTRUCTIONS.md) */
+/* a secondary action outside a toolbar needs an edge, or it reads as absent (CLAUDE.md) */
 .corpus-banner-actions .ctl:not(.primary) { border-color: var(--paper-edge); color: var(--ink); }
 
 /* --- identity header --- */
@@ -3399,7 +3399,7 @@ a { color: var(--lapis); }
 
 /* ============ home: workbench ============
    One clear next action, three numbers, three equal cards. Nothing about configuration —
-   that lives in Settings (see INSTRUCTIONS.md → UI conventions). */
+   that lives in Settings (see CLAUDE.md → UI conventions). */
 /* ============ home ============
    Feed conventions, because that's what people are fluent in: one calm resume bar, counts as
    quiet text, then cards whose ROWS are the interface — generous padding, a clear left-aligned
@@ -3487,7 +3487,7 @@ a { color: var(--lapis); }
    Vocalised Arabic stacks marks ABOVE and BELOW the baseline (fatḥa/ḍamma up, kasra and
    the shadda stack down), so a UI line-height of 1.2–1.5 makes a line box shorter than the
    glyphs. Combined with overflow:hidden for ellipsis truncation, that shears the marks off.
-   Any row, chip or truncated label that can hold Arabic gets room. See INSTRUCTIONS.md. */
+   Any row, chip or truncated label that can hold Arabic gets room. See CLAUDE.md. */
 .home-row, .home-row-main, .home-q-text { line-height: 1.9; }
 .home-row-main.quran { font-size: 1.05rem; line-height: 2.05; }
 /* the row itself must not cap the line box it contains */

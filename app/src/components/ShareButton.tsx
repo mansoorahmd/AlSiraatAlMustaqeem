@@ -8,7 +8,7 @@
 //   never submitted            → ↑        share it
 //   submitted, unchanged since → Shared   nothing to do
 //   submitted, then edited     → Update   re-share, chained to the previous submission via
-//                                          `supersedes` (SHARED_RESEARCH.md §6) rather than
+//                                          `supersedes` (DESIGN.md §6) rather than
 //                                          landing upstream as an orphaned duplicate
 //
 // What's sent is a frozen snapshot: editing the record afterwards never rewrites what a

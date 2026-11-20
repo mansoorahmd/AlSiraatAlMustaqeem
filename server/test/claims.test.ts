@@ -23,7 +23,7 @@ let db: PGlite;
 let r: SqlRunner;
 let amina: string, bilal: string, mod1: string, mod2: string, mod3: string, boss: string;
 
-/** A claim always carries its argument — a bare assertion can't be reviewed (§12.1). */
+/** A claim always carries its argument — a bare assertion can't be reviewed (DESIGN.md §6, argument required). */
 const reading = (meaning: string) => ({
   meaning, evidence: [{ verseKey: "2:2" }], argument: "as the occurrences read together",
 });
@@ -68,7 +68,7 @@ describe("a claim is one author's reading", () => {
     expect((await getVersion(r, v1.claimId, 1))!.payload).toMatchObject({ meaning: "guidance" });
   });
 
-  it("refuses a bare assertion with no argument (§12.1)", async () => {
+  it("refuses a bare assertion with no argument", async () => {
     await expect(proposeClaim(r, {
       authorId: amina, subjectKind: "form", subjectValue: "هُدًى",
       payload: { meaning: "guidance" },
@@ -150,7 +150,7 @@ describe("disagreement is preserved, not resolved", () => {
     const d = await dissentsFor(r, c.claimId, c.version);
     expect(d).toHaveLength(1);
     expect(d[0]!.authorId).toBe(mod2);
-    expect(d[0]!.payload).toMatchObject({ evidence: [{ verseKey: "6:71" }] }); // stands alone (§12.4)
+    expect(d[0]!.payload).toMatchObject({ evidence: [{ verseKey: "6:71" }] }); // a dissent stands alone (DESIGN.md §6)
 
     // and the reading it objects to is still the group's — the objection didn't undo it
     expect((await globalReading(r, "form", "هُدًى"))!.claimId).toBe(c.claimId);

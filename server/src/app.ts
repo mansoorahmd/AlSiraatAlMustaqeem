@@ -343,7 +343,7 @@ export function createApp(): Hono<Env> {
 
   // --- claims: contending readings, review, establishment, dissent (Phase 5) ---
 
-  /** Offer your reading of a form or root. Must carry its argument (§12.1). A feature → role. */
+  /** Offer your reading of a form or root. Must carry its argument (DESIGN.md §6). A feature → role. */
   app.post("/claims", requireRole("reader"), requireSession, publish, requirePlanFeature("publish", pgRunner), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
       { subjectKind?: SubjectKind; subjectValue?: string; payload?: never; audience?: unknown };
@@ -466,7 +466,7 @@ export function createApp(): Hono<Env> {
     }
   });
 
-  /** A maintainer establishing directly — §4 grants the authority; it's recorded as their act. */
+  /** A maintainer establishing directly (DESIGN.md §6); it is recorded as their act. */
   app.post("/claims/:id/versions/:version/establish", requireRole("maintainer"), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as { comment?: string; audience?: unknown };
     try {

@@ -2,7 +2,7 @@
 //
 // Only ADDITIVE kinds for now: notes, published questions, evidence āyāt. They land as new
 // attributed rows and cannot conflict with anyone else's work, so no claim/dissent machinery is
-// needed yet — which is exactly why the build plan proves the pipe with them first.
+// needed for them. Competing readings go through claims (claims.ts); rules in DESIGN.md §6.
 //
 // Two properties matter and are enforced here:
 //   • A submission is an IMMUTABLE SNAPSHOT. Its payload is frozen at submit time; a later edit
@@ -21,7 +21,7 @@ export const SCHEMA_VERSION = 1;
 export const ADDITIVE_KINDS = ["note", "question", "evidence"] as const;
 export type AdditiveKind = (typeof ADDITIVE_KINDS)[number];
 
-/** A case board is one JSON document and can get large; cap each item (§12.5). */
+/** A case board is one JSON document and can get large; cap each item (DESIGN.md §6, size cap). */
 export const MAX_ITEM_BYTES = 1_048_576; // 1 MB
 
 export interface SubmissionItemInput {

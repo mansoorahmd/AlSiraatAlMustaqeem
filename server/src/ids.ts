@@ -1,4 +1,4 @@
-// Content-addressed identifiers (SHARED_RESEARCH_SCHEMA.md §1).
+// Content-addressed identifiers (DESIGN.md §6, "Claims and citation IDs").
 //
 //   canonical(obj) = JSON with keys sorted deeply, so the same claim always hashes the same
 //   digest(obj)    = base32(sha256(canonical))  — lower-case, unpadded, URL-safe

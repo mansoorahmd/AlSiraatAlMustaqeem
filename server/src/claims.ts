@@ -9,7 +9,7 @@
 // overwrite each other. Successive readings by the same author are VERSIONS of their claim, so
 // `id@v` pins exactly what was cited even after they change their mind.
 //
-// Establishment rule (SHARED_RESEARCH.md §2, locked):
+// Establishment rule (DESIGN.md §6):
 //   approvals >= requiredApprovals AND approvals > objections
 // — a majority OF THE VOTES CAST, not of all moderators (waiting on people who never look
 // would stall forever). A moderator may not approve their own submission. A maintainer may
@@ -61,10 +61,10 @@ const VERSION_COLS = `cv.claim_id, cv.version, cv.payload_json, cv.established_a
 /**
  * Record an author's reading of a subject. The first is version 1; a later reading by the same
  * author is a NEW VERSION of the same claim, with the old one intact and still citable
- * (SHARED_RESEARCH.md §12.2 — revising your own established reading is a version, not a
+ * (DESIGN.md §6 — revising your own established reading is a version, not a
  * dissent against yourself).
  *
- * A competing claim must carry its argument (§12.1): a bare assertion can't be reviewed.
+ * A competing claim must carry its argument (DESIGN.md §6): a bare assertion can't be reviewed.
  */
 export async function proposeClaim(
   r: SqlRunner,
@@ -79,7 +79,7 @@ export async function proposeClaim(
   if (!subject) throw new ClaimError("a subject is required", 422);
   if (!opts.payload?.meaning?.trim()) throw new ClaimError("a reading (meaning) is required", 422);
 
-  // §12.1 — the argument must come with the claim, or reviewers have nothing to weigh
+  // DESIGN.md §6 — the argument must come with the claim, or reviewers have nothing to weigh
   const hasArgument = !!opts.payload.caseId
     || !!opts.payload.argument
     || (Array.isArray(opts.payload.evidence) && opts.payload.evidence.length > 0);
@@ -163,7 +163,7 @@ export async function review(
   const target = await getVersion(r, opts.claimId, opts.version);
   if (!target) throw new ClaimError("no such claim version", 404);
 
-  // establishment must not be self-service (§2, locked)
+  // establishment must not be self-service (DESIGN.md §6)
   if (target.authorId === opts.moderatorId && opts.decision === "approve") {
     throw new ClaimError("you can't approve your own claim", 403);
   }
@@ -411,7 +411,7 @@ export async function divergencesAgainstGlobal(
 }
 
 /**
- * File a dissent against an established reading. It carries its OWN payload (§12.4) — it must
+ * File a dissent against an established reading. It carries its OWN payload (DESIGN.md §6) — it must
  * stand alone, because the submission it came from may later be redacted, and because a dissent
  * that shaped someone's reasoning has to remain readable.
  */

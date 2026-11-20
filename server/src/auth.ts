@@ -1,7 +1,7 @@
 // Better Auth — AUTHENTICATION only (identity + sessions + magic-link tokens).
 // Authorization (`users.role`) and the domain link (`users.local_id`) are ours and are
 // deliberately NOT declared to Better Auth: our session middleware reads them straight from
-// the users table. "Buy authentication, build authorization" (SHARED_RESEARCH.md §4).
+// the users table. "Buy authentication, build authorization" (SERVER.md).
 //
 // Accounts are created by our own code only, never by Better Auth (`disableSignUp: true`): open
 // sign-up (POST /signup, src/signup.ts) makes a free reader, and redeeming an invite

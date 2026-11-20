@@ -16,7 +16,7 @@ import { createMcpServer } from "./server.js";
 // fails with "... is not valid JSON". Our own code never prints to stdout, but the
 // shared server modules might, so route every console channel to stderr and keep
 // stdout exclusively for JSON-RPC. (This cannot fix a *launcher* that prints to
-// stdout — see the note on `npm start` in INSTRUCTIONS.md.)
+// stdout — see the note on `npm start` in MCP.md.)
 console.log = (...a: unknown[]) => process.stderr.write(a.map(String).join(" ") + "\n");
 console.info = console.log;
 console.debug = console.log;

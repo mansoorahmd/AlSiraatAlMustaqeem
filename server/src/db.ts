@@ -1,5 +1,5 @@
 // Postgres connection pool for the remote research channel. This is where a structured,
-// multi-writer, transactional store genuinely earns its place (SHARED_RESEARCH.md §3).
+// multi-writer, transactional store genuinely earns its place.
 
 import pg from "pg";
 import { config } from "./config.js";

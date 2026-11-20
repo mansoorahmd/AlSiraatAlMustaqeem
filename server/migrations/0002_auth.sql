@@ -1,6 +1,6 @@
 -- 0002_auth — the tables Better Auth needs, alongside our domain `users` table.
 --
--- Division of labour (SHARED_RESEARCH.md §4): Better Auth owns AUTHENTICATION — identity,
+-- Division of labour (SERVER.md): Better Auth owns AUTHENTICATION — identity,
 -- sessions, verification tokens. Our own code owns AUTHORIZATION (`users.role`) and the
 -- domain link (`users.local_id`). So Better Auth maps onto `users` for the identity columns
 -- only; it never reads or writes role/local_id.

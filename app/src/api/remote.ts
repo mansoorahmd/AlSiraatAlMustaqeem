@@ -284,7 +284,7 @@ export const remote = {
   // --- the claim spine, from the app (Phase 5 was CLI-only) ---------------------
   //
   // Propose YOUR reading of a form or root. It contends for the global slot; it never
-  // overwrites anyone else's. A competing claim must carry its argument (§12.1) — a case, an
+  // overwrites anyone else's. A competing claim must carry its argument (DESIGN.md §6) — a case, an
   // evidence āyah, or reasoning — or reviewers have nothing to weigh.
   propose(opts: {
     subjectKind: "form" | "root"; subjectValue: string;

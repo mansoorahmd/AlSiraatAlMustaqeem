@@ -2,39 +2,44 @@
 
 The research server. It holds **everything**: the **Qur'an corpus**, **each account's own
 research** (private to each account, by row-level security), and the **community**, where research is
-published, reviewed, and agreed (`SHARED_RESEARCH.md`). The app and the MCP read and write it as the
-signed-in user.
+published, reviewed, and agreed (its rules: `DESIGN.md` §6). The app and the MCP read and write it
+as the signed-in user.
 
-Backed by **Postgres** (where a structured, multi-writer, transactional store earns its place —
-`SHARED_RESEARCH.md` §3). The corpus lives in schema `corpus`, loaded from `quran.db` and proven
-identical (`CORPUS.md`); every account's research in schema `research`, under row-level security. Access follows one rule:
-**features are role-based, resources are plan-based**, and every published result is seen only by its
-**audience** (below).
+Backed by **Postgres**. The corpus lives in schema `corpus`, loaded from `quran.db` and proven
+identical (`CORPUS.md`); every account's research in schema `research`, under row-level security;
+accounts and the community in `public`. Access follows one rule: **roles say what you may do, plans
+say what you may use and read**, and every published result is seen only by its **audience** (below).
 
-## What's built (Phase 3)
+## What's built
 
-- **Schema** — `migrations/0001_init.sql`: the full research-channel schema from
-  `SHARED_RESEARCH_SCHEMA.md` §3 (users, invites, claims, claim_versions, global_forms, dissents,
-  submissions, submission_items, reviews, redactions, sync_cursors), with role/kind CHECKs, `seq`
-  cursors, and referential integrity. `0002_auth.sql` adds Better Auth's `session` / `account` /
-  `verification` tables and the identity columns on `users`. Validated against real Postgres.
-- **Migration runner** — `src/migrate.ts` (forward-only, tracked in `_migrations`, idempotent),
-  CLI `src/migrate-cli.ts`.
-- **Role ladder + guard** — `src/roles.ts`: `reader < researcher < moderator < maintainer`,
-  `requireRole(min)` Hono middleware (401 unauthenticated, 403 below the rung). Hand-rolled, not a
-  permissions library.
-- **Authentication** — `src/auth.ts`: Better Auth with the **magic-link** plugin, mapped onto our
-  snake_case `users` table, year-long sessions (sign in once, then work offline).
+- **Schema** — `migrations/` is the source of truth. `0001_init.sql` creates the community tables
+  (users, invites, claims, claim_versions, global_forms, dissents, submissions, submission_items,
+  reviews, redactions, sync_cursors) with role/kind CHECKs, `seq` cursors and referential
+  integrity; `0002_auth.sql` adds Better Auth's `session` / `account` / `verification` tables;
+  later migrations add plans, resource rules, API tokens, the role ladder and audiences, the
+  research schema under row-level security, the sign-up profile and plan features.
+- **Migration runner** — `src/migrate.ts` (forward-only, tracked in `_migrations` by file name,
+  idempotent), CLI `src/migrate-cli.ts`.
+- **Roles** — `src/roles.ts` (guards: `requireRole(min)`, `requireSession`; 401 unauthenticated,
+  403 below the rung) and `src/role-ladder.ts` (the ladder as data, `requireFeature`, audiences).
+  Hand-rolled, not a permissions library.
+- **Plans** — `src/plans.ts` (the tier ladder), `src/plan-features.ts` (the 23 plan features),
+  `src/resource-access.ts` (the rules and their guards).
+- **Authentication** — `src/auth.ts`: Better Auth with email + password and the magic-link
+  plugin, mapped onto our snake_case `users` table, year-long sessions.
 - **Registration** — open sign-up (`src/signup.ts`: a free reader) and invites (`src/invites.ts`:
   issue / redeem, single-use, expiring, carrying a role).
+- **Research** — `src/research/` (below). **Corpus** — `src/corpus/` (below).
+  **Community** — `src/submissions.ts`, `src/claims.ts`, `src/pull.ts`, `src/ids.ts`.
+- **Hosted MCP** — `src/mcp-http.ts` (`MCP.md`).
 - **Routes** — `src/app.ts` (below).
 
 ### The division of labour
 
-Better Auth owns **authentication** — identity, sessions, magic-link tokens. Our own code owns
-**authorization** (`users.role`) and the domain link (`users.local_id`); those are never declared
-to Better Auth, and the session middleware reads the role straight from the `users` table. This is
-the "buy authentication, build authorization" decision (`SHARED_RESEARCH.md` §4).
+"Buy authentication, build authorization." Better Auth owns **authentication** — identity,
+sessions, password hashing, magic-link tokens. Our own code owns **authorization** (`users.role`,
+the plan); those are never declared to Better Auth, and the session middleware reads the role
+straight from the `users` table.
 
 ### How accounts are created
 
@@ -48,43 +53,43 @@ Better Auth never creates a user (`disableSignUp: true`); our own code does, in 
 
 A magic link only signs in an account that already exists; it never creates one.
 
-## Using it from the app (no curl needed)
+## Using it from the app
 
-**Home → Research community → “Account & invites”** is the whole UI:
+The **account button in the top bar** opens the account panel (`app/src/components/AccountSheet.tsx`):
 
 - **Sign in** — email + password. No email transport needed.
-- **Redeem an invite** — “I have an invite code”: enter your email, **choose a password**, paste
-  the code. That creates your account, links this device's research to it, and signs you in.
-  Every later sign-in is just email + password.
+- **Create an account** — open sign-up: a free reader, with a profile (date of birth, region,
+  optional gender).
+- **Redeem an invite** — "Have an invite code?": enter your email, **choose a password**, paste
+  the code. That creates your account at the invite's role and signs you in.
+- **Email me a reset link** — forgotten passwords (below).
 - **Issue invites** (maintainer only) — pick a role, get a code to share (30 days, single use).
-- **Link this device** — binds your `local_id` so work done before you had an account is
-  attributed to you.
 - **Connect an AI assistant** — mint a personal API token for the MCP (shown once, inside a
   ready-to-paste MCP config), see when each was last used, revoke any.
 - **Sign out.**
 
 Maintainers also get an **Admin** tab in the top bar (see "Administering it" below).
 
-If the remote isn't running, the panel says so and your own research still works; reading the
-Qur'an needs it, and a banner at the top of the app says why when it can't read (offline, sign in,
-or which plan is needed).
+If the server can't be reached nothing can be read or written. A banner at the top of the app
+says why when it can't read (offline, sign in, or which plan is needed); a locked feature shows a
+lock or a read-only note instead of failing.
 
-### Sharing your work (Phase 4)
+### Sharing your work
 
-Home → *Open questions* → the **↑** button beside a question offers it to the community. It only
-appears if you're signed in as a researcher or above; a reader (or anyone signed out) never sees
-an action they can't use.
+Two paths, both from a signed-in session with the publish role and the `publish` plan feature:
 
-Only **additive** kinds can be submitted so far — notes, questions, evidence āyāt — because they
-can't conflict with anyone else's work, so no review machinery is needed to accept them. Competing
-claims (form indications, root verdicts) are refused until Phase 5.
+- **Additive kinds** (notes, questions, evidence āyāt) go to `POST /submissions`. Home → *Open
+  questions* → the **↑** button beside a question offers it to the community. The button only
+  appears for someone who may publish.
+- **Competing readings** (a form's or root's meaning) go to `POST /claims`: in the indication
+  editor, **◈ Propose to community** on your own reading. It must carry its argument. Selecting a
+  community reading shows role-gated **Approve / Object / Establish**.
 
 What's sent is a **frozen snapshot**: editing the note afterwards doesn't change what you
 submitted. Submissions are content-addressed, so sending the identical thing twice returns the
 same submission rather than duplicating it. Items over 1 MB are rejected — split them.
 
-The control has three states, remembered in your research (`derived_submissions`) so they survive
-a restart:
+The share control has three states, remembered in your research (`derived_submissions`):
 
 | | |
 |---|---|
@@ -122,35 +127,40 @@ reader's `localhost` — different sites — so over HTTPS the session cookie is
 
 | Route | Who |
 |---|---|
-| `/api/auth/*` | Better Auth (magic-link sign-in, session) |
+| `/api/auth/*` | Better Auth (sign-in, session, password reset); its own sign-up route is closed |
 | `GET /health` | public |
 | `GET /signed-in` | public — the magic-link landing page |
+| `GET /reset-password` | public — the password-reset page |
+| `POST /signup` | public — open sign-up: a free reader (rate-limited) |
 | `POST /invites` | maintainer |
 | `POST /invites/redeem` | public — the code *is* the credential |
-| `GET /me` | any signed-in user (id, role, plan, bound localId) |
-| `POST /me/local-id` | any signed-in user (bind this device) |
+| `GET /me` | any signed-in user (id, role, plan, and `features`: what the account may use) |
 | `POST /me/name` | any signed-in user (display name) |
-| `GET /me/tokens` · `POST /me/tokens` | any signed-in user — list / mint personal API tokens (below) |
-| `DELETE /me/tokens/:id` | any signed-in user — revoke one of your own |
+| `POST /me/local-id` | any signed-in user — unused by the app (`DESIGN.md`, "Superseded decisions") |
+| `GET /me/tokens` · `POST /me/tokens` | a signed-in session — list / mint personal API tokens (minting needs plan feature `ai`) |
+| `DELETE /me/tokens/:id` | a signed-in session — revoke one of your own |
 | `POST /plan` | maintainer — grant/revoke a plan tier by email (the manual stand-in for billing) |
 | `GET /plan-tiers` | public — the plan ladder (name, rank, label) |
 | `PUT /plan-tiers/:name` · `DELETE /plan-tiers/:name` | maintainer — edit the ladder |
-| `GET /resource-access` | public — every resource rule `{kind, key, minPlan}` |
+| `GET /plan-features` | public — the feature groups and every feature with its `minPlan` |
+| `GET /resource-access` | public — every rule `{kind, key, minPlan}` |
 | `PUT /resource-access/:kind/:key` | maintainer — `{minPlan: "<tier>" \| "free" \| null}` |
 | `DELETE /resource-access/:kind/:key` | maintainer — drop a per-item rule |
-| `GET /admin/users` | maintainer — every user with role and plan |
+| `GET /admin/users` | maintainer — every user with role, plan and profile |
 | `PUT /admin/users/:id/role` | maintainer — `{role}`; won't demote the last maintainer |
 | `PUT /admin/users/:id/plan` | maintainer — `{plan, expiresInDays?}` |
 | `GET /admin/resources` | maintainer — every translation and lexicon with its rule, unfiltered |
-| `GET\|POST /corpus/*` | resource `corpus` — the whole Qur'an corpus from Postgres (below) |
-| `GET /community/readings` · `POST /divergences` · `GET /claims` · `GET /pull` | reader+ and resource `community` |
-| `POST /submissions` · `POST /claims` | the **publish** role (researcher by default) — `{…, audience: {minRole, minPlan}}` |
+| `GET\|POST /corpus/*` | the Qur'an corpus from Postgres; each route belongs to one plan feature (below) |
+| `GET\|PUT\|DELETE /research/*` | any account — **your own research** (`src/research/routes.ts`); writes need the record's plan feature |
+| `GET /community/readings` · `GET /claims` · `GET /claims/:id/dissents` · `GET /pull` | plan feature `community` |
+| `POST /divergences` | plan feature `divergences` |
+| `POST /submissions` · `POST /claims` | a signed-in session, the **publish** role (researcher by default) and plan feature `publish` — `{…, audience: {minRole, minPlan}}` |
 | `GET /submissions` | any account — your outbox |
 | `GET /submissions/:id` | its author, or staff |
 | `POST /claims/:id/versions/:v/review` · `…/establish` | moderator · maintainer — `{…, audience}` confirms or changes who may see it |
-| `GET\|PUT\|DELETE /research/*` | any account — **your own research** (`src/research/routes.ts`) |
 | `GET /roles` · `PUT\|DELETE /roles/:name` | public · maintainer — the role ladder |
 | `GET /feature-access` · `PUT /feature-access/:feature` | public · maintainer — publishing's minimum role |
+| `/mcp` · `/mcp/:token` | the hosted MCP, with a personal API token (`MCP.md`) |
 
 **Signing in.** The app uses the Better Auth session cookie. A headless client — the MCP — uses a
 **personal API token** instead: `Authorization: Bearer mqrg_…`. Tokens are made in the app (Account →
@@ -159,17 +169,19 @@ as its user, roles and plan included (`src/api-tokens.ts`, `src/session.ts`). It
 (`/submissions`, `/claims`), review or establish, administer, or manage tokens: those need a signed-in
 session (`requireSession`, and `requireRole` for every staff rung). An AI assistant only suggests.
 
-## Access: features are role-based, resources are plan-based
+## Access: roles say what you may do, plans say what you may use
 
 Two independent axes, one question each:
 
-- **Features** — what you may **do** — are gated by **role** (`requireRole` / `requireFeature`,
-  `src/roles.ts`, `src/role-ladder.ts`): keeping research needs any account; publishing needs the role
-  the maintainer chose (researcher by default); review `moderator`; establishing, inviting and
-  administering `maintainer`. Below it: 401 (signed out) or 403 (role too low).
-- **Resources** — what you may **read** — are gated by **plan** (`requireResource`,
-  `src/resource-access.ts`). Below it: 401 if a sign-in is needed, **402** `{detail, resource, plan}`
+- **Role** — what you may **do** (`requireRole` / `requireFeature`, `src/roles.ts`,
+  `src/role-ladder.ts`): publishing needs the role the maintainer chose (researcher by default);
+  review `moderator`; establishing, inviting and administering `maintainer`. Below it: 401 (signed
+  out) or 403 (role too low).
+- **Plan** — what you may **use and read** (`requirePlanFeature` / `requireCorpusFeature` /
+  `requireResearchFeature`, `src/resource-access.ts`). Below it: 401 if a sign-in is needed, **402**
   if a higher plan is.
+
+Publishing needs both: the publish role and the `publish` plan feature.
 
 ### The role ladder
 
@@ -186,9 +198,9 @@ Which role **publishing** needs is the maintainer's choice (`feature_access`, re
 Every published result (a claim version, a submission) carries an **audience**: at least a role
 **and** at least a plan (either may be empty), e.g. *scholars and above, on Pro*. The **author
 proposes** it when publishing; the **reviewer confirms or changes** it when approving or establishing.
-Every read of the community (claims, the group's reading, dissents, reading chips, ⚖ divergence and
-its count, the pull) shows a viewer only what their role *and* plan reach. Authors always see their
-own; moderators and maintainers see everything, since they review it. The community resource rule
+Every read of the community (claims, the group's reading, dissents, reading chips, divergences and
+their count, the pull) shows a viewer only what their role *and* plan reach. Authors always see their
+own; moderators and maintainers see everything, since they review it. The `community` plan feature
 (below) still applies to all of it.
 
 ### The plan ladder
@@ -199,41 +211,59 @@ everything a lower one does. `free` is always rank 0. Tier names are free-form, 
 ever *what's paid for*: standing (student, scholar) is a **role**, and the power to administer
 is the `maintainer` **role**.
 
-Every rule fails **closed**: an unknown tier never passes, and a **lapsed** plan (`plan_expires_at` in
-the past) counts as `free`. A tier can't be removed while an account holds it or a resource needs it.
+Every rule fails **closed**: an unknown tier never passes, a missing feature rule reads as `pro`,
+and a **lapsed** plan (`plan_expires_at` in the past) counts as `free`. A tier can't be removed
+while an account holds it or a rule needs it.
 
-### The resources
+### Plan features and per-item rules
 
 `resource_access (kind, key, min_plan)`. `min_plan` is a tier, `free` (= any signed-in account), or
-`NULL` (= public, no sign-in at all).
+`NULL` (= public, no sign-in at all). Three kinds:
 
 | kind | key | Guards | Below the tier |
 |---|---|---|---|
-| `corpus` | `*` | every `/corpus` route | 401 / 402 |
-| `community` | `*` | community readings, claims, dissents, divergences, pull | 401 / 402 |
+| `feature` | a plan feature (below) | that feature's routes | corpus reads: 401 / 402; the reader's own records: **read-only** |
 | `translation` | resource id | that translation in any result | **left out** — the request still succeeds |
 | `lexicon` | source (`lanes_lexicon`, `lisan_ul_arab`, …) | that dictionary's entries on a root page | **left out** |
 
-`corpus` and `community` default to `pro`. A translation or lexicon with no rule needs only what the
-corpus needs. Rules are cached for 10 s per process: a change applies at once on the instance that made
-it, and within 10 s on any other.
+The **23 plan features** are defined in code (`src/plan-features.ts`), in three groups, each with a
+default set by migration 0013:
+
+| Group | Features | Default |
+|---|---|---|
+| Read-assist tools | `text`, `translations`, `search`, `roots`, `meanings`, `follow-root`, `follow-word`, `echoes`, `similar`, `spelling`, `wazn`, `linkages`, `lens`, `compare` | `free` |
+| Interaction | `notes`, `indications`, `my-meanings`, `motifs` | `pro` |
+| Research & publication | `cases`, `publish`, `community`, `divergences`, `ai` | `pro` |
+
+- Every `/corpus` route belongs to one feature (`featureForCorpus`) and answers 401 / 402 by its
+  rule. Meanings and translations ride inside other answers too, so a locked one is also filtered
+  out of those (`src/corpus/serve.ts`).
+- Interaction and research features are the reader's own records. A locked one is **read-only**:
+  what they made stays visible, but writes are refused (`featureForResearch` looks only at writes).
+- `GET /me` reports `features` (what the account may use); the app shows a lock or a read-only
+  note (`FeatureGate`, `PlanLock`, `app/src/lib/features.ts`).
+- A new feature needs a line in `plan-features.ts` and its routes in the maps there; nothing in
+  the database.
+
+A translation or lexicon with no rule of its own needs only what its feature needs. Rules are
+cached for 10 s per process: a change applies at once on the instance that made it, and within
+10 s on any other.
 
 ### Administering it
 
-In the app: sign in as a maintainer and open the **Admin** tab — plan tiers, *who can read* (the corpus,
-the community, each translation and dictionary), and people (each user's role and plan, with an optional
-expiry). The same, scripted:
+In the app: sign in as a maintainer and open the **Admin** tab — roles, plan tiers, access (each
+plan feature, each translation and dictionary), and people (each user's role and plan, with an
+optional expiry, beside their region, age and join date). The same, scripted:
 
 ```bash
 npm run access -w @alsiraat/server -- show                         # the ladder + every rule
 npm run access -w @alsiraat/server -- tier scholar 200 "Scholar"   # add or change a tier
 npm run access -w @alsiraat/server -- tier-remove student          # remove an unused tier
-npm run access -w @alsiraat/server -- corpus public                # anyone may read the corpus
-npm run access -w @alsiraat/server -- corpus free                  # any signed-in account
-npm run access -w @alsiraat/server -- corpus scholar               # scholar or higher
-npm run access -w @alsiraat/server -- community pro                # the community's tier
+npm run access -w @alsiraat/server -- feature text public          # anyone may read the Qur'an
+npm run access -w @alsiraat/server -- feature search free          # any signed-in account
+npm run access -w @alsiraat/server -- feature notes pro            # pro or higher
 npm run access -w @alsiraat/server -- translation 131 scholar      # translation 131 needs scholar
-npm run access -w @alsiraat/server -- translation 131 none         # back to "same as the corpus"
+npm run access -w @alsiraat/server -- translation 131 none         # drop the per-item rule
 npm run access -w @alsiraat/server -- lexicon lanes_lexicon scholar  # Lane's lexicon needs scholar
 
 npm run set-plan -w @alsiraat/server -- me@example.org scholar     # grant, no expiry
@@ -242,11 +272,11 @@ npm run set-plan -w @alsiraat/server -- me@example.org free        # revoke
 ```
 
 Billing isn't wired yet; the plan grant (Admin tab, `set-plan`, `POST /plan`) is the seam a payment
-provider slots into. `GET /me` returns `plan`, `planLabel`, `planRank`, `planExpiresAt` and
-`planActive` (= can read the community). Never infer "paid" from the tier name.
+provider slots into. `GET /me` returns `plan`, `planLabel`, `planRank`, `planExpiresAt`,
+`planActive` (= can read the community) and `features`. Never infer "paid" from the tier name.
 
 **Staff need a plan too.** A maintainer on `free` can administer everything but still gets 402 on a
-`pro` resource — grant yourself a tier (or open the resource) if that's not what you want.
+`pro` feature — grant yourself a tier (or open the feature) if that's not what you want.
 
 ## Your research, in your account
 
@@ -328,57 +358,33 @@ HTTPS), the corpus load, the first maintainer, backups.
 npm install                      # plain install; no flags needed
 
 createdb researchgate            # or: psql -U postgres -c 'CREATE DATABASE researchgate'
-npm run server:migrate           # → applied: 0001_init.sql, 0002_auth.sql
+npm run server:migrate           # apply every migration not yet applied
+npm run corpus:migrate           # load quran.db into the corpus schema (CORPUS.md)
 
 # verify against YOUR server (the unit tests run on PGlite, not real Postgres):
 npm run smoke -w @alsiraat/server
 
 # watch the claim spine work end to end — propose, review, establish, dissent.
 # It creates temporary people (the majority rule needs several moderators) and cleans
-# up after itself; --keep leaves the rows so you can inspect them.
+# up after itself; server:demo:keep leaves the rows so you can inspect them.
 npm run server:demo
 
 # the first maintainer can't be invited — create one out of band:
 npm run bootstrap -w @alsiraat/server -- you@example.org "Your Name"
 
 # bootstrap creates the account with NO password, so give it one (also how a maintainer
-# resets a forgotten password, since no reset email is configured):
+# resets someone's password by hand):
 npm run set-password -w @alsiraat/server -- you@example.org "a good long password"
+
+# create (or reset) the test logins listed in a CSV — username,email,password,role,plan.
+# The file holds passwords, so it is gitignored:
+npm run test-users -w @alsiraat/server -- ../test-users.csv
 
 npm run server:dev               # http://localhost:8100/health
 ```
 
-Then, to exercise the flow end to end. Keep `server:dev` running in one terminal (magic links
-are printed there) and run these in another.
-
-**Windows CMD** — one line each, double quotes, inner quotes escaped:
-
-```cmd
-:: 1. request a sign-in link; open the URL printed in the server terminal
-curl -X POST localhost:8100/api/auth/sign-in/magic-link -H "content-type: application/json" -d "{\"email\":\"you@example.org\"}"
-
-:: 2. confirm who you are (cookie jar from the browser, or -b/-c to persist one)
-curl localhost:8100/me -b cookies.txt
-
-:: 3. issue an invite (maintainer only)
-curl -X POST localhost:8100/invites -b cookies.txt -H "content-type: application/json" -d "{\"role\":\"researcher\"}"
-
-:: 4. the invitee redeems it — no auth needed, the code IS the credential
-curl -X POST localhost:8100/invites/redeem -H "content-type: application/json" -d "{\"code\":\"<code>\",\"email\":\"them@example.org\"}"
-```
-
-**bash / PowerShell 7+**:
-
-```bash
-curl -X POST localhost:8100/api/auth/sign-in/magic-link \
-  -H 'content-type: application/json' -d '{"email":"you@example.org"}'
-curl localhost:8100/me -b cookies.txt
-curl -X POST localhost:8100/invites -b cookies.txt \
-  -H 'content-type: application/json' -d '{"role":"researcher"}'
-curl -X POST localhost:8100/invites/redeem \
-  -H 'content-type: application/json' \
-  -d '{"code":"<code>","email":"them@example.org","localId":"<their local_id>"}'
-```
+The server does **not** apply migrations when it starts in development; run `npm run
+server:migrate` after pulling a change that adds one. The Docker deployment applies them on start.
 
 Tests use **PGlite** (Postgres compiled to WASM, in-process) — no server needed:
 `npm test -w @alsiraat/server`.

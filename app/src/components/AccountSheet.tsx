@@ -1,12 +1,11 @@
 // The research-community account panel.
 //
 // Built to the pattern people already know from ordinary web apps (see the UI conventions in
-// INSTRUCTIONS.md): an avatar + name + role badge header, values shown as TEXT with a pencil
+// CLAUDE.md): an avatar + name + role badge header, values shown as TEXT with a pencil
 // to edit rather than raw inputs left sitting open, labelled rows sharing one left edge, one
 // primary action per section, and sign-out set apart at the end.
 //
-// The remote is OPTIONAL — if it isn't running we say so plainly and the reader carries on
-// working offline, which is the whole premise (SHARED_RESEARCH.md §2).
+// If the research server can't be reached we say so plainly rather than showing an error.
 
 import { useCallback, useEffect, useState } from "react";
 import { remote, RemoteOffline, type Me, type Role, type RoleLevel, type InviteOut, type ApiToken } from "../api/remote";

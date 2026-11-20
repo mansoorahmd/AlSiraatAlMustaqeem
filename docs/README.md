@@ -1,22 +1,26 @@
 # docs/ — the Research Gate Atlas
 
-Living documentation of **MQ Research Gate**, kept in the repo so it's versioned with the code
-and easy to pick up in a new session.
+A structured snapshot of **MQ Research Gate**, kept in the repo so it's versioned with the code.
 
-| File | For | Read when |
+| File | For | What it is |
 |---|---|---|
-| **`atlas.json`** | **AI / new chats** | **Start here.** A compact, structured knowledge base: components, databases, the monetization model, role×plan matrix, remote endpoints, phase status, decisions, a file map, and a glossary. One file, fast to ingest. |
-| `atlas.html` | Humans | Open for the narrative view — the same content with hand-drawn architecture diagrams and per-section feedback threads. Self-contained; open it in a browser, or use the published Artifact link for live feedback. |
-| `feedback.json` | Both | The feedback / communication history as structured entries. New chats can read past decisions and open threads; Claude appends here as we exchange notes. |
+| `atlas.json` | AI / new chats | A compact knowledge base: components, databases, the access model, endpoints, phase status, the decision log (with the why), a file map, and a glossary. |
+| `atlas.html` | Humans | The same content as a narrative page with hand-drawn architecture diagrams and per-section feedback threads. Self-contained; open it in a browser. |
+| `feedback.json` | Both | The feedback history as structured entries, each tagged with the atlas section it's about. |
+
+The atlas carries its own date (`updated` in `atlas.json`; last brought up to date 2026-11-20).
+Where it disagrees with the root docs or the code, they are right.
 
 ## Conventions
 
-- **`atlas.json` is the source of truth for facts.** When the architecture changes, update it (and `atlas.html` to match). Keep entries terse and include file/line pointers.
-- **Feedback** is captured live in `atlas.html`'s threads (backed by the artifact `db` capability) and mirrored into `feedback.json` for repo-side extraction. Each entry is tagged with the atlas section it's about.
-- The deeper design docs still live at the repo root (`INSTRUCTIONS.md`, `DESIGN.md`, `CORPUS.md`, `SERVER.md`, `SHARED_RESEARCH*.md`). The atlas summarizes and points into them; it does not replace them.
+- The entry point for working on the project is `CLAUDE.md` at the repo root; the references are
+  `DESIGN.md`, `SERVER.md`, `CORPUS.md`, `MCP.md`, `DEPLOY.md` and `DESKTOP.md`. The atlas
+  summarizes and points into them; it does not replace them.
+- When the atlas is updated, update `atlas.json` and `atlas.html` together and change its
+  `updated` date.
 
 ## The one line to remember
 
-> Features are role-based; resources are plan-based. Everything lives on the research server — the
-> corpus, the community, and your research, which is private to your account until you publish it,
-> and then seen only by the audience it names, once a reviewer approves it.
+> Roles say what you may do; plans say what you may use and read. Everything lives on the research
+> server — the corpus, the community, and your research, which is private to your account until
+> you publish it, and then seen only by the audience it names, once a reviewer approves it.

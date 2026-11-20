@@ -6,7 +6,7 @@
 // everything it returns lands in the client's DERIVED tables, never its own work.
 //
 // No CRDT, no bidirectional merge: outbound is a submission queue, inbound is a log replay
-// (SHARED_RESEARCH.md §9).
+// (DESIGN.md §6, "Pull is a log replay").
 
 import type { SqlRunner } from "./migrate.js";
 import type { CanSee } from "./claims.js";

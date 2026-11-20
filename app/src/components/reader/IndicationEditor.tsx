@@ -346,7 +346,7 @@ function ReviewControls({ reading }: { reading: PeerIndication }) {
   );
 }
 
-/** Who submitted a community reading, and who approved it — attribution is the point (§1). */
+/** Who submitted a community reading, and who approved it — attribution is the point. */
 function Attribution({ reading }: { reading: PeerIndication }) {
   return (
     <p className="community-attrib">

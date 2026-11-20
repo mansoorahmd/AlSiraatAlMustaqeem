@@ -1,26 +1,206 @@
-# Corpus patch channel
+# The corpus
 
-How corrections to `quran.db` are shipped. This is the **corpus channel** from
-`SHARED_RESEARCH.md` §3: one-way (maintainer → everyone), no research schema, no auth — a
-correction is a *release*, not a database row, and it reaches everyone as a **signed, versioned
-patch file** the client verifies and applies in order.
+The corpus is the reference material: the Qur'an text in every script, each word's root and form
+(morphology), the roots and their derived forms, the classical dictionaries (Lane, Lisān, Maqāyīs,
+Mufradāt and others) keyed to each root, plus translations and search indexes. It is read-only to
+the app and the MCP.
 
-Distinct from the research channel: nobody "submits" a corpus fix through review; the maintainer
-publishes a patch and clients apply it. `quran.db` stays read-only to the app — the patch tool is
-its one sanctioned writer.
+It exists in two places:
 
-## The pieces
+- **`quran.db`** (SQLite, project root, not in git) — the built source. Used by the tests, the
+  parity check, the MCP with `MQ_CORPUS=local`, and the mobile app's build script.
+- **Postgres schema `corpus`** on the research server — a copy loaded from `quran.db` and proven
+  identical. This is what the app and the MCP read, at `/corpus`, gated by plan features
+  (`SERVER.md`).
+
+---
+
+## `quran.db`
+
+SQLite with WAL mode, foreign-key constraints enabled. Open it with DB Browser for SQLite or the
+VS Code SQLite Viewer extension.
+
+### Root hierarchy
+
+```
+roots
+  id, root_buckwalter (UNIQUE), root_arabic, letters_arabic,
+  letter_count, meaning_en, meaning_ar
+    ↓
+root_meanings                          ← per-source dictionary meanings
+  id, root_id → roots, source, language, meaning, source_ref
+  UNIQUE(root_id, source, language)
+    ↓
+root_forms
+  id, root_id → roots, lemma_buckwalter, lemma_arabic,
+  pos, pos_english, pos_arabic, pos_class, occurrence_count
+    ↓
+word_occurrences  ← VIEW (STEM segments joined to root_forms, roots, verses, words)
+```
+
+`roots.meaning_en` / `meaning_ar` are convenience columns synced from the highest-priority source
+in `root_meanings`.
+
+### Text & location
+
+```
+chapters   id, name_simple, name_arabic, name_complex, revelation_place,
+           revelation_order, bismillah_pre, verses_count, pages_first, pages_last
+juzs       id, juz_number, verse_mapping (JSON), first_verse_id, last_verse_id, verses_count
+verses     id, chapter_id → chapters, verse_number, verse_key (UNIQUE, e.g. "2:255"),
+           verse_index, text_uthmani, text_uthmani_simple, text_imlaei, text_imlaei_simple,
+           text_indopak, text_uthmani_tajweed, juz_number, hizb_number, rub_el_hizb_number,
+           page_number, ruku_number, manzil_number, …
+words      id, verse_id → verses, verse_key, position, translation_text, transliteration_text,
+           root_form_id → root_forms, root_buckwalter, root_arabic,
+           lemma_buckwalter, lemma_arabic, pos, pos_arabic, pos_english, pos_class, …
+word_segments
+           id, verse_key, word_position, segment_number,
+           segment_type (PREFIX | STEM | SUFFIX), form_buckwalter, form_arabic,
+           tag, pos, pos_arabic, pos_english, pos_class,
+           lemma_buckwalter, lemma_arabic, root_buckwalter, root_arabic,
+           root_form_id → root_forms (STEM only), verb/noun morphology features, …
+```
+
+### Translations & search
+
+```
+translation_resources   id, name, language_name, author_name, resource_type (translation | tafsir)
+verse_translations      id, verse_id → verses, verse_key, resource_id → translation_resources,
+                        language_name, text
+verses_fts / translations_fts   FTS5 indexes (unicode61)
+```
+
+`corpus_meta` holds the edition (`corpus_version`, `schema_version`), so it travels with the file.
+
+### Handy queries
+
+```sql
+-- every occurrence of a root (e.g. هدي)
+SELECT * FROM word_occurrences WHERE root_arabic = 'هدي';
+
+-- a root with all its dictionary meanings
+SELECT r.root_arabic, rm.source, rm.language, rm.meaning
+FROM roots r JOIN root_meanings rm ON rm.root_id = r.id
+WHERE r.root_arabic = 'هدي'
+ORDER BY rm.language, rm.source;
+```
+
+### Provenance
+
+`quran.db` was assembled by a Python pipeline that lives outside this repo (archived). Its sources:
+
+1. **Quran Foundation Content API v4** — Arabic text in multiple scripts, word-by-word tokens,
+   translations, transliterations, and location metadata.
+2. **Quranic Arabic Corpus v0.4 (Kais Dukes)** — per-segment morphology (POS, root, lemma, case,
+   voice, mood, …) in Buckwalter, converted to Arabic Unicode.
+3. **Lane's Lexicon CSVs** — English root meanings (~95% of Quranic roots).
+4. **arabic_lexicons DB** — 9 classical/modern dictionaries (Hans Wehr, Lane's, Lisan al-Arab,
+   Maqayees, Mufradat, and others), reaching ~99% coverage of English + Arabic meanings.
+
+To rebuild or extend the corpus (more translation editions, a tafsir), restore that Python backup,
+re-run its download/build/load steps, drop the fresh `quran.db` into the project root, and reload
+Postgres (`npm run corpus:migrate`).
+
+---
+
+## The corpus in Postgres
+
+### Loading it
+
+```bash
+npm run corpus:migrate              # load quran.db → Postgres schema "corpus", then verify
+npm run corpus:migrate -- --verify  # re-verify an existing copy (e.g. after replacing quran.db)
+```
+
+Source is `QF_QURAN_DB` (default `./quran.db`), opened read-only. Target is the server's
+`DATABASE_URL`, schema **`corpus`** — the research and community tables are never touched.
+Code: `server/src/corpus/` (`schema.ts`, `load.ts`, `verify.ts`); tests
+`server/test/corpus-migrate.test.ts`.
+
+**Guarantees.** Refuses a non-UTF8 database before touching anything (Arabic would be corrupted).
+The whole rebuild is **one transaction** — a failed load rolls back and the previous copy survives.
+Re-running rebuilds to the same state. `corpus.corpus_meta` records the edition in the patch
+channel's own keys (`corpus_version`, `schema_version`) plus the source file's sha256.
+
+**Verification is total, not sampled.** Every table is reduced on both sides to a row count and an
+order-independent fingerprint of every column of every row, so one changed diacritic fails it. Also
+checked: column lists, the `word_occurrences` view (count + content), 9/9 foreign keys, 29/29
+indexes, and that the copy is of *this* file. First real run: **294,804 rows, 143.5 MB, 18 s,
+exact**.
+
+**Translation choices that matter:**
+
+- **`COLLATE "C"` on every text column.** Byte order — the exact equivalent of SQLite's `BINARY`.
+  The database's own collation would sort and compare Arabic differently; identical ordering on
+  both engines depends on this.
+- **ids are copied verbatim**; AUTOINCREMENT tables become identity columns whose sequences are
+  advanced past the copied ids, so a later insert can't collide.
+- **FTS5 → Postgres full-text.** The two FTS5 tables were external-content indexes (no data of
+  their own), so they become GIN indexes on `verses` / `verse_translations`.
+
+### One corpus codebase, two drivers
+
+Rather than a Postgres twin of the query layer (which would drift), **every corpus service is
+written once**, async, against a small interface — `CorpusDb {query, one, scalar}` in
+`corpus-core/src/corpus-db.ts` — with two drivers:
+
+| Driver | Where | Used by |
+|---|---|---|
+| `sqliteCorpus(db)` | `corpus-core/src/corpus-db.ts` | tests, the parity check, the MCP with `MQ_CORPUS=local` |
+| `pgCorpus(runner)` | `server/src/corpus/pg-corpus.ts` (`?` → `$n`) | the research server's `/corpus` |
+
+`createCorpusServices(db)` (`corpus-core/src/corpus-services.ts`) builds all of them — content,
+roots, linkages, wazn, expressions, echoes, spellings, free-text, similarity, word forms. The route
+builders in `corpus-core/src/routes/` take the services plus optional *entitlements* (translation
+and lexicon filters); the research server mounts them at `/corpus` (`server/src/corpus/serve.ts`)
+with the plan filters plugged in, and the tests mount the same builders over `quran.db`. Expensive
+indexes are built once per process (`once()`); the server warms them at startup (`warmCorpus`).
+
+**Portable SQL.** What makes one codebase give identical answers on both engines:
+
+- `GROUP BY` every non-aggregated column (Postgres rejects bare columns; SQLite silently picks one).
+- A **total** `ORDER BY` wherever order is visible — SQLite's storage order had been hiding ties.
+  Example: 20:94 يَبْنَؤُمَّ carries two roots (ب ن ي, أ م م) at one word position; ordering by
+  `root_form_id` as the last key fixed Postgres without changing SQLite's answer.
+- `DISTINCT` → `GROUP BY … ORDER BY MIN(id)` (DISTINCT has no defined order).
+- Nullable sort keys: `NULLS FIRST` ascending, `NULLS LAST` descending (SQLite's behaviour).
+- Postgres `int8` counts are normalised to numbers in the driver.
+- Text is `COLLATE "C"`, so Arabic compares byte for byte.
+
+**Proven identical.** `npm run corpus:parity` serves the SAME routes over each driver and compares
+the JSON of every answer over HTTP, key order included. Full sweep (2026-09-26): **77,439 requests,
+all identical** — every chapter in every script, every verse (words, translations, echoes, similar
+verses, neighbours, wazn, spellings), navigation filters, every root (list, detail, forms,
+occurrences, linkages), root pairs, word occurrences, phrase / expression / free-text search.
+`-- --quick` samples ~3,000. `server/test/corpus-parity.test.ts` runs ~50 URLs on a fixture in CI,
+and `corpus-core/test/mcp-remote-corpus.test.ts` proves the MCP's tools answer identically over
+HTTP.
+
+---
+
+## The patch channel
+
+How corrections to `quran.db` are shipped: one-way (maintainer → everyone), no review. A correction
+is a *release*, not a database row — a **signed, versioned patch file** that is verified and
+applied in order. The patch tool is `quran.db`'s one sanctioned writer.
+
+**Not yet for Postgres.** The patch tool writes SQLite only. After patching `quran.db`, re-run
+`npm run corpus:migrate` to carry the correction into the server's copy. (The `corpus_meta` keys
+are already mirrored in Postgres, so the ordering and idempotency rules carry over when a
+Postgres target is built.)
+
+### The pieces
 
 - **`corpus-core/src/corpus/patch.ts`** — the whole contract: canonicalization, `sha256`, Ed25519
   sign/verify, and `applyPatch` (verify → order/idempotency gate → apply in one transaction).
 - **`corpus-core/src/corpus/keys.ts`** — loads the trusted public key (`QF_CORPUS_PUBKEY`, or
   `corpus/trusted-key.pub.pem`).
 - **`corpus-core/src/corpus/cli.ts`** — `keygen` / `sign` / `apply` / `version`.
-- **`GET /corpus/corpus/version`** (on the research server) — reports the loaded edition (`{ version, schemaVersion }`),
-  read-only.
-- Version lives in a `corpus_meta` table **inside `quran.db`**, so it travels with the file.
+- **`GET /corpus/corpus/version`** (on the research server) — reports the loaded edition
+  (`{ version, schemaVersion }`), read-only.
 
-## Patch shape
+### Patch shape
 
 ```jsonc
 {
@@ -41,18 +221,17 @@ rowid), so a patch stays valid across a full corpus rebuild. `upsert` = UPDATE t
 `key`, or INSERT `key`+`set` if absent; `delete` removes the row matching `key`. Table/column
 names are validated as identifiers; all values are bound parameters.
 
-## Guarantees
+### Guarantees
 
 - **Signed** — Ed25519 over the canonical patch bytes; a tampered patch (content ≠ `sha256`) or
   one signed by an untrusted key is refused.
 - **Ordered** — a patch whose `parent` isn't the current `corpus_version` is refused, so
   intermediate editions can't be skipped.
 - **Idempotent** — re-applying an already-applied patch (`patchVersion ≤ current`) is a safe no-op.
-  A client offline for months catches up by replaying patches in order.
 - **Atomic** — all ops of a patch land in one transaction; a failing op rolls the whole patch back
   and the version is not advanced.
 
-## Using it
+### Using it
 
 ```bash
 # one-time: generate the maintainer keypair. Commit corpus/trusted-key.pub.pem;
@@ -68,93 +247,3 @@ QF_QURAN_DB=/path/to/quran.db npm run corpus -w @alsiraat/corpus-core -- apply s
 # check the loaded edition:
 npm run corpus -w @alsiraat/corpus-core -- version
 ```
-
-## The corpus in Postgres
-
-The corpus lives on the research server, in Postgres, and **the app and the MCP read it from there**
-(`/corpus`, plan-gated — SERVER.md). `quran.db` remains the source it's loaded from, the local driver
-(tests, `MQ_CORPUS=local` for the MCP), and the reference parity is measured against.
-
-### Step 1 — moving the data (done)
-
-```bash
-npm run corpus:migrate            # load quran.db → Postgres schema "corpus", then verify
-npm run corpus:migrate -- --verify  # re-verify an existing copy (e.g. after replacing quran.db)
-```
-
-Source is `QF_QURAN_DB` (default `./quran.db`), opened read-only. Target is the remote's
-`DATABASE_URL`, schema **`corpus`** — the remote's research tables in `public` are never touched.
-Code: `server/src/corpus/` (`schema.ts`, `load.ts`, `verify.ts`); tests `server/test/corpus-migrate.test.ts`.
-
-**Guarantees.** Refuses a non-UTF8 database before touching anything (Arabic would be corrupted).
-The whole rebuild is **one transaction** — a failed load rolls back and the previous copy survives.
-Re-running rebuilds to the same state. `corpus.corpus_meta` records the edition in the patch
-channel's own keys (`corpus_version`, `schema_version`) plus the source file's sha256.
-
-**Verification is total, not sampled.** Every table is reduced on both sides to a row count and an
-order-independent fingerprint of every column of every row, so one changed diacritic fails it. Also
-checked: column lists, the `word_occurrences` view (count + content), 9/9 foreign keys, 29/29 indexes,
-and that the copy is of *this* file. First real run: **294,804 rows, 143.5 MB, 18 s, exact** — and the
-same study query (every form of هدي) returns the identical answer, in the identical order, on both.
-
-**Translation choices that matter:**
-
-- **`COLLATE "C"` on every text column.** Byte order — the exact equivalent of SQLite's `BINARY`.
-  This database's own collation (`English_United States.1252`) would sort and compare Arabic
-  differently; the identical-order result above is the proof that this choice is load-bearing.
-- **ids are copied verbatim**; AUTOINCREMENT tables become identity columns whose sequences are
-  advanced past the copied ids, so a later insert can't collide.
-- **FTS5 → Postgres full-text.** The two FTS5 tables were external-content indexes (no data of their
-  own), so they become GIN indexes on `verses` / `verse_translations`.
-
-### Step 2 — one corpus codebase, two drivers (done)
-
-Rather than a Postgres twin of the query layer (which would drift), **every corpus service is
-written once**, async, against a small interface — `CorpusDb {query, one, scalar}` in
-`corpus-core/src/corpus-db.ts` — with two drivers:
-
-| Driver | Where | Used by |
-|---|---|---|
-| `sqliteCorpus(db)` | `corpus-core/src/corpus-db.ts` | tests, the parity check, the MCP with `MQ_CORPUS=local` |
-| `pgCorpus(runner)` | `server/src/corpus/pg-corpus.ts` (`?` → `$n`) | the research server's `/corpus` |
-
-`createCorpusServices(db)` (`corpus-core/src/corpus-services.ts`) builds all of them — content, roots,
-linkages, wazn, expressions, echoes, spellings, free-text, similarity, word forms. The route
-builders in `corpus-core/src/routes/` take the services plus optional *entitlements* (translation and
-lexicon filters); the research server mounts them at `/corpus` (`server/src/corpus/serve.ts`) with
-the plan filters plugged in, and the tests mount the same builders over `quran.db`. Expensive indexes are built
-once per process (`once()`); the cloud warms them at startup (`warmCorpus`).
-
-**Portable SQL.** What made one codebase give identical answers on both engines:
-
-- `GROUP BY` every non-aggregated column (Postgres rejects bare columns; SQLite silently picks one).
-- A **total** `ORDER BY` wherever order is visible — SQLite's storage order had been hiding ties.
-  Example: 20:94 يَبْنَؤُمَّ carries two roots (ب ن ي, أ م م) at one word position; ordering by
-  `root_form_id` as the last key fixed Postgres without changing SQLite's answer.
-- `DISTINCT` → `GROUP BY … ORDER BY MIN(id)` (DISTINCT has no defined order).
-- Nullable sort keys: `NULLS FIRST` ascending, `NULLS LAST` descending (SQLite's behaviour).
-- Postgres `int8` counts are normalised to numbers in the driver.
-- Text is `COLLATE "C"` (step 1), so Arabic compares byte for byte.
-
-**Proven identical.** `npm run corpus:parity` serves the SAME routes over each driver and compares
-the JSON of every answer over HTTP, key order included. Full sweep (2026-09-26): **77,439 requests,
-all identical** — every chapter in every script, every verse (words, translations, echoes, similar
-verses, neighbours, wazn, spellings), navigation filters, every root (list, detail, forms,
-occurrences, linkages), root pairs, word occurrences, phrase / expression / free-text search.
-`-- --quick` samples ~3,000. `server/test/corpus-parity.test.ts` runs ~50 URLs on a fixture in CI, and
-`corpus-core/test/mcp-remote-corpus.test.ts` proves the MCP's tools answer identically over HTTP.
-
-**Still open:** the signed patch channel (`corpus-core/src/corpus/patch.ts`) writes SQLite; corrections
-need a Postgres target (the `corpus_meta` keys are already mirrored, so the ordering/idempotency rules
-carry over). Until then, re-run `corpus:migrate` after patching `quran.db`.
-
-## Still to wire (desktop integration)
-
-The applier writes to `quran.db`, so it runs out-of-band, not through the live server (which
-holds the corpus read-only). Remaining for a later pass:
-
-- Copy the bundled `quran.db` into the OS user-data dir on first run,
-  so it's writable and patchable; the read-only handle then opens that copy.
-- On startup, fetch any patches with `patchVersion > corpus_version` from the release feed and
-  apply them in order before opening the window.
-- Surface the loaded edition somewhere quiet (e.g. the Home *Your data* card).

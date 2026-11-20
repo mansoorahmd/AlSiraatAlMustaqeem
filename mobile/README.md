@@ -1,15 +1,54 @@
 # AlSiraatAlMustaqeem — Mobile (Android, offline-first)
 
-An Expo / React Native + TypeScript app that brings the **Reader**, **Search**,
-and **Roots** experiences to Android, working fully **offline**. It ships the
-Quran corpus as an on-device SQLite database and runs the same queries the web
-server runs — no network, no API.
+An Expo / React Native + TypeScript app that brings the **reading experience** of the web app to
+Android, working fully **offline**. It ships the Qur'an corpus as an on-device SQLite database and
+runs its own ports of the corpus queries — no network, no API, no account.
 
-> Scope of this first version (agreed): **Reader + Search + Roots**, Android
-> first, offline-first. The case board, vault, echoes, focus lens and notes UI
-> from the web app are intentionally out of scope here (the writable
-> `research.db` schema and a personal-meaning editor are already wired so those
-> can follow).
+It is separate from the rest of the repo: not an npm workspace, its own `package.json`, and its
+own on-device `research.db` for the reader's notes and preferences. (The web app keeps research
+in the account on the research server; the mobile app does not talk to that server.) It was last
+worked on in August 2026, before the web side moved to Postgres.
+
+**In scope:** everything a reader touches. **Out of scope:** the Investigate side — the case
+board, evidence cards, threads and clusters, the form dossier, establishing meanings and root
+verdicts, curated case files, case export — and anything to do with accounts or the community.
+
+---
+
+## What's built
+
+| Area | Notes |
+|---|---|
+| Mushaf reader | scripts (Uthmani / Imlaei / IndoPak / simple / Tajweed text), word-by-word, font scaling, resume reading, preferences sheet |
+| Translations | all 168 editions bundled, with a picker (default: Saheeh International + Urdu) |
+| Word sheet | transliteration, gloss, lemma, POS, root, **wazn** (Form I–XII, participles, masdar), spelling variants, follow, notes |
+| Roots | explorer (rarest ↔ most common), lexicon page, dictionaries by language, forms, collocations, occurrences grouped by form, **my meaning** |
+| Search | phrase (verbatim, alef-insensitive), related (free-text, full composite ranking), on-screen Arabic keyboard, verse-key jump, recent searches |
+| Expression search | long-press to pick words in an āyah → every āyah where they co-occur; Verbatim / By-roots toggle |
+| Notes & questions | on an āyah or a word; answer / reopen / edit / delete; global Open Questions screen |
+| Marks | ≡ verbatim echoes, ✍ spelling variants (minority spelling only), ⚲ rare root, ↻ root repeated in one āyah, ⊙ focus, ✎ notes; a `LegendSheet` explains them |
+| Related āyāt + focus lens | closest-first with shared roots and phrase run; pin an āyah as a reading lens |
+| Trails | follow the exact written word **or** the root, stop by stop, with a 114-sūra strip; save and resume |
+| Compare | named, saveable comparisons on a vertical timeline; "Add to Compare" wherever an āyah shows |
+| Focus shortlist | up to 5 āyāt + 5 roots, persisted, surfaced on Home |
+| Motifs | create / rename / delete; add roots from a root page |
+| Home | continue reading, open questions, my meanings, recent trails, in focus |
+| Share with… | an āyah or root bundle (Arabic, translation, roots, dictionaries, your notes) to the OS share sheet, with saved prompts and a dictionary picker |
+| Backup | Home → **Back up my research** exports `research.db` through the OS share sheet |
+| App icon, splash, onboarding | wired |
+
+Screens: `Home`, `ReaderHome`, `Reader`, `Search`, `RootsExplorer`, `RootDetail`, `Trail`,
+`Compare`, `Motifs`, `MyMeanings`, `OpenQuestions` (`src/screens/`).
+
+### Still to do
+
+- Run the actual **`eas build`** (needs an Expo account) to get the APK / AAB.
+- Add a **KFGQPC Uthmanic** and an **IndoPak** font binary. Amiri Quran is bundled; IndoPak's
+  Private-Use-Area waqf marks are stripped until a matching face is added
+  (`assets/fonts/README.md`).
+- Deferred, optional: Tajweed colour rendering, a dark theme, a deeper accessibility pass,
+  precomputing the similarity index off-thread (it builds on first use behind a "Preparing…"
+  overlay, ~2–3 s, then is cached).
 
 ---
 
@@ -19,48 +58,45 @@ server runs — no network, no API.
 Expo app (React Native, TS)
 ├── assets/db/quran-mobile.db     read-only corpus, copied to the device on first launch
 ├── src/data/db.ts                Db interface + expo-sqlite impl + first-run bootstrap
-├── src/data/{content,roots,linkages,search}.ts
-│                                 pure query modules — PORTED 1:1 from server/src
+├── src/data/{content,roots,linkages,search,echoes,expressions,spellings,variants,wazn}.ts
+│                                 pure query modules, ported from the web side's corpus code
+├── src/similarity/{lexical,morphology,compose,freetext}.ts
+│                                 the similarity engine (related āyāt, focus lens, free-text search)
 ├── src/text/{constants,normalize}.ts
-│                                 Buckwalter map + Arabic folding — verbatim from the server
-├── src/data/api.ts               makeApi(db): a sync, on-device mirror of app/src/api/client.ts
-├── src/data/research.ts          writable research.db (notes, questions, personal root meanings)
-└── src/screens/*                 ReaderHome · Reader · Search · RootsExplorer · RootDetail
+│                                 Buckwalter map + Arabic folding
+├── src/data/api.ts               makeApi(db): a sync, on-device counterpart of the web app's client
+├── src/data/research.ts          writable research.db (notes, questions, meanings, trails,
+│                                 motifs, comparisons, focus, prefs)
+└── src/screens/*
 ```
 
-The query modules depend only on a tiny `Db` interface (`query / one / scalar /
-run / exec`). On the phone that interface is backed by **expo-sqlite** (sync
-API); in the parity harness it's backed by Node's built-in **node:sqlite**.
-Same SQL, same transforms, same results — that's how parity is proven without
-running the app.
+The query modules depend only on a tiny `Db` interface (`query / one / scalar / run / exec`). On
+the phone that interface is backed by **expo-sqlite** (sync API); in the parity harness it's
+backed by Node's built-in **node:sqlite**. The echo (≡) and spelling-variant (✍) indexes build
+through an async read with chunked yielding, so the reader doesn't freeze when marks appear.
 
-### Parity with the server
+**Spelling variants.** `VariantIndex` (`data/variants.ts`) keys groups by lemma + morphology
+(`raw_features`) + a normalised skeleton, excludes compounds and assimilations (words whose stems
+carry more than one lemma, e.g. مِمَّا = مِن+مَا), and marks only the minority spelling. The word
+sheet reads its variants from the same index, so a ✍-marked word always shows its spellings and
+an unmarked one never does.
+
+### Parity with the web side's corpus code
 
 ```bash
 npm run parity        # needs esbuild (npm i -D esbuild) + the project quran.db
 ```
 
-Bundles the real `src/data` + `src/text` modules and diffs their output against
-the server's golden fixtures (`../server/test/fixtures`). Current status:
-**21/22 checks pass**; the single diff is `translations_1:1`, where the bundled
-`quran.db` now carries more translation editions than the frozen fixture — the
-SQL is identical to the server's, so on-device output matches what the server
-returns today.
-
-**Search — parity note.** Phrase search and all Reader/Roots queries are exact
-ports. "Related" (free-text) search ports the server's free-text resolver and
-the **lexical** half of its similarity engine (TF-IDF root overlap + phrase
-run, weights 0.6/0.4). The server additionally blends a morphology (POS
-n-gram) score; porting that blend is the one follow-up needed for full
-composite-ranking parity. `overlap`, `phrase`, `phrase_run` and `shared` match
-the server's lexical layer exactly.
+Bundles the real `src/data`, `src/similarity` and `src/text` modules and diffs their output
+against the golden fixtures in `../corpus-core/test/fixtures`. Every new data-layer module gets a
+parity check before its UI is built.
 
 ---
 
 ## Build & run (Android)
 
-Prerequisites: **Node 22+**, the Expo tooling, and Android Studio (SDK +
-emulator) or a device with USB debugging.
+Prerequisites: **Node 22+**, the Expo tooling, and Android Studio (SDK + emulator) or a device
+with USB debugging.
 
 ```bash
 cd mobile
@@ -73,6 +109,8 @@ npm run build:db          # or: node scripts/build-db.mjs /path/to/quran.db
 # 2) Run on Android
 npm run android           # expo run:android — builds a dev client & installs it
 #   (first native build takes a while; afterwards `npm start` + `a` is enough)
+
+npm run typecheck
 ```
 
 For a shareable build use **EAS** (profiles are in `eas.json`):
@@ -84,69 +122,19 @@ eas build -p android --profile preview       # cloud build → installable APK (
 eas build -p android --profile production     # → AAB for Google Play
 ```
 
-The `preview` profile emits a standalone **APK** you can send to a phone and
-install directly; `production` emits an **AAB** for the Play Store (which
-handles the ~143 MB corpus cleanly). Both run without Metro — the database is
+The `preview` profile emits a standalone **APK**; `production` emits an **AAB** for the Play
+Store (which handles the ~143 MB corpus cleanly). Both run without Metro — the database is
 bundled and copied on first launch.
-
-### Backup
-
-Home → **Back up my research** exports `research.db` (all notes, questions,
-meanings, trails and prefs) through the OS share sheet as a single `.db` file —
-save it to Drive or email it to yourself. (Uses `expo-sharing`.)
-
-### Fonts (optional)
-
-The reader uses the system Arabic font by default. To ship a proper mushaf face
-(and render IndoPak's PUA waqf glyphs instead of omitting them), drop a `.ttf`
-into `assets/fonts/` and follow `assets/fonts/README.md` — the Arabic text
-already reads `font.arabic` from `src/theme/tokens.ts`, so enabling it is a
-one-line change plus a native rebuild.
 
 ### About the ~143 MB database
 
-`assets/db/quran-mobile.db` is the **full corpus** — identical to the server's
-`quran.db`: all 6 scripts, the complete word-by-word morphology, the classical
-lexicon (`root_meanings`, ~48 MB), and **all 168 translation/tafsir editions**.
-It's copied into place on first launch by `expo-sqlite`'s `SQLiteProvider`
-(`src/state/DbContext.tsx`), which uses the native importer.
+`assets/db/quran-mobile.db` is the **full corpus** — the same content as the project's
+`quran.db`: every script, the complete word-by-word morphology, the classical lexicon
+(`root_meanings`, ~48 MB), and all 168 translation/tafsir editions. It's copied into place on
+first launch by `expo-sqlite`'s `SQLiteProvider` (`src/state/DbContext.tsx`).
 
-Delivery: ship as an **AAB** so Play handles the size; a bare APK this large is
-fine for sideloading. (Optional: host the file and fetch it on first run instead
-of bundling, to keep the install small — still fully offline afterwards.)
-
-`scripts/build-db.mjs` builds the asset. By default (`TRIM = false`) it ships the
-full corpus, just consolidating the WAL into a single standalone file. Set
-`TRIM = true` for a smaller build that drops the unused FTS shadow tables + the
-empty embeddings table and keeps only the editions in `KEEP_RESOURCES`. After
-regenerating, bump `QURAN_DB_NAME` in `src/data/db.ts` so devices recopy the new
-file.
-
-**Choosing translations in the reader:** since all 168 editions are bundled, the
-Reader's **Translations (N)** control opens a picker to select which editions
-appear under each āyah (default: Saheeh International + Urdu). All editions stay
-in the DB regardless.
-
----
-
-## What each screen does
-
-- **Read** — sūrah index → continuous āyah reader. Script toggle (Uthmani /
-  Imlaei / IndoPak / simple), word-by-word gloss toggle, translation toggle.
-  Tap any word for a sheet with its transliteration, gloss, lemma and POS, and
-  a jump into that word's root.
-- **Search** — *Phrase* (verbatim, alef-insensitive) and *Related* (free-text
-  Arabic → āyāt sharing roots, with the resolved roots shown). On-screen Arabic
-  keyboard so no system layout is needed.
-- **Roots** — every root ordered rarest ↔ most common, filterable by meaning or
-  spelling → a lexicon page with your own meaning (saved locally), the
-  dictionaries grouped by language, the derived forms, the roots it co-occurs
-  with, and every occurrence (tap to read it in context).
-
----
-
-## Type-check
-
-```bash
-npm install && npm run typecheck
-```
+`scripts/build-db.mjs` builds the asset. By default (`TRIM = false`) it ships the full corpus,
+just consolidating the WAL into a single standalone file. Set `TRIM = true` for a smaller build
+that drops the unused FTS shadow tables + the empty embeddings table and keeps only the editions
+in `KEEP_RESOURCES`. After regenerating, bump `QURAN_DB_NAME` in `src/data/db.ts` so devices
+recopy the new file.

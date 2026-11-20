@@ -1,4 +1,4 @@
--- 0001_init — the research channel schema (SHARED_RESEARCH_SCHEMA.md §3).
+-- 0001_init — the research channel schema (the community tables; rules in DESIGN.md §6).
 -- The corpus is NOT here (it ships as signed patch files). Better Auth manages its own
 -- session/account/verification tables in a later step; `users` is created here as the
 -- domain table Better Auth maps onto (id/email/role/local_id).

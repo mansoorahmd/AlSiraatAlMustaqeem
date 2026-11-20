@@ -1,6 +1,6 @@
 -- 0005_entitlements — monetization. A `plan` axis on users, ORTHOGONAL to `role`.
 --
--- `role`  = what you may do in the research process (reader < … < maintainer) — SHARED_RESEARCH §4.
+-- `role`  = what you may do in the research process (reader < … < maintainer) — SERVER.md.
 -- `plan`  = what you have paid for (free < pro). The two are independent: a researcher on the
 --           free plan may still study locally, but the server-gated features (community reads,
 --           publishing, cloud MCP) require an active paid plan. This column is the single

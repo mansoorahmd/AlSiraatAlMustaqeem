@@ -1,7 +1,7 @@
 // Parity harness: prove the on-device data layer reproduces the server's
 // golden fixtures. Bundles the real src/data + src/text modules with esbuild,
 // backs the shared `Db` interface with node:sqlite, and diffs the output
-// against server/test/fixtures/*.json.
+// against corpus-core/test/fixtures/*.json.
 //
 //   node scripts/parity-check.mjs [path/to/quran.db] [path/to/fixtures]
 //
@@ -21,7 +21,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const SRC = path.join(ROOT, "src");
 const DB = process.argv[2] || path.resolve(ROOT, "..", "quran.db");
-const FIX = process.argv[3] || path.resolve(ROOT, "..", "server", "test", "fixtures");
+const FIX = process.argv[3] || path.resolve(ROOT, "..", "corpus-core", "test", "fixtures");
 
 // Bundle the pure modules (db.ts's expo imports are type-only, so nothing
 // native is pulled in).

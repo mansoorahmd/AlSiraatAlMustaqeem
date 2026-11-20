@@ -1,7 +1,7 @@
 // Propose a reading to the community — the app-side of the claim spine (Phase 5 was CLI-only).
 //
 // A claim is YOUR reading of one subject (a form or a root). It contends for the global slot;
-// it never overwrites anyone else's. The one rule the form enforces is §12.1: a competing claim
+// it never overwrites anyone else's. The one rule the form enforces (DESIGN.md §6): a competing claim
 // must carry its argument — a case, evidence, or reasoning — so reviewers have something to
 // weigh. A bare meaning can't be submitted.
 //

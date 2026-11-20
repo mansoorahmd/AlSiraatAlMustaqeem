@@ -9,7 +9,7 @@
 //      optionally binding their local_id, and mark the invite redeemed (single use)
 //   3. they then sign in by magic link — the user already exists, so no signup is needed
 //
-// Roles and local_id are ours, never Better Auth's (SHARED_RESEARCH.md §4).
+// Roles and local_id are ours, never Better Auth's (SERVER.md).
 
 import { randomBytes } from "node:crypto";
 import type { SqlRunner } from "./migrate.js";
