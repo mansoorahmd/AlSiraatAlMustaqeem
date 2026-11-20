@@ -112,6 +112,20 @@
       "section": "system",
       "text": "Done: server/ -> corpus-core/ (the corpus code), then remote/ -> server/ (the research server), REMOTE.md -> SERVER.md, npm scripts remote:* -> server:*, the compose service and image -> server / mqrg-server. REMOTE_* env vars unchanged.",
       "status": "done"
+    },
+    {
+      "ts": "2026-11-20T00:00:00Z",
+      "author": "Maintainer",
+      "section": "general",
+      "text": "Remove any unnecessary md files; what I need is a clean context and working environment for Claude. If needed, create a new md file and merge all. Then: fix the atlas.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-11-20T00:00:01Z",
+      "author": "Claude",
+      "section": "general",
+      "text": "Done. Docs: CLAUDE.md is now the entry point (architecture, commands, the rules that keep getting broken); DESIGN.md absorbed the community's rules; MCP.md is new; CORPUS.md absorbed the quran.db schema; SERVER.md was corrected against the code. INSTRUCTIONS.md, SHARED_RESEARCH*.md, BACKEND_TS_MIGRATION.md, app/README.md and mobile/MOBILE_ACTION_PLAN.md were merged in or removed, and source comments that cited them were repointed. Atlas: brought from 2026-09-28 up to today — the web app and the MCP hosted on the server's address, open sign-up, the 23 plan features that replaced the single corpus and community rules, tokens that can't publish or review, the in-app Guide, the spelling-variant work. Section 03 is now 'Roles and plans'. Tests at the time: corpus-core 121/121, server 268/268. Still open from 2026-09-26: should maintainers bypass plan gates automatically?",
+      "status": "done"
     }
   ]
 }

@@ -211,7 +211,7 @@
       <li><a href="#overview">Overview</a></li>
       <li><a href="#system">System map</a></li>
       <li><a href="#data">The databases</a></li>
-      <li><a href="#money">Features &amp; resources</a></li>
+      <li><a href="#money">Roles &amp; plans</a></li>
       <li><a href="#gate">The gates</a></li>
       <li><a href="#community">Community</a></li>
       <li><a href="#publishing">Publishing &amp; audience</a></li>
@@ -235,20 +235,22 @@
         back and reply in the same threads, marked <span style="color:var(--lapis);font-weight:600">Claude</span>.
         The <a href="#log">Communication log</a> at the end shows everything in one place.
       </div>
-      <p style="font-size:13px;color:var(--ink-soft)">The one rule to hold onto: <strong>features are role-based, resources are plan-based</strong> — and your
+      <p style="font-size:13px;color:var(--ink-soft)">The one rule to hold onto: <strong>roles say what you may do, plans say what you may use</strong> — and your
         research is <em>yours</em>: private in your account until you publish it, and then seen only by the audience it
         names, once a reviewer approves it.</p>
+      <p style="font-size:12.5px;color:var(--ink-soft)">Brought up to date on 20 November 2026. For working on the code, the entry point is
+        <code>CLAUDE.md</code> at the repo root.</p>
     </section>
 
     <section id="system">
       <h2><span class="num">01</span>System map</h2>
       <p>Everything lives on the <strong>research server</strong>: the Qur'an corpus, <strong>your research</strong>
-        (private to you — row-level security) and the community. The app on your machine and the AI (through the MCP) read and
-        write it as you — the app with your sign-in, the AI with a token that acts as you. Every request passes the same
-        gates.</p>
+        (private to you — row-level security) and the community. The app — in your browser at the server's own address, or
+        the desktop window — and the AI (through the MCP) read and write it as you: the app with your sign-in, the AI with
+        a token that reads as you and may only propose. Every request passes the same gates.</p>
       <figure>
         <div class="figbody">
-          <svg viewBox="0 0 940 480" role="img" aria-label="On your machine: the app and the MCP, which store nothing of yours. On the cloud: the research server with sign-in, the gates, admin, the corpus, each account's private research, and the community. The app and MCP reach it over the network with a session or token.">
+          <svg viewBox="0 0 940 480" role="img" aria-label="On your machine: the app, in a browser or the desktop window, and an AI client using the MCP; neither stores anything of yours. On the cloud: the research server with sign-in, the gates, admin, the corpus, each account's private research, the community, and the hosted MCP. The app and the AI reach it over the network with a session or a token.">
             <defs>
               <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M0 0L10 5L0 10z" fill="currentColor"/>
@@ -270,11 +272,11 @@
             <g font-family="var(--sans)" font-size="14">
               <rect x="52" y="80" width="170" height="56" rx="9" fill="var(--surface)" stroke="currentColor"/>
               <text x="137" y="104" text-anchor="middle" font-weight="600">App</text>
-              <text x="137" y="122" text-anchor="middle" font-size="11" fill="var(--ink-soft)">desktop or npm start</text>
+              <text x="137" y="122" text-anchor="middle" font-size="11" fill="var(--ink-soft)">browser or desktop</text>
 
               <rect x="52" y="250" width="170" height="56" rx="9" fill="var(--surface)" stroke="currentColor"/>
-              <text x="137" y="274" text-anchor="middle" font-weight="600">MCP</text>
-              <text x="137" y="292" text-anchor="middle" font-size="11" fill="var(--ink-soft)">AI study · stdio</text>
+              <text x="137" y="274" text-anchor="middle" font-weight="600">AI client</text>
+              <text x="137" y="292" text-anchor="middle" font-size="11" fill="var(--ink-soft)">MCP · hosted or stdio</text>
 
               <text x="52" y="405" font-size="11.5" fill="var(--ink-soft)">nothing of yours is stored here</text>
             </g>
@@ -285,13 +287,13 @@
               <text x="697" y="111" text-anchor="middle" font-size="11" fill="var(--ink-soft)">Hono · Postgres · Better Auth</text>
               <rect x="506" y="124" width="382" height="46" rx="8" fill="var(--surface-2)" stroke="currentColor"/>
               <text x="518" y="143" font-size="12.5" font-weight="600">Sign-in</text>
-              <text x="518" y="160" font-size="11" fill="var(--ink-soft)">session cookie (app) · API token mqrg_… (MCP)</text>
+              <text x="518" y="160" font-size="11" fill="var(--ink-soft)">session cookie (app) · API token mqrg_… (MCP, /mcp)</text>
               <rect x="506" y="178" width="382" height="52" rx="8" fill="var(--surface-2)" stroke="var(--paid)"/>
               <text x="518" y="198" font-size="12.5" font-weight="600" fill="var(--paid)">The gates</text>
-              <text x="518" y="216" font-size="11" fill="var(--ink-soft)">features → role (ladder) · resources → plan · results → audience</text>
+              <text x="518" y="216" font-size="11" fill="var(--ink-soft)">do → role (ladder) · use → plan feature · results → audience</text>
               <rect x="506" y="238" width="382" height="44" rx="8" fill="var(--surface-2)" stroke="currentColor"/>
               <text x="518" y="257" font-size="12.5" font-weight="600">Admin · maintainers</text>
-              <text x="518" y="273" font-size="11" fill="var(--ink-soft)">roles · plan tiers · who can read what · people</text>
+              <text x="518" y="273" font-size="11" fill="var(--ink-soft)">roles · plan tiers · what each plan may use · people</text>
               <rect x="506" y="292" width="122" height="134" rx="8" fill="var(--surface-2)" stroke="var(--gold)"/>
               <text x="516" y="313" font-size="12.5" font-weight="600" fill="var(--gold)">Corpus</text>
               <text x="516" y="331" font-size="10.5" fill="var(--ink-soft)">/corpus</text>
@@ -319,7 +321,8 @@
           </svg>
         </div>
         <figcaption><b>The whole system.</b> The app and the MCP hold nothing of their own: the corpus, your research
-          and the community are all on the research server, reached with your sign-in (or a token that acts as you). Your
+          and the community are all on the research server, reached with your sign-in (or a token that reads as you). The
+          same address serves the web app itself and the hosted MCP at <code>/mcp</code>, so there is nothing to install. Your
           research is kept apart by row-level security — every row carries your account, and nobody else's request can reach it.</figcaption>
       </figure>
       <div class="thread" data-section="system"></div>
@@ -330,13 +333,14 @@
       <p>All on the research server, in one Postgres.</p>
       <div class="grid2">
         <div class="card">
-          <h4>📖 The corpus <span class="tag paid">plan-gated</span></h4>
+          <h4>📖 The corpus <span class="tag paid">by plan feature</span></h4>
           <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">The Book and everything known about its
             words — schema <code>corpus</code>.</p>
           <ul class="checks">
             <li>Text in four scripts, morphology, roots, ~10 classical lexicons, translations</li>
             <li>Loaded from <code>quran.db</code> and verified exact; the same corpus code answers over both, identically</li>
             <li>Proven: <strong>77,439</strong> requests compared with the local copy — all identical</li>
+            <li>Each read belongs to one plan feature — the text, search, roots, echoes… — free to any signed-in account by default</li>
           </ul>
         </div>
         <div class="card">
@@ -348,70 +352,75 @@
             <li>Every row carries your account; the database itself shows each request only its own user's rows — a draft is yours alone, staff included</li>
             <li>Only here — nothing of it is kept on your computer; the server's nightly backup is its copy</li>
             <li>The AI's proposals land here, tagged <code>ai</code>, for you to accept</li>
+            <li>Writing needs the record's plan feature; when it's locked your records stay readable, just read-only</li>
           </ul>
         </div>
       </div>
       <div class="callout"><span class="h">Private unless published.</span> Nothing in your research is visible to anyone
         else. Publishing makes a <em>frozen copy</em> for review; it becomes the group's only once approved — and even
-        then only for the audience it names (§04).</div>
+        then only for the audience it names (§06).</div>
       <div class="thread" data-section="data"></div>
     </section>
 
     <section id="money">
-      <h2><span class="num">03</span>Features and resources</h2>
-      <p>Everything gated falls into one of two kinds, and each kind has exactly one question.</p>
+      <h2><span class="num">03</span>Roles and plans</h2>
+      <p>Everything gated answers one of two questions, and each has its own ladder.</p>
       <div class="grid2">
         <div class="card role">
-          <h4>Features <span class="tag role">role</span></h4>
-          <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">What you may <strong>do</strong>. A ladder you edit:
+          <h4>Roles <span class="tag role">what you may do</span></h4>
+          <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">A person's standing. A ladder you edit:
             <code>reader ‹ student ‹ researcher ‹ scholar ‹ moderator ‹ maintainer</code></p>
           <ul class="checks">
-            <li>Keep your own research · any account</li>
             <li>Publish — submit notes, propose readings · <em>the role you choose</em> (researcher by default)</li>
             <li>Review — approve / object · <code>moderator</code> (fixed)</li>
             <li>Establish, invite, the Admin tab · <code>maintainer</code> (fixed)</li>
+            <li>Anyone can sign up as a <code>reader</code>; an invite brings someone in higher</li>
           </ul>
         </div>
         <div class="card paid">
-          <h4>Resources <span class="tag paid">plan</span></h4>
-          <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">What you may <strong>read</strong>.
-            e.g. <code>free (0) ‹ pro (100) ‹ …</code></p>
+          <h4>Plans <span class="tag paid">what you may use</span></h4>
+          <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">What's paid for,
+            e.g. <code>free (0) ‹ pro (100) ‹ …</code> A plan unlocks <strong>23 features</strong>, one rule each, in three groups:</p>
           <ul class="checks">
-            <li>The Qur'an corpus — text, words, roots, dictionaries, search</li>
-            <li>The community — readings, dissent, ⚖ divergence, chips</li>
-            <li>Each translation, each dictionary — can need more than the corpus</li>
+            <li><strong>Read-assist tools</strong> — the text, translations, search, roots, dictionary meanings, follow root / word, echoes, similar āyāt, spelling, word pattern, where roots meet, āyah lens, compare · <em>free by default</em></li>
+            <li><strong>Interaction</strong> — notes &amp; questions, indications, my meanings, motifs · <em>pro by default</em></li>
+            <li><strong>Research &amp; publication</strong> — cases, publish, community readings, where I stand apart, the AI assistant · <em>pro by default</em></li>
+            <li>Each translation and each dictionary can carry an extra rule of its own</li>
           </ul>
         </div>
       </div>
       <h3>The whole matrix</h3>
       <div class="tblwrap">
       <table class="matrix">
-        <thead><tr><th>Action</th><th>Kind</th><th>Needs</th></tr></thead>
+        <thead><tr><th>Action</th><th>Gate</th><th>Needs</th></tr></thead>
         <tbody>
-          <tr><td>Your own research — cases, notes, meanings</td><td>feature</td><td>any account · private to you</td></tr>
-          <tr><td>Read the Qur'an corpus</td><td>resource <code>corpus</code></td><td><span class="pill y">its rule</span> default pro</td></tr>
-          <tr><td>A translation / a dictionary's entries</td><td>resource</td><td><span class="pill y">its own tier</span> or the corpus's</td></tr>
-          <tr><td>Community readings, dissent, divergence</td><td>resource <code>community</code></td><td><span class="pill y">its rule</span> + each result's <em>audience</em></td></tr>
-          <tr><td>Publish (submit / propose)</td><td>feature</td><td>the publish role (researcher by default)</td></tr>
-          <tr><td>Review</td><td>feature</td><td><code>moderator</code></td></tr>
-          <tr><td>Establish, invite, administer</td><td>feature</td><td><code>maintainer</code></td></tr>
+          <tr><td>Read the Qur'an, search, roots, echoes…</td><td>plan feature (read-assist)</td><td><span class="pill y">its rule</span> default: any signed-in account</td></tr>
+          <tr><td>A translation / a dictionary's entries</td><td>per-item rule</td><td><span class="pill y">its own tier</span> or its feature's</td></tr>
+          <tr><td>Your notes, indications, meanings, motifs</td><td>plan feature (interaction)</td><td><span class="pill y">its rule</span> default pro · read-only when locked</td></tr>
+          <tr><td>Cases and the board</td><td>plan feature <code>cases</code></td><td><span class="pill y">its rule</span> default pro · read-only when locked</td></tr>
+          <tr><td>Community readings, dissent, divergence</td><td>plan features <code>community</code>, <code>divergences</code></td><td><span class="pill y">its rule</span> + each result's <em>audience</em></td></tr>
+          <tr><td>Publish (submit / propose)</td><td>role <em>and</em> plan feature <code>publish</code></td><td>the publish role (researcher by default), signed in — never a token</td></tr>
+          <tr><td>The AI assistant (tokens, the MCP)</td><td>plan feature <code>ai</code></td><td><span class="pill y">its rule</span> default pro</td></tr>
+          <tr><td>Review</td><td>role</td><td><code>moderator</code></td></tr>
+          <tr><td>Establish, invite, administer</td><td>role</td><td><code>maintainer</code></td></tr>
         </tbody>
       </table>
       </div>
-      <p style="font-size:13.5px">Roles and plans are independent: a scholar on free can do what scholars do, but reads only
-        what free reaches; a paying reader reads more but can't publish until their role allows it.</p>
+      <p style="font-size:13.5px">Roles and plans are independent: a scholar on free can do what scholars do, but uses only
+        what free reaches; a paying reader uses more but can't publish until their role allows it. Publishing needs both.</p>
       <div class="thread" data-section="money"></div>
     </section>
 
     <section id="gate">
       <h2><span class="num">04</span>The gates</h2>
-      <p>Two middlewares, one per kind. <code>requireRole(min)</code> guards features;
-        <code>requireResource(kind)</code> guards resources by reading the rule from <code>resource_access</code> —
-        so changing who may read something is a row, not a deploy. Everything fails closed: an unknown tier never
-        passes, and a lapsed plan counts as <em>free</em>.</p>
+      <p>Two kinds of guard, one per question. <code>requireRole(min)</code> asks what you may do;
+        the plan guards (<code>requirePlanFeature</code>, and one each for <code>/corpus</code> and <code>/research</code>)
+        ask what you may use, reading the feature's rule from <code>resource_access</code> —
+        so changing what a plan unlocks is a row, not a deploy. Everything fails closed: an unknown tier never
+        passes, a missing rule reads as <em>pro</em>, and a lapsed plan counts as <em>free</em>.</p>
       <figure>
         <div class="figbody">
-          <svg viewBox="0 0 900 300" role="img" aria-label="A request for a feature passes requireRole: 401 signed out, 403 role too low, else OK. A request for a resource passes requireResource: 401 sign in needed, 402 higher plan needed, else OK with items above your tier left out.">
+          <svg viewBox="0 0 900 300" role="img" aria-label="A request that needs a role passes requireRole: 401 signed out, 403 role too low or made with an API token, else OK. A request that uses a plan feature passes the plan guard: 401 sign in needed, 402 higher plan needed, else OK with items above your tier left out; a locked feature over your own records is read-only.">
             <defs>
               <marker id="g_ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M0 0L10 5L0 10z" fill="currentColor"/>
@@ -426,12 +435,12 @@
               <text x="325" y="82" text-anchor="middle" font-size="11" fill="var(--ink-soft)">may you DO this?</text>
 
               <rect x="240" y="190" width="170" height="58" rx="9" fill="var(--surface)" stroke="var(--paid)"/>
-              <text x="325" y="214" text-anchor="middle" font-weight="600" fill="var(--paid)">requireResource</text>
-              <text x="325" y="232" text-anchor="middle" font-size="11" fill="var(--ink-soft)">may you READ this?</text>
+              <text x="325" y="214" text-anchor="middle" font-weight="600" fill="var(--paid)">plan feature</text>
+              <text x="325" y="232" text-anchor="middle" font-size="11" fill="var(--ink-soft)">may you USE this?</text>
 
               <rect x="710" y="44" width="150" height="50" rx="9" fill="var(--surface)" stroke="var(--free)"/>
               <text x="785" y="67" text-anchor="middle" font-weight="600" fill="var(--free)">200 OK</text>
-              <text x="785" y="84" text-anchor="middle" font-size="10.5" fill="var(--ink-soft)">the feature runs</text>
+              <text x="785" y="84" text-anchor="middle" font-size="10.5" fill="var(--ink-soft)">the action runs</text>
 
               <rect x="710" y="194" width="150" height="50" rx="9" fill="var(--surface)" stroke="var(--free)"/>
               <text x="785" y="217" text-anchor="middle" font-weight="600" fill="var(--free)">200 OK</text>
@@ -444,17 +453,19 @@
               <line x1="410" y1="219" x2="708" y2="219" marker-end="url(#g_ah)"/>
             </g>
             <g font-family="var(--mono)" font-size="11">
-              <text x="242" y="32" fill="var(--ink-soft)" letter-spacing=".08em">FEATURES</text>
-              <text x="242" y="182" fill="var(--ink-soft)" letter-spacing=".08em">RESOURCES</text>
-              <text x="426" y="92" fill="var(--gate)">401 signed out · 403 role too low</text>
+              <text x="242" y="32" fill="var(--ink-soft)" letter-spacing=".08em">ROLE</text>
+              <text x="242" y="182" fill="var(--ink-soft)" letter-spacing=".08em">PLAN</text>
+              <text x="426" y="92" fill="var(--gate)">401 signed out · 403 role too low, or a token</text>
               <text x="426" y="242" fill="var(--paid)">401 sign in · 402 needs a plan → upgrade</text>
-              <text x="426" y="280" fill="var(--ink-soft)">a translation or dictionary above your tier is left out, not refused</text>
+              <text x="426" y="264" fill="var(--ink-soft)">your own records under a locked feature: readable, not writable</text>
+              <text x="426" y="282" fill="var(--ink-soft)">a translation or dictionary above your tier is left out, not refused</text>
             </g>
           </svg>
         </div>
-        <figcaption><b>One question per gate.</b> The 402 names the plan it needs, and the app turns it into a single
-          banner at the top — <em>Sign in to read</em>, <em>Reading this needs the pro plan</em>, or, after a grant,
-          <em>Your access has changed — reload</em> — instead of an error on every screen.</figcaption>
+        <figcaption><b>One question per gate.</b> The 402 names the plan it needs. When the text itself can't be read the
+          app shows a single banner at the top — <em>Sign in to read</em>, <em>Reading this needs the pro plan</em>, or,
+          after a grant, <em>Your access has changed — reload</em>. A single locked tool shows a lock, or a read-only note,
+          in place of the control. <code>GET /me</code> tells the app what the account may use.</figcaption>
       </figure>
       <p style="font-size:13.5px;color:var(--ink-soft)">Billing isn't wired yet — a maintainer grants a plan in the
         Admin tab (or <code>npm run set-plan -w @alsiraat/server -- you@example.org pro 30</code>). That's the one seam a
@@ -467,7 +478,7 @@
       <p><strong>Before</strong>, the group's readings were <em>pulled down and mirrored</em> into local
         <code>derived_*</code> tables so they'd work offline — which also meant they sat on the user's disk, forever,
         un-gateable. <strong>Now</strong> they're read <em>live</em> from the research server, behind
-        <code>requireResource('community')</code>, and never stored locally.</p>
+        the <code>community</code> plan feature, and never stored locally.</p>
       <figure>
         <div class="figbody">
           <svg viewBox="0 0 900 330" role="img" aria-label="Before, the remote pulled into a local derived copy read by the app. After, the app reads the remote live through the community gate with no local copy.">
@@ -505,7 +516,7 @@
               <text x="95" y="236" text-anchor="middle" font-weight="600">App</text>
               <rect x="330" y="200" width="180" height="64" rx="9" fill="var(--surface)" stroke="var(--paid)"/>
               <text x="420" y="226" text-anchor="middle" font-weight="600" fill="var(--paid)">community gate</text>
-              <text x="420" y="244" text-anchor="middle" font-size="10.5" fill="var(--ink-soft)">requireResource('community')</text>
+              <text x="420" y="244" text-anchor="middle" font-size="10.5" fill="var(--ink-soft)">plan feature 'community'</text>
               <text x="420" y="257" text-anchor="middle" font-size="10.5" fill="var(--ink-soft)">402 below its tier</text>
               <rect x="660" y="206" width="180" height="52" rx="9" fill="var(--surface)" stroke="var(--lapis)"/>
               <text x="750" y="230" text-anchor="middle" font-weight="600">Research server</text>
@@ -520,7 +531,8 @@
           </svg>
         </div>
         <figcaption><b>Before vs now.</b> The <code>derived_global_forms / dissents / peer_indications</code> tables
-          and the pull path are gone. The ⚖ divergence list and the reader's community chips call
+          and the app's pull-and-mirror path are gone (the server still answers <code>GET /pull</code>; nothing calls it).
+          The ⚖ divergence list and the reader's community chips call
           <code>POST /divergences</code> and <code>GET /community/readings</code> live. Your own established meanings
           stay in your own research.</figcaption>
       </figure>
@@ -529,8 +541,10 @@
 
     <section id="publishing">
       <h2><span class="num">06</span>Publishing — and who sees it</h2>
-      <p>Publishing is a <strong>feature</strong>: you need the role the maintainer set for it (researcher by default;
-        it could be student). Every published result then carries an <strong>audience</strong>: at least a role
+      <p>Publishing needs <strong>both keys</strong>: the role the maintainer set for it (researcher by default;
+        it could be student) and the <code>publish</code> plan feature — and a signed-in person, never an API token.
+        Notes, questions and evidence go up as submissions; a reading of a form or root goes up as a claim, which
+        must carry its argument. Every published result then carries an <strong>audience</strong>: at least a role
         <em>and</em> at least a plan — e.g. <em>scholars and above, on Pro</em>.</p>
       <div class="grid2">
         <div class="card">
@@ -557,23 +571,23 @@
       <h2><span class="num">07</span>The MCP — studies as you, proposes into your research</h2>
       <p>The MCP lets an AI study the Book <em>with</em> you. It reads the corpus <strong>and your research</strong> from the
         research server as you (a personal API token), and writes only <strong>proposals</strong> into your research —
-        tagged <code>ai</code>, for you to accept in the app.</p>
+        tagged <code>ai</code>, for you to accept in the app. Using it is the <code>ai</code> plan feature.</p>
       <div class="grid2">
         <div class="card">
           <h4>The boundary — enforced by the server</h4>
           <ul class="checks">
             <li>May add notes, indications, motifs, cases, and its own items on your cases</li>
             <li>Never overwrites or deletes your records; never sets your primary gloss</li>
-            <li>Never touches your verdicts, status or established meanings; can't publish or change settings</li>
-            <li>A token can't administer or mint tokens — revoke it to cut the AI off</li>
+            <li>Never touches your verdicts, status or established meanings; can't change settings</li>
+            <li>A token can't publish, review, establish, administer or mint tokens — revoke it to cut the AI off</li>
           </ul>
         </div>
         <div class="card">
-          <h4>Its environment</h4>
+          <h4>Two ways to connect</h4>
           <ul class="checks">
-            <li><code>REMOTE_URL</code> — the research server</li>
-            <li><code>REMOTE_TOKEN</code> — from Account → <em>Connect an AI assistant</em></li>
-            <li><code>MQ_CORPUS=local</code> — read <code>quran.db</code> instead (offline); your research is always your account's</li>
+            <li><strong>Hosted</strong>, nothing to install: <code>https://&lt;server&gt;/mcp</code> with the token as a Bearer header, or <code>/mcp/mqrg_…</code> for clients that take only a URL</li>
+            <li><strong>Local</strong> (stdio): <code>REMOTE_URL</code> + <code>REMOTE_TOKEN</code> from Account → <em>Connect an AI assistant</em></li>
+            <li><code>MQ_CORPUS=local</code> — the stdio one reads <code>quran.db</code> instead (offline); your research is always your account's</li>
           </ul>
         </div>
       </div>
@@ -596,16 +610,16 @@
           </ul>
         </div>
         <div class="card">
-          <h4>Plan tiers · Who can read</h4>
+          <h4>Plan tiers · What each plan may use</h4>
           <ul class="checks">
-            <li>The plan ladder; the corpus and the community: anyone / signed in / a tier</li>
-            <li>Each translation and dictionary: its own tier, or the corpus's</li>
+            <li>The plan ladder; each of the 23 features: anyone / signed in / a tier</li>
+            <li>Translations and Dictionaries: each its own tier, or its feature's</li>
           </ul>
         </div>
         <div class="card">
           <h4>People</h4>
           <ul class="checks">
-            <li>Everyone's role (standing) and plan (paid), with an optional expiry</li>
+            <li>Everyone's role (standing) and plan (paid), with an optional expiry, beside their region, age and join date</li>
             <li>The last maintainer can't be demoted</li>
           </ul>
         </div>
@@ -617,23 +631,29 @@
           </ul>
         </div>
       </div>
-      <div class="callout"><span class="h">Heads-up for you.</span> Your research starts empty in your account — the old
-        <code>research.db</code> files are gone (in the Recycle Bin). And your account is <em>maintainer · free</em> while the corpus rule is <em>pro</em> — grant
-        yourself Pro in Admin → People, or open the corpus in Who can read.</div>
+      <div class="callout"><span class="h">Staff need a plan too.</span> A maintainer on <em>free</em> can administer
+        everything, but notes, indications, cases, publishing, the community and the AI assistant default to
+        <em>pro</em> — grant yourself Pro in Admin → People, or relax a rule in <em>What each plan may use</em>.</div>
       <div class="thread" data-section="admin"></div>
     </section>
 
     <section id="roadmap">
       <h2><span class="num">09</span>Roadmap &amp; status</h2>
-      <p>Corpus code 116/116, research server 250/250 tests; the corpus parity sweep 77,439/77,439. Two things run: Postgres and the research server — <code>npm run dev</code> starts the server and the web app.</p>
+      <p>As of 20 November 2026: corpus code 121/121, research server 268/268 tests; the corpus parity sweep 77,439/77,439 (26 September). Two things run: Postgres and the research server — <code>npm run dev</code> starts the server and the web app.</p>
       <div class="road">
         <div class="step"><span class="st done">corpus · done</span><div><h4>The corpus on the research server</h4><p>Loaded and proven identical; the app and MCP read it from <code>/corpus</code>.</p></div></div>
-        <div class="step"><span class="st done">access · done</span><div><h4>Features by role, resources by plan</h4><p>Resource rules for the corpus, the community, each translation and dictionary; the Admin tab.</p></div></div>
-        <div class="step"><span class="st done">deploy · ready</span><div><h4>Deployable to a VPS</h4><p>Docker + Caddy HTTPS + SMTP password reset + backups (<code>DEPLOY.md</code>). Waiting on a server and a domain.</p></div></div>
+        <div class="step"><span class="st done">access · done</span><div><h4>Roles for doing, plans for reading</h4><p>The role ladder and plan tiers as data; rules for each translation and dictionary; the Admin tab.</p></div></div>
+        <div class="step"><span class="st done">deploy · done</span><div><h4>Runs on a VPS</h4><p>Docker + Caddy HTTPS + SMTP password reset + backups (<code>DEPLOY.md</code>); <code>deploy/update.sh</code> pulls, backs up, rebuilds and waits for health.</p></div></div>
         <div class="step"><span class="st done">research · done</span><div><h4>Your research in your account</h4><p>In Postgres only, private to each account by row-level security; the app and the MCP read and write it as you. No <code>research.db</code> any more — no local file, no import or export.</p></div></div>
         <div class="step"><span class="st done">tidy · done</span><div><h4>One server</h4><p>No <code>research.db</code> and no local server: the research server is the only back end. The desktop app just serves the built web app to its own window.</p></div></div>
         <div class="step"><span class="st done">roles · done</span><div><h4>Roles as data; audiences on results</h4><p>reader ‹ student ‹ researcher ‹ scholar ‹ moderator ‹ maintainer; publishing's role is yours to set; each published result is seen only by its audience — proposed by its author, confirmed by the reviewer.</p></div></div>
-        <div class="step"><span class="st defer">next</span><div><h4>Billing provider</h4><p>Slots into the plan grant with no rework of the gates. Also open: deleting an account (and its research), a review screen for submissions.</p></div></div>
+        <div class="step"><span class="st done">hosted · done</span><div><h4>The web app and the MCP on the server's address</h4><p>Opening <code>https://&lt;domain&gt;/</code> is the whole app; an AI client connects to <code>/mcp</code> with a URL and a token. Nothing to install.</p></div></div>
+        <div class="step"><span class="st done">sign-up · done</span><div><h4>Open sign-up</h4><p>Anyone can create a free reader account (date of birth, region, optional gender); invites still bring people in at a higher role.</p></div></div>
+        <div class="step"><span class="st done">plans · done</span><div><h4>Plan features</h4><p>The single corpus switch became 23 features in three groups, each with its own rule; a locked feature over your own records is read-only, and the app shows locks instead of failing.</p></div></div>
+        <div class="step"><span class="st done">tokens · done</span><div><h4>An AI only suggests</h4><p>A token can no longer publish or review — those need a signed-in person.</p></div></div>
+        <div class="step"><span class="st done">guide · done</span><div><h4>In-app Guide</h4><p>A walkthrough that reads the live account and plan, so its locks match the Admin settings. Also: spelling variants shown above each word, steadier jumps in the reader.</p></div></div>
+        <div class="step"><span class="st done">docs · done</span><div><h4>Docs consolidated</h4><p><code>CLAUDE.md</code> is the entry point; <code>DESIGN.md</code>, <code>SERVER.md</code>, <code>CORPUS.md</code>, <code>MCP.md</code>, <code>DEPLOY.md</code> and <code>DESKTOP.md</code> are the references. The old instructions, shared-research and migration docs were merged in or removed.</p></div></div>
+        <div class="step"><span class="st defer">next</span><div><h4>Billing provider</h4><p>Slots into the plan grant with no rework of the gates. Also open: deleting an account (and its research), a review screen for submissions, redaction, corpus patches that reach Postgres, whether maintainers should bypass plan gates.</p></div></div>
       </div>
       <div class="thread" data-section="roadmap"></div>
     </section>
@@ -681,7 +701,7 @@
   }
 
   // ---------- feedback (db capability) ----------
-  var SECTION_LABEL={system:"System map",data:"Databases",money:"Features & resources",gate:"The gates",community:"Community",publishing:"Publishing",mcp:"MCP",admin:"Admin",roadmap:"Roadmap",general:"General"};
+  var SECTION_LABEL={system:"System map",data:"Databases",money:"Roles & plans",gate:"The gates",community:"Community",publishing:"Publishing",mcp:"MCP",admin:"Admin",roadmap:"Roadmap",general:"General"};
   var threads=[].slice.call(document.querySelectorAll(".thread"));
   var statusEl=document.getElementById("dbStatus");
   var db=null, entries=[], ready=false;

@@ -1,17 +1,17 @@
 {
-  "$doc": "MQ Research Gate — architecture & monetization atlas. Machine-readable source of truth for AI chats. Human view: docs/atlas.html. Feedback log: docs/feedback.json.",
-  "updated": "2026-09-28",
-  "branch": "feature/research-postgres (on main)",
+  "$doc": "MQ Research Gate — architecture & monetization atlas. A structured map for AI chats: components, databases, the access model, endpoints, phase status, the decision log, a file map, a glossary. Human view: docs/atlas.html (kept in step with this file). Feedback log: docs/feedback.json. Entry point for working on the code: CLAUDE.md.",
+  "updated": "2026-11-20",
+  "branch": "main",
   "app": {
     "name": "MQ Research Gate",
     "repoName": "AlSiraatAlMustaqeem",
     "arabic": "الصراط المستقيم",
     "oneLiner": "A detective's study for the Qur'an: meaning is earned from within the text (the organic Qur'anic methodology). Notice a word, open a case on its root family, gather every place the Book uses it, form a hypothesis, then weigh the classical dictionaries.",
-    "stack": "React + Vite + TypeScript SPA (app/), run on the reader's machine (browser, or the desktop window). The research server (server/, Hono + Postgres + Better Auth) is the only server: the Qur'an corpus, every account's private research, accounts and the community. MCP server (mcp/) lets an AI study and propose, as its user. corpus-core/ is the corpus code library that the research server runs. Electron desktop wrapper (electron/).",
+    "stack": "React + Vite + TypeScript SPA (app/), opened in a browser at the research server's own address, in the desktop window, or from a local dev build. The research server (server/, Hono + Postgres + Better Auth) is the only server: the Qur'an corpus, every account's private research, accounts and the community, and the hosted MCP. MCP server (mcp/) lets an AI study and propose, as its user. corpus-core/ is the corpus code library that the research server runs. Electron desktop wrapper (electron/). mobile/ is a separate offline Android app that does not talk to the server.",
     "run": "Postgres + `npm run dev` (research server :8100 and web app :5174). First time: npm install, npm run server:migrate, npm run corpus:migrate, bootstrap/set-password/set-plan. After pulling a new migration: npm run server:migrate (dev doesn't auto-migrate; Docker does)."
   },
   "principle": {
-    "core": "Features are ROLE-based (what you may do); resources are PLAN-based (what you may read). Your research is private to your account; only what you publish is shared, only once approved, and only with the audience it names.",
+    "core": "Roles say what you may DO; plans say what you may USE and READ. Your research is private to your account; only what you publish is shared, only once approved, and only with the audience it names.",
     "constraint": "You can only enforceably charge for what the server holds.",
     "consequence": "Everything lives on the research server: the corpus, every account's research (one schema, row-level security), the community. The app and the MCP read and write it as the signed-in user."
   },
@@ -19,8 +19,8 @@
     {
       "id": "app",
       "name": "App",
-      "runtime": "React 18 + Vite SPA (on the reader's machine)",
-      "role": "Reads the corpus (${REMOTE_URL}/corpus) and reads/writes the reader's research (${REMOTE_URL}/research) with the session cookie; the community likewise. Nothing of the research is kept on the machine. Maintainers get an Admin tab.",
+      "runtime": "React 18 + Vite SPA — in a browser at https://<domain>/ (Caddy serves the build), in the desktop window, or a local build",
+      "role": "Reads the corpus (${REMOTE_URL}/corpus) and reads/writes the reader's research (${REMOTE_URL}/research) with the session cookie; the community likewise. Nothing of the research is kept on the machine. Shows a lock or a read-only note for a plan feature the account can't use. A Guide screen walks through the app from the live account and plan. Maintainers get an Admin tab.",
       "path": "app/"
     },
     {
@@ -33,15 +33,15 @@
     {
       "id": "mcp",
       "name": "MCP",
-      "runtime": "stdio MCP server",
-      "role": "An AI studies the corpus and proposes into the reader's research, AS the reader (REMOTE_TOKEN). The server enforces the AI boundary on every token write. MQ_CORPUS=local reads quran.db instead; research is always the account's.",
+      "runtime": "one MCP server (mcp/src/server.ts) over two transports: stdio (mcp/src/index.ts) and streamable HTTP hosted on the research server at /mcp (server/src/mcp-http.ts)",
+      "role": "An AI studies the corpus and proposes into the reader's research, AS the reader (a personal API token). The server enforces the AI boundary on every token write, and a token can't publish, review or administer. Hosted: nothing to install, the client connects with a URL and the token. stdio with MQ_CORPUS=local reads quran.db instead; research is always the account's.",
       "path": "mcp/"
     },
     {
       "id": "server",
       "name": "Research server",
       "runtime": "Hono + Postgres + Better Auth",
-      "role": "Auth (cookie or API token), the role ladder, plan tiers, resource rules, the corpus (/corpus), every account's research (/research, row-level security), the community with audiences, Admin endpoints. Deployed with Docker + Caddy (DEPLOY.md).",
+      "role": "Auth (cookie or API token), open sign-up and invites, the role ladder, plan tiers, plan features and per-item rules, the corpus (/corpus), every account's research (/research, row-level security), the community with audiences, Admin endpoints, the hosted MCP (/mcp). Deployed with Docker + Caddy (DEPLOY.md).",
       "path": "server/",
       "port": 8100
     },
@@ -51,12 +51,19 @@
       "runtime": "Electron",
       "role": "The desktop window: serves app/dist from a tiny built-in file server on localhost:51789 (a trusted origin) and opens a window at it. No back end, no data files.",
       "path": "electron/"
+    },
+    {
+      "id": "mobile",
+      "name": "Mobile (Android)",
+      "runtime": "Expo / React Native, offline",
+      "role": "A separate reader app: the corpus bundled as on-device SQLite, its own ports of the corpus queries, its own on-device research.db. Not an npm workspace; no account, no server. Last worked on August 2026 (mobile/README.md).",
+      "path": "mobile/"
     }
   ],
   "databases": {
     "corpus (Postgres schema `corpus`)": {
       "kind": "corpus",
-      "access": "read-only, plan-gated (resource 'corpus')",
+      "access": "read-only; each /corpus route belongs to one plan feature (the read-assist tools, free by default)",
       "location": "cloud — the research server's DATABASE_URL",
       "holds": "Qur'an text in four scripts, per-word morphology (root/lemma/form), roots, ~10 classical lexicons, translations, search indexes. Copied from quran.db and verified exact.",
       "load": "npm run corpus:migrate (-- --verify to re-verify only). server/src/corpus/{schema,load,verify}.ts. 294,804 rows, 143.5 MB, 18 s.",
@@ -67,12 +74,12 @@
       "kind": "corpus (local copy)",
       "access": "read-only",
       "location": "local",
-      "holds": "The same corpus in SQLite. Now the SOURCE for corpus:migrate, the local driver (MQ_CORPUS=local, tests, offline MCP) and the parity reference. The app no longer reads it.",
-      "corrections": "Signed, versioned patch files (CORPUS.md)."
+      "holds": "The same corpus in SQLite. The SOURCE for corpus:migrate, the local driver (MQ_CORPUS=local, tests, offline MCP), the parity reference and the mobile app's build input. The app does not read it.",
+      "corrections": "Signed, versioned patch files (CORPUS.md). The patch tool writes SQLite only; re-run corpus:migrate to carry a correction into Postgres."
     },
     "research (Postgres, row-level security)": {
       "kind": "personal research",
-      "access": "private to its account; read-write by that account (and its AI, within the boundary)",
+      "access": "private to its account; read-write by that account (and its AI, within the boundary). Writes need the record's plan feature; a locked feature is read-only.",
       "location": "the research server — schema `research`, shared, every row carrying its user_id",
       "holds": "cases + board layout, form_research + form_revisions, trails, notes, word_indications (+ refinements), user_root_meanings, motifs, comparisons, settings, and the outbox of what was published.",
       "isolation": "Row-level security, enabled and FORCED on every table, one policy: user_id = the request's user (app.user_id), for reads and writes. Requests SET LOCAL ROLE mqrg_research (not a superuser, no BYPASSRLS), set app.user_id via set_config with a bound parameter from the principal, and search_path to research — all LOCAL to the transaction. No user bound = nothing visible, nothing writable. A draft is reachable only by its owner (and their own AI); staff included. Deleting an account cascades to its research.",
@@ -83,48 +90,60 @@
     }
   },
   "accessModel": {
-    "rule": "Features are role-based; resources are plan-based. Everything fails closed.",
+    "rule": "Roles say what you may do; plans say what you may use and read. Publishing needs both. Everything fails closed.",
     "roles": {
       "ladder": "DATA: table role_levels (name, rank, label, fixed). Seeded reader 0 · student 10 · researcher 20 · scholar 30 · moderator 80 · maintainer 100. reader, moderator and maintainer are FIXED (the staff powers hang on them); learner rungs sit between (rank 1–79) and are the maintainer's to add, rename, re-rank or remove.",
       "meaning": "A person's standing — what they may DO. A principal carries its role's rank (loaded at sign-in), so guards compare ranks; unknown roles rank below everyone.",
-      "features": {
-        "read the community, keep research": "reader (+ the community plan rule)",
-        "publish (submit / propose)": "feature_access 'publish' — researcher by default, the maintainer's choice",
-        "review": "moderator (fixed)",
+      "powers": {
+        "publish (submit / propose)": "feature_access 'publish' — researcher by default, the maintainer's choice. Also needs plan feature 'publish' and a signed-in session.",
+        "review": "moderator (fixed, session only)",
         "establish, invite, administer": "maintainer (fixed, session only)"
       },
-      "file": "server/src/roles.ts (guards, no DB), server/src/role-ladder.ts (ladder, requireFeature, audiences)"
+      "refusal": "401 signed out, 403 role too low. An API token is refused on every staff rung and on publishing: 'an API token can't do this. Sign in to the app instead.'",
+      "file": "server/src/roles.ts (requireRole, requireSession), server/src/role-ladder.ts (ladder, requireFeature, audiences)"
     },
     "plans": {
       "ladder": "DATA: table plan_tiers (name, rank, label). Seeded free (0) < pro (100); a maintainer adds e.g. student 50, scholar 200 in the Admin tab. free is always rank 0.",
-      "meaning": "What you may READ. A higher rank unlocks everything a lower one does; a lapsed plan (users.plan_expires_at past) counts as free.",
+      "meaning": "What you may USE and READ. A higher rank unlocks everything a lower one does; a lapsed plan (users.plan_expires_at past) counts as free.",
       "file": "server/src/plans.ts (meetsPlan, effectiveRank)"
     },
-    "resources": {
-      "table": "resource_access (kind, key, min_plan). min_plan = a tier, 'free' (= any signed-in account), or NULL (= public, no sign-in).",
-      "whole": {
-        "corpus": "key '*' — every /corpus route (default pro)",
-        "community": "key '*' — community readings, claims, dissents, divergences, pull (default pro)"
+    "planFeatures": {
+      "table": "resource_access (kind, key, min_plan). Kinds: 'feature', 'translation', 'lexicon' (migration 0013 replaced the single 'corpus' and 'community' rules). min_plan = a tier, 'free' (= any signed-in account), or NULL (= public, no sign-in). A missing feature rule reads as pro.",
+      "list": "23 features, defined in code (server/src/plan-features.ts) — a new one needs a line there and its routes in the maps; nothing in the database.",
+      "groups": {
+        "read (read-assist tools, default free)": "text, translations, search, roots, meanings, follow-root, follow-word, echoes, similar, spelling, wazn, linkages, lens, compare",
+        "interact (the reader's own study, default pro)": "notes, indications, my-meanings, motifs",
+        "research (research & publication, default pro)": "cases, publish, community, divergences, ai"
+      },
+      "enforcement": {
+        "corpus reads": "Every /corpus route belongs to one feature (featureForCorpus; unmatched → text) and answers 401 / 402 by its rule (requireCorpusFeature). Meanings and translations ride inside other answers, so a locked one is also filtered out of those (corpus/serve.ts).",
+        "the reader's records": "A locked interaction or research feature is READ-ONLY: what they made stays visible, writes are refused (featureForResearch looks only at writes; requireResearchFeature).",
+        "community": "requirePlanFeature('community') on readings, claims, dissents, pull; 'divergences' on POST /divergences; 'publish' on POST /submissions and /claims; 'ai' on minting a token and on the hosted MCP."
       },
       "perItem": {
         "translation": "key = resource id; below its tier the translation is LEFT OUT of results",
-        "lexicon": "key = source (lanes_lexicon, lisan_ul_arab, …); below its tier the entries are left out of a root page"
+        "lexicon": "key = source (lanes_lexicon, lisan_ul_arab, …); below its tier the entries are left out of a root page",
+        "noRule": "An item with no rule of its own needs only what its feature needs."
       },
-      "noRule": "An item with no rule needs only what the corpus needs.",
-      "refusal": "requireResource(kind) → 401 {detail} if a sign-in is needed, 402 {detail, resource, plan} if a higher plan is.",
-      "file": "server/src/resource-access.ts (canRead, wholeMin, requireResource, itemFilter)"
+      "refusal": "401 {detail} if a sign-in is needed, 402 if a higher plan is.",
+      "cache": "Rules are cached 10 s per process: a change applies at once on the instance that made it.",
+      "app": "GET /me returns `features` (what the account may use); the app shows a lock or a read-only note (app/src/lib/features.ts, FeatureGate, PlanLock, PlanLockNotice).",
+      "file": "server/src/plan-features.ts (FEATURES, featureForCorpus, featureForResearch), server/src/resource-access.ts (featureMin, featuresFor, canRead, requirePlanFeature, requireCorpusFeature, requireResearchFeature, itemFilter)"
     },
-    "edit": "In the app: Admin → Roles (the ladder, 'What each role may do'), Plan tiers, Who can read, Translations, Dictionaries, People. Scripted: npm run access / set-plan.",
+    "edit": "In the app: Admin → Roles (the ladder, 'What each role may do'), Plan tiers, What each plan may use, Translations, Dictionaries, People. Scripted: npm run access (show | tier | tier-remove | feature | translation | lexicon) / set-plan.",
     "billing": "Not wired yet. A maintainer grants plans in the Admin tab (or set-plan / POST /plan). That is the single seam a payment provider slots into.",
+    "staff": "Staff need a plan too: a maintainer on free can administer everything but still gets 402 on a pro feature.",
     "audiences": {
       "rule": "Every published result (claim version, submission) carries an audience: at least a role AND at least a plan (either may be empty). The author proposes it; the reviewer confirms or changes it when approving/establishing. Nothing is visible before approval except to its author and staff.",
-      "enforcement": "Every community read — claims, the group's reading, dissents, readings/chips, divergences and their count, the pull — filters by the viewer's role rank and plan. Authors always see their own; staff (moderator+) see everything, since they review it. The community resource rule (plan) still applies to all of it.",
+      "enforcement": "Every community read — claims, the group's reading, dissents, readings/chips, divergences and their count, the pull — filters by the viewer's role rank and plan. Authors always see their own; staff (moderator+) see everything, since they review it. The community plan feature still applies to all of it.",
       "file": "server/src/role-ladder.ts makeAudienceCheck; claims.ts / pull.ts take a CanSee"
     }
   },
   "auth": {
-    "cookie": "Better Auth session cookie — the app (credentials: 'include').",
-    "apiTokens": "Personal API tokens (mqrg_…, stored as SHA-256; secret shown once) for headless clients — the MCP. Sent as `Authorization: Bearer`. Made in the app: Account → Connect an AI assistant (it prints a ready MCP config). server/src/api-tokens.ts, session.ts. A token acts exactly as its user, so the MCP reads what that user's plan allows."
+    "accounts": "Created by our own code only (Better Auth's sign-up route is closed): open sign-up (POST /signup, server/src/signup.ts) makes a reader on the free plan with a validated profile — date of birth (age is derived), region (ISO country code), optional gender — at most 5 sign-ups an hour per address; redeeming an invite (POST /invites/redeem, server/src/invites.ts) makes an account at the invite's role (researcher when the maintainer named none). The first maintainer is bootstrapped from the CLI.",
+    "signIn": "Email + password. Magic link is still configured but needs an email transport. Forgotten passwords reset by email through the server's own /reset-password page.",
+    "cookie": "Better Auth session cookie — the app (credentials: 'include'). First-party for the hosted web app; SameSite=None; Secure over HTTPS for an app on localhost.",
+    "apiTokens": "Personal API tokens (mqrg_…, stored as SHA-256; secret shown once) for headless clients — the MCP. Sent as `Authorization: Bearer`, or in the path for the hosted MCP (/mcp/mqrg_…). Made in the app: Account → Connect an AI assistant (needs plan feature 'ai'). A token reads as its user, plan included, and may only propose: it can't publish, review, establish, administer or manage tokens. server/src/api-tokens.ts, session.ts, roles.ts."
   },
   "corpusCode": {
     "oneCodebase": "corpus-core/src/corpus-db.ts defines CorpusDb {query, one, scalar} (async). Every corpus service (content, roots, linkages, wazn, expressions, echoes, spellings, freetext, similarity, morphology) is written once against it.",
@@ -140,35 +159,49 @@
       "DISTINCT → GROUP BY … ORDER BY MIN(id)",
       "nullable sort keys NULLS FIRST (ASC) / NULLS LAST (DESC)",
       "Postgres int8 counts normalised to numbers"
-    ]
+    ],
+    "spellingVariants": "corpus-core/src/spellings.ts: a word's variant group ignores case (a vowel mark, never a rasm letter); a hamza seat changed only by what is attached is not a variant. /chapters/:id/variants lists the unusual spellings per āyah (`positions`) and the variant words written the usual way there (`common`); /verses/:key/spelling marks with `here` the spelling that occurrence is written in. The reader's ✍ mark shows a word's other spellings above it."
   },
   "clients": {
-    "app": "app/src/api/client.ts: CORPUS = ${REMOTE_URL}/corpus. A refused read announces itself (CORPUS_ACCESS_EVENT) and CorpusAccessBanner says why once, at the top: offline / sign in / needs the X plan — and 'Your access has changed, reload' after a sign-in or plan grant.",
-    "mcp": "mcp/src/corpus-client.ts: CorpusReads with remoteReads (HTTP, default) and localReads (MQ_CORPUS=local). 401 → 'create a token', 402 → 'needs the X plan', unreachable → 'set REMOTE_URL or MQ_CORPUS=local'. corpus-core/test/mcp-remote-corpus.test.ts runs every corpus tool on both paths: byte-identical.",
+    "app": "app/src/api/client.ts: CORPUS = ${REMOTE_URL}/corpus. A refused read announces itself (CORPUS_ACCESS_EVENT) and CorpusAccessBanner says why once, at the top: offline / sign in / needs the X plan — and 'Your access has changed, reload' after a sign-in or plan grant. A refused tool (one feature locked) gives a short notice or a lock instead of the whole-app banner.",
+    "mcp": "mcp/src/corpus-client.ts: CorpusReads with remoteReads (HTTP, default) and localReads (MQ_CORPUS=local). 401 → 'create a token', 402 → 'needs the X plan', unreachable → 'set REMOTE_URL or MQ_CORPUS=local'. corpus-core/test/mcp-remote-corpus.test.ts runs every corpus tool on both paths: byte-identical. Tools, prompts and the write boundary: MCP.md.",
     "mcpEnv": {
       "REMOTE_URL": "research server (default http://localhost:8100)",
       "REMOTE_TOKEN": "a personal API token",
       "MQ_CORPUS": "'local' = read quran.db instead",
       "QF_QURAN_DB": "quran.db path, for MQ_CORPUS=local"
-    }
+    },
+    "mcpHosted": "https://<domain>/mcp with `Authorization: Bearer mqrg_…` (Claude Code, Cursor), or https://<domain>/mcp/mqrg_… for clients that take only a URL (Claude's custom connectors). Stateless; reaches the corpus and research routes in-process with the caller's token."
   },
   "remoteEndpoints": [
+    {
+      "method": "POST",
+      "path": "/signup",
+      "role": null,
+      "note": "public: open sign-up — a free reader with a profile; rate-limited"
+    },
+    {
+      "method": "POST",
+      "path": "/invites/redeem",
+      "role": null,
+      "note": "the invite code is the credential; creates the account with a password at the invite's role"
+    },
     {
       "method": "GET",
       "path": "/me",
       "role": "reader",
-      "note": "plan, planLabel, planRank, planExpiresAt, planActive (= can read the community)"
+      "note": "plan, planLabel, planRank, planExpiresAt, planActive (= can read the community), features (every plan feature → may this account use it)"
     },
     {
       "method": "GET|POST",
       "path": "/me/tokens",
-      "role": "reader",
-      "note": "list / mint personal API tokens (the secret is in the POST response only)"
+      "role": "reader, session only",
+      "note": "list / mint personal API tokens (the secret is in the POST response only); minting needs plan feature 'ai'"
     },
     {
       "method": "DELETE",
       "path": "/me/tokens/:id",
-      "role": "reader",
+      "role": "reader, session only",
       "note": "revoke one of your own"
     },
     {
@@ -181,7 +214,13 @@
       "method": "PUT|DELETE",
       "path": "/plan-tiers/:name",
       "role": "maintainer",
-      "note": "{rank,label}; won't remove free, or a tier held by accounts or required by resources"
+      "note": "{rank,label}; won't remove free, or a tier held by accounts or required by a rule"
+    },
+    {
+      "method": "GET",
+      "path": "/plan-features",
+      "role": null,
+      "note": "public: the feature groups and every feature with its minPlan"
     },
     {
       "method": "GET",
@@ -193,13 +232,13 @@
       "method": "PUT|DELETE",
       "path": "/resource-access/:kind/:key",
       "role": "maintainer",
-      "note": "{minPlan: tier | 'free' | null}; whole kinds can be changed, not removed"
+      "note": "kind = feature | translation | lexicon; {minPlan: tier | 'free' | null}; DELETE drops a per-item rule"
     },
     {
       "method": "GET",
       "path": "/admin/users",
       "role": "maintainer",
-      "note": "every user with role + plan"
+      "note": "every user with role + plan, and region, age and join date"
     },
     {
       "method": "PUT",
@@ -229,54 +268,50 @@
       "method": "GET|POST",
       "path": "/corpus/*",
       "role": null,
-      "resource": "corpus",
-      "note": "the whole corpus API — (verses, chapters, words, roots, linkages, echoes, similar, spellings, wazn, phrase/expression/free-text search); translations + lexicons filtered by tier"
-    },
-    {
-      "method": "GET",
-      "path": "/community/readings",
-      "role": "reader",
-      "resource": "community"
-    },
-    {
-      "method": "POST",
-      "path": "/divergences",
-      "role": "reader",
-      "resource": "community"
-    },
-    {
-      "method": "GET",
-      "path": "/claims, /claims/:id/dissents, /pull",
-      "role": "reader",
-      "resource": "community"
-    },
-    {
-      "method": "POST",
-      "path": "/submissions, /claims",
-      "role": "feature 'publish'",
-      "note": "the publish rule; body.audience {minRole, minPlan}"
-    },
-    {
-      "method": "POST",
-      "path": "/claims/:id/versions/:v/review",
-      "role": "moderator"
-    },
-    {
-      "method": "POST",
-      "path": "/claims/:id/versions/:v/establish, /invites",
-      "role": "maintainer"
-    },
-    {
-      "method": "POST",
-      "path": "/invites/redeem",
-      "role": null,
-      "note": "the invite code is the credential"
+      "planFeature": "per route (text, search, roots, echoes, …)",
+      "note": "the whole corpus API — verses, chapters, words, roots, linkages, echoes, similar, spellings, wazn, phrase/expression/free-text search; translations + lexicons filtered by tier"
     },
     {
       "method": "GET|PUT|DELETE",
       "path": "/research/*",
       "role": "reader",
-      "note": "the signed-in account's own research (cases, notes, indications, motifs, comparisons, settings, outbox). Token requests get the AI boundary."
+      "planFeature": "per record kind, on writes only (notes, indications, my-meanings, motifs, cases, compare, follow-root/follow-word for trails, publish for the outbox)",
+      "note": "the signed-in account's own research. Token requests get the AI boundary."
+    },
+    {
+      "method": "GET",
+      "path": "/community/readings, /claims, /claims/:id/dissents, /pull",
+      "role": "reader",
+      "planFeature": "community"
+    },
+    {
+      "method": "POST",
+      "path": "/divergences",
+      "role": "reader",
+      "planFeature": "divergences"
+    },
+    {
+      "method": "POST",
+      "path": "/submissions, /claims",
+      "role": "the publish role (feature_access), session only",
+      "planFeature": "publish",
+      "note": "body.audience {minRole, minPlan}; /submissions takes the additive kinds (note, question, evidence), /claims a competing reading with its argument"
+    },
+    {
+      "method": "GET",
+      "path": "/submissions, /submissions/:id",
+      "role": "reader",
+      "note": "your outbox; one submission is readable by its author or staff"
+    },
+    {
+      "method": "POST",
+      "path": "/claims/:id/versions/:v/review",
+      "role": "moderator, session only"
+    },
+    {
+      "method": "POST",
+      "path": "/claims/:id/versions/:v/establish, /invites",
+      "role": "maintainer, session only"
     },
     {
       "method": "GET",
@@ -295,6 +330,19 @@
       "path": "/feature-access[/:feature]",
       "role": "public / maintainer",
       "note": "publishing's minimum role"
+    },
+    {
+      "method": "POST",
+      "path": "/mcp, /mcp/:token",
+      "role": "a personal API token",
+      "planFeature": "ai",
+      "note": "the hosted MCP (streamable HTTP, stateless)"
+    },
+    {
+      "method": "GET",
+      "path": "/health, /reset-password, /signed-in",
+      "role": null,
+      "note": "health check; the password-reset page; the magic-link landing page"
     }
   ],
   "phases": [
@@ -324,7 +372,7 @@
         "71ffaa6",
         "0a0add0"
       ],
-      "summary": "plan_tiers; resource_access (corpus, community whole; translation, lexicon per item) replaces corpus_policy/translation_access; publishing is role-only."
+      "summary": "plan_tiers; resource_access (corpus, community whole; translation, lexicon per item) replaces corpus_policy/translation_access; publishing is role-only. The whole-corpus and whole-community rules were later split into plan features (phase plan-features)."
     },
     {
       "id": "corpus-2",
@@ -350,20 +398,20 @@
       "title": "The MCP reads the corpus from /corpus, as its user",
       "status": "done",
       "commit": "e6dcbb8",
-      "summary": "Research stays local. Account → Connect an AI assistant mints the token."
+      "summary": "Account → Connect an AI assistant mints the token. (Research was still local at this point; it moved to the account in phase research-cloud.)"
     },
     {
       "id": "admin",
       "title": "Admin tab in the app",
       "status": "done",
       "commit": "912bc88",
-      "summary": "Plan tiers, who can read (corpus, community, each translation and dictionary), people (role + plan). Maintainers only."
+      "summary": "Plan tiers, access rules, each translation and dictionary, people (role + plan). Maintainers only."
     },
     {
       "id": "deploy",
       "title": "Deployable: Docker on a VPS, HTTPS, SMTP password reset",
       "status": "done",
-      "summary": "Verified locally end to end: image build, config refusal, migrations, corpus load in the container, HTTPS via Caddy, cross-site cookie, reset flow, backup."
+      "summary": "Image build, config refusal, migrations on start, corpus load in the container, HTTPS via Caddy, reset flow, backup. deploy/update.sh pulls, backs up, rebuilds and waits for health."
     },
     {
       "id": "research-cloud",
@@ -376,6 +424,74 @@
       "title": "Roles as data; audiences on published results",
       "status": "done",
       "summary": "role_levels ladder (student, scholar, …), publishing's role configurable, every published result shown only to its audience (role + plan), proposed by the author and confirmed by the reviewer."
+    },
+    {
+      "id": "one-server",
+      "title": "One server; folders named for what they are",
+      "status": "done",
+      "commits": [
+        "3c4373c",
+        "7ddbaaf",
+        "7ba3dc2"
+      ],
+      "summary": "The local server removed; server/ → corpus-core/, remote/ → server/."
+    },
+    {
+      "id": "hosted",
+      "title": "The web app and the MCP hosted on the server's address",
+      "status": "done",
+      "commits": [
+        "d95c55c",
+        "b53c320",
+        "e03bb75"
+      ],
+      "summary": "Caddy carries the built app (deploy/web.Dockerfile) and serves it at https://<domain>/, proxying every other path to the server; the server always trusts its own public origin. The MCP runs at /mcp over streamable HTTP with the token as a Bearer header or in the path. The site and the MCP carry the project logo."
+    },
+    {
+      "id": "signup",
+      "title": "Open sign-up",
+      "status": "done",
+      "commit": "86fbb41",
+      "summary": "Anyone can create a free reader account (POST /signup, migration 0012: date of birth, region, optional gender). Better Auth's own sign-up route stays closed; invites still work. Admin → People shows region, age and join date."
+    },
+    {
+      "id": "plan-features",
+      "title": "Plan features: per feature, what each plan may use",
+      "status": "done",
+      "commit": "e90d6e5",
+      "summary": "The single corpus switch became 23 features in three groups (migration 0013), each with its own rule. /corpus routes answer by their feature; a locked interaction or research feature is read-only. /me reports what the account may use and the app shows locks. The hosted MCP checks the 'ai' feature."
+    },
+    {
+      "id": "tokens-suggest-only",
+      "title": "Tokens can't publish or review",
+      "status": "done",
+      "commit": "a965f35",
+      "summary": "requireRole refuses a token on every staff rung; both publishing routes require a signed-in session. Migration 0014 sets invites.role's default to researcher."
+    },
+    {
+      "id": "guide",
+      "title": "Guide: an in-app walkthrough",
+      "status": "done",
+      "commit": "511fc94",
+      "summary": "app/src/screens/Guide.tsx (? in the top bar, a card on Home, ⌘K → Guide): short chapters that read the live account and plan features, so its locks match the Admin settings."
+    },
+    {
+      "id": "reader-polish",
+      "title": "Reader and spelling-variant fixes",
+      "status": "done",
+      "commits": [
+        "57f07ba",
+        "4bea478",
+        "f14511b",
+        "d80d529"
+      ],
+      "summary": "Spelling variants group a word across its cases and show a word's other spellings above it; an attached hamza is not a variant. A jumped-to āyah stays on screen while the page settles; a recent trail on Home resumes at its latest hop."
+    },
+    {
+      "id": "docs",
+      "title": "Docs consolidated",
+      "status": "done",
+      "summary": "2026-11-20: CLAUDE.md is the entry point; DESIGN.md (with the community rules), SERVER.md, CORPUS.md, MCP.md, DEPLOY.md, DESKTOP.md are the references. INSTRUCTIONS.md, SHARED_RESEARCH*.md, BACKEND_TS_MIGRATION.md, app/README.md and mobile/MOBILE_ACTION_PLAN.md were merged in or removed."
     },
     {
       "id": "next",
@@ -403,7 +519,28 @@
     {
       "id": "features-role-resources-plan",
       "decision": "Every feature is role-based; every resource is plan-based.",
-      "why": "Maintainer's call, 2026-09-26: 'it will be easier.' One question per gate: may you DO this (role), may you READ this (plan)."
+      "why": "Maintainer's call, 2026-09-26: 'it will be easier.' One question per gate: may you DO this (role), may you READ this (plan).",
+      "refinedBy": "plan-features-per-feature (2026-09-29): what a plan unlocks is now a list of plan features, not two whole resources."
+    },
+    {
+      "id": "plan-features-per-feature",
+      "decision": "A plan unlocks FEATURES, one rule each, in three groups (read-assist, interaction, research & publication); a locked interaction or research feature is read-only.",
+      "why": "2026-09-29: decide per feature what each plan may use, instead of one corpus switch. Defaults make every read-assist tool free to any signed-in account and keep the reader's own study and publishing on Pro. Read-only rather than hidden, so what a reader made stays visible when a plan lapses. Features are defined in code, so a new one needs no migration."
+    },
+    {
+      "id": "open-signup",
+      "decision": "Anyone can create a free reader account; an invite brings someone in at the invite's role.",
+      "why": "2026-09-29. Accounts are still created only by our own code (Better Auth's sign-up route stays closed), so the profile is validated before the account exists and sign-ups are rate-limited per address."
+    },
+    {
+      "id": "tokens-suggest-only",
+      "decision": "An API token can never publish, review or establish — only a signed-in session can.",
+      "why": "2026-10-12: only the maintainer routes had refused tokens, so an AI assistant could publish and, for a moderator, review. An assistant reads as its user and suggests; a person decides."
+    },
+    {
+      "id": "hosted-web-and-mcp",
+      "decision": "The web app and the MCP are served from the research server's own address.",
+      "why": "2026-09-28: nothing to install. Opening https://<domain>/ is the whole app, with an ordinary first-party sign-in cookie; an AI client connects to /mcp with a URL and a token. The stdio MCP stays for local and offline (MQ_CORPUS=local) use."
     },
     {
       "id": "corpus-to-postgres",
@@ -432,7 +569,7 @@
     },
     {
       "id": "community-not-mirrored",
-      "decision": "Community data is read live from the remote, never mirrored into research.db.",
+      "decision": "Community data is read live from the server, never mirrored to the reader's machine.",
       "why": "Mirroring puts it on the reader's disk, which makes it un-gateable."
     },
     {
@@ -459,9 +596,22 @@
       "id": "rename-folders",
       "decision": "Folders named for what they are: server/ (was remote/) is the research server; corpus-core/ (was server/) is the corpus code.",
       "why": "The maintainer, 2026-09-28: with the local server gone, remote/ was the only server and server/ was not one. Env vars (REMOTE_URL, REMOTE_TOKEN, VITE_REMOTE_URL, REMOTE_BASE_URL, REMOTE_PORT) keep their names so existing MCP configs and deploy .env files still work."
+    },
+    {
+      "id": "docs-as-context",
+      "decision": "The repo's markdown is a clean, current working context, not a record of how things were built.",
+      "why": "The maintainer, 2026-11-20: design, build-plan and migration docs were describing a system that no longer exists. Finished history belongs in git; a stale doc is merged or deleted rather than marked 'history'."
     }
   ],
   "fileMap": [
+    {
+      "path": "CLAUDE.md",
+      "purpose": "the entry point: architecture, commands, and the rules that keep getting broken (tokenizeVerse, lemma vs surface, Arabic line height, UI conventions)"
+    },
+    {
+      "path": "DESIGN.md, SERVER.md, CORPUS.md, MCP.md, DEPLOY.md, DESKTOP.md",
+      "purpose": "the references: product design and the community's rules; the server; the corpus; the MCP; deployment; the desktop shell"
+    },
     {
       "path": "corpus-core/src/corpus-db.ts",
       "purpose": "CorpusDb interface + sqliteCorpus + once()"
@@ -477,6 +627,10 @@
     {
       "path": "corpus-core/src/routes/{content,roots,similarity,echoes,corpus}.ts",
       "purpose": "corpus route builders — /corpus on the research server, and the tests over quran.db"
+    },
+    {
+      "path": "corpus-core/src/corpus/{patch,keys,cli}.ts",
+      "purpose": "the signed patch channel for quran.db"
     },
     {
       "path": "server/src/corpus/pg-corpus.ts",
@@ -495,8 +649,12 @@
       "purpose": "npm run corpus:parity [-- --quick]"
     },
     {
+      "path": "server/src/plan-features.ts",
+      "purpose": "the 23 plan features and their groups; which feature a /corpus route or a research write uses"
+    },
+    {
       "path": "server/src/resource-access.ts",
-      "purpose": "resource rules, canRead, requireResource, itemFilter"
+      "purpose": "the rules (feature, translation, lexicon), featuresFor, the plan guards, itemFilter"
     },
     {
       "path": "server/src/plans.ts",
@@ -504,7 +662,15 @@
     },
     {
       "path": "server/src/roles.ts",
-      "purpose": "role ladder, requireRole"
+      "purpose": "requireRole, requireSession (a token is refused on staff rungs)"
+    },
+    {
+      "path": "server/src/role-ladder.ts",
+      "purpose": "the role ladder, requireFeature (publishing's role), audiences"
+    },
+    {
+      "path": "server/src/auth.ts, signup.ts, invites.ts, mailer.ts, reset-page.ts",
+      "purpose": "Better Auth (password + magic link); open sign-up; invites; email; the password-reset page"
     },
     {
       "path": "server/src/api-tokens.ts, session.ts",
@@ -516,122 +682,128 @@
     },
     {
       "path": "server/src/app.ts",
-      "purpose": "every remote route"
+      "purpose": "every route"
     },
     {
-      "path": "server/src/access-cli.ts",
-      "purpose": "npm run access — the scripted twin of the Admin tab"
+      "path": "server/src/submissions.ts, claims.ts, pull.ts, ids.ts",
+      "purpose": "the community: additive submissions; the claim spine (propose, review, establish, dissent); the cursor-walk pull; content-addressed ids. Rules: DESIGN.md §6"
     },
     {
-      "path": "server/migrations/0007_resource_access.sql, 0008_api_tokens.sql",
-      "purpose": "resource_access; api_tokens"
-    },
-    {
-      "path": "app/src/api/client.ts",
-      "purpose": "corpus reads → ${REMOTE_URL}/corpus; access events"
-    },
-    {
-      "path": "app/src/components/CorpusAccessBanner.tsx",
-      "purpose": "why the Qur'an isn't showing, once, at the top"
-    },
-    {
-      "path": "app/src/components/AccountSheet.tsx",
-      "purpose": "account; Connect an AI assistant (tokens)"
-    },
-    {
-      "path": "app/src/screens/Admin.tsx, app/src/api/admin.ts",
-      "purpose": "the Admin tab"
-    },
-    {
-      "path": "mcp/src/corpus-client.ts",
-      "purpose": "CorpusReads: remoteReads / localReads"
-    },
-    {
-      "path": "mcp/src/core.ts",
-      "purpose": "openState: corpus (remote|local) + the account's research; the write guard"
-    },
-    {
-      "path": "corpus-core/test/mcp-remote-corpus.test.ts",
-      "purpose": "every MCP corpus tool, remote vs local: identical"
-    },
-    {
-      "path": "server/test/{access,admin,api-tokens,corpus-parity,corpus-migrate}.test.ts",
-      "purpose": "PGlite tests for the above"
-    },
-    {
-      "path": "server/scripts/{token,admin,access}-smoke.ts, ui-test-account.ts",
-      "purpose": "smoke checks through the real app; a throwaway maintainer for browser checks"
-    },
-    {
-      "path": "INSTRUCTIONS.md, CORPUS.md, SERVER.md",
-      "purpose": "the deeper references"
+      "path": "server/src/mcp-http.ts",
+      "purpose": "the hosted MCP at /mcp"
     },
     {
       "path": "server/src/research/{store,routes,boundary,schema,pg-research,serve}.ts",
       "purpose": "the research queries (ResearchStore), its routes, the AI boundary for token requests, binding a request to its user (role, app.user_id, search_path), the driver, /research with the per-request transaction"
     },
     {
-      "path": "server/src/role-ladder.ts",
-      "purpose": "the role ladder, requireFeature, audiences"
+      "path": "server/src/access-cli.ts, set-plan-cli.ts, bootstrap-cli.ts, set-password-cli.ts, test-users-cli.ts",
+      "purpose": "npm run access (the scripted twin of the Admin tab), plan grants, the first maintainer, passwords, test logins from a CSV"
     },
     {
-      "path": "server/migrations/0009_roles_audience.sql",
-      "purpose": "role_levels, feature_access, audience columns"
+      "path": "server/migrations/0001–0014",
+      "purpose": "the schema's source of truth: 0001 community tables · 0002 auth · 0003–0004 claim reviews · 0005 plans · 0006–0007 resource rules · 0008 API tokens · 0009 roles + audiences · 0010 research under RLS · 0011 research without files · 0012 sign-up profile · 0013 plan features · 0014 invite role default"
     },
     {
-      "path": "mcp/src/research-client.ts",
-      "purpose": "the MCP's research, over HTTP as the reader"
+      "path": "app/src/api/client.ts",
+      "purpose": "corpus reads → ${REMOTE_URL}/corpus; access events"
+    },
+    {
+      "path": "app/src/api/remote.ts, app/src/api/admin.ts",
+      "purpose": "the account, community and admin calls"
+    },
+    {
+      "path": "app/src/lib/features.ts, app/src/components/{FeatureGate,PlanLock,PlanLockNotice}.tsx",
+      "purpose": "plan features in the app: useFeature, the lock and the read-only note"
+    },
+    {
+      "path": "app/src/components/CorpusAccessBanner.tsx",
+      "purpose": "why the Qur'an isn't showing, once, at the top"
+    },
+    {
+      "path": "app/src/components/AccountSheet.tsx, AccountButton.tsx",
+      "purpose": "the account panel: sign in, create an account, redeem an invite, reset link, invites, Connect an AI assistant (tokens)"
     },
     {
       "path": "app/src/components/AudiencePicker.tsx",
       "purpose": "who can see it once approved"
     },
     {
-      "path": "server/test/{research-store,research-cloud,audience}.test.ts, corpus-core/test/mcp-remote-research.test.ts",
-      "purpose": "what research does; privacy/RLS/AI boundary; ladder/publish/audiences; the MCP over the account's research"
+      "path": "app/src/screens/Admin.tsx",
+      "purpose": "the Admin tab: Roles, Plan tiers, What each plan may use, Translations, Dictionaries, People"
     },
     {
-      "path": "server/migrations/0010_research_rls.sql",
-      "purpose": "the research schema, row-level security, the mqrg_research role"
+      "path": "app/src/screens/Guide.tsx",
+      "purpose": "the in-app walkthrough, read from the live account and plan features"
     },
     {
-      "path": "server/migrations/0011_research_account_only.sql",
-      "purpose": "research without files: drops the owner table and file-era settings; author_id = the account"
+      "path": "app/src/screens/Divergences.tsx",
+      "purpose": "Where I stand apart"
+    },
+    {
+      "path": "mcp/src/server.ts, index.ts, tools.ts, cases.ts",
+      "purpose": "the MCP server (shared by stdio and hosted), its stdio entry, the tools, the board tools"
+    },
+    {
+      "path": "mcp/src/corpus-client.ts, research-client.ts",
+      "purpose": "CorpusReads: remoteReads / localReads; the MCP's research, over HTTP as the reader"
+    },
+    {
+      "path": "mcp/src/core.ts, method.ts",
+      "purpose": "openState and the write guard; the methodology text"
+    },
+    {
+      "path": "corpus-core/test/mcp-remote-corpus.test.ts, mcp-remote-research.test.ts",
+      "purpose": "every MCP corpus tool, remote vs local: identical; the MCP over the account's research"
+    },
+    {
+      "path": "server/test/*.test.ts",
+      "purpose": "PGlite tests: access, admin, api-tokens, audience, claims, corpus-migrate, corpus-parity, hardening, invites, pull, research-store, research-cloud, signup, submissions, …"
     },
     {
       "path": "electron/main.mjs",
       "purpose": "the desktop window + its built-in static file server for app/dist"
+    },
+    {
+      "path": "deploy/{docker-compose.yml,Caddyfile,web.Dockerfile,entrypoint.sh,update.sh,backup.sh}",
+      "purpose": "the VPS deployment: Postgres + server + Caddy (which carries the built web app); updating; nightly dumps"
     }
   ],
   "glossary": {
-    "feature": "Something you DO (publish, review, establish, administer). Gated by role.",
-    "resource": "Something you READ (the corpus, the community, a translation, a dictionary). Gated by plan.",
-    "tier": "A rung on the plan ladder (plan_tiers). Higher rank unlocks more.",
-    "min_plan": "A resource's requirement: a tier, 'free' (signed in), or NULL (public).",
-    "API token": "mqrg_… — a revocable credential that acts as its user; how the MCP signs in.",
+    "role": "A person's standing on the ladder (reader < student < researcher < scholar < moderator < maintainer). Decides what they may DO: publish, review, establish, administer.",
+    "plan / tier": "What an account has paid for — a rung on the plan ladder (plan_tiers). Decides what it may USE and READ. Higher rank unlocks more.",
+    "plan feature": "One of 23 things a plan can unlock (text, search, notes, cases, community, ai, …), each with one rule. Locked corpus reads answer 402; a locked feature over the reader's own records is read-only.",
+    "min_plan": "A rule's requirement: a tier, 'free' (signed in), or NULL (public).",
+    "feature_access": "The table that holds which ROLE publishing needs (researcher by default). Not to be confused with plan features.",
+    "API token": "mqrg_… — a revocable credential that reads as its user and may only propose; how the MCP signs in.",
+    "AI boundary": "What a token request may do to a reader's research: add its own tagged proposals, change only what it added, never set a primary gloss, a verdict or an established meaning.",
     "locally established": "A form meaning YOU established, in your own research.",
-    "globally established": "The reading moderators accepted as the group's; lives on the cloud.",
+    "globally established": "The reading reviewers accepted as the group's; lives on the server.",
+    "claim": "One author's reading of one subject (a form or a root), with its argument; successive readings are versions of it.",
     "dissent": "A recorded disagreement with a globally established reading, preserved not resolved.",
-    "divergence (⚖)": "A form you established whose meaning differs from the group's. Computed live on the remote.",
+    "divergence (⚖)": "A form you established whose meaning differs from the group's. Computed live on the server ('Where I stand apart').",
     "audience": "Who may see a published result: at least a role and at least a plan. Proposed by the author, confirmed by the reviewer.",
     "role ladder": "reader < student < researcher < scholar < moderator < maintainer — data the maintainer edits; the three fixed rungs carry the staff powers."
   },
-  "notice": "The maintainer account (mansoor@wimetrix.com) is maintainer · free, and the corpus + community rules are pro — so the app will say reading needs the pro plan. Admin → People → Change → Pro, or Admin → Who can read. The old research.db files are gone (in the Recycle Bin); research starts empty in the account.",
+  "notice": "After migration 0013 the read-assist tools are free to any signed-in account, while the reader's own study (notes, indications, my meanings, motifs) and research & publication (cases, publish, community, divergences, the AI assistant) default to pro. Staff need a plan too: a maintainer on free can administer but will see locks on those — Admin → People → Change → Pro, or relax a rule in Admin → What each plan may use.",
   "openQuestions": [
     "Billing provider integration (the plan-grant seam) — next.",
-    "Should maintainers bypass resource gates automatically?",
-    "Corpus patches: a Postgres target so corrections reach the cloud copy.",
+    "Should maintainers bypass plan gates automatically?",
+    "Corpus patches: a Postgres target so corrections reach the cloud copy without re-running corpus:migrate.",
     "Submissions have an audience but no review UI in the app yet (claims do).",
+    "Redaction and tombstones: the redactions table exists, nothing writes it.",
+    "Deleting an account (and its research) from the app.",
     "Upgrade vitest 2 → current (dev-only advisories)."
   ],
   "deployment": {
     "guide": "DEPLOY.md",
-    "shape": "One Linux VPS, docker compose (deploy/): Postgres 16 + the research server (server/Dockerfile) + Caddy (automatic HTTPS). Only 80/443 exposed.",
-    "container": "entrypoint: serve (config check → migrations → server) | corpus-migrate | corpus-parity | bootstrap | set-password | set-plan | access | smoke",
+    "shape": "One Linux VPS, docker compose (deploy/): Postgres 16 + the research server (server/Dockerfile) + Caddy (automatic HTTPS), which also carries the built web app (deploy/web.Dockerfile) and serves it at https://<domain>/, proxying every other path to the server. Only 80/443 exposed.",
+    "container": "entrypoint: serve (config check → migrations → server) | migrate | corpus-migrate | corpus-parity | bootstrap | set-password | set-plan | test-users | access | smoke",
+    "update": "deploy/update.sh — pulls main (or a named branch), backs up, rebuilds and waits for health.",
     "safety": "NODE_ENV=production refuses to start without a real AUTH_SECRET, DATABASE_URL, an https REMOTE_BASE_URL, or with SMTP chosen but unset (config.ts deployProblems).",
-    "cookies": "Over HTTPS the session cookie is SameSite=None; Secure — the app runs on the reader's localhost, a different site from the server.",
+    "cookies": "The hosted web app is on the server's own address, so its sign-in is a first-party cookie and the server always trusts its own public origin. For an app on localhost or the desktop window, the session cookie is SameSite=None; Secure over HTTPS.",
     "email": "SMTP (nodemailer, src/mailer.ts): password reset (app: Account → Email me a reset link → the server's /reset-password page) and magic links. console transport prints them.",
     "backups": "deploy/backup.sh — nightly pg_dump, 14 days; copy off the machine.",
-    "appBuild": "VITE_REMOTE_URL=https://<domain> at build time (desktop:dist or npm start)."
+    "appBuild": "The hosted web app is built by docker compose with the right address. The desktop app and a local `npm start` learn it at build time: VITE_REMOTE_URL=https://<domain>."
   }
 }
