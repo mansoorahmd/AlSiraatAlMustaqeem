@@ -401,13 +401,15 @@
           <tr><td>Community readings, dissent, divergence</td><td>plan features <code>community</code>, <code>divergences</code></td><td><span class="pill y">its rule</span> + each result's <em>audience</em></td></tr>
           <tr><td>Publish (submit / propose)</td><td>role <em>and</em> plan feature <code>publish</code></td><td>the publish role (researcher by default), signed in — never a token</td></tr>
           <tr><td>The AI assistant (tokens, the MCP)</td><td>plan feature <code>ai</code></td><td><span class="pill y">its rule</span> default pro</td></tr>
-          <tr><td>Review</td><td>role</td><td><code>moderator</code></td></tr>
-          <tr><td>Establish, invite, administer</td><td>role</td><td><code>maintainer</code></td></tr>
+          <tr><td>Review</td><td>role</td><td><code>moderator</code> · no plan needed for anything</td></tr>
+          <tr><td>Establish, invite, administer</td><td>role</td><td><code>maintainer</code> · no plan needed for anything</td></tr>
         </tbody>
       </table>
       </div>
-      <p style="font-size:13.5px">Roles and plans are independent: a scholar on free can do what scholars do, but uses only
-        what free reaches; a paying reader uses more but can't publish until their role allows it. Publishing needs both.</p>
+      <p style="font-size:13.5px">Roles and plans are separate: a scholar on free can do what scholars do, but uses only
+        what free reaches; a paying reader uses more but can't publish until their role allows it. Publishing needs both.
+        The one exception is staff: a moderator or maintainer passes every plan gate, since they review and administer
+        exactly what plans gate.</p>
       <div class="thread" data-section="money"></div>
     </section>
 
@@ -456,7 +458,7 @@
               <text x="242" y="32" fill="var(--ink-soft)" letter-spacing=".08em">ROLE</text>
               <text x="242" y="182" fill="var(--ink-soft)" letter-spacing=".08em">PLAN</text>
               <text x="426" y="92" fill="var(--gate)">401 signed out · 403 role too low, or a token</text>
-              <text x="426" y="242" fill="var(--paid)">401 sign in · 402 needs a plan → upgrade</text>
+              <text x="426" y="242" fill="var(--paid)">401 sign in · 402 needs a plan → upgrade · staff always pass</text>
               <text x="426" y="264" fill="var(--ink-soft)">your own records under a locked feature: readable, not writable</text>
               <text x="426" y="282" fill="var(--ink-soft)">a translation or dictionary above your tier is left out, not refused</text>
             </g>
@@ -631,15 +633,16 @@
           </ul>
         </div>
       </div>
-      <div class="callout"><span class="h">Staff need a plan too.</span> A maintainer on <em>free</em> can administer
-        everything, but notes, indications, cases, publishing, the community and the AI assistant default to
-        <em>pro</em> — grant yourself Pro in Admin → People, or relax a rule in <em>What each plan may use</em>.</div>
+      <div class="callout"><span class="h">Staff need no plan.</span> Moderators and maintainers pass every plan gate,
+        whatever tier their account holds. Notes, indications, cases, publishing, the community and the AI assistant
+        default to <em>pro</em> for everyone else — grant plans in Admin → People, or relax a rule in
+        <em>What each plan may use</em>.</div>
       <div class="thread" data-section="admin"></div>
     </section>
 
     <section id="roadmap">
       <h2><span class="num">09</span>Roadmap &amp; status</h2>
-      <p>As of 20 November 2026: corpus code 121/121, research server 268/268 tests; the corpus parity sweep 77,439/77,439 (26 September). Two things run: Postgres and the research server — <code>npm run dev</code> starts the server and the web app.</p>
+      <p>As of 20 November 2026: corpus code 121/121, research server 253/253 tests; the corpus parity sweep 77,439/77,439 (26 September). Two things run: Postgres and the research server — <code>npm run dev</code> starts the server and the web app.</p>
       <div class="road">
         <div class="step"><span class="st done">corpus · done</span><div><h4>The corpus on the research server</h4><p>Loaded and proven identical; the app and MCP read it from <code>/corpus</code>.</p></div></div>
         <div class="step"><span class="st done">access · done</span><div><h4>Roles for doing, plans for reading</h4><p>The role ladder and plan tiers as data; rules for each translation and dictionary; the Admin tab.</p></div></div>
@@ -653,7 +656,8 @@
         <div class="step"><span class="st done">tokens · done</span><div><h4>An AI only suggests</h4><p>A token can no longer publish or review — those need a signed-in person.</p></div></div>
         <div class="step"><span class="st done">guide · done</span><div><h4>In-app Guide</h4><p>A walkthrough that reads the live account and plan, so its locks match the Admin settings. Also: spelling variants shown above each word, steadier jumps in the reader.</p></div></div>
         <div class="step"><span class="st done">docs · done</span><div><h4>Docs consolidated</h4><p><code>CLAUDE.md</code> is the entry point; <code>DESIGN.md</code>, <code>SERVER.md</code>, <code>CORPUS.md</code>, <code>MCP.md</code>, <code>DEPLOY.md</code> and <code>DESKTOP.md</code> are the references. The old instructions, shared-research and migration docs were merged in or removed.</p></div></div>
-        <div class="step"><span class="st defer">next</span><div><h4>Billing provider</h4><p>Slots into the plan grant with no rework of the gates. Also open: deleting an account (and its research), a review screen for submissions, redaction, corpus patches that reach Postgres, whether maintainers should bypass plan gates.</p></div></div>
+        <div class="step"><span class="st done">tidy · done</span><div><h4>Leftovers removed; staff need no plan</h4><p>The unused pull endpoint, <code>local_id</code> and <code>sync_cursors</code> are gone (migration 0015). Moderators and maintainers now pass every plan gate.</p></div></div>
+        <div class="step"><span class="st defer">next</span><div><h4>Billing provider</h4><p>Slots into the plan grant with no rework of the gates. Also open: deleting an account (and its research), a review screen for submissions, redaction, corpus patches that reach Postgres.</p></div></div>
       </div>
       <div class="thread" data-section="roadmap"></div>
     </section>

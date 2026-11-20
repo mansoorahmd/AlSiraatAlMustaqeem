@@ -9,11 +9,16 @@
 //
 // A rule's min_plan is a tier name, 'free' (any signed-in account), or null = PUBLIC (no sign-in).
 // Everything fails CLOSED: a missing feature rule reads as `pro`, an unknown tier never passes.
+//
+// STAFF PASS EVERY PLAN GATE. A moderator or maintainer reviews and administers exactly what plans
+// gate (a moderator has to read the claims they review), so a plan never locks them out, whatever
+// tier their account holds. Learner rungs (student, scholar, …) are not staff and still need the
+// plan. It is one check, in canRead, which every guard and filter below goes through.
 // Rules are cached per runner for CACHE_MS; a change made here applies at once in this process.
 
 import type { Context, MiddlewareHandler } from "hono";
 import type { SqlRunner } from "./migrate.js";
-import type { Env, Principal } from "./roles.js";
+import { isStaff, type Env, type Principal } from "./roles.js";
 import { loadTiers, meetsPlan, TierError, type Tiers } from "./plans.js";
 import {
   FEATURES, FEATURE_KEYS, isPlanFeature, featureLabel, featureForCorpus, featureForResearch, type PlanFeature,
@@ -62,9 +67,9 @@ export async function featureMin(r: SqlRunner, key: PlanFeature): Promise<string
   return m.has(id("feature", key)) ? m.get(id("feature", key))! : FALLBACK_MIN;
 }
 
-/** May this caller read something whose minimum is `minPlan`? null = public. */
+/** May this caller read something whose minimum is `minPlan`? null = public; staff always may. */
 export const canRead = (user: Principal | undefined, minPlan: string | null, tiers: Tiers): boolean =>
-  minPlan === null || (!!user && meetsPlan(user, minPlan, tiers));
+  minPlan === null || (!!user && (isStaff(user) || meetsPlan(user, minPlan, tiers)));
 
 /** Every feature → may this caller use it — what /me tells the app, so it can show the locks. */
 export async function featuresFor(r: SqlRunner, user: Principal | undefined): Promise<Record<PlanFeature, boolean>> {

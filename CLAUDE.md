@@ -48,7 +48,8 @@ AlSiraatAlMustaqeem/
   reader's account on the research server, private by row-level security. There is no local file.
 - **Access**: roles say what you may **do** (publish, review, establish, administer); plans say
   what you may **use and read** (23 plan features, plus per-translation and per-lexicon rules).
-  Every published result is seen only by the audience it names. Everything fails closed.
+  Staff (moderator and maintainer) pass every plan gate. Every published result is seen only
+  by the audience it names. Everything fails closed.
 - **AI boundary**: a request made with an API token may only propose. Its writes are tagged
   `source = 'ai'`, are never primary, and never touch the reader's own items, verdicts or
   established meanings. A token can't publish, review or administer. The server enforces this
@@ -83,7 +84,6 @@ npm run server:migrate
 npm run corpus:migrate
 npm run bootstrap -w @alsiraat/server -- you@example.org "Your Name"     # the first maintainer
 npm run set-password -w @alsiraat/server -- you@example.org 'a password'
-npm run set-plan -w @alsiraat/server -- you@example.org pro
 ```
 
 ## Where to read more

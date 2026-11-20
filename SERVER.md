@@ -170,7 +170,7 @@ session (`requireSession`, and `requireRole` for every staff rung). An AI assist
 
 ## Access: roles say what you may do, plans say what you may use
 
-Two independent axes, one question each:
+Two axes, one question each:
 
 - **Role** — what you may **do** (`requireRole` / `requireFeature`, `src/roles.ts`,
   `src/role-ladder.ts`): publishing needs the role the maintainer chose (researcher by default);
@@ -181,6 +181,13 @@ Two independent axes, one question each:
   if a higher plan is.
 
 Publishing needs both: the publish role and the `publish` plan feature.
+
+**Staff pass every plan gate.** A moderator or maintainer reviews and administers exactly what
+plans gate (a moderator has to read the claims they review), so a plan never locks them out,
+whatever tier their account holds, and `GET /me` reports every feature as theirs. Learner rungs
+(student, scholar, …) are not staff and still need the plan. It is one check, in `canRead`
+(`src/resource-access.ts`). Signing in is still required, and an API token still can't use a
+staff power.
 
 ### The role ladder
 
@@ -200,7 +207,7 @@ proposes** it when publishing; the **reviewer confirms or changes** it when appr
 Every read of the community (claims, the group's reading, dissents, reading chips, divergences and
 their count) shows a viewer only what their role *and* plan reach. Authors always see their
 own; moderators and maintainers see everything, since they review it. The `community` plan feature
-(below) still applies to all of it.
+(below) still applies to everyone else.
 
 ### The plan ladder
 
@@ -274,8 +281,6 @@ Billing isn't wired yet; the plan grant (Admin tab, `set-plan`, `POST /plan`) is
 provider slots into. `GET /me` returns `plan`, `planLabel`, `planRank`, `planExpiresAt`,
 `planActive` (= can read the community) and `features`. Never infer "paid" from the tier name.
 
-**Staff need a plan too.** A maintainer on `free` can administer everything but still gets 402 on a
-`pro` feature — grant yourself a tier (or open the feature) if that's not what you want.
 
 ## Your research, in your account
 

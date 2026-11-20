@@ -44,7 +44,8 @@ export const rankOf = (p: Pick<Principal, "role" | "roleRank">): number =>
 export const atLeast = (p: Pick<Principal, "role" | "roleRank">, min: FixedRole): boolean =>
   rankOf(p) >= FIXED_ROLES[min];
 
-/** Staff see everything they must review, whatever its audience. */
+/** Staff see everything they must review, whatever its audience — and whatever their plan
+ *  (resource-access.ts canRead). */
 export const isStaff = (p: Pick<Principal, "role" | "roleRank"> | undefined): boolean =>
   !!p && atLeast(p, "moderator");
 

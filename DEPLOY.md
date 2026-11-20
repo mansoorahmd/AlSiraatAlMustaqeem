@@ -96,7 +96,6 @@ Optionally prove it answers exactly like the local copy (takes ~2 minutes):
 ```bash
 docker compose run --rm server bootstrap you@example.org "Your Name"
 docker compose run --rm server set-password you@example.org 'a long password'
-docker compose run --rm server set-plan you@example.org pro     # so notes, cases, publishing and the AI assistant are unlocked for you
 ```
 
 (`set-password` puts the password in your shell history — clear it with `history -d`, or change the
@@ -105,8 +104,9 @@ invites — is done in the app: sign in and open the **Admin** tab.
 
 **Plans and staff:** reading the Qur'an and the other read-assist tools are free to any signed-in
 account by default; the reader's own study (notes, indications, meanings, motifs) and research
-(cases, publishing, the community, the AI assistant) default to the `pro` tier. Staff need a plan
-too — grant plans in Admin → People, or relax a rule in Admin → What each plan may use.
+(cases, publishing, the community, the AI assistant) default to the `pro` tier. Moderators and
+maintainers pass every plan gate, so the first maintainer needs no plan. For everyone else, grant
+plans in Admin → People, or relax a rule in Admin → What each plan may use.
 
 ## 6. Point the app at it
 

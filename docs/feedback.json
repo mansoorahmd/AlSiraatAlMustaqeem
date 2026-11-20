@@ -55,7 +55,7 @@
       "author": "Claude",
       "section": "admin",
       "text": "All done on feature/corpus-postgres. (1) Access: features are role-based (publish = researcher, review = moderator, administer = maintainer); resources are plan-based — the corpus, the community, each translation and each dictionary, each with a rule: a tier, 'signed in', or public. (2) Step 2: one corpus codebase with SQLite and Postgres drivers; the cloud serves ALL of it at /corpus; the full parity sweep compared 77,439 requests — every one identical. (3) The app reads the Qur'an from /corpus, with one banner when it can't (offline / sign in / needs a plan). (4) The MCP reads it as you, with a personal API token from Account → Connect an AI assistant; research stays in your local research.db. (5) Admin tab for maintainers: plan tiers, who can read what, people (role + plan). Heads-up: your account is maintainer · free and the corpus rule is pro, so the app will tell you it needs the pro plan — grant yourself pro in Admin → People, or set the corpus to 'Signed in'. Open: should maintainers bypass resource gates automatically?",
-      "status": "open"
+      "status": "answered"
     },
     {
       "ts": "2026-09-27T04:00:00Z",
@@ -125,6 +125,20 @@
       "author": "Claude",
       "section": "general",
       "text": "Done. Docs: CLAUDE.md is now the entry point (architecture, commands, the rules that keep getting broken); DESIGN.md absorbed the community's rules; MCP.md is new; CORPUS.md absorbed the quran.db schema; SERVER.md was corrected against the code. INSTRUCTIONS.md, SHARED_RESEARCH*.md, BACKEND_TS_MIGRATION.md, app/README.md and mobile/MOBILE_ACTION_PLAN.md were merged in or removed, and source comments that cited them were repointed. Atlas: brought from 2026-09-28 up to today — the web app and the MCP hosted on the server's address, open sign-up, the 23 plan features that replaced the single corpus and community rules, tokens that can't publish or review, the in-app Guide, the spelling-variant work. Section 03 is now 'Roles and plans'. Tests at the time: corpus-core 121/121, server 268/268. Still open from 2026-09-26: should maintainers bypass plan gates automatically?",
+      "status": "done"
+    },
+    {
+      "ts": "2026-11-20T01:00:00Z",
+      "author": "Maintainer",
+      "section": "money",
+      "text": "Yes: let staff bypass plan gates. And sweep the dead code the old design left behind.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-11-20T01:00:01Z",
+      "author": "Claude",
+      "section": "money",
+      "text": "Done. (1) Moderators and maintainers pass every plan gate, whatever tier their account holds; learner rungs still need the plan. One check, in canRead. The older requirePlan guard, unused since plan features, is removed. (2) Removed: GET /pull with pull.ts and its diagnose CLI, POST /me/local-id and users.local_id, the sync_cursors table (migration 0015), and the root .env.example for the archived Python pipeline. Left alone: research.db in the repo root, which is not empty (7 cases, 56 notes, 58 trails, 250 indications) and is yours to keep or bin. Server tests 253/253.",
       "status": "done"
     }
   ]

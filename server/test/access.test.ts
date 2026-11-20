@@ -162,7 +162,10 @@ function makeApp() {
   app.use("*", async (c, next) => {
     const plan = c.req.header("x-test-plan");
     if (plan) {
-      const user: Principal = { id: "u1", role: "reader", plan, planExpiresAt: c.req.header("x-test-expires") ?? null };
+      const user: Principal = {
+        id: "u1", role: c.req.header("x-test-role") ?? "reader", plan,
+        planExpiresAt: c.req.header("x-test-expires") ?? null,
+      };
       c.set("user", user);
     }
     await next();
@@ -227,6 +230,46 @@ describe("a feature guards the corpus reads that use it", () => {
     expect(await status("/community-thing")).toBe(401);
     await setRule(r, "feature", "community", null);
     expect(await status("/community-thing")).toBe(200);
+  });
+});
+
+describe("staff pass every plan gate", () => {
+  const as = (role: string, path: string, method = "GET", extra: Record<string, string> = {}) =>
+    app.request(path, { method, headers: { "x-test-plan": "free", "x-test-role": role, ...extra } });
+
+  it("a moderator or maintainer on free reads and writes what is locked to pro", async () => {
+    for (const role of ["moderator", "maintainer"]) {
+      expect((await as(role, V)).status).toBe(200);                                  // a corpus read
+      expect((await as(role, "/community-thing")).status).toBe(200);                 // the claims they review
+      expect((await as(role, "/research/notes/n1", "PUT")).status).toBe(200);        // their own records
+    }
+  });
+
+  it("a learner rung is not staff: a scholar on free is still turned away", async () => {
+    expect((await as("scholar", V)).status).toBe(402);
+    expect((await as("researcher", "/community-thing")).status).toBe(402);
+    expect((await as("scholar", "/research/notes/n1", "PUT")).status).toBe(402);
+  });
+
+  it("a lapsed plan doesn't lock staff out either", async () => {
+    const lapsed = { "x-test-expires": new Date(Date.now() - 1000).toISOString() };
+    expect((await as("moderator", V, "GET", lapsed)).status).toBe(200);
+  });
+
+  it("/me tells staff every feature is theirs, and per-item rules don't hide anything from them", async () => {
+    await ladder();
+    await setRule(r, "feature", "text", "scholar");
+    await setRule(r, "lexicon", "lane", "scholar");
+    const mod: Principal = { id: "m", role: "moderator", plan: "free" };
+    expect(Object.values(await featuresFor(r, mod)).every(Boolean)).toBe(true);
+    expect((await itemFilter(r, mod, "lexicon"))("lane")).toBe(true);
+    const scholar: Principal = { id: "s", role: "scholar", plan: "free" };
+    expect((await featuresFor(r, scholar)).text).toBe(false);
+    expect((await itemFilter(r, scholar, "lexicon"))("lane")).toBe(false);
+  });
+
+  it("signing in is still required", async () => {
+    expect(await status(V)).toBe(401);
   });
 });
 

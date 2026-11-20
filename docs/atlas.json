@@ -8,7 +8,7 @@
     "arabic": "الصراط المستقيم",
     "oneLiner": "A detective's study for the Qur'an: meaning is earned from within the text (the organic Qur'anic methodology). Notice a word, open a case on its root family, gather every place the Book uses it, form a hypothesis, then weigh the classical dictionaries.",
     "stack": "React + Vite + TypeScript SPA (app/), opened in a browser at the research server's own address, in the desktop window, or from a local dev build. The research server (server/, Hono + Postgres + Better Auth) is the only server: the Qur'an corpus, every account's private research, accounts and the community, and the hosted MCP. MCP server (mcp/) lets an AI study and propose, as its user. corpus-core/ is the corpus code library that the research server runs. Electron desktop wrapper (electron/). mobile/ is a separate offline Android app that does not talk to the server.",
-    "run": "Postgres + `npm run dev` (research server :8100 and web app :5174). First time: npm install, npm run server:migrate, npm run corpus:migrate, bootstrap/set-password/set-plan. After pulling a new migration: npm run server:migrate (dev doesn't auto-migrate; Docker does)."
+    "run": "Postgres + `npm run dev` (research server :8100 and web app :5174). First time: npm install, npm run server:migrate, npm run corpus:migrate, bootstrap/set-password. After pulling a new migration: npm run server:migrate (dev doesn't auto-migrate; Docker does)."
   },
   "principle": {
     "core": "Roles say what you may DO; plans say what you may USE and READ. Your research is private to your account; only what you publish is shared, only once approved, and only with the audience it names.",
@@ -132,7 +132,7 @@
     },
     "edit": "In the app: Admin → Roles (the ladder, 'What each role may do'), Plan tiers, What each plan may use, Translations, Dictionaries, People. Scripted: npm run access (show | tier | tier-remove | feature | translation | lexicon) / set-plan.",
     "billing": "Not wired yet. A maintainer grants plans in the Admin tab (or set-plan / POST /plan). That is the single seam a payment provider slots into.",
-    "staff": "Staff need a plan too: a maintainer on free can administer everything but still gets 402 on a pro feature.",
+    "staff": "Staff (moderator and maintainer) pass every plan gate, whatever tier their account holds, and /me reports every feature as theirs. Learner rungs are not staff and still need the plan. One check, in canRead (server/src/resource-access.ts).",
     "audiences": {
       "rule": "Every published result (claim version, submission) carries an audience: at least a role AND at least a plan (either may be empty). The author proposes it; the reviewer confirms or changes it when approving/establishing. Nothing is visible before approval except to its author and staff.",
       "enforcement": "Every community read — claims, the group's reading, dissents, readings/chips, divergences and their count — filters by the viewer's role rank and plan. Authors always see their own; staff (moderator+) see everything, since they review it. The community plan feature still applies to all of it.",
@@ -500,6 +500,12 @@
       "summary": "2026-11-20: GET /pull, pull.ts and its diagnose CLI, POST /me/local-id and users.local_id, and the sync_cursors table (migration 0015) — nothing called them. The root .env.example for the archived Python pipeline went too."
     },
     {
+      "id": "staff-plan-gates",
+      "title": "Staff pass every plan gate",
+      "status": "done",
+      "summary": "2026-11-20: canRead lets a moderator or maintainer through whatever their tier. The older requirePlan guard, unused since plan features, is removed, so there is one plan check."
+    },
+    {
       "id": "next",
       "title": "Billing provider",
       "status": "todo",
@@ -579,9 +585,15 @@
       "why": "Mirroring puts it on the reader's disk, which makes it un-gateable."
     },
     {
+      "id": "staff-pass-plan-gates",
+      "decision": "Moderators and maintainers pass every plan gate.",
+      "why": "The maintainer's call, 2026-11-20, answering a question open since 2026-09-26. A moderator on the free plan could not list the claims they are there to review, because reading the community is a plan feature; a maintainer on free saw locks on what they administer. Staff are few and appointed, so nothing is given away. Learner rungs still pay."
+    },
+    {
       "id": "plan-orthogonal-role",
       "decision": "Plan is a separate axis from role.",
-      "why": "A moderator on free can moderate; a paying reader isn't a researcher. A tier named 'admin' is only what's paid for."
+      "why": "A paying reader isn't a researcher, and a tier named 'admin' is only what's paid for.",
+      "refinedBy": "staff-pass-plan-gates (2026-11-20): the one exception — staff pass plan gates."
     },
     {
       "id": "last-maintainer",
@@ -791,10 +803,9 @@
     "audience": "Who may see a published result: at least a role and at least a plan. Proposed by the author, confirmed by the reviewer.",
     "role ladder": "reader < student < researcher < scholar < moderator < maintainer — data the maintainer edits; the three fixed rungs carry the staff powers."
   },
-  "notice": "After migration 0013 the read-assist tools are free to any signed-in account, while the reader's own study (notes, indications, my meanings, motifs) and research & publication (cases, publish, community, divergences, the AI assistant) default to pro. Staff need a plan too: a maintainer on free can administer but will see locks on those — Admin → People → Change → Pro, or relax a rule in Admin → What each plan may use.",
+  "notice": "After migration 0013 the read-assist tools are free to any signed-in account, while the reader's own study (notes, indications, my meanings, motifs) and research & publication (cases, publish, community, divergences, the AI assistant) default to pro. Moderators and maintainers pass every plan gate, so staff never see those locks; grant plans to everyone else in Admin → People, or relax a rule in Admin → What each plan may use.",
   "openQuestions": [
     "Billing provider integration (the plan-grant seam) — next.",
-    "Should maintainers bypass plan gates automatically?",
     "Corpus patches: a Postgres target so corrections reach the cloud copy without re-running corpus:migrate.",
     "Submissions have an audience but no review UI in the app yet (claims do).",
     "Redaction and tombstones: the redactions table exists, nothing writes it.",

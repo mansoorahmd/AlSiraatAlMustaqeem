@@ -1,7 +1,8 @@
 // Plan tiers — the billing ladder, and its guard. Twin of roles.ts, but the ladder is DATA.
 //
 // `role` says what you may do in the research process; `plan` says what you have paid for. They
-// are orthogonal. The plan ladder lives in the `plan_tiers` table (name, rank, label), so a
+// are separate axes, with one exception: staff (moderator and above) pass every plan gate
+// (resource-access.ts canRead). The plan ladder lives in the `plan_tiers` table (name, rank, label), so a
 // maintainer can define free < student < pro < scholar without a deploy. A gate names a minimum
 // tier and asks whether the caller's RANK reaches it.
 //
@@ -14,9 +15,7 @@
 // lock ships on the user's disk. Billing isn't wired: a maintainer grants a tier with set-plan /
 // POST /plan, and edits the ladder with plan-tiers / PUT /plan-tiers/:name.
 
-import type { MiddlewareHandler } from "hono";
 import type { SqlRunner } from "./migrate.js";
-import type { Env } from "./roles.js";
 
 export const FREE = "free";
 
@@ -100,20 +99,4 @@ export function meetsPlan(
   const need = rankOf(tiers, min);
   const have = effectiveRank(p, tiers);
   return need >= 0 && have >= need;
-}
-
-/**
- * Guard a route behind a minimum tier. 401 if unauthenticated, 402 (Payment Required) below
- * the tier. Sits AFTER requireRole where a route needs both: role = "are you allowed to",
- * plan = "have you paid for it".
- */
-export function requirePlan(min: string, r: SqlRunner): MiddlewareHandler<Env> {
-  return async (c, next) => {
-    const user = c.get("user");
-    if (!user) return c.json({ detail: "authentication required" }, 401);
-    if (!meetsPlan(user, min, await loadTiers(r))) {
-      return c.json({ detail: `requires an active ${min} plan`, plan: min }, 402);
-    }
-    await next();
-  };
 }

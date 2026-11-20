@@ -273,7 +273,8 @@ export function Guide() {
           <h4>Roles, lowest first</h4>
           <p className="guide-roles">{roles.length ? roles.map((r) => r.label || r.name).join(" → ") : "…"}</p>
           <p>Each role can do everything the roles below it can. Publishing needs Researcher by default;
-            reviewing needs Moderator; running the system needs Maintainer.</p>
+            reviewing needs Moderator; running the system needs Maintainer. Moderators and maintainers
+            can use every feature, whatever their plan.</p>
         </>
       ),
     },
