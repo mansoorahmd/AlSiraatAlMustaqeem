@@ -27,12 +27,11 @@ try {
     writeFileSync(out, JSON.stringify({ email: EMAIL, password }));
     console.log(`created ${EMAIL} (maintainer); credentials in ${out}`);
   } else if (cmd === "remove") {
-    // what the account touched without ON DELETE CASCADE: the invite it redeemed, its cursors,
-    // and any access rule it set (kept, just unattributed)
+    // what the account touched without ON DELETE CASCADE: the invite it redeemed, and any
+    // access rule it set (kept, just unattributed)
     const u = (await pgRunner.query("SELECT id FROM users WHERE email = $1", [EMAIL]))[0];
     if (u) {
       await pgRunner.query("DELETE FROM invites WHERE redeemed_by = $1 OR issued_by = $1", [u.id]);
-      await pgRunner.query("DELETE FROM sync_cursors WHERE user_id = $1", [u.id]);
       await pgRunner.query("UPDATE resource_access SET updated_by = NULL WHERE updated_by = $1", [u.id]);
       await pgRunner.query("DELETE FROM users WHERE id = $1", [u.id]);   // its research goes with it (ON DELETE CASCADE)
     }

@@ -1,13 +1,6 @@
-// The remote research-channel HTTP surface.
-//
-//   /api/auth/*            Better Auth (magic-link sign-in, session) — mounted raw
-//   POST /invites          issue an invite            [maintainer]
-//   POST /signup           open sign-up: a free reader (signup.ts)   [public]
-//   POST /invites/redeem   redeem one (creates the account)   [public — the code IS the auth]
-//   GET  /me               who am I, and what may I do        [any signed-in user]
-//   POST /me/local-id      bind this device's local_id        [any signed-in user]
-//
-// Submission / review / pull routes land in Phases 4–7, guarded by requireRole.
+// The research server's HTTP surface: accounts, roles and plans, the corpus (/corpus), each
+// account's research (/research), the community (submissions, claims, review), admin, and the
+// hosted MCP (/mcp). The route table, with who may call what, is in SERVER.md ("Routes").
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -40,7 +33,7 @@ import { researchApp } from "./research/serve.js";
  *  once. server.ts warms them at startup. */
 export const cloudCorpus: CorpusServices = createCorpusServices(pgCorpus(corpusRunner));
 import {
-  createInvite, bindLocalId, loadPrincipal, setDisplayName,
+  createInvite, loadPrincipal, setDisplayName,
   validateInvite, emailTaken, finishRedeem, InviteError,
   setPlan, userIdByEmail,
 } from "./invites.js";
@@ -52,7 +45,6 @@ import {
   setAudience,
   divergencesAgainstGlobal, communityReadingsFor, ClaimError, type SubjectKind, type Decision,
 } from "./claims.js";
-import { pullSince, STREAMS, type Cursors } from "./pull.js";
 import { mountMcp } from "./mcp-http.js";
 
 export function createApp(): Hono<Env> {
@@ -104,7 +96,6 @@ export function createApp(): Hono<Env> {
     return c.json({
       id: me.id, role: me.role,
       email: p?.email ?? "", displayName: p?.displayName ?? "",
-      localId: p?.localId ?? null,
       // The billing axis. `planActive` = this account may read the community resource right now
       // (its tier, not lapsed) — the flag the app's community UI reads. Never infer from the name.
       plan,
@@ -300,13 +291,6 @@ export function createApp(): Hono<Env> {
     return ok ? c.json({ ok: true }) : c.json({ detail: "no such token of yours" }, 404);
   });
 
-  app.post("/me/local-id", requireRole("reader"), async (c) => {
-    const { localId } = (await c.req.json().catch(() => ({}))) as { localId?: string };
-    if (!localId) return c.json({ detail: "localId is required" }, 422);
-    await bindLocalId(pgRunner, c.get("user")!.id, localId);
-    return c.json({ ok: true });
-  });
-
   // --- submissions: local research offered upstream (Phase 4, additive kinds only) ---
   // Publishing is a FEATURE, so it is role-based: at least the role the maintainer set for it
   // (feature_access; researcher by default). The publisher proposes who may see it (audience).
@@ -422,23 +406,6 @@ export function createApp(): Hono<Env> {
     }, await canSee(c))));
 
   /**
-   * The pull (Phase 6). A cursor walk over append-only streams: give me everything with
-   * `seq` greater than what I already have. Replayable, so a client offline for months just
-   * asks again, and a full resync is `since=0` — which is safe precisely because everything
-   * here lands in the client's DERIVED tables.
-   */
-  app.get("/pull", community, async (c) => {
-    const limit = Math.min(Number(c.req.query("limit") ?? 500), 2000);
-    // One position per stream — each table's `seq` is its own sequence, so a single shared
-    // cursor would run one stream's counter ahead of another's and skip rows. An omitted
-    // stream starts at 0, which is a full resync of that stream and always safe.
-    const since = Object.fromEntries(
-      STREAMS.map((s) => [s, Number(c.req.query(s) ?? 0) || 0]),
-    ) as Cursors;
-    return c.json(await pullSince(pgRunner, since, limit, await canSee(c)));
-  });
-
-  /**
    * Approve or object. Establishment is decided here: approvals ≥ requiredApprovals AND
    * approvals > objections — a majority of the votes cast. An objection never blocks; against
    * an established reading it becomes a dissent.
@@ -504,7 +471,7 @@ export function createApp(): Hono<Env> {
   // `account`); we then apply the invite's role and burn the code.
   app.post("/invites/redeem", async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as
-      { code?: string; email?: string; password?: string; displayName?: string; localId?: string };
+      { code?: string; email?: string; password?: string; displayName?: string };
     if (!body.code || !body.email || !body.password) {
       return c.json({ detail: "code, email and password are required" }, 422);
     }
@@ -518,7 +485,7 @@ export function createApp(): Hono<Env> {
         body: { email, password: body.password, name: body.displayName?.trim() || "" },
       });
       const userId = String(created.user.id);
-      await finishRedeem(pgRunner, { code: body.code, userId, role: invite.role, localId: body.localId });
+      await finishRedeem(pgRunner, { code: body.code, userId, role: invite.role });
       return c.json({ userId, email, role: invite.role }, 201);
     } catch (e) {
       if (e instanceof InviteError) return c.json({ detail: e.message }, e.status as 400);

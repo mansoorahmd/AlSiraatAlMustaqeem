@@ -19,7 +19,6 @@ export interface Me {
   role: Role;
   email: string;
   displayName: string;
-  localId: string | null;
   // The billing axis (remote plans.ts). Tiers are data on the remote (free < … < scholar), so
   // `plan` is any tier name. `planActive` is the flag COMMUNITY gates read: at or above the
   // community tier and not lapsed — never infer "paid" from the name. Optional so an older
@@ -184,7 +183,7 @@ export const remote = {
    * the code is the credential. Afterwards you sign in with email + password.
    */
   redeem(opts: {
-    code: string; email: string; password: string; displayName?: string; localId?: string;
+    code: string; email: string; password: string; displayName?: string;
   }): Promise<{ userId: string; email: string; role: Role }> {
     return call("/invites/redeem", { method: "POST", body: JSON.stringify(opts) });
   },
@@ -212,11 +211,6 @@ export const remote = {
   /** Issue an invite (maintainer only). */
   createInvite(opts: { role: Role; expiresInDays?: number }): Promise<InviteOut> {
     return call<InviteOut>("/invites", { method: "POST", body: JSON.stringify(opts) });
-  },
-
-  /** Link this device's research (its local_id) to the signed-in account. */
-  bindLocalId(localId: string): Promise<unknown> {
-    return call("/me/local-id", { method: "POST", body: JSON.stringify({ localId }) });
   },
 
   /** Set your own display name — what other researchers see on your work. */

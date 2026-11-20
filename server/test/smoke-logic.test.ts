@@ -8,7 +8,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { runMigrations, type SqlRunner } from "../src/migrate.js";
-import { createInvite, validateInvite, finishRedeem, bindLocalId, loadPrincipal } from "../src/invites.js";
+import { createInvite, validateInvite, finishRedeem, loadPrincipal } from "../src/invites.js";
 
 const MIGR = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 const TAG = "smoke-logic";
@@ -47,7 +47,7 @@ describe("smoke checks (same assertions the CLI makes)", () => {
     expect(role).toBe("reader");
   });
 
-  it("the full invite flow works and binds a local_id", async () => {
+  it("the full invite flow works", async () => {
     const [boss] = await r.query(
       "INSERT INTO users (email, role) VALUES ($1,'maintainer') RETURNING id", [`boss-${TAG}@x.invalid`]);
     const invite = await createInvite(r, {
@@ -59,10 +59,6 @@ describe("smoke checks (same assertions the CLI makes)", () => {
     await finishRedeem(r, { code: invite.code, userId: u!.id, role: inv.role });
     const out = { userId: u!.id, role: (await loadPrincipal(r, u!.id))!.role };
     expect(out.role).toBe("moderator");
-
-    const local = "11111111-2222-3333-4444-555555555555";
-    await bindLocalId(r, out.userId, local);
-    expect((await loadPrincipal(r, out.userId))!.localId).toBe(local);
   });
 
   it("cleanup removes only the tagged rows", async () => {

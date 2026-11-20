@@ -118,7 +118,7 @@
       "enforcement": {
         "corpus reads": "Every /corpus route belongs to one feature (featureForCorpus; unmatched → text) and answers 401 / 402 by its rule (requireCorpusFeature). Meanings and translations ride inside other answers, so a locked one is also filtered out of those (corpus/serve.ts).",
         "the reader's records": "A locked interaction or research feature is READ-ONLY: what they made stays visible, writes are refused (featureForResearch looks only at writes; requireResearchFeature).",
-        "community": "requirePlanFeature('community') on readings, claims, dissents, pull; 'divergences' on POST /divergences; 'publish' on POST /submissions and /claims; 'ai' on minting a token and on the hosted MCP."
+        "community": "requirePlanFeature('community') on readings, claims, dissents; 'divergences' on POST /divergences; 'publish' on POST /submissions and /claims; 'ai' on minting a token and on the hosted MCP."
       },
       "perItem": {
         "translation": "key = resource id; below its tier the translation is LEFT OUT of results",
@@ -135,8 +135,8 @@
     "staff": "Staff need a plan too: a maintainer on free can administer everything but still gets 402 on a pro feature.",
     "audiences": {
       "rule": "Every published result (claim version, submission) carries an audience: at least a role AND at least a plan (either may be empty). The author proposes it; the reviewer confirms or changes it when approving/establishing. Nothing is visible before approval except to its author and staff.",
-      "enforcement": "Every community read — claims, the group's reading, dissents, readings/chips, divergences and their count, the pull — filters by the viewer's role rank and plan. Authors always see their own; staff (moderator+) see everything, since they review it. The community plan feature still applies to all of it.",
-      "file": "server/src/role-ladder.ts makeAudienceCheck; claims.ts / pull.ts take a CanSee"
+      "enforcement": "Every community read — claims, the group's reading, dissents, readings/chips, divergences and their count — filters by the viewer's role rank and plan. Authors always see their own; staff (moderator+) see everything, since they review it. The community plan feature still applies to all of it.",
+      "file": "server/src/role-ladder.ts makeAudienceCheck; claims.ts takes a CanSee"
     }
   },
   "auth": {
@@ -280,7 +280,7 @@
     },
     {
       "method": "GET",
-      "path": "/community/readings, /claims, /claims/:id/dissents, /pull",
+      "path": "/community/readings, /claims, /claims/:id/dissents",
       "role": "reader",
       "planFeature": "community"
     },
@@ -494,6 +494,12 @@
       "summary": "2026-11-20: CLAUDE.md is the entry point; DESIGN.md (with the community rules), SERVER.md, CORPUS.md, MCP.md, DEPLOY.md, DESKTOP.md are the references. INSTRUCTIONS.md, SHARED_RESEARCH*.md, BACKEND_TS_MIGRATION.md, app/README.md and mobile/MOBILE_ACTION_PLAN.md were merged in or removed."
     },
     {
+      "id": "leftovers",
+      "title": "Leftovers of the offline-first design removed",
+      "status": "done",
+      "summary": "2026-11-20: GET /pull, pull.ts and its diagnose CLI, POST /me/local-id and users.local_id, and the sync_cursors table (migration 0015) — nothing called them. The root .env.example for the archived Python pipeline went too."
+    },
+    {
       "id": "next",
       "title": "Billing provider",
       "status": "todo",
@@ -685,8 +691,8 @@
       "purpose": "every route"
     },
     {
-      "path": "server/src/submissions.ts, claims.ts, pull.ts, ids.ts",
-      "purpose": "the community: additive submissions; the claim spine (propose, review, establish, dissent); the cursor-walk pull; content-addressed ids. Rules: DESIGN.md §6"
+      "path": "server/src/submissions.ts, claims.ts, ids.ts",
+      "purpose": "the community: additive submissions; the claim spine (propose, review, establish, dissent); content-addressed ids. Rules: DESIGN.md §6"
     },
     {
       "path": "server/src/mcp-http.ts",
@@ -758,7 +764,7 @@
     },
     {
       "path": "server/test/*.test.ts",
-      "purpose": "PGlite tests: access, admin, api-tokens, audience, claims, corpus-migrate, corpus-parity, hardening, invites, pull, research-store, research-cloud, signup, submissions, …"
+      "purpose": "PGlite tests: access, admin, api-tokens, audience, claims, corpus-migrate, corpus-parity, hardening, invites, research-store, research-cloud, signup, submissions, …"
     },
     {
       "path": "electron/main.mjs",

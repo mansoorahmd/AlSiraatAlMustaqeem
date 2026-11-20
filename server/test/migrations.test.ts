@@ -29,7 +29,7 @@ describe("schema migration", () => {
     const names = rows.map((r) => r.table_name);
     for (const t of [
       "users", "invites", "claims", "claim_versions", "global_forms", "dissents",
-      "submissions", "submission_items", "reviews", "redactions", "sync_cursors", "_migrations",
+      "submissions", "submission_items", "reviews", "redactions", "_migrations",
     ]) {
       expect(names).toContain(t);
     }

@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { runMigrations, type SqlRunner } from "../src/migrate.js";
 import {
-  createInvite, validateInvite, emailTaken, finishRedeem, bindLocalId, loadPrincipal, InviteError,
+  createInvite, validateInvite, emailTaken, finishRedeem, loadPrincipal, InviteError,
 } from "../src/invites.js";
 
 const MIGR = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
@@ -40,13 +40,13 @@ beforeEach(async () => {
  * Better Auth's signUpEmail (which owns account creation + password hashing). The rules being
  * tested — validity, single use, expiry, duplicate email, role from the invite — are ours.
  */
-async function redeem(opts: { code: string; email: string; localId?: string }) {
+async function redeem(opts: { code: string; email: string }) {
   const email = opts.email.trim().toLowerCase();
   if (!email.includes("@")) throw new InviteError("a valid email is required", 422);
   const invite = await validateInvite(r, opts.code);
   if (await emailTaken(r, email)) throw new InviteError("an account already exists for that email", 409);
   const [u] = await r.query("INSERT INTO users (email) VALUES ($1) RETURNING id", [email]) as { id: string }[];
-  await finishRedeem(r, { code: opts.code, userId: u!.id, role: invite.role, localId: opts.localId });
+  await finishRedeem(r, { code: opts.code, userId: u!.id, role: invite.role });
   return { userId: u!.id, role: invite.role, email };
 }
 
@@ -105,23 +105,5 @@ describe("redeeming invites", () => {
     const inv = await createInvite(r, { issuedBy: maintainer });
     await expect(redeem({ code: inv.code, email: "not-an-email" }))
       .rejects.toThrow(InviteError);
-  });
-});
-
-describe("local_id binding (Phase 1 attribution)", () => {
-  it("binds at redemption", async () => {
-    const inv = await createInvite(r, { issuedBy: maintainer });
-    const local = "11111111-2222-3333-4444-555555555555";
-    const out = await redeem({ code: inv.code, email: "bound@example.org", localId: local });
-    expect((await loadPrincipal(r, out.userId))!.localId).toBe(local);
-  });
-
-  it("can be bound or re-bound afterwards", async () => {
-    const inv = await createInvite(r, { issuedBy: maintainer });
-    const out = await redeem({ code: inv.code, email: "later@example.org" });
-    expect((await loadPrincipal(r, out.userId))!.localId).toBeNull();
-    const local = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
-    await bindLocalId(r, out.userId, local);
-    expect((await loadPrincipal(r, out.userId))!.localId).toBe(local);
   });
 });

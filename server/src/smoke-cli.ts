@@ -6,7 +6,7 @@
 //   npm run smoke -w @alsiraat/server
 
 import { pool, pgRunner as r } from "./db.js";
-import { createInvite, validateInvite, finishRedeem, bindLocalId, loadPrincipal } from "./invites.js";
+import { createInvite, validateInvite, finishRedeem, loadPrincipal } from "./invites.js";
 
 let pass = 0;
 const fails: string[] = [];
@@ -94,14 +94,6 @@ try {
     const role = (await loadPrincipal(r, userId))!.role;
     if (role !== "moderator") throw new Error(`expected moderator, got ${role}`);
     return `code ${invite.code.slice(0, 8)}… → ${EMAIL} as ${role}`;
-  });
-
-  await check("local_id binds and reads back", async () => {
-    const local = "11111111-2222-3333-4444-555555555555";
-    await bindLocalId(r, userId, local);
-    const p = await loadPrincipal(r, userId);
-    if (p?.localId !== local) throw new Error(`got ${p?.localId}`);
-    return local;
   });
 
   await check("cleans up after itself", async () => {

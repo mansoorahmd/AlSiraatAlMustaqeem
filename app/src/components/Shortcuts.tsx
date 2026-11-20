@@ -1,5 +1,4 @@
 // Global keyboard shortcuts. Ignored while typing in a field.
-//   /            → jump to Search
 //   g then h/r/s/i/v/o → Home / Read / Search / Investigate / Vault / rOots
 //   j / k        → next / previous ayah in the reader
 

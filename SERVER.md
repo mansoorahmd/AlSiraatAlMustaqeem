@@ -14,7 +14,7 @@ say what you may use and read**, and every published result is seen only by its 
 
 - **Schema** — `migrations/` is the source of truth. `0001_init.sql` creates the community tables
   (users, invites, claims, claim_versions, global_forms, dissents, submissions, submission_items,
-  reviews, redactions, sync_cursors) with role/kind CHECKs, `seq` cursors and referential
+  reviews, redactions) with role/kind CHECKs and referential
   integrity; `0002_auth.sql` adds Better Auth's `session` / `account` / `verification` tables;
   later migrations add plans, resource rules, API tokens, the role ladder and audiences, the
   research schema under row-level security, the sign-up profile and plan features.
@@ -30,7 +30,7 @@ say what you may use and read**, and every published result is seen only by its 
 - **Registration** — open sign-up (`src/signup.ts`: a free reader) and invites (`src/invites.ts`:
   issue / redeem, single-use, expiring, carrying a role).
 - **Research** — `src/research/` (below). **Corpus** — `src/corpus/` (below).
-  **Community** — `src/submissions.ts`, `src/claims.ts`, `src/pull.ts`, `src/ids.ts`.
+  **Community** — `src/submissions.ts`, `src/claims.ts`, `src/ids.ts`.
 - **Hosted MCP** — `src/mcp-http.ts` (`MCP.md`).
 - **Routes** — `src/app.ts` (below).
 
@@ -136,7 +136,6 @@ reader's `localhost` — different sites — so over HTTPS the session cookie is
 | `POST /invites/redeem` | public — the code *is* the credential |
 | `GET /me` | any signed-in user (id, role, plan, and `features`: what the account may use) |
 | `POST /me/name` | any signed-in user (display name) |
-| `POST /me/local-id` | any signed-in user — unused by the app (`DESIGN.md`, "Superseded decisions") |
 | `GET /me/tokens` · `POST /me/tokens` | a signed-in session — list / mint personal API tokens (minting needs plan feature `ai`) |
 | `DELETE /me/tokens/:id` | a signed-in session — revoke one of your own |
 | `POST /plan` | maintainer — grant/revoke a plan tier by email (the manual stand-in for billing) |
@@ -152,7 +151,7 @@ reader's `localhost` — different sites — so over HTTPS the session cookie is
 | `GET /admin/resources` | maintainer — every translation and lexicon with its rule, unfiltered |
 | `GET\|POST /corpus/*` | the Qur'an corpus from Postgres; each route belongs to one plan feature (below) |
 | `GET\|PUT\|DELETE /research/*` | any account — **your own research** (`src/research/routes.ts`); writes need the record's plan feature |
-| `GET /community/readings` · `GET /claims` · `GET /claims/:id/dissents` · `GET /pull` | plan feature `community` |
+| `GET /community/readings` · `GET /claims` · `GET /claims/:id/dissents` | plan feature `community` |
 | `POST /divergences` | plan feature `divergences` |
 | `POST /submissions` · `POST /claims` | a signed-in session, the **publish** role (researcher by default) and plan feature `publish` — `{…, audience: {minRole, minPlan}}` |
 | `GET /submissions` | any account — your outbox |
@@ -199,7 +198,7 @@ Every published result (a claim version, a submission) carries an **audience**: 
 **and** at least a plan (either may be empty), e.g. *scholars and above, on Pro*. The **author
 proposes** it when publishing; the **reviewer confirms or changes** it when approving or establishing.
 Every read of the community (claims, the group's reading, dissents, reading chips, divergences and
-their count, the pull) shows a viewer only what their role *and* plan reach. Authors always see their
+their count) shows a viewer only what their role *and* plan reach. Authors always see their
 own; moderators and maintainers see everything, since they review it. The `community` plan feature
 (below) still applies to all of it.
 

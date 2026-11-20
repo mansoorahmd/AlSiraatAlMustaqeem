@@ -13,7 +13,6 @@ import {
   validAudience, makeAudienceCheck,
 } from "../src/role-ladder.js";
 import { proposeClaim, establish, setAudience, claimsFor, globalReading, communityReadingsFor } from "../src/claims.js";
-import { pullSince, ZERO_CURSORS } from "../src/pull.js";
 import { clearTierCache } from "../src/plans.js";
 import { pgliteRunner } from "./fixtures/corpus-fixture.js";
 
@@ -105,11 +104,10 @@ describe("the audience of a published result", () => {
       claims: (await claimsFor(r, "root", subject, see)).length,
       global: !!(await globalReading(r, "root", subject, see)),
       chips: (await communityReadingsFor(r, { root: subject }, see)).communityRoot.length,
-      pulled: (await pullSince(r, ZERO_CURSORS, 500, see)).globalForms.length,
     };
   };
-  const nothing = { claims: 0, global: false, chips: 0, pulled: 0 };
-  const everything = { claims: 1, global: true, chips: 1, pulled: 1 };
+  const nothing = { claims: 0, global: false, chips: 0 };
+  const everything = { claims: 1, global: true, chips: 1 };
 
   it("an audience must name real rungs and tiers", async () => {
     await expect(validAudience(r, { minRole: "wizard" })).rejects.toThrow(/unknown role/);

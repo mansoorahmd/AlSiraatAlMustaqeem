@@ -5,11 +5,11 @@
 //
 // Flow:
 //   1. a maintainer issues an invite (a code carrying the role to grant)
-//   2. the invitee redeems it with their email → we create the `users` row with that role,
-//      optionally binding their local_id, and mark the invite redeemed (single use)
-//   3. they then sign in by magic link — the user already exists, so no signup is needed
+//   2. the invitee redeems it with their email and a password → the account is created with
+//      that role, and the invite is marked redeemed (single use)
+//   3. they then sign in with email + password
 //
-// Roles and local_id are ours, never Better Auth's (SERVER.md).
+// Roles are ours, never Better Auth's (SERVER.md).
 
 import { randomBytes } from "node:crypto";
 import type { SqlRunner } from "./migrate.js";
@@ -81,27 +81,19 @@ export async function emailTaken(r: SqlRunner, email: string): Promise<boolean> 
 }
 
 /**
- * Finish a redemption for a user Better Auth has just created: grant the invite's role, bind
- * the device, and burn the code. The WHERE guard makes a concurrent double-redeem impossible.
+ * Finish a redemption for a user Better Auth has just created: grant the invite's role and
+ * burn the code. The WHERE guard makes a concurrent double-redeem impossible.
  */
 export async function finishRedeem(
   r: SqlRunner,
-  opts: { code: string; userId: string; role: Role; localId?: string },
+  opts: { code: string; userId: string; role: Role },
 ): Promise<void> {
   const burned = await r.query(
     "UPDATE invites SET redeemed_by = $1 WHERE code = $2 AND redeemed_by IS NULL RETURNING code",
     [opts.userId, opts.code],
   );
   if (!burned[0]) throw new InviteError("invite already redeemed", 409);
-  await r.query(
-    "UPDATE users SET role = $1, local_id = COALESCE($2, local_id), updated_at = now() WHERE id = $3",
-    [opts.role, opts.localId ?? null, opts.userId],
-  );
-}
-
-/** Bind (or re-bind) a signed-in account to a device's local_id — Phase 1 attribution. */
-export async function bindLocalId(r: SqlRunner, userId: string, localId: string): Promise<void> {
-  await r.query("UPDATE users SET local_id = $1, updated_at = now() WHERE id = $2", [localId, userId]);
+  await r.query("UPDATE users SET role = $1, updated_at = now() WHERE id = $2", [opts.role, opts.userId]);
 }
 
 /** The authorization facts for a user, plus who they are (for the account panel). */
@@ -109,21 +101,21 @@ export async function loadPrincipal(
   r: SqlRunner,
   userId: string,
 ): Promise<{
-  id: string; role: Role; roleRank: number; localId: string | null; email: string; displayName: string;
+  id: string; role: Role; roleRank: number; email: string; displayName: string;
   plan: string; planExpiresAt: string | null;
 } | null> {
   // the role's rank comes with it, so every guard afterwards is a comparison (roles.ts)
   const rows = await r.query(
-    `SELECT u.id, u.role, rl.rank AS role_rank, u.local_id, u.email, u.display_name, u.plan, u.plan_expires_at
+    `SELECT u.id, u.role, rl.rank AS role_rank, u.email, u.display_name, u.plan, u.plan_expires_at
        FROM users u JOIN role_levels rl ON rl.name = u.role WHERE u.id = $1`,
     [userId]);
   const u = rows[0] as {
-    id: string; role: string; role_rank: number; local_id: string | null; email: string; display_name: string | null;
+    id: string; role: string; role_rank: number; email: string; display_name: string | null;
     plan: string; plan_expires_at: string | Date | null;
   } | undefined;
   if (!u) return null;
   return {
-    id: u.id, role: u.role, roleRank: Number(u.role_rank), localId: u.local_id,
+    id: u.id, role: u.role, roleRank: Number(u.role_rank),
     email: u.email, displayName: u.display_name ?? "",
     // users.plan is a foreign key into plan_tiers, so it is always a real tier
     plan: u.plan || FREE,

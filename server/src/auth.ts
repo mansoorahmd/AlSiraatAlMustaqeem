@@ -1,5 +1,5 @@
 // Better Auth — AUTHENTICATION only (identity + sessions + magic-link tokens).
-// Authorization (`users.role`) and the domain link (`users.local_id`) are ours and are
+// Authorization (`users.role`, the plan) is ours and is
 // deliberately NOT declared to Better Auth: our session middleware reads them straight from
 // the users table. "Buy authentication, build authorization" (SERVER.md).
 //

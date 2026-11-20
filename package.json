@@ -18,7 +18,6 @@
     "server:migrate": "npm run migrate -w @alsiraat/server",
     "server:demo": "npm run demo:claims -w @alsiraat/server --",
     "server:demo:keep": "npm run demo:claims -w @alsiraat/server -- --keep",
-    "server:diagnose": "npm run diagnose:pull -w @alsiraat/server",
     "server:demo:clean": "npm run demo:clean -w @alsiraat/server",
     "corpus:migrate": "npm run corpus:migrate -w @alsiraat/server --",
     "corpus:parity": "npm run corpus:parity -w @alsiraat/server --",

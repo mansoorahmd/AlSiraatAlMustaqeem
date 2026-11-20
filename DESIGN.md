@@ -94,7 +94,7 @@ is `/research/*` in their account (`cases`, `form_research` + `form_revisions`, 
 Research can be published, reviewed by other researchers, and agreed, without taking a
 reader's own work out of their hands. How access is gated (roles, plans, audiences) is in
 `SERVER.md`; this section is the rules of the review process itself, which the code enforces
-(`server/src/claims.ts`, `submissions.ts`, `pull.ts`, `ids.ts`).
+(`server/src/claims.ts`, `submissions.ts`, `ids.ts`).
 
 ### Vocabulary
 
@@ -171,21 +171,17 @@ dissent_id    = "dsn_" + digest({ author_id, claim_id, claim_version, payload })
   exactly what was cited even after they change their mind.
 - Submitting an identical bundle twice returns the same submission instead of duplicating it.
 
-### Pull is a log replay
+### Read live, never mirrored
 
-`GET /pull` is a cursor walk over append-only rows ("everything with `seq > N`"), with **one
-cursor per stream**: each table's `seq` is its own counter, so a shared cursor silently skips
-rows. It is replayable and resumable; all-zero cursors are a full resync. It sends every claim
-version, not only established ones, and each row's status (`established` / `proposed` /
-`superseded`) is derived per pull. No CRDT and no bidirectional merge exist anywhere: outbound
-is a submission queue, inbound is a log. The app reads the community live (`/community/readings`,
-`/claims`) and keeps no local mirror, so nothing in the app or the MCP calls `/pull` today.
+The app reads the community from the server each time (`GET /community/readings`, `GET /claims`)
+and keeps no local copy: a copy on the reader's machine could not be gated by plan or audience.
+Each reading's status (`established` / `proposed` / `superseded`) is derived when it is read,
+so a claim that gains or loses the group's slot corrects itself with no rewrite.
 
-### Schema-change rule
+### Payloads carry a version
 
-Never remove or repurpose a column in the community tables. New fields are added nullable or
-defaulted and ride inside `payload_json` first. Every payload carries a `schema_version`;
-unknown keys are preserved on write and ignored on read.
+Every published payload (`payload_json`) carries a `schema_version` (`SCHEMA_VERSION` in
+`submissions.ts`), so a reading published under an older shape can still be told apart and read.
 
 ### Superseded decisions
 
@@ -196,14 +192,16 @@ era survive in the code:
 - **Local `research.db` and offline study** → research lives only in the account, in Postgres.
   `derived_submissions` and `derived_proposed_claims` keep their `derived_` prefix but are now
   ordinary tables in the account's research (the outbox ledgers).
-- **`local_id`** (a device identity minted before sign-in) → still a column on `users` and a
-  route (`POST /me/local-id`), with nothing in the app that uses it.
+- **`local_id`, `GET /pull`, `sync_cursors`** (a device identity minted before sign-in; a
+  cursor walk that mirrored the community into the reader's file) → removed in migration 0015.
+  The `seq` columns on the community tables are what is left of the pull streams.
 - **Invite-only, magic-link sign-in** → open sign-up as a free reader, email + password;
   invites remain as the way to bring someone in at a higher role.
 - **Corpus as signed patch files only** → the corpus is served from Postgres; the patch channel
   still exists for `quran.db` (`CORPUS.md`).
-- **"Phase 0–7"** in code comments refers to the original build order of this layer. Phases 0–6
-  are built; Phase 7 is the redaction work listed below.
+- **"Phase 2 / 4 / 5"** in code comments refers to the original build order of this layer (the
+  corpus patch channel, additive submissions, the claim spine). The last phase, redaction, was
+  never built; it is listed below.
 
 ---
 
@@ -231,7 +229,7 @@ Detail is in git; this is the shape of the arc.
   proven by golden-parity tests; the Electron shell.
 - **Shared research (Aug 2026)** — the corpus patch channel, the research server (Postgres,
   Better Auth, roles, invites), submissions, the claim spine (propose, review, establish,
-  dissent), pull, community indications, "Where I stand apart".
+  dissent), community indications, "Where I stand apart".
 - **Plans and the cloud (Sep 2026)** — plan tiers and gated community; the corpus moved into
   Postgres and served at `/corpus` (parity proven over 77,439 requests); personal API tokens;
   the Admin tab; Docker deployment; research moved into the account under row-level security;
