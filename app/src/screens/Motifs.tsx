@@ -7,6 +7,7 @@ import { api } from "../api/client";
 import { useAsync } from "../hooks/useAsync";
 import { archive, newId } from "../persistence/db";
 import { useAppDispatch } from "../state/store";
+import { MotifSpread } from "../components/research/MotifSpread";
 
 const spaced = (r: string) => r.split("").join("\u00A0"); // nbsp: root letters must not wrap (ه د ي)
 
@@ -14,6 +15,7 @@ export function Motifs() {
   const dispatch = useAppDispatch();
   const [version, setVersion] = useState(0);
   const refresh = () => setVersion((v) => v + 1);
+  const [open, setOpen] = useState<string | null>(null);
 
   const motifs = useAsync(() => archive.motifs.all(), [version]);
   const roots = useAsync(() => api.listRoots({ limit: 2000 }), []);
@@ -80,7 +82,7 @@ export function Motifs() {
                 onChange={(e) => rename(m.id, e.target.value, m.createdAt)}
               />
               <span className="motif-count">{m.roots.length}</span>
-              <button className="motif-del" title="Delete motif" onClick={() => remove(m.id)}>✕</button>
+              <button className="motif-del" title="Delete motif" aria-label={`Delete the motif ${m.name || "untitled"}`} onClick={() => remove(m.id)}>✕</button>
             </div>
             {m.roots.length === 0 ? (
               <p className="home-empty">No roots yet.</p>
@@ -93,6 +95,15 @@ export function Motifs() {
                 ))}
               </div>
             )}
+            {m.roots.length > 0 && (
+              <div className="motif-spread-bar">
+                <button className="ctl ml-secondary" aria-expanded={open === m.id}
+                  onClick={() => setOpen(open === m.id ? null : m.id)}>
+                  {open === m.id ? "Hide spread" : "Spread"}
+                </button>
+              </div>
+            )}
+            {open === m.id && <MotifSpread roots={m.roots} />}
           </section>
         ))}
       </div>

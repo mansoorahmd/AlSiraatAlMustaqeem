@@ -1,12 +1,24 @@
 // Global keyboard shortcuts. Ignored while typing in a field.
-//   g then h/r/s/i/v/o → Home / Read / Search / Investigate / Vault / rOots
-//   j / k        → next / previous ayah in the reader
+//   g then a letter → a screen (GOTO below; the command palette lists them all by name)
+//   j / k           → next / previous āyah in the reader
 
 import { useEffect, useRef } from "react";
 import { useAppDispatch, type Tab } from "../state/store";
 
-const GOTO: Record<string, Tab> = {
-  h: "home", r: "read", s: "search", i: "investigate", v: "vault", o: "roots",
+/** g + key → screen. One letter per screen, the first free letter of its name. */
+export const GOTO: Record<string, Tab> = {
+  h: "home",         // Home
+  r: "read",         // Read
+  s: "search",       // Search
+  i: "investigate",  // Investigate
+  o: "roots",        // rOots
+  x: "links",        // Rare links (eXclusive markers)
+  l: "mylinks",      // My Links
+  m: "motifs",       // Motifs
+  c: "compare",      // Compare
+  v: "vault",        // Vault
+  d: "diverge",      // Where I stand apart (Divergences)
+  "?": "guide",      // Guide
 };
 
 function moveAyah(dir: 1 | -1) {

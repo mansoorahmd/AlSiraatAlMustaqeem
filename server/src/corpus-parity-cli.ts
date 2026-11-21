@@ -20,6 +20,7 @@ import { corpusApp } from "./corpus/serve.js";
 import { Db } from "../../corpus-core/src/db.js";
 import { sqliteCorpus } from "../../corpus-core/src/corpus-db.js";
 import { createCorpusServices, warmCorpus } from "../../corpus-core/src/corpus-services.js";
+import { CONSTRUCTION_PRESETS } from "../../corpus-core/src/constructions.js";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const sqlitePath = process.env.QF_QURAN_DB ?? resolve(repo, "quran.db");
@@ -75,8 +76,15 @@ try {
     await same(`/verses/${k}?words=1&translations=1`);
     await same(`/verses/${k}/echoes`);
     await same(`/verses/${k}/similar?top_k=10`);
+    await same(`/verses/${k}/links`);
   }
-  step("verses (words, translations, echoes, similar)");
+  step("verses (words, translations, echoes, similar, links)");
+
+  for (const kind of ["root", "lemma", "form", "phrase"]) {
+    for (const n of [2, 3]) await same(`/links/exclusive?kind=${kind}&n=${n}&limit=500`);
+    await same(`/links/exclusive?kind=${kind}&cross=1&chapter=12`);
+  }
+  step("links (markers carried by exactly two or three āyāt)");
 
   for (const k of verseKeys.filter(every(40))) {
     await same(`/verses/${k}/neighbours?radius=3`);
@@ -123,6 +131,52 @@ try {
   await post("/expression-search", { terms: [{ surface: "الصلاة", root: "Slw" }, { surface: "الزكاة", root: "zkw" }], mode: "roots" });
   await post("/expression-search", { terms: [{ surface: "الحمد" }, { surface: "لله" }], mode: "verbatim" });
   step("words, phrase, free-text and expression search");
+
+  await same("/construction-presets");
+  for (const p of CONSTRUCTION_PRESETS) {
+    await post("/construction-search", { ...p.query, limit: 500 });
+    await post("/construction-search", { ...p.query, limit: 7, offset: 3 });
+  }
+  await post("/construction-search", { slots: [{ form: "قال" }, { pos: "V", gap: 3 }], limit: 500 });
+  await post("/construction-search", { slots: [{ verb: { mood: "JUS", person: "2" } }], limit: 500 });
+  await post("/construction-search", { slots: [{ pos: "nope" }] });
+  step("construction search (every preset, a builder query, a refusal)");
+
+  // the study tools: occurrences, spellings, speech openers, pronouns, wording check, diff
+  for (const k of verseKeys.filter(every(97))) {
+    const res = await lite.request(`/verses/${k}/links`);
+    const links = (await res.json()) as { links: { kind: string; key: string }[] };
+    for (const m of links.links.slice(0, 3)) await post("/occurrences", { kind: m.kind, key: m.key });
+  }
+  await post("/occurrences", { kind: "root", key: "قول" });
+  await post("/occurrences", { kind: "lemma", key: "عيسى" });
+  await post("/occurrences", { kind: "form", key: "امرات" });
+  await post("/occurrences", { kind: "spelling", key: "إِبْرَٰهِـۧمَ" });
+  for (const key of ["3:35:3|ٱمْرَأَتُ", "3:35:3|ٱمْرَأَةٌ", "2:2:2|كِتَابٌ", "9:9:99|ٱمْرَأَتُ"]) await post("/occurrences", { kind: "spelling", key });
+  await post("/occurrences", { kind: "construction", key: "v", query: { slots: [{ derivation: "PASS_PCPL" }] }, limit: 300, offset: 20 });
+  await post("/occurrences", { kind: "nope", key: "x" });
+  await same("/spellings?limit=500");
+  await same("/spellings?sort=alpha&limit=500");
+  for (const kind of ["ta", "alif", "ya", "hamza", "double-ta", "doubling", "ending", "other"]) await same(`/spellings?kind=${kind}&limit=500`);
+  await same(`/spellings?q=${enc("ابراهيم")}`);
+  for (const g of ["2:124:3", "1:1:2", "2:83:12", "9:9:99"]) await same(`/spellings/${g}`);
+  for (let ch = 1; ch <= 114; ch++) if (!quick || ch % 5 === 0 || ch > 100) await same(`/chapters/${ch}/speech-openers`);
+  await same(`/chapters/11/speech-openers?roots=${enc("د ع و,سأل,زززز")}`);
+  for (const k of verseKeys.filter(every(25))) {
+    await same(`/verses/${k}/pronouns`);
+    await same(`/verses/${k}/pronouns?verbs=1`);
+  }
+  await post("/wording-check", { text: "بِسْمِ ٱللَّهِ الرحمن وكتابهم ٱلْـَٔاخِرَةِ الصلاة زرقطون" });
+  for (const [a, b] of [["2:35", "7:19"], ["2:58", "7:161"], ["2:136", "3:84"], ["7:54", "10:3"], ["2:35", "999:1"]]) await same(`/diff?a=${a}&b=${b}`);
+  step("study tools (occurrences, spellings, openers, pronouns, wording, diff)");
+
+  // root spread, supplications, a sūrah's opening and close
+  for (const set of [["صبر", "Slw", "زززز"], ["قول"], roots.filter(every(40)).slice(0, 60)]) await post("/spread", { roots: set });
+  await post("/spread", { roots: [] });
+  for (const o of ["", "?opening=rabbana", "?opening=rabbi", "?opening=allahumma", "?opening=nope"]) await same(`/supplications${o}`);
+  for (let ch = 1; ch <= 114; ch++) if (!quick || ch % 5 === 0 || ch > 100) await same(`/chapters/${ch}/frame`);
+  for (const n of [1, 5, 10, 11]) await same(`/chapters/2/frame?n=${n}`);
+  step("spread, supplications, opening and close");
 
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   if (diffs.length === 0) {

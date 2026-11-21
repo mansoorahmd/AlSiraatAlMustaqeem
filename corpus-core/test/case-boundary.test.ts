@@ -149,6 +149,26 @@ describe("case boundary — what the AI may NOT do", () => {
     expect((await state.research.getCase(mine.id)).formResearch).toEqual({});
   });
 
+  it("a conclusion says how many separate āyāt it rests on, and cautions when it is one", async () => {
+    const mine = await seedReaderCase(); // one card
+    const one = await call("propose_conclusion", {
+      case_id: mine.id, kind: "verdict", form: null, text: "from one āyah", reasoning: "", expect_version: mine.updatedAt,
+    });
+    expect(one.rests_on_ayahs).toBe(1);
+    expect(one.caution).toMatch(/second, independent āyah/);
+    // a second card on the SAME āyah is still one āyah; a card on another āyah makes two
+    const card = (await state.research.getCase(mine.id)).cards[0];
+    const same = await call("add_evidence", { case_id: mine.id, ayat: [{ verse_key: card.verseKey }], expect_version: one.updated_at });
+    const other = await call("add_evidence", {
+      case_id: mine.id, ayat: [{ verse_key: card.verseKey === "2:3" ? "2:4" : "2:3" }], expect_version: same.updated_at,
+    });
+    const two = await call("propose_conclusion", {
+      case_id: mine.id, kind: "verdict", form: null, text: "from two āyāt", reasoning: "", expect_version: other.updated_at,
+    });
+    expect(two.rests_on_ayahs).toBe(2);
+    expect(two.caution).toBeUndefined();
+  });
+
   it("refuses a write based on a stale read, so the reader is never clobbered", async () => {
     const mine = await seedReaderCase();
     const stale = mine.updatedAt;

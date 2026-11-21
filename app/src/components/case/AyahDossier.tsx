@@ -8,34 +8,16 @@ import { useAsync } from "../../hooks/useAsync";
 import { useAppDispatch } from "../../state/store";
 import type { CaseRecord } from "../../persistence/types";
 import {
-  openOrCreateRootCase, withFormEstablished, withFormReopened,
+  openOrCreateRootCase, restsOn, withFormEstablished, withFormReopened,
   withCaseClosed, withCaseReopened,
 } from "../../cases/ops";
-import { fetchFormRevisions, type FormRevision } from "../../persistence/db";
+import { EvidenceCount } from "./EvidenceCount";
+import { FalsifierField } from "./FalsifierField";
+import { RevisionTrail } from "../research/RevisionTrail";
 
 interface Props {
   caseRec: CaseRecord;
   mutate: (next: CaseRecord) => void;
-}
-
-function Revisions({ caseId, lemma }: { caseId: string; lemma: string }) {
-  const revs = useAsync<FormRevision[]>(
-    () => fetchFormRevisions(caseId, lemma),
-    [caseId, lemma],
-  );
-  if (!revs.data || revs.data.length === 0) return null;
-  return (
-    <div className="revisions">
-      <span className="rev-title">earlier readings:</span>
-      {revs.data.map((r, i) => (
-        <div key={i} className="rev-row">
-          “{r.meaning}” <span className="rev-date">
-            — {new Date(r.replaced_at).toLocaleDateString()}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 export function AyahDossier({ caseRec, mutate }: Props) {
@@ -47,6 +29,8 @@ export function AyahDossier({ caseRec, mutate }: Props) {
 
   const fr = caseRec.formResearch[verseKey];
   const established = fr?.status === "established";
+  // the other āyāt pinned in this case: what bears the understanding out
+  const rests = restsOn(caseRec, () => null, "others");
 
   const establish = () => {
     const meaning = (draft ?? fr?.meaning ?? "").trim();
@@ -135,7 +119,8 @@ export function AyahDossier({ caseRec, mutate }: Props) {
             </div>
           </>
         )}
-        <Revisions caseId={caseRec.id} lemma={verseKey} />
+        <EvidenceCount rests={rests} of="ayah" />
+        <RevisionTrail kind="form" target={`${caseRec.id}|${verseKey}`} feature="cases" />
       </div>
 
       {/* verdict */}
@@ -162,6 +147,7 @@ export function AyahDossier({ caseRec, mutate }: Props) {
           ) : (
             <>
               <p className="ledger-line verdict-final">“{caseRec.verdict}”</p>
+              <RevisionTrail kind="verdict" target={caseRec.id} feature="cases" />
               <button className="ctl" onClick={() => mutate(withCaseReopened(caseRec))}>
                 ↻ reopen case
               </button>
@@ -170,6 +156,7 @@ export function AyahDossier({ caseRec, mutate }: Props) {
         ) : (
           <p className="ledger-line">Establish your understanding to unlock the verdict.</p>
         )}
+        <FalsifierField caseRec={caseRec} mutate={mutate} />
       </div>
     </aside>
   );

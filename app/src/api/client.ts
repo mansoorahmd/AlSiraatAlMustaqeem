@@ -9,6 +9,12 @@ import type {
   Chapter, Verse, Word, Translation, TranslationResource, RootDetail, RootSummary, RootOccurrence,
   Linkage, CompositeMatch, FreeTextResult, Echo, Wazn, SpellingVariant, ExprTerm, ExprHit, Script, SimilarityWeights,
 } from "./types";
+import type { AyahLinks, ExclusiveKind, ExclusiveLinks } from "./types";
+import type { ConstructionCatalog, ConstructionQuery, ConstructionResult } from "./types";
+import type {
+  OccurrenceKind, Occurrences, SpellingList, SpellingGroup, SpeechOpeners, AyahPronouns, WordingCheck, AyahDiff,
+  RootSpread, Supplications, SupplicationOpening, SurahFrame,
+} from "./types";
 import { REMOTE_URL } from "./remote";
 
 const CORPUS = `${REMOTE_URL}/corpus`;
@@ -133,6 +139,13 @@ export const api = {
     // positions: written the unusual way here; common: spelled other ways elsewhere, usual here
     get<{ verse_key: string; positions: number[]; common: number[] }[]>(`/chapters/${id}/variants`),
   verseEchoes: (key: string) => get<Echo[]>(`/verses/${encodeURIComponent(key)}/echoes`),
+  /** everything this āyah shares with the rest of the Book, rarest first; `max`: the most āyāt a
+   *  marker may be in to be listed with its places (more widespread ones are only counted) */
+  verseLinks: (key: string, opts: { max?: number } = {}) =>
+    get<AyahLinks>(`/verses/${encodeURIComponent(key)}/links`, opts),
+  /** every root / word / written form / phrase carried by exactly `n` āyāt (2–5) */
+  exclusiveLinks: (q: { kind: ExclusiveKind; n?: number; cross?: boolean; chapter?: number; limit?: number; offset?: number }) =>
+    get<ExclusiveLinks>("/links/exclusive", { ...q, cross: q.cross ? 1 : undefined }),
   neighbours: (key: string, radius = 2, script: Script = "uthmani") =>
     get<Verse[]>(`/verses/${encodeURIComponent(key)}/neighbours`, { radius, script }),
   listVerses: (opts: { script?: Script; limit?: number; offset?: number; chapter?: number; juz?: number; page?: number } = {}) =>
@@ -160,4 +173,44 @@ export const api = {
     post<FreeTextResult>("/search", { text, ...opts }),
   expressionSearch: (terms: ExprTerm[], mode: "verbatim" | "roots", limit = 300) =>
     post<ExprHit[]>("/expression-search", { terms, mode, limit }),
+
+  // search by grammar (constructions)
+  constructionPresets: () => get<ConstructionCatalog>("/construction-presets"),
+  /** āyāt matching a row of word slots; a query the server can't run throws with its reason */
+  constructionSearch: async (q: ConstructionQuery & { limit?: number; offset?: number }) => {
+    const res = await corpusFetch("/construction-search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(q),
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { detail?: string };
+      throw new ApiError(res.status, body.detail ?? `POST /construction-search → ${res.status}`);
+    }
+    return res.json() as Promise<ConstructionResult>;
+  },
+
+  // ---- yt219 corpus tools ----
+  /** every place a marker, a written shape or a grammar pattern occurs */
+  occurrences: (scope: { kind: OccurrenceKind; key: string; query?: ConstructionQuery }, opts: { limit?: number; offset?: number } = {}) =>
+    post<Occurrences>("/occurrences", { kind: scope.kind, key: scope.key, query: scope.query, ...opts }),
+  /** words written more than one way; `kind` = one kind of difference, `q` = Arabic to look
+   *  for, `sort` "alpha" = by the Arabic alphabet instead of most places first */
+  spellings: (q: { kind?: string; q?: string; sort?: "alpha"; limit?: number; offset?: number } = {}) => get<SpellingList>("/spellings", q),
+  spellingGroup: (key: string) => get<SpellingGroup>(`/spellings/${encodeURIComponent(key)}`),
+  /** `roots` = extra opener roots the reader added (Arabic letters), beyond ق و ل and ن د و */
+  speechOpeners: (chapter: number, roots: string[] = []) =>
+    get<SpeechOpeners>(`/chapters/${chapter}/speech-openers`, { roots: roots.length ? roots.join(",") : undefined }),
+  pronouns: (key: string, opts: { verbs?: boolean } = {}) =>
+    get<AyahPronouns>(`/verses/${encodeURIComponent(key)}/pronouns`, { verbs: opts.verbs ? 1 : undefined }),
+  wordingCheck: (text: string) => post<WordingCheck>("/wording-check", { text }),
+  diff: (a: string, b: string) => get<AyahDiff>("/diff", { a, b }),
+
+  // ---- yt218 corpus tools ----
+  /** where these roots occur, by sūrah and by page (roots in Arabic letters or Buckwalter) */
+  spread: (roots: string[]) => post<RootSpread>("/spread", { roots }),
+  /** every place the Lord is addressed with رَبَّنَا, رَبِّ or ٱللَّهُمَّ */
+  supplications: (opening?: SupplicationOpening) => get<Supplications>("/supplications", { opening }),
+  /** what the first `n` āyāt of a sūrah share with its last `n` */
+  surahFrame: (chapter: number, n?: number) => get<SurahFrame>(`/chapters/${chapter}/frame`, { n }),
 };

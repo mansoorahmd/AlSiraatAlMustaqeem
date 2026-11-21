@@ -15,7 +15,8 @@ import {
 import { startTrail, startWordTrail } from "../../trails/ops";
 import { archive } from "../../persistence/db";
 import type { FormStatusRow } from "../../persistence/db";
-import type { Word } from "../../api/types";
+import type { OccurrenceScope, Word } from "../../api/types";
+import { offerRuleScope } from "../../lib/ruleHandoff";
 import { spacedRoot, tidyGloss } from "./format";
 import { NotesPanel } from "./NotesPanel";
 import { RelatedNotes } from "./RelatedNotes";
@@ -59,7 +60,40 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
   const can = {
     roots: useFeature("roots"), meanings: useFeature("meanings"), wazn: useFeature("wazn"),
     spelling: useFeature("spelling"), cases: useFeature("cases"), followRoot: useFeature("follow-root"),
-    followWord: useFeature("follow-word"), search: useFeature("search"),
+    followWord: useFeature("follow-word"), search: useFeature("search"), rules: useFeature("rules"),
+  };
+
+  // "Check as a rule": hand the word as written (or its lemma) to Rule checks as a scope
+  const [ruleOpen, setRuleOpen] = useState(false);
+  const [ruleBusy, setRuleBusy] = useState(false);
+  const [ruleError, setRuleError] = useState<string | null>(null);
+  const handRule = (scope: OccurrenceScope) => {
+    offerRuleScope(scope);
+    dispatch({ type: "setTab", tab: "rules" });
+    onClose();
+  };
+  // The corpus keys a written form without a joining وَ / فَ (وَٱلَّذِينَ is the form ٱلَّذِينَ), so try
+  // the word whole, then without such a letter, and keep the key whose places include this word.
+  const ruleForForm = async () => {
+    const whole = target.word?.arabic ?? target.token;
+    const bare = whole.replace(/^[وف][ً-ٰٟ]*/, "");
+    const tries = [...new Set([whole, bare].filter(Boolean))];
+    setRuleBusy(true);
+    setRuleError(null);
+    try {
+      for (const key of tries) {
+        const r = await api.occurrences({ kind: "form", key });
+        if (r.truncated || r.places.some((p) => p.verseKey === target.verseKey && p.word === target.position)) {
+          handRule({ kind: "form", key, text: key });
+          return;
+        }
+      }
+      setRuleError("The corpus doesn't list this word as a written form. Try its lemma instead.");
+    } catch (e) {
+      setRuleError(`Couldn't look the word up: ${(e as Error).message}`);
+    } finally {
+      setRuleBusy(false);
+    }
   };
   /** the action itself when allowed; otherwise a click that explains the lock */
   const gate = <A extends unknown[]>(ok: boolean, f: PlanFeature, fn: (...a: A) => unknown) =>
@@ -90,6 +124,22 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
   const root = target.word?.root ?? null;
   const lemma = target.word?.lemma ?? null;
   const research = lemma ? formStatus?.get(lemma) ?? null : null;
+
+  // links the reader saved as "defined" on this word's lemma or root (kind a → b: explained at a,
+  // used at b). The reader's own only; an assistant's proposal is not one of them.
+  const defined = useAsync(async () => {
+    const lists = await Promise.all([
+      lemma ? archive.links.forMarker("lemma", lemma) : [],
+      root ? archive.links.forMarker("root", root) : [],
+    ]);
+    const seen = new Set<string>();
+    return lists.flat().filter((l) => {
+      if (l.kind !== "defined" || !l.b || l.source === "ai" || seen.has(l.id)) return false;
+      seen.add(l.id);
+      return true;
+    });
+  }, [lemma, root]);
+  const definedAt = defined.data ?? [];
 
   const openCase = async () => {
     if (!root) return;
@@ -127,13 +177,13 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
     try {
       const occ = await api.wordOccurrences(v.surface, 1);
       if (occ[0]) {
-        dispatch({ type: "jumpToVerse", verseKey: occ[0].verse_key, wordPosition: occ[0].word_position });
+        dispatch({ type: "jumpToVerse", verseKey: occ[0].verse_key, wordPosition: occ[0].word_position, from: target.verseKey });
         onClose();
         return;
       }
     } catch { /* fall back to the verse list below */ }
     if (v.verses[0]) {
-      dispatch({ type: "jumpToVerse", verseKey: v.verses[0] });
+      dispatch({ type: "jumpToVerse", verseKey: v.verses[0], from: target.verseKey });
       onClose();
     }
   };
@@ -285,6 +335,31 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
         </div>
       )}
 
+      {/* the reader's own "defined" links on this word's lemma or root: where it is explained */}
+      {definedAt.map((l) => {
+        const here = l.a.verseKey === target.verseKey;
+        const go = here ? l.b! : l.a;
+        return (
+          <div key={l.id} className="wm-morph wm-defined">
+            <span className="wm-morph-tag">{here ? "used at" : "defined at"}</span>
+            <button
+              type="button"
+              className="wm-defined-go"
+              title={`Go to ${go.verseKey} with the linked words lit`}
+              onClick={() => {
+                dispatch({ type: "jumpToEcho", verseKey: go.verseKey, start: go.word, length: go.words, from: target.verseKey });
+                onClose();
+              }}
+            >
+              {here ? `Explained here; used at ${go.verseKey}` : `Defined at ${go.verseKey}`}
+            </button>
+            <span className="wm-verdict-note">
+              (your link{l.marker ? <>: <span className="wm-defined-ar">{l.marker.text}</span></> : null})
+            </span>
+          </div>
+        );
+      })}
+
       {/* the reader's own reading of this word: the primary indication, refined for this form */}
       {activeText && (
         <div className="wm-verdict indication">
@@ -382,6 +457,12 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
           className={`wm-act${notesOpen ? " active" : ""}`}
           onClick={() => setNotesOpen((o) => !o)}
         >✎ Note</button>
+        <button
+          className={`wm-act${ruleOpen ? " active" : ""}${can.rules ? "" : " plan-locked"}`}
+          title="State a rule about this word and check it against every place it occurs"
+          aria-expanded={ruleOpen}
+          onClick={gate(can.rules, "rules", () => { setRuleOpen((o) => !o); setRuleError(null); })}
+        >☑ Check as a rule{!can.rules && <> <PlanLock feature="rules" /></>}</button>
         {root && rootInfo.data && rootInfo.data.meanings.length > 0 && (
           <button className={`wm-act${lexOpen ? " active" : ""}`} onClick={() => setLexOpen(!lexOpen)}>
             📖 Lexicons ({rootInfo.data.meanings.length})
@@ -402,6 +483,26 @@ export function WordMenu({ target, formStatus, onNotesChanged, onIndicationsChan
             root={root}
             onChanged={() => { setIndicationVersion((v) => v + 1); onIndicationsChanged?.(); }}
           />
+        </div>
+      )}
+
+      {ruleOpen && can.rules && (
+        <div className="wm-panel wm-rule">
+          <span className="wm-rule-q">State a rule about</span>
+          <div className={`wm-rule-choices${lemma ? " two" : ""}`}>
+            <button className="wm-act" disabled={ruleBusy} onClick={() => void ruleForForm()}
+              title="Every place this word is written so (a joining وَ / فَ set aside)">
+              {ruleBusy ? "Looking it up…" : <>this word as written <span className="wm-rule-ar">{target.word?.arabic ?? target.token}</span></>}
+            </button>
+            {lemma && (
+              <button className="wm-act" disabled={ruleBusy}
+                title="Every place any form of this lemma occurs"
+                onClick={() => handRule({ kind: "lemma", key: lemma, text: lemma })}>
+                every form of its lemma <span className="wm-rule-ar">{lemma}</span>
+              </button>
+            )}
+          </div>
+          {ruleError && <p className="acct-error" role="alert">{ruleError}</p>}
         </div>
       )}
 

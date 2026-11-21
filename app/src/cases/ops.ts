@@ -4,7 +4,7 @@
 import { archive, newId } from "../persistence/db";
 import type {
   CaseRecord, EvidenceCardRecord, ThreadRecord, ClusterRecord,
-  SlipRecord, SlipKind, HighlightRange, SubjectType,
+  SlipRecord, SlipKind, HighlightRange, SubjectType, SourceKind,
 } from "../persistence/types";
 import type { RootOccurrence } from "../api/types";
 
@@ -132,6 +132,18 @@ export function withCardRemoved(c: CaseRecord, cardId: string): CaseRecord {
       ...g,
       cardIds: g.cardIds.filter((id) => id !== cardId),
     })),
+  };
+}
+
+/** Set a card for the reading (the default: the field is dropped) or against it. */
+export function withCardStance(c: CaseRecord, cardId: string, stance: "for" | "against"): CaseRecord {
+  return {
+    ...c,
+    cards: c.cards.map((k) => {
+      if (k.id !== cardId) return k;
+      const { stance: _old, ...rest } = k;
+      return stance === "against" ? { ...rest, stance: "against" } : rest;
+    }),
   };
 }
 
@@ -326,6 +338,18 @@ export function withSlipUpdated(
   return {
     ...c,
     slips: c.slips.map((s) => (s.id === id ? { ...s, ...patch, id: s.id } : s)),
+  };
+}
+
+/** Say what kind of source a reference slip cites; null = not said (the field is dropped). */
+export function withSlipSourceKind(c: CaseRecord, id: string, kind: SourceKind | null): CaseRecord {
+  return {
+    ...c,
+    slips: c.slips.map((s) => {
+      if (s.id !== id) return s;
+      const { sourceKind: _old, ...rest } = s;
+      return kind ? { ...rest, sourceKind: kind } : rest;
+    }),
   };
 }
 
@@ -617,4 +641,134 @@ export function arrangeBoard(
     cards: c.cards.map((card) => ({ ...card, ...pos.get(card.id)!, rotation: 0 })),
     slips: c.slips.map((sl) => ({ ...sl, ...(pos.get(sl.id) ?? { x: sl.x, y: sl.y }), rotation: 0 })),
   };
+}
+
+// ---- how many separate āyāt a reading rests on --------------------------------------
+
+export interface AyahsBehind {
+  /** lemma → separate āyāt pinned for that form */
+  byForm: Map<string, number>;
+  /** separate āyāt pinned anywhere in the case */
+  all: number;
+  /** separate āyāt other than the case's own subject āyah (an āyah case) */
+  others: number;
+  /** the same three counts for the cards the reader set AGAINST the reading */
+  againstByForm: Map<string, number>;
+  againstAll: number;
+  againstOthers: number;
+}
+
+/** Count the separate āyāt behind each form and behind the case. Two cards on one āyah are
+ *  one āyah: what matters is how many independent places the reading stands on. Cards set
+ *  against the reading are counted apart: they are not what it rests on. */
+export function ayahsBehind(c: CaseRecord, lemmaOfCard: (cardId: string) => string | null): AyahsBehind {
+  const count = (cards: CaseRecord["cards"]) => {
+    const perForm = new Map<string, Set<string>>();
+    const all = new Set<string>();
+    for (const card of cards) {
+      all.add(card.verseKey);
+      const lemma = lemmaOfCard(card.id);
+      if (!lemma) continue;
+      const set = perForm.get(lemma);
+      if (set) set.add(card.verseKey);
+      else perForm.set(lemma, new Set([card.verseKey]));
+    }
+    const byForm = new Map<string, number>();
+    for (const [lemma, set] of perForm) byForm.set(lemma, set.size);
+    const own = c.subject.type === "ayah" && all.has(c.subject.value) ? 1 : 0;
+    return { byForm, all: all.size, others: all.size - own };
+  };
+  const pro = count(c.cards.filter((k) => k.stance !== "against"));
+  const con = count(c.cards.filter((k) => k.stance === "against"));
+  return { ...pro, againstByForm: con.byForm, againstAll: con.all, againstOthers: con.others };
+}
+
+// ---- what a reading rests on: āyāt, the reader's own observations, and cited sources ---------
+
+/** How the reader may describe a cited source. "unsaid" = the reader has not said what kind. */
+export type SourceKindOrUnsaid = SourceKind | "unsaid";
+
+/** What each kind of source is called, for a picker and for an export. */
+export const SOURCE_KIND_LABEL: Record<SourceKind, string> = {
+  lexicon: "dictionary",
+  tafsir: "tafsīr",
+  narration: "narration",
+  story: "story from outside the Book",
+  other: "other source",
+};
+export const SOURCE_KINDS: SourceKind[] = ["lexicon", "tafsir", "narration", "story", "other"];
+
+export interface RestsOn {
+  /** separate āyāt pinned for it (for an āyah case's understanding: other than the āyah itself) */
+  ayahs: number;
+  /** separate āyāt the reader set against it */
+  against: number;
+  /** the reader's own comment slips */
+  observations: number;
+  /** comment slips an AI put on the board (not the reader's own) */
+  aiComments: number;
+  /** reference slips, by the kind of source the reader said they are */
+  references: Record<SourceKindOrUnsaid, number>;
+}
+
+/** Which part of a case to count: the whole case, the other āyāt behind an āyah case's own āyah,
+ *  or one form (lemma) with the slips tagged to it. */
+export type RestsOnScope = "case" | "others" | { form: string };
+
+/** Count what a case, or one form of it, rests on. It only counts: nothing here weighs a kind of
+ *  source against another. Empty slips (nothing written yet) are not counted. */
+export function restsOn(
+  c: CaseRecord,
+  lemmaOfCard: (cardId: string) => string | null,
+  scope: RestsOnScope,
+): RestsOn {
+  const behind = ayahsBehind(c, lemmaOfCard);
+  const form = typeof scope === "object" ? scope.form : null;
+  const ayahs = form !== null ? behind.byForm.get(form) ?? 0 : scope === "others" ? behind.others : behind.all;
+  const against = form !== null ? behind.againstByForm.get(form) ?? 0 : scope === "others" ? behind.againstOthers : behind.againstAll;
+  const references: Record<SourceKindOrUnsaid, number> = { lexicon: 0, tafsir: 0, narration: 0, story: 0, other: 0, unsaid: 0 };
+  let observations = 0;
+  let aiComments = 0;
+  for (const s of c.slips) {
+    if (form !== null && s.form !== form) continue;
+    if (s.kind === "comment") {
+      if (!s.text.trim()) continue;
+      if (s.author === "ai") aiComments++;
+      else observations++;
+    } else {
+      if (!s.text.trim() && !s.source?.trim()) continue;
+      references[s.sourceKind ?? "unsaid"]++;
+    }
+  }
+  return { ayahs, against, observations, aiComments, references };
+}
+
+const REF_WORDS: Record<SourceKindOrUnsaid, [string, string]> = {
+  lexicon: ["dictionary entry", "dictionary entries"],
+  tafsir: ["tafsīr", "tafsīrs"],
+  narration: ["narration", "narrations"],
+  story: ["story from outside the Book", "stories from outside the Book"],
+  other: ["other source", "other sources"],
+  unsaid: ["reference of a kind not said", "references of a kind not said"],
+};
+
+/** The parts of the line, zero counts left out: "12 āyāt", "1 against", "3 of your observations"… */
+export function restsOnParts(r: RestsOn, scope: RestsOnScope = "case"): string[] {
+  const n = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
+  const parts: string[] = [];
+  if (r.ayahs) parts.push(scope === "others" ? n(r.ayahs, "other āyah", "other āyāt") : n(r.ayahs, "āyah", "āyāt"));
+  if (r.against) parts.push(`${r.against} against`);
+  if (r.observations) parts.push(r.observations === 1 ? "1 of your observations" : `${r.observations} of your observations`);
+  if (r.aiComments) parts.push(n(r.aiComments, "AI comment", "AI comments"));
+  for (const k of [...SOURCE_KINDS, "unsaid"] as SourceKindOrUnsaid[]) {
+    if (r.references[k]) parts.push(n(r.references[k], REF_WORDS[k][0], REF_WORDS[k][1]));
+  }
+  return parts;
+}
+
+/** "Rests on 12 āyāt · 1 against · 3 of your observations · 2 dictionary entries · 1 tafsīr".
+ *  Empty when nothing is pinned or written yet. */
+export function restsOnLine(r: RestsOn, scope: RestsOnScope = "case"): string {
+  const parts = restsOnParts(r, scope);
+  return parts.length ? `Rests on ${parts.join(" · ")}` : "";
 }

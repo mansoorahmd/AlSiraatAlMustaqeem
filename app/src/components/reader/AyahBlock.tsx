@@ -2,7 +2,7 @@
 // Optional translation underlay, plus the reader's own research feedback:
 // case marks on forms under investigation, interlinear gloss on established.
 
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client";
 import { useAsync } from "../../hooks/useAsync";
 import { useAppDispatch } from "../../state/store";
@@ -11,13 +11,21 @@ import { useFeature } from "../../lib/features";
 import type { Verse, Word } from "../../api/types";
 import type { FormStatusRow } from "../../persistence/db";
 import { VerseText } from "../VerseText";
+import { PlanLock } from "../PlanLock";
 import { NotesPanel } from "./NotesPanel";
 import { EchoPanel } from "./EchoPanel";
+import { LinksPanel, type LinkLight } from "./LinksPanel";
+import type { SavedLink } from "../../persistence/types";
 import type { FocusReason, FocusBase } from "./focus";
 import type { NoteRecord, HighlightRange } from "../../persistence/types";
 
 const ECHO_WASH = "#fde68a"; // amber highlight for repeated phrase spans
 const ROOT_ECHO_WASH = "#fcd34d"; // gold highlight for a root repeated in an āyah
+const LINK_WASH = "#93c5fd"; // blue: the link pointed at or tapped in the links panel
+// a quiet wash for the spans of the reader's saved links (a CSS token, styles.css)
+const SAVED_LINK_WASH = "var(--link-saved)";
+const NO_LINKS: SavedLink[] = [];
+const noop = () => {};
 
 // Root echo (↻): a root occurring 2+ times in one āyah. `adjacent` flags a tight
 // repeat at neighbouring word positions (cognate accusative مفعول مطلق, emphatic).
@@ -93,6 +101,12 @@ interface Props {
   variants?: { positions: number[]; common: number[] } | null;
   /** echo-lens: a word-position span to keep lit in this verse after a jump */
   echoHighlightRange?: { start: number; end: number } | null;
+  /** the reader's saved links with an end in this āyah (assistant proposals included) */
+  savedLinks?: SavedLink[] | null;
+  /** called after a saved link changes, so the page reloads them */
+  onLinksChanged?: () => void;
+  /** open this āyah's Links panel (the reader came back to it) */
+  openLinks?: boolean;
   onWordTap: (
     verseKey: string,
     position: number,
@@ -131,7 +145,8 @@ const variantTitle = ({ positions, common }: { positions: number[]; common: numb
 export const AyahBlock = memo(function AyahBlock({
   verse, translationOn, translationId, myGlossOn, formStatus, indicationRefine, indicationRootText, indicationLemmaText, caseRefs, rareRoots, highlightWord,
   focusRoots, focusLinked, focusPattern, focusTarget, focusReason, focusBase, focusBaseSurah,
-  focusThisSurah, surahName, verseNotes, onNotesChanged, hasEcho, variants, echoHighlightRange, onWordTap,
+  focusThisSurah, surahName, verseNotes, onNotesChanged, hasEcho, variants, echoHighlightRange,
+  savedLinks, onLinksChanged, openLinks, onWordTap,
 }: Props) {
   const text = typeof verse.text === "string" ? verse.text : "";
   const words = verse.words ?? null;
@@ -140,6 +155,10 @@ export const AyahBlock = memo(function AyahBlock({
   const [casesOpen, setCasesOpen] = useState(false);
   const canEchoes = useFeature("echoes");
   const canCompare = useFeature("compare");
+  const canLens = useFeature("lens");
+  const [linksOpen, setLinksOpen] = useState(false);
+  useEffect(() => { if (openLinks) setLinksOpen(true); }, [openLinks]);
+  const [linkLight, setLinkLight] = useState<LinkLight | null>(null);
   const [whyOpen, setWhyOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [echoOpen, setEchoOpen] = useState(false);
@@ -156,6 +175,12 @@ export const AyahBlock = memo(function AyahBlock({
   // the echo-lens span we followed here (persists after a jump). Positions come
   // straight from the index (word ordinals), which align with VerseText.
   const echoRanges: HighlightRange[] = [];
+  // the link pointed at in the links panel goes first: the first matching range paints a word
+  if (linksOpen && linkLight) {
+    for (const p of linkLight.positions) {
+      echoRanges.push({ start: p, end: p + linkLight.length - 1, color: LINK_WASH });
+    }
+  }
   if (echoOpen) {
     for (const e of echoData.data ?? []) {
       echoRanges.push({ start: e.start, end: e.start + e.length - 1, color: ECHO_WASH });
@@ -169,6 +194,19 @@ export const AyahBlock = memo(function AyahBlock({
     for (const w of words) {
       if (w.root && echo.roots.has(w.root)) {
         echoRanges.push({ start: w.position, end: w.position, color: ROOT_ECHO_WASH });
+      }
+    }
+  }
+  // the reader's saved links stay marked while reading, both ends; last, so any wash above wins.
+  // An assistant's proposal is not the reader's own, so it is neither marked nor counted.
+  const links = savedLinks ?? NO_LINKS;
+  let ownLinks = 0;
+  for (const l of links) {
+    if (l.source === "ai") continue;
+    ownLinks++;
+    for (const end of [l.a, l.b]) {
+      if (end && end.verseKey === verse.verse_key) {
+        echoRanges.push({ start: end.word, end: end.word + end.words - 1, color: SAVED_LINK_WASH });
       }
     }
   }
@@ -271,10 +309,13 @@ export const AyahBlock = memo(function AyahBlock({
             return null;
           }}
         />
+        {/* the number and its marks travel together: they never split across two lines */}
+        <span className="ayah-marks">
         {focusTarget && (
           <button
             className={`focus-mark${whyOpen ? " active" : ""}`}
-            title="Why is this ayah in the focus?"
+            title="Why is this āyah related to the lens?"
+            aria-label="Why is this āyah related to the lens?"
             onClick={() => setWhyOpen((o) => !o)}
           >⊙</button>
         )}
@@ -285,6 +326,19 @@ export const AyahBlock = memo(function AyahBlock({
         >
           ﴿{chapterOf(verse.verse_key)}:{verse.verse_number}﴾
         </span>
+        <button
+          className={`links-mark${linksOpen ? " active" : ""}`}
+          title={`Links: what this āyah shares with the rest of the Book, rarest first${
+            ownLinks ? `. You saved ${ownLinks} link${ownLinks > 1 ? "s" : ""} here.` : ""}`}
+          aria-label={`Links for āyah ${verse.verse_key}${ownLinks ? `, ${ownLinks} saved` : ""}`}
+          aria-expanded={linksOpen}
+          onClick={() => setLinksOpen((o) => !o)}
+        >
+          <span className="links-mark-ic" aria-hidden>⇄</span>
+          <span>Links</span>
+          {ownLinks > 0 && <span className="links-mark-count">{ownLinks}</span>}
+          {!canLens && <PlanLock feature="lens" />}
+        </button>
         {caseRefs && caseRefs.length > 0 && (
           <button
             className={`evidence-mark${casesOpen ? " active" : ""}${
@@ -340,9 +394,20 @@ export const AyahBlock = memo(function AyahBlock({
             onClick={() => addToCompare("ayah", verse.verse_key)}
           >⇋</button>
         )}
+        </span>
       </p>
 
-      {echoOpen && <EchoPanel echoes={echoData.data ?? []} loading={echoData.loading} />}
+      {linksOpen && (
+        <LinksPanel
+          verseKey={verse.verse_key}
+          words={words}
+          saved={links}
+          canLens={canLens}
+          onLight={setLinkLight}
+          onSavedChanged={onLinksChanged ?? noop}
+        />
+      )}
+      {echoOpen && <EchoPanel echoes={echoData.data ?? []} loading={echoData.loading} from={verse.verse_key} />}
 
       {notesOpen && (
         <div className="ayah-notes">
@@ -355,7 +420,7 @@ export const AyahBlock = memo(function AyahBlock({
       )}
       {whyOpen && focusReason && (
         <div className="focus-why">
-          <span className="fw-label">in focus because</span>
+          <span className="fw-label">related to the lens because</span>
           {focusBase && (
             <span className="fw-part fw-base">
               compared with{" "}

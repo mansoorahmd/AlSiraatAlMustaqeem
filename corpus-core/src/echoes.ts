@@ -73,6 +73,12 @@ export class EchoIndex {
     }
   }
 
+  /** An āyah's words as this index keys them (folded Uthmani text, one per word position). */
+  async foldedWords(verseKey: string): Promise<readonly string[]> {
+    await this.build();
+    return this.words.get(verseKey) ?? [];
+  }
+
   /** Verse keys in a chapter that contain at least one repeated phrase. */
   async chapterEchoes(chapterId: number): Promise<string[]> {
     await this.build();

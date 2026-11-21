@@ -106,7 +106,10 @@ export function Guide() {
           <p><strong>Read</strong> opens the list of surahs; <strong>Continue reading</strong> on Home takes you
             back to where you stopped. To jump anywhere, press <K>⌘K</K> / <K>Ctrl K</K> and type an āyah such as
             <em> 2:255</em>.</p>
-          <p>Beside each āyah number are small marks. They appear only when they mean something:</p>
+          <p>Beside every āyah number is a <K>⇄ Links</K> button: it opens what the āyah shares with the
+            rest of the Book, your saved links on it (their number shows on the button) and who speaks in it
+            (see <em>Search and study tools</em>). The small marks after it appear only when
+            they mean something:</p>
           <ul className="guide-marks">
             <li><K>✎</K> notes and questions on this āyah</li>
             <li><K>≡</K> a phrase in it is repeated elsewhere in the Book (echoes)</li>
@@ -116,7 +119,8 @@ export function Guide() {
             <li><K>⚖</K> the āyah is evidence in one of your cases</li>
           </ul>
           <p>The script, text size and translations are in <strong>Settings</strong> (<K>⚙</K>, top right). The
-            round <K>☰</K> button in the reader jumps to a surah or āyah and sets the āyah lens.</p>
+            round <K>☰</K> button at the bottom left of the reader jumps to a surah or āyah, and can also set
+            the āyah lens.</p>
         </>
       ),
       showMe: { label: "Go to Read", run: go("read") },
@@ -164,27 +168,134 @@ export function Guide() {
       showMe: { label: "See your recent trails", run: go("home") },
     },
     {
-      id: "tools", title: "Search and study tools", blurb: "Search, echoes, compare, the lens",
-      features: ["search", "echoes", "similar", "linkages", "lens", "compare"],
+      id: "tools", title: "Search and study tools", blurb: "Search, links, echoes, the lens, compare",
+      features: ["search", "echoes", "similar", "linkages", "lens", "links", "speakers", "compare"],
       body: () => (
         <>
           <ul>
-            <li><strong>Search</strong> — <K>⌘K</K> finds āyāt, roots and your cases as you type; choose
-              <em> Search the Book</em> for the full search (also <em>Advanced search</em>).
+            <li><strong>Search</strong> — the <em>Search</em> tab finds a phrase word for word, or āyāt related
+              by their roots. <K>⌘K</K> jumps straight to an āyah, a sūrah, a root, a case or a screen.
               <K>⊕ Expression</K> in a word's menu finds āyāt where words occur together.</li>
-            <li><strong>Echoes</strong> <K>≡</K> — open the panel on an āyah to see where its phrase recurs.</li>
+            <li><strong>Search by grammar</strong> — in <em>Search → By grammar</em>, find āyāt that are built
+              the same way even when they share no word: āyāt that open with وَإِذْ, the question أَرَءَيْتَ, a
+              verb promised with سَ or سَوْفَ, or ٱلَّذِى followed by a verb. Pick a ready-made search, or
+              describe up to four words in a row by written form, root, part of speech or prefix. Each
+              result lights the matched words. It finds and counts; what a shared construction means is
+              yours to establish.</li>
+            <li><strong>Links</strong> <K>⇄ Links</K> — beside every āyah number. It lists everything the āyah
+              shares with the rest of the Book: a phrase, two words side by side, a written word, a word, or a
+              root, with how many āyāt carry it. The rarest come first, and a thing found in only two āyāt is
+              marked, because it ties exactly those two. Point at a row to light its words in the āyah; tap an
+              āyah number to go there with them lit, or <em>compare here</em> to read the other āyāt in place.
+              The app only finds and counts; what a link means is yours to work out.</li>
+            <li><strong>Saving a link</strong> — on a row, <em>Save link</em> keeps it: choose the other āyah,
+              say what they share if you want to (the same wording; explained in one, used in the other; the
+              same way of speaking; the same image; one refers to the other), give it a group name, and add a
+              note. <em>Keep as a lead</em> saves it with this āyah only, for when you haven't found the other
+              end yet; choose <em>Complete</em> on the lead when you have. Your saved links sit at the top of the
+              panel, the button shows how many there are, and their words keep a pale green wash while you
+              read, at both ends. When you tap a word that one of your "explained in one, used in the other"
+              links is about, its menu shows <em>Defined at</em> with the āyah to go to.</li>
+            <li><strong>Who speaks here</strong> — on the Links panel's <em>Speakers</em> tab, tag a run of
+              words with who speaks and to whom (choose the first and last word; the whole āyah by
+              default). You can add who else hears it, and whether the text states the speaker or you
+              inferred it. Names you have used before, and your characters, are offered as you type.</li>
+            <li><strong>Your assistant's proposals</strong> — links and speakers an assistant suggested are shown
+              apart, marked <em>Proposed by your assistant</em>, until you <em>Accept</em> or delete them.</li>
+            <li><strong>My links</strong> — <em>Study → My links</em> gathers what you saved: your links (filter
+              by what they share, by group, by sūrah), your leads to follow up, your groups, a map of the 114
+              sūrahs showing how many āyāt of each you have linked, and everyone you tagged as speaking.</li>
+            <li><strong>Rare links</strong> — <em>Study → Rare links</em> lists, across the whole Book, every
+              root, word, written form or phrase that exactly 2, 3, 4 or 5 āyāt share. Narrow it to one sūrah,
+              or to links between different sūrahs, and tap a place to read it.</li>
+            <li><strong>Spellings</strong> — <em>Study → Spellings</em> lists every word the Book writes in
+              more than one way, by the kind of difference: ت or ة, an alif written or as a small mark, one ت
+              or two, a letter doubled or written twice, and so on. Words that differ only by a grammatical
+              ending (ذُو / ذِى) are kept apart, since that is grammar and not spelling. A word is listed once,
+              with and without ٱل. Where a word is written both ة and ت, its places with a pronoun attached are
+              shown apart, because ت is always written there. Order the list by most places or by the
+              alphabet. <em>Check as a rule</em> under a spelling lists exactly the places shown for it.</li>
+            <li><strong>Supplications</strong> — <em>Study → Supplications</em> lists every place the Lord is
+              addressed with رَبَّنَا, رَبِّ or ٱللَّهُمَّ. It shows where the address is written; whether a place
+              is a supplication is yours to say. <em>Check wording</em> in Search sets a duʿā' of your own
+              against the Book's words.</li>
+            <li><strong>Opening and close</strong> — <em>Study → Opening and close</em> shows the roots that the
+              first āyāt of a sūrah share with its last, the rarest in the Book first.</li>
+            <li><strong>The way back</strong> — when a Study screen, Search or a case takes you into the reader,
+              the reader shows <K>← Back to …</K>. It returns you to that screen at the place you left.</li>
+            <li><strong>Echoes</strong> <K>≡</K> — on an āyah that repeats a phrase of three or more words
+              word for word, open the panel to see where it recurs.</li>
             <li><strong>Similar āyāt</strong> — āyāt that resemble one another: in an āyah case's evidence drawer,
               and in the āyah lens.</li>
             <li><strong>Where roots meet</strong> — on a root's page, the roots it keeps company with; pick one to
               see the āyāt where both occur.</li>
-            <li><strong>Āyah lens</strong> — in the reader's <K>☰</K> menu, focus an āyah (or a case) and the
-              reader marks what connects to it.</li>
+            <li><strong>Āyah lens</strong> — in the Links panel choose <K>Use as lens</K> (or pick an āyah or a
+              case in the reader's <K>☰</K> menu). Wherever you read, words from the lens āyah's roots are lit,
+              and a banner at the top steps through the āyāt most like it, closest first; <em>Map of related
+              āyāt</em> shows them all by sūrah. <K>✕ Close lens</K> turns it off.</li>
             <li><strong>Compare</strong> — <K>⇋</K> adds an āyah, a form or a root to a comparison;
               <em> Study → Compare</em> sets them side by side.</li>
           </ul>
         </>
       ),
       showMe: { label: "Open search (⌘K)", run: openPalette },
+    },
+    {
+      id: "checking", title: "Checking a reading", blurb: "Rule checks, characters, dialogue, what a reading rests on",
+      features: ["rules", "characters", "speakers", "links"],
+      body: () => (
+        <>
+          <p>The Book is a closed text: every place a word, a spelling or a construction occurs can be
+            listed and looked at. These tools list the places and keep count of what you decide about
+            each. They never decide for you.</p>
+          <ul>
+            <li><strong>Rule checks</strong> — <em>Study → Rule checks</em>. State a rule in your own words,
+              say what would prove it wrong, and choose what it covers: a word as written, a word in all
+              its forms, or a root. <em>Check as a rule</em> also starts one from a row of an āyah's Links
+              panel, a written shape in Spellings, a root's page, a word's menu, or the results of a grammar
+              search. Every place is listed in the order of the Book. Mark each one <K>Fits</K>,
+              <K>Exception</K> or <K>Not sure</K>, with a note if you like. The tally shows how many you
+              have checked and how many are left; a single exception is shown in red, because one is
+              enough to rethink a rule.</li>
+            <li><strong>Characters</strong> — <em>Study → Characters</em>. Name someone, then add the names
+              and titles the Book uses: type one in Arabic, see how many places it has, and file them. Each
+              place goes in as <em>potential</em>; you <em>establish</em> the ones you are sure of, one at a
+              time or a group at once. <em>Who uses which name</em> counts, from your own speaker tags, which
+              speaker uses which name.</li>
+            <li><strong>Pronouns</strong> — in an āyah's Links panel, the <em>Pronouns</em> tab lists each
+              pronoun in the āyah. Choose the character it points to (or name a new one) and it is filed as
+              potential, like any other mention. A word that carries two pronouns (خَلَقْنَـٰكُمْ) lists them
+              apart, and each can point to a different character. The tab shows how many are pointed. The
+              <em> Characters</em> tab beside it lists everyone filed in that āyah.</li>
+            <li><strong>Dialogue</strong> — <em>Study → Dialogue</em> shows a sūrah as a script: each speech you
+              tagged, in order, with who speaks, to whom, who else hears, and whether the text states the
+              speaker or you inferred it. Between them it lists every place speech is introduced (قَالَ,
+              قَالُوا, قُلْ …) that you have not tagged yet, so none is skipped. <K>Tag it here</K> opens the
+              speaker form in the row, so you stay on the page. A verb of calling (نَادَىٰ) is
+              listed as <em>a call: speech may follow</em>; where none does, set it aside with <K>No speech
+              here</K>. <em>Opener roots</em> lets you add roots of your own to the list.</li>
+            <li><strong>Tensions</strong> — when two places seem to you to disagree, save a link between them
+              with <em>These seem to disagree (to me)</em>. It stays in <em>My links → Tensions</em> as open
+              until you mark it settled and say in a line how.</li>
+            <li><strong>Evidence against</strong> — on a case's board, each āyah card says whether it counts
+              <K>for</K> the reading or <K>against</K> it; tap to change. The dossier then says how many
+              āyāt the reading rests on and how many you set against it, and has a line for <em>What would
+              prove this wrong?</em></li>
+            <li><strong>What a reading rests on</strong> — a reference slip on a case can say what kind of
+              work it cites: a dictionary, a tafsīr, a narration, or a story from outside the Book. The case
+              then shows one line counting the āyāt, your own observations and each kind of cited work, so
+              you can see how much of a reading stands on the Book itself. It counts; it does not judge.</li>
+            <li><strong>Earlier versions</strong> — when you replace a verdict, an established meaning, your
+              own meaning for a root or an indication, the text that stood before is kept under <em>Earlier
+              versions</em> with its date. You can add why you changed it, or remove an entry.</li>
+            <li><strong>Your assistant</strong> — an assistant can suggest marks on your rules and file
+              potential mentions for your characters. Its suggestions are shown apart and count for nothing
+              until you accept them. It cannot state a rule, name a character, establish a mention or settle
+              a tension.</li>
+          </ul>
+        </>
+      ),
+      showMe: { label: "Open Rule checks", run: go("rules") },
     },
     {
       id: "study", title: "Your own study", blurb: "Notes, indications, meanings, motifs",
@@ -197,8 +308,12 @@ export function Guide() {
             <li><strong>Indications</strong> — <K>✒ Indications</K> in a word's menu: name what the root
               indicates, mark one as primary (your default gloss), and give each form its own shade. Turn on
               <em> My gloss</em> in Settings to see them under the words.</li>
-            <li><strong>My meaning</strong> — on a root's page, your own understanding beside the dictionaries.</li>
-            <li><strong>Motifs</strong> (بيوت) — group roots that belong together (<em>Study → Motifs</em>).</li>
+            <li><strong>My meaning</strong> — on a root's page, your own understanding. The page shows the
+              Book's own use of the root first, then your reading, then the dictionaries, each with who wrote
+              it and when.</li>
+            <li><strong>Motifs</strong> (بيوت) — group roots that belong together (<em>Study → Motifs</em>).
+              <em> Spread</em> counts where a motif's roots occur, by sūrah and by page, and lists the pages
+              with none.</li>
             <li><strong>Vault</strong> — the roots you've established (<em>Study → Vault</em>).</li>
           </ul>
           <p>These need the Pro plan. Without it they're <strong>read-only</strong>: anything you've already

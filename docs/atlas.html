@@ -380,10 +380,10 @@
         <div class="card paid">
           <h4>Plans <span class="tag paid">what you may use</span></h4>
           <p style="margin:.2em 0;font-size:13.5px;color:var(--ink-soft)">What's paid for,
-            e.g. <code>free (0) ‹ pro (100) ‹ …</code> A plan unlocks <strong>23 features</strong>, one rule each, in three groups:</p>
+            e.g. <code>free (0) ‹ pro (100) ‹ …</code> A plan unlocks <strong>27 features</strong>, one rule each, in three groups:</p>
           <ul class="checks">
-            <li><strong>Read-assist tools</strong> — the text, translations, search, roots, dictionary meanings, follow root / word, echoes, similar āyāt, spelling, word pattern, where roots meet, āyah lens, compare · <em>free by default</em></li>
-            <li><strong>Interaction</strong> — notes &amp; questions, indications, my meanings, motifs · <em>pro by default</em></li>
+            <li><strong>Read-assist tools</strong> — the text, translations, search, roots, dictionary meanings, follow root / word, echoes, similar āyāt, spelling, word pattern, where roots meet, the āyah lens with an āyah's links and rare links, compare · <em>free by default</em></li>
+            <li><strong>Interaction</strong> — notes &amp; questions, indications, my meanings, motifs, saved links, speakers, rule checks, characters · <em>pro by default</em></li>
             <li><strong>Research &amp; publication</strong> — cases, publish, community readings, where I stand apart, the AI assistant · <em>pro by default</em></li>
             <li>Each translation and each dictionary can carry an extra rule of its own</li>
           </ul>
@@ -614,7 +614,7 @@
         <div class="card">
           <h4>Plan tiers · What each plan may use</h4>
           <ul class="checks">
-            <li>The plan ladder; each of the 23 features: anyone / signed in / a tier</li>
+            <li>The plan ladder; each of the 27 features: anyone / signed in / a tier</li>
             <li>Translations and Dictionaries: each its own tier, or its feature's</li>
           </ul>
         </div>
@@ -642,7 +642,7 @@
 
     <section id="roadmap">
       <h2><span class="num">09</span>Roadmap &amp; status</h2>
-      <p>As of 20 November 2026: corpus code 121/121, research server 253/253 tests; the corpus parity sweep 77,439/77,439 (26 September). Two things run: Postgres and the research server — <code>npm run dev</code> starts the server and the web app.</p>
+      <p>As of 21 November 2026: corpus code 245/245, research server 336/336 tests; the corpus parity sweep 77,439/77,439 (26 September), and a 4,040-request sample with the new routes on 21 November. Two things run: Postgres and the research server — <code>npm run dev</code> starts the server and the web app.</p>
       <div class="road">
         <div class="step"><span class="st done">corpus · done</span><div><h4>The corpus on the research server</h4><p>Loaded and proven identical; the app and MCP read it from <code>/corpus</code>.</p></div></div>
         <div class="step"><span class="st done">access · done</span><div><h4>Roles for doing, plans for reading</h4><p>The role ladder and plan tiers as data; rules for each translation and dictionary; the Admin tab.</p></div></div>
@@ -652,11 +652,14 @@
         <div class="step"><span class="st done">roles · done</span><div><h4>Roles as data; audiences on results</h4><p>reader ‹ student ‹ researcher ‹ scholar ‹ moderator ‹ maintainer; publishing's role is yours to set; each published result is seen only by its audience — proposed by its author, confirmed by the reviewer.</p></div></div>
         <div class="step"><span class="st done">hosted · done</span><div><h4>The web app and the MCP on the server's address</h4><p>Opening <code>https://&lt;domain&gt;/</code> is the whole app; an AI client connects to <code>/mcp</code> with a URL and a token. Nothing to install.</p></div></div>
         <div class="step"><span class="st done">sign-up · done</span><div><h4>Open sign-up</h4><p>Anyone can create a free reader account (date of birth, region, optional gender); invites still bring people in at a higher role.</p></div></div>
-        <div class="step"><span class="st done">plans · done</span><div><h4>Plan features</h4><p>The single corpus switch became 23 features in three groups, each with its own rule; a locked feature over your own records is read-only, and the app shows locks instead of failing.</p></div></div>
+        <div class="step"><span class="st done">plans · done</span><div><h4>Plan features</h4><p>The single corpus switch became per-feature rules in three groups (27 features today), each with its own rule; a locked feature over your own records is read-only, and the app shows locks instead of failing.</p></div></div>
         <div class="step"><span class="st done">tokens · done</span><div><h4>An AI only suggests</h4><p>A token can no longer publish or review — those need a signed-in person.</p></div></div>
         <div class="step"><span class="st done">guide · done</span><div><h4>In-app Guide</h4><p>A walkthrough that reads the live account and plan, so its locks match the Admin settings. Also: spelling variants shown above each word, steadier jumps in the reader.</p></div></div>
         <div class="step"><span class="st done">docs · done</span><div><h4>Docs consolidated</h4><p><code>CLAUDE.md</code> is the entry point; <code>DESIGN.md</code>, <code>SERVER.md</code>, <code>CORPUS.md</code>, <code>MCP.md</code>, <code>DEPLOY.md</code> and <code>DESKTOP.md</code> are the references. The old instructions, shared-research and migration docs were merged in or removed.</p></div></div>
         <div class="step"><span class="st done">tidy · done</span><div><h4>Leftovers removed; staff need no plan</h4><p>The unused pull endpoint, <code>local_id</code> and <code>sync_cursors</code> are gone (migration 0015). Moderators and maintainers now pass every plan gate.</p></div></div>
+        <div class="step"><span class="st done">links · done</span><div><h4>Reading the Book through its own links</h4><p>A <strong>Links</strong> button on every āyah lists what it shares with the rest of the Book, rarest first, and starts the āyah lens. <strong>Rare links</strong> lists what exactly 2–5 āyāt share; <strong>Search by grammar</strong> finds āyāt built the same way. The reader saves links, leads and speaker tags and sees them in <strong>My links</strong>, with a map of how much of each sūrah they have linked. Each meaning and verdict shows how many separate āyāt it rests on. The tools find and count; the reader decides what a link means. The assistant has the same tools and may only propose.</p></div></div>
+        <div class="step"><span class="st done">checking · done</span><div><h4>Checking a reading against the whole Book</h4><p>Tools that list every place and record what the reader decides. <strong>Rule checks</strong>: a rule, what would prove it wrong, and every place it covers marked fits, exception or not sure. <strong>Characters</strong>: names, titles and pronouns filed at places, potential until established. The Links panel is four tabs (Links, Speakers, Characters, Pronouns). <strong>Dialogue</strong> shows a sūrah as a script and the speech not yet tagged. A link can be a <strong>tension</strong>, open until settled; a case card counts for or against. From the corpus: every occurrence of a marker, shape or pattern, <strong>Spellings</strong>, two āyāt word against word, a wording check, and grammar search by participle, verb form and more. Migration 0017. The assistant may only suggest marks and file potential mentions.</p></div></div>
+        <div class="step"><span class="st done">rests on · done</span><div><h4>What a reading rests on</h4><p>A reference slip says what kind of work it cites, and a case counts its āyāt, the reader's observations and each kind of cited work. The <strong>root page</strong> shows the Book's use first, the dictionaries last with author and date. <strong>Earlier versions</strong> keep a replaced verdict, meaning or indication with its date and the reader's reason (migration 0018). <strong>Motif spread</strong>, <strong>Supplications</strong> and <strong>Opening and close</strong> count from the corpus. Fixed: rare-link phrases and rules list the same places; every verb of ن د و is a speech opener; the two pronouns of one word are two places; ة turned ت by a pronoun is not a spelling. Dialogue tags in place, and any jump into the reader leaves <strong>Back to …</strong>.</p></div></div>
         <div class="step"><span class="st defer">next</span><div><h4>Billing provider</h4><p>Slots into the plan grant with no rework of the gates. Also open: deleting an account (and its research), a review screen for submissions, redaction, corpus patches that reach Postgres.</p></div></div>
       </div>
       <div class="thread" data-section="roadmap"></div>

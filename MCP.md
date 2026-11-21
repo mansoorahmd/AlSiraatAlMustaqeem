@@ -97,14 +97,46 @@ from the file's location, not the working directory. `mcp/src/index.ts` also rou
 ## What it exposes
 
 **Tools — composed** (one call answers a study question): `study_root`, `read_ayah`,
-`find_where_roots_meet`, `trace_word`, `search_quran`, `compare_forms`, `my_research_on`.
+`find_where_roots_meet`, `trace_word`, `search_quran`, `compare_forms`, `my_research_on`,
+`my_links`.
 **Tools — thin** (single endpoints): `get_root`, `list_roots`, `get_verses`, `get_linkages`,
 `get_echoes`, `get_wazn`, `get_spelling_variants`, `get_similar_ayat`.
-**Tools — notes, indications, motifs**: `add_note`, `propose_indication`, `list_motifs`,
+**Tools — links** (what āyāt share, counted, never interpreted): `find_links` (everything an
+āyah shares with the rest of the Book, rarest first, each with the number of āyāt that carry
+it), `list_rare_links` (every marker that exactly 2–5 āyāt share), `find_construction` (search
+by grammar: a preset such as āyāt opening with وَإِذْ or رَبَّنَا / رَبِّ, or up to four word slots,
+each by form, lemma, root, part of speech, prefix, verb features, derivation (active / passive
+participle, verbal noun), verb form I–XII, attached pronoun, noun number and gender).
+**Tools — find and count** (they list places; the reader decides what they mean):
+`list_occurrences` (every place a link marker, a typed form / lemma / root, one written shape, one
+spelling of one word as `list_spellings` counts it, or a grammar query occurs), `list_spellings`
+(every word the Book writes more than one way, each word once, by count or by the alphabet, with
+where its spellings part, by the letters only; grammar-ending groups only with kind=ending),
+`find_speech_openers` (the words that may introduce speech in a sūrah: ق و ل verbs, sure; ن د و
+verbs, sure where a vocative or explaining أَنْ follows; `extra_roots` adds the reader's own),
+`find_pronouns` (an āyah's separate and attached pronouns, and each verb's person / number /
+gender, each with its stable `part` number in its word), `check_wording` (any Arabic text word
+by word: written as is, same letters, found after a prefix, or not found), `compare_ayat` (two
+āyāt aligned word against word), `root_spread` (where a set of roots occurs, by sūrah and by
+page), `find_supplications` (every رَبَّنَا، رَبِّ، ٱللَّهُمَّ address), `surah_frame` (the roots a
+sūrah's first and last āyāt share).
+**Tools — notes, links, indications, motifs**: `add_note`, `propose_link` (a link between two
+places, or a lead with one; kind `tension` for two places that seem to disagree),
+`propose_speaker` (who speaks in a span, to whom, who else hears, and whether the text states
+the speaker), `propose_indication`, `list_motifs`,
 `propose_motif`, `add_root_to_motif`, `remove_root_from_motif`.
+**Tools — rule checks and characters** (the reader states the rule and names the character;
+the AI only suggests): `my_rule_checks` (the reader's rules, what would prove each wrong, what
+each covers, and the marks so far), `suggest_rule_marks` (fits / exception / unsure for places,
+saved as suggestions; an exception or an unsure needs a note), `my_characters` (the reader's
+characters and what points to each), `propose_mentions` (file a name, title, description or
+pronoun at a place under a character, always as potential; a pronoun is named by its `part`,
+the number `find_pronouns` gives it within its word).
 **Tools — the Investigate board**: `list_cases`, `read_case` (read); `open_case`,
 `add_evidence`, `add_slip`, `link_evidence`, `group_evidence`, `revise_own_item`,
-`propose_conclusion` (write).
+`propose_conclusion` (write). A reference slip names the kind of work it cites (`source_kind`:
+a dictionary, a tafsīr, a narration, a story from outside the Book), and `propose_conclusion`
+answers with how many āyāt and how many cited works of each kind the case rests on.
 
 **Prompts:** `test_indication` (test a proposed meaning against every form of a root),
 `study_ayah`, `review_my_root`.
@@ -121,12 +153,14 @@ The method text itself is `mcp/src/method.ts`; the matching skill is
 |---|---|
 | Corpus (research server, or `quran.db`) | **read-only**, always — and only what the plan allows |
 | Translations | **not exposed at all** — the method builds meaning from Arabic, morphology and the lexicons |
-| May add | notes/questions; indications with per-form refinements; motifs; cases and their board items |
+| May add | notes/questions; links, leads and speaker tags; indications with per-form refinements; motifs; cases and their board items |
 | May change | only what it added itself |
-| May never | edit or delete the **reader's** notes, indications, motifs or board items |
+| May never | edit or delete the **reader's** notes, links, speaker tags, indications, motifs or board items |
 | May never | set an indication **primary** (the reader's default gloss) |
 | May never | write a case's **verdict** or **status**, or mark a form **established** — proposals only |
 | May never | accept its own proposals, or change settings, comparisons or trails |
+| May only suggest | marks on the reader's rule checks (they wait as suggestions and never replace the reader's mark), and **potential** mentions on the reader's characters |
+| May never | write a rule or a character, establish a mention, settle a tension, or say what would prove a conclusion wrong |
 | May never | publish, review or establish in the community, administer, or manage tokens |
 | Every write | tagged as AI-authored and reviewable in the app (**✦ Proposed**, and ✦ on board items) |
 

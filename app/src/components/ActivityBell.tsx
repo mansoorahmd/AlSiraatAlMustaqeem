@@ -24,6 +24,17 @@ export function ActivityBell() {
 
   const notesData = useAsync(() => archive.notes.all(), [version]);
   const proposed = useAsync(() => archive.proposed.all(), [version]);
+  // what an assistant suggested on rule checks and characters; a plan without them simply has none
+  // each also says which single rule / character they all belong to, when there is only one
+  const ruleSuggestions = useAsync(async () => {
+    const waiting = (await archive.rules.all().catch(() => [])).filter((r) => (r.counts?.suggested ?? 0) > 0);
+    return { n: waiting.reduce((n, r) => n + (r.counts?.suggested ?? 0), 0), only: waiting.length === 1 ? waiting[0]!.id : null };
+  }, [version]);
+  const mentionSuggestions = useAsync(async () => {
+    const list = await archive.mentions.list({ source: "ai" }).catch(() => []);
+    const owners = new Set(list.map((m) => m.characterId));
+    return { n: list.length, only: owners.size === 1 ? [...owners][0]! : null };
+  }, [version]);
   const chapters = useAsync(() => api.chapters(), []);
 
   const surahName = (verseKey: string) => {
@@ -36,7 +47,11 @@ export function ActivityBell() {
     .sort((a, b) => vsort(a.verseKey) - vsort(b.verseKey));
   const pNotes = proposed.data?.notes ?? [];
   const pInd = proposed.data?.indications ?? [];
-  const reviewCount = pNotes.length + pInd.length;
+  // links and speaker tags an assistant proposed are reviewed where they are shown: My links
+  const pLinks = (proposed.data?.links?.length ?? 0) + (proposed.data?.speech?.length ?? 0);
+  const pMarks = ruleSuggestions.data?.n ?? 0;
+  const pMentions = mentionSuggestions.data?.n ?? 0;
+  const reviewCount = pNotes.length + pInd.length + pLinks + pMarks + pMentions;
   const count = reviewCount + questions.length;
 
   useEffect(() => { if (open) refresh(); }, [open]);
@@ -80,6 +95,51 @@ export function ActivityBell() {
                 <span className="activity-sec-title">✦ Needs your review</span>
                 <span className="activity-sec-sub">proposed by an AI · nothing applies until you accept</span>
               </div>
+
+              {pLinks > 0 && (
+                <div className="proposed-row">
+                  <div className="proposed-main">
+                    <p className="proposed-text">
+                      {pLinks} link{pLinks > 1 ? "s" : ""} or speaker tag{pLinks > 1 ? "s" : ""} proposed.
+                    </p>
+                  </div>
+                  <div className="proposed-actions">
+                    <button className="ctl" onClick={() => { dispatch({ type: "setTab", tab: "mylinks" }); setOpen(false); }}>
+                      Review in My links
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {pMarks > 0 && (
+                <div className="proposed-row">
+                  <div className="proposed-main">
+                    <p className="proposed-text">
+                      {pMarks} mark{pMarks > 1 ? "s" : ""} suggested on your rule checks.
+                    </p>
+                  </div>
+                  <div className="proposed-actions">
+                    <button className="ctl" onClick={() => { dispatch({ type: "openItem", tab: "rules", id: ruleSuggestions.data?.only ?? null }); setOpen(false); }}>
+                      Review in Rule checks
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {pMentions > 0 && (
+                <div className="proposed-row">
+                  <div className="proposed-main">
+                    <p className="proposed-text">
+                      {pMentions} place{pMentions > 1 ? "s" : ""} suggested for your characters.
+                    </p>
+                  </div>
+                  <div className="proposed-actions">
+                    <button className="ctl" onClick={() => { dispatch({ type: "openItem", tab: "characters", id: mentionSuggestions.data?.only ?? null }); setOpen(false); }}>
+                      Review in Characters
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {pInd.map((s) => (
                 <div key={s.id} className="proposed-row">

@@ -57,14 +57,14 @@ export function FocusMap({ spec, currentKey, surahName, onJump, onClose }: Props
       <div className="focus-map" onClick={(e) => e.stopPropagation()} role="dialog">
         <header className="fm-head">
           <div>
-            <h3 className="fm-title">Connections across the Book</h3>
+            <h3 className="fm-title">Āyah lens: map of related āyāt</h3>
             <p className="fm-sub">
-              {spec.jumpKeys.length} ayahs linked to {spec.base.label}
+              {spec.jumpKeys.length} āyāt related to {spec.base.label}
               {surahName(spec.base.label) ? ` · ${surahName(spec.base.label)}` : ""}
               {" "}· across {groups.length} sūrah{groups.length > 1 ? "s" : ""}
             </p>
           </div>
-          <button className="ctl" onClick={onClose} title="Close">✕</button>
+          <button className="ctl" onClick={onClose} title="Close" aria-label="Close the map">✕</button>
         </header>
 
         <div className="fm-legend">

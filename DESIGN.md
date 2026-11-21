@@ -235,9 +235,90 @@ Detail is in git; this is the shape of the arc.
   the Admin tab; Docker deployment; research moved into the account under row-level security;
   roles as a data ladder and audiences on published results; `research.db` and the local server
   removed; the MCP hosted at `/mcp`.
-- **Since** — open sign-up, per-feature plan rules (23 features), the in-app Guide, spelling
-  variants shown above each word.
+- **Since** — open sign-up, per-feature plan rules, the in-app Guide, spelling variants shown
+  above each word.
+- **Links (Nov 2026)** — tools for reading the Book through its own cross-references. They find
+  and count; the reader decides what a link means.
+  - **An āyah's links** (`corpus-core/src/links.ts`): everything it shares with the rest of the
+    Book, rarest first: phrases, two-word pairs, written words (particles and names too, a
+    leading و / ف set aside), dictionary forms and roots, each with the number of āyāt that carry
+    it. Widespread markers are counted but not listed. Opened from a labelled **Links** button on
+    every āyah; the āyah lens is started from the same panel.
+  - **Rare links**: every marker that exactly 2–5 āyāt share, across the whole Book.
+  - **Search by grammar** (`corpus-core/src/constructions.ts`): āyāt built the same way, from
+    presets (opening with وَإِذْ, أَرَءَيْتَ, سَ / سَوْفَ + verb, ٱلَّذِى + verb, تَٱللَّهِ) or up to four
+    word slots.
+  - **Saved links, leads and speaker tags** (migration 0016): the reader keeps a link between
+    two spans with its kind, a group name and a note; a link with one end is a lead to pursue;
+    a tag records who speaks and to whom. All private research, proposable by the assistant.
+  - **How many āyāt a reading rests on**: each form's meaning, an āyah's understanding and a
+    case's verdict show the number of separate āyāt behind them, with a note when it is one. It
+    reminds; it does not block.
 
+- **Checking a reading (Nov 2026)** — tools that list every place in the Book and record what
+  the reader decides about each. The Book is a closed text, so a rule can be set against all of
+  it and one exception is enough to rethink it. The corpus answers "where"; the research holds
+  "what I decided there". Nothing here interprets.
+  - **Rule checks** (migration 0017): a rule in the reader's words, what would prove it wrong,
+    and what it covers (a word as written, a word in all its forms, a root, a written shape, a
+    grammar pattern, or any row of the Links panel). Every place is listed; each is marked fits,
+    exception or not sure. One exception turns the tally red.
+  - **Characters**: someone the reader names, the names and titles filed under them, and
+    mentions: a name, title, description or pronoun at a place, *potential* until the reader
+    *establishes* it. "Who uses which name" counts from the reader's own speaker tags.
+  - **The Links panel is four tabs**: Links, Speakers, Characters, Pronouns, each with its
+    count. The Pronouns tab lists the āyah's pronouns to point at a character.
+  - **Dialogue**: a sūrah as a script of the reader's speaker tags, with every speech opener
+    (قال، قالوا، قل، نادى) not yet tagged. A tag also records who else hears, and whether the text
+    states the speaker or the reader inferred it.
+  - **Tensions**: a saved link of the kind "these seem to disagree (to me)", open until the
+    reader settles it and says how.
+  - **Evidence against**: a case card counts for the reading or against it; the dossier says
+    how many āyāt it rests on and how many stand against, and asks what would prove it wrong.
+  - **From the corpus** (`corpus-core/src/occurrences.ts`, `voices.ts`, `wording.ts`): every
+    occurrence of a marker, shape or pattern; **Spellings** (the words written more than one
+    way); **What differs** between two āyāt, word against word; **Check wording** for any Arabic
+    text; and grammar search by participle, verbal noun, verb form, attached pronoun, noun
+    number and gender.
+  - **The assistant** may suggest marks on a rule and file potential mentions; it cannot state
+    a rule, name a character, establish a mention or settle a tension.
+  - The Study menu is two columns, *In the Book* and *Your study*. The reader keeps its place in
+    the address (`#/read/19:47`), so a refresh returns to the same āyah, and jumps made from the
+    lens leave a way back.
+- **What a reading rests on (Nov 2026)** — from the lecture on what an interpreter needs: take
+  the meaning of a word from the Book before a dictionary, know what is the Book and what is a
+  later source, and keep a record of where you changed your mind. Again the tools only count.
+  - **What a case rests on**: a reference slip says what kind of work it cites (a dictionary, a
+    tafsīr, a narration, a story from outside the Book). Wherever the āyāt count shows, one
+    quiet line counts the āyāt for and against, the reader's observations and each kind of
+    cited work. It does not judge.
+  - **The root page is Book first**: the forms and where they occur, then the reader's own
+    meaning, then the dictionaries under *written after the Book*, oldest first, each with its
+    author and date where the work is known for certain.
+  - **Earlier versions** (migration 0018): the text the reader replaced (a verdict, a form's
+    established meaning, their meaning for a root, an indication) is kept with its date and,
+    if they say, why they changed it. Only a text that had stood for ten minutes is kept, so
+    typing does not fill the list.
+  - **Motif spread**: where a motif's roots occur, by sūrah and by page of the muṣḥaf, and the
+    pages with none. **Supplications**: every place the Lord is addressed with رَبَّنَا, رَبِّ or
+    ٱللَّهُمَّ (143 places in 132 āyāt). **Opening and close**: the roots a sūrah's first āyāt
+    share with its last.
+  - **Spelling kinds**: one ت or two, and a letter doubled or written twice, are named; words
+    that differ only by a grammatical ending (ذُو / ذِى) are kept out of the list, because that
+    is grammar. Nothing is left under "other".
+  - **Dialogue**: every verb of ن د و is listed, as *a call: speech may follow* where the text
+    does not show speech after it; the reader sets one aside with *No speech here*, adds opener
+    roots of their own, and tags an opener in place with *Tag it here*.
+  - **Pronouns**: a word that carries two pronouns (خَلَقْنَـٰكُمْ) lists them apart, and each is its
+    own place to point at a character.
+  - **Check as a rule** starts a rule check from Spellings, a root's page, a word's menu and
+    grammar search results, as well as the Links panel. A character and a rule each have an
+    address (`#/characters/<id>`, `#/rules/<id>`).
+  - **The way back**: a jump into the reader from a Study screen, Search or a case leaves
+    *← Back to …* in the reader. The screen left stays alive behind the reader, so going back
+    finds it as it was, at the same place on the page; it is rebuilt first when the research
+    changed meanwhile (`Screens` in `app/src/App.tsx`, `returnTo` in the store).
+  - On a narrow screen the top bar is two rows and never wider than the page.
 ## Not yet built
 
 - **Redaction and tombstones.** A maintainer redacts a published row; its content is replaced by
@@ -248,6 +329,8 @@ Detail is in git; this is the shape of the arc.
   the group's differ, and the group's reading with its dissents in the form dossier. Today
   divergence shows only on the "Where I stand apart" screen and in the indication panels.
 - **Review UI for additive submissions** — claims can be reviewed in the app; submissions can't.
+- **The evidence count for reviewers** — a reader sees how many separate āyāt their own reading
+  rests on; a reviewer of a published reading does not see that count yet.
 - **Case (document) submissions.**
 - **Billing provider** — slots into the plan grant; plans are granted by a maintainer today.
 - **Corpus patches for Postgres** — the patch tool writes `quran.db` only (`CORPUS.md`).

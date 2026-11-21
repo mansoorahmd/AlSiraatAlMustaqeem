@@ -68,9 +68,11 @@ export function TrailStrip({ trailId }: { trailId: string }) {
       )
     : -1;
 
+  // where the thread began: the āyah the reader was on, offered as the way back
+  const origin = trail.hops[0]?.verseKey;
   const goTo = (verseKey: string, wordPosition: number | null) => {
     save(withHop(trail, verseKey, wordPosition));
-    dispatch({ type: "jumpToVerse", verseKey, wordPosition });
+    dispatch({ type: "jumpToVerse", verseKey, wordPosition, from: origin });
   };
 
   const step = (dir: 1 | -1) => {
@@ -190,7 +192,7 @@ export function TrailStrip({ trailId }: { trailId: string }) {
               cy={p.y}
               r={r}
               className={`trail-dot${isCurrent ? " current" : ""}${reps > 1 ? " multi" : ""}`}
-              onClick={() => dispatch({ type: "jumpToVerse", verseKey: p.h.verseKey, wordPosition: p.h.wordPosition })}
+              onClick={() => dispatch({ type: "jumpToVerse", verseKey: p.h.verseKey, wordPosition: p.h.wordPosition, from: origin })}
             >
               <title>{`${p.h.verseKey}${reps > 1 ? ` — ${reps}× in this ayah` : ""}`}</title>
             </circle>

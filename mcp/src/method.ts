@@ -129,13 +129,39 @@ Remember the hard rules: no tafsir, no translation conventions, no guessing.`,
    notes, and the phrases here that recur elsewhere.
 2. For the words that carry the āyah's weight, study_root each one. Note where my
    established indication for a root sits comfortably here and where it strains.
-3. Follow at least one thread: a repeated phrase (get_echoes), a root's other forms
-   (compare_forms), or a telling collocation (find_where_roots_meet).
+3. Follow at least one thread: the āyah's rarest link (find_links lists them, rarest
+   first, with the other āyāt that carry each), a root's other forms (compare_forms), or
+   a telling collocation (find_where_roots_meet).
 4. Give me: what the āyah says built from its vocabulary; which words are doing more
    work than a translation would suggest; and 2–3 specific open questions worth
    recording. Offer to add those with add_note.
 
 No translation is available to you, and that is deliberate. Build from the Arabic.`,
+  },
+  {
+    name: "check_rule",
+    title: "Set one of my rules against every place it applies",
+    description:
+      "Take a rule I am checking and go through the places it covers looking for a " +
+      "counter-example, then suggest how each place stands.",
+    args: [{ name: "rule_id", description: "The rule's id (my_rule_checks lists them).", required: true }],
+    build: (a) => `Set my rule ${a.rule_id} against the Book. The Book is a closed text, so
+every place can be looked at, and a single real exception breaks the rule.
+
+1. my_rule_checks({ rule_id: "${a.rule_id}" }) for the rule, what I said would prove it
+   wrong, what it covers, and the places I have already marked.
+2. list_occurrences with the rule's \`covers\` for EVERY place it applies to. Say how many
+   there are, and how many I have not marked yet.
+3. Read each unmarked āyah (read_ayah). Look for the counter-example first: a place
+   where what I said would prove the rule wrong is the case.
+4. suggest_rule_marks: fits, exception or unsure for each place you have read. Every
+   exception and every unsure needs a note quoting what in the āyah makes it so. Do not
+   mark a place you have not read, and do not mark "fits" to be agreeable.
+5. Report plainly: how many places, how many fit, each exception and each unsure with
+   its āyah, and whether the rule as I worded it survives. If it does not, say what
+   narrower rule the places do support. Do not reword my rule yourself.
+
+Your marks are suggestions. I accept or dismiss each one.`,
   },
   {
     name: "review_my_root",

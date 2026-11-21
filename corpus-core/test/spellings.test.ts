@@ -66,8 +66,22 @@ describe("spelling variants", () => {
     expect(rasmKey(bare.find((v) => v.here)!.surface)).toBe("لقائ");
   });
 
-  it("tāʾ-marbūṭa and the long tāʾ stay variants (خَزَنَتُهَا, 39:71 w14)", async () => {
-    expect((await spelling("39:71", 14)).map((v) => rasmKey(v.surface))).toEqual(["خزنت", "خزنة"]);
+  it("ة turned ت by an attached pronoun is the script's rule, not a variant (خَزَنَتُهَا, 39:71 w14)", async () => {
+    expect(await spelling("39:71", 14)).toEqual([]);
+  });
+
+  it("ت written with nothing attached is a variant of ة, whether or not the word is indefinite (ٱمْرَأَتُ ٱلْعَزِيزِ, 12:30 w5)", async () => {
+    const v = await spelling("12:30", 5);
+    // each spelling is the places it was written with nothing attached: ت seven times, ة four
+    expect(v.map((x) => [rasmKey(x.surface), x.count, x.here])).toEqual([["ٱمرأت", 7, true], ["ٱمرأة", 4, false]]);
+    // ٱمْرَأَتُهُ (11:71 w1) carries a pronoun, where ت is written either way: it is neither spelling
+    expect(await spelling("11:71", 1)).toEqual([]);
+  });
+
+  it("one word is one group: كِتَٰب with ٱل (2:2 w2) and without (2:89 w3) count together", async () => {
+    const withAl = await spelling("2:2", 2);
+    expect(withAl.map((x) => [rasmKey(x.surface), x.count])).toEqual([["كتٰب", 237], ["كتاب", 4]]);
+    expect((await spelling("2:89", 3)).map((x) => x.count)).toEqual([237, 4]);
   });
 
   it("`here` marks the spelling this occurrence is written in", async () => {
@@ -82,7 +96,8 @@ describe("spelling variants", () => {
       { verse_key: string; positions: number[]; common: number[] }[];
     const v = ch.find((x) => x.verse_key === "39:71")!;
     expect(v.positions).toEqual([33]);
-    expect(v.common).toEqual(expect.arrayContaining([4, 12, 14, 21, 24]));
+    expect(v.common).toEqual(expect.arrayContaining([4, 12, 21, 24]));
+    expect(v.common).not.toContain(14); // خَزَنَتُهَا: its ت is the pronoun's doing
     expect(v.common).not.toContain(8);
     expect(ch.every((x) => x.positions.length > 0)).toBe(true);
   });

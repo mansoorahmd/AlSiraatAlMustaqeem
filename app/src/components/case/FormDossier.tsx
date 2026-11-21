@@ -6,14 +6,16 @@
 import { useState } from "react";
 import { api } from "../../api/client";
 import { useAsync } from "../../hooks/useAsync";
-import { fetchFormRevisions, type FormRevision } from "../../persistence/db";
 import { IndicationEditor } from "../reader/IndicationEditor";
+import { RevisionTrail } from "../research/RevisionTrail";
 import type { RootOccurrence } from "../../api/types";
 import type { CaseRecord } from "../../persistence/types";
 import {
-  caseCompletion, withFormEstablished, withFormReopened,
+  caseCompletion, ayahsBehind, restsOn, withFormEstablished, withFormReopened,
   withCaseClosed, withCaseReopened,
 } from "../../cases/ops";
+import { EvidenceCount } from "./EvidenceCount";
+import { FalsifierField } from "./FalsifierField";
 
 function spaced(root: string): string {
   return root.split("").join("\u00A0"); // nbsp: root letters must not wrap
@@ -23,26 +25,6 @@ interface Props {
   caseRec: CaseRecord;
   occById: Map<string, RootOccurrence>;
   mutate: (next: CaseRecord) => void;
-}
-
-function Revisions({ caseId, lemma }: { caseId: string; lemma: string }) {
-  const revs = useAsync<FormRevision[]>(
-    () => fetchFormRevisions(caseId, lemma),
-    [caseId, lemma],
-  );
-  if (!revs.data || revs.data.length === 0) return null;
-  return (
-    <div className="revisions">
-      <span className="rev-title">earlier readings:</span>
-      {revs.data.map((r, i) => (
-        <div key={i} className="rev-row">
-          “{r.meaning}” <span className="rev-date">
-            — {new Date(r.replaced_at).toLocaleDateString()}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 export function FormDossier({ caseRec, occById, mutate }: Props) {
@@ -67,6 +49,9 @@ export function FormDossier({ caseRec, occById, mutate }: Props) {
 
   const lemmaOfCard = (cardId: string) => occById.get(cardId)?.lemma_arabic ?? null;
   const completion = caseCompletion(caseRec, lemmaOfCard);
+  // separate āyāt behind each form and behind the case (two cards on one āyah count once)
+  const behind = ayahsBehind(caseRec, lemmaOfCard);
+  const ayahCount = (n: number) => `${n} ${n === 1 ? "āyah" : "āyāt"}`;
 
   // the family: forms from the root, merged with anything already researched
   // The corpus lists a (root × lemma × POS) row per grammatical role, so the
@@ -175,7 +160,7 @@ export function FormDossier({ caseRec, occById, mutate }: Props) {
                 <span className="form-lemma quran">{lemma}</span>
                 <span className="form-meta">
                   ×{f.occurrence_count}
-                  {cardCount.get(lemma) ? ` · ${cardCount.get(lemma)}⌗` : ""}
+                  {behind.byForm.get(lemma) ? ` · ${ayahCount(behind.byForm.get(lemma)!)}` : ""}
                   {slipCount.get(lemma) ? ` · ${slipCount.get(lemma)}✎` : ""}
                 </span>
                 <span className={`form-status ${st}`}>
@@ -197,6 +182,7 @@ export function FormDossier({ caseRec, occById, mutate }: Props) {
                     value={drafts[lemma] ?? fr?.meaning ?? ""}
                     onChange={(e) => setDrafts({ ...drafts, [lemma]: e.target.value })}
                   />
+                  <EvidenceCount rests={restsOn(caseRec, lemmaOfCard, { form: lemma })} of="form" />
                   <div className="form-actions">
                     {st === "established" ? (
                       <>
@@ -217,7 +203,7 @@ export function FormDossier({ caseRec, occById, mutate }: Props) {
                       </button>
                     )}
                   </div>
-                  <Revisions caseId={caseRec.id} lemma={lemma} />
+                  <RevisionTrail kind="form" target={`${caseRec.id}|${lemma}`} feature="cases" />
 
                   {root && (
                     <div className="form-indications">
@@ -248,6 +234,7 @@ export function FormDossier({ caseRec, occById, mutate }: Props) {
                 value={verdictDraft ?? caseRec.verdict}
                 onChange={(e) => setVerdictDraft(e.target.value)}
               />
+              <EvidenceCount rests={restsOn(caseRec, lemmaOfCard, "case")} of="verdict" />
               <button
                 className="ctl establish-btn"
                 disabled={!(verdictDraft ?? caseRec.verdict).trim()}
@@ -259,6 +246,7 @@ export function FormDossier({ caseRec, occById, mutate }: Props) {
           ) : (
             <>
               <p className="ledger-line verdict-final">“{caseRec.verdict}”</p>
+              <RevisionTrail kind="verdict" target={caseRec.id} feature="cases" />
               <p className="ledger-line">
                 {caseRec.status === "closed"
                   ? "Every form of the family established."
@@ -276,6 +264,7 @@ export function FormDossier({ caseRec, occById, mutate }: Props) {
             before the verdict unlocks.
           </p>
         )}
+        <FalsifierField caseRec={caseRec} mutate={mutate} />
       </div>
 
       {root && editorLemma && (

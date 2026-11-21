@@ -5,10 +5,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { RootOccurrence } from "../../api/types";
-import type { CaseRecord, EvidenceCardRecord, SlipRecord } from "../../persistence/types";
+import type { CaseRecord, EvidenceCardRecord, SlipRecord, SourceKind } from "../../persistence/types";
 import {
-  withCardRemoved, withCardMoved,
-  withSlipAdded, withSlipUpdated, withSlipRemoved, withSlipMoved,
+  withCardRemoved, withCardMoved, withCardStance,
+  withSlipAdded, withSlipUpdated, withSlipRemoved, withSlipMoved, withSlipSourceKind,
+  SOURCE_KINDS, SOURCE_KIND_LABEL,
   withThreadAdded, withThreadUpdated, withThreadRemoved,
   withClusterAdded, withClusterRemoved,
   withCardHighlighted, arrangeBoard,
@@ -582,14 +583,29 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
         <div className="thread-editor slip-editor">
           <span>{editingSlip.kind === "comment" ? "✎ comment" : "🔖 reference"}</span>
           {editingSlip.kind === "reference" && (
-            <>
-              <input className="board-input" placeholder="source (e.g. Lane's Lexicon, Tafsir al-Tabari)…"
-                value={editingSlip.source ?? ""}
-                onChange={(e) => mutate(withSlipUpdated(caseRec, editingSlip.id, { source: e.target.value }))} />
-              <input className="board-input" placeholder="locator (page, entry, URL)…"
-                value={editingSlip.locator ?? ""}
-                onChange={(e) => mutate(withSlipUpdated(caseRec, editingSlip.id, { locator: e.target.value }))} />
-            </>
+            <div className="slip-ref-fields">
+              <label className="slip-ref-field">
+                <span className="slip-ref-label">Source</span>
+                <input className="board-input" placeholder="e.g. Lane's Lexicon, Tafsir al-Tabari"
+                  value={editingSlip.source ?? ""}
+                  onChange={(e) => mutate(withSlipUpdated(caseRec, editingSlip.id, { source: e.target.value }))} />
+              </label>
+              <label className="slip-ref-field">
+                <span className="slip-ref-label">Kind of source</span>
+                <select className="board-input"
+                  value={editingSlip.sourceKind ?? ""}
+                  onChange={(e) => mutate(withSlipSourceKind(caseRec, editingSlip.id, (e.target.value || null) as SourceKind | null))}>
+                  <option value="">not said</option>
+                  {SOURCE_KINDS.map((k) => <option key={k} value={k}>{SOURCE_KIND_LABEL[k]}</option>)}
+                </select>
+              </label>
+              <label className="slip-ref-field">
+                <span className="slip-ref-label">Where in it</span>
+                <input className="board-input" placeholder="page, entry, URL"
+                  value={editingSlip.locator ?? ""}
+                  onChange={(e) => mutate(withSlipUpdated(caseRec, editingSlip.id, { locator: e.target.value }))} />
+              </label>
+            </div>
           )}
           <textarea className="board-input slip-text-input" autoFocus={editingSlip.kind === "comment"} rows={2}
             placeholder={editingSlip.kind === "comment" ? "your observation…" : "what this source contributes…"}
@@ -665,7 +681,7 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
               return (
                 <div key={card.id}
                   ref={(el) => { if (el) cardEls.current.set(card.id, el); else cardEls.current.delete(card.id); }}
-                  className={`desk-card board-card${memberColor.has(card.id) ? " clustered" : ""} ${objClasses(card.id)}${card.source === "ai" ? " by-ai" : ""}`}
+                  className={`desk-card board-card${memberColor.has(card.id) ? " clustered" : ""} ${objClasses(card.id)}${card.source === "ai" ? " by-ai" : ""}${card.stance === "against" ? " against" : ""}`}
                   title={card.source === "ai" ? "Added by an AI through the MCP server" : undefined}
                   style={{
                     left: x, top: y, width: CARD_W,
@@ -691,6 +707,19 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
                         ✍ variant spelling
                       </span>
                     )}
+                    <button
+                      className={`tbtn tiny stance-toggle${card.stance === "against" ? " on" : ""}`}
+                      title={card.stance === "against"
+                        ? "You set this āyah against the reading. Tap to count it for the reading."
+                        : "This āyah counts for the reading. Tap to set it against the reading."}
+                      aria-label={card.stance === "against" ? "Set against the reading; count it for instead" : "Counts for the reading; set it against instead"}
+                      aria-pressed={card.stance === "against"}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        mutate(withCardStance(caseRec, card.id, card.stance === "against" ? "for" : "against"));
+                      }}
+                    >{card.stance === "against" ? "against" : "for"}</button>
                     <button className="tbtn tiny" title="Return to the drawer"
                       onClick={(e) => { e.stopPropagation(); mutate(withCardRemoved(caseRec, card.id)); }}>✕</button>
                   </div>
@@ -756,8 +785,11 @@ export function CaseBoard({ caseRec, occById, extraTexts, onAddAyah, onWordTap, 
                     <button className="tbtn tiny" title="Edit this slip"
                       onClick={(e) => { e.stopPropagation(); setEditSlip(slip.id); }}>✎</button>
                   </div>
-                  {slip.kind === "reference" && (slip.source || slip.locator) && (
-                    <div className="slip-source">{slip.source}{slip.locator ? ` — ${slip.locator}` : ""}</div>
+                  {slip.kind === "reference" && (slip.source || slip.locator || slip.sourceKind) && (
+                    <div className="slip-source">
+                      {slip.source}{slip.locator ? ` — ${slip.locator}` : ""}
+                      {slip.sourceKind && <span className="slip-source-kind">{SOURCE_KIND_LABEL[slip.sourceKind]}</span>}
+                    </div>
                   )}
                   <p className="slip-text">{slip.text || "…"}</p>
                   {clusterNames.length > 0 && (

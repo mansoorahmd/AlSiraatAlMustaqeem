@@ -4,9 +4,20 @@
 // references, established meanings, and the verdict. Every ayah links to
 // quran.com so the report is shareable and navigable outside the app.
 
-import type { CaseRecord, EvidenceCardRecord, NoteRecord } from "../persistence/types";
+import type { CaseRecord, EvidenceCardRecord, NoteRecord, SlipRecord } from "../persistence/types";
 import type { RootOccurrence } from "../api/types";
 import { tokenizeVerse } from "../components/reader/format";
+import { restsOn, restsOnLine, SOURCE_KIND_LABEL } from "../cases/ops";
+
+/** What the whole case rests on, as one line ("Rests on 12 āyāt · 1 against · …"). */
+function restsLine(c: CaseRecord, d: ExportData): string {
+  return restsOnLine(restsOn(c, (id) => d.occById.get(id)?.lemma_arabic ?? null, "case"));
+}
+
+/** A reference's kind as the reader gave it; "kind not said" when they have not. */
+function kindOf(s: SlipRecord): string {
+  return s.sourceKind ? SOURCE_KIND_LABEL[s.sourceKind] : "kind not said";
+}
 
 export interface ExportData {
   occById: Map<string, RootOccurrence>;
@@ -101,6 +112,7 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
   const cards = sortedCards(c);
   const comments = c.slips.filter((s) => s.kind === "comment" && s.text.trim());
   const refs = c.slips.filter((s) => s.kind === "reference" && (s.text.trim() || s.source));
+  const rests = restsLine(c, d);
   // A card↔slip thread with no label is just an attachment — the slip is already
   // printed under its āyah, so listing it again as a "connection" is noise.
   const isAttachment = (t: { fromCardId: string; toCardId: string; label: string }) =>
@@ -145,10 +157,11 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
           <a class="vkey" href="${quranUrl(card.verseKey)}" target="_blank" rel="noopener">${card.verseKey}</a>
           ${lemma ? `<span class="lemma quran">${esc(lemma)}</span>` : ""}
           ${card.source === "ai" ? `<span class="pill ai">AI-added</span>` : ""}
+          ${card.stance === "against" ? `<span class="pill">against</span>` : ""}
         </div>
         <p class="ev-text quran" dir="rtl">${renderVerseHtml(card, d)}</p>
         ${attached.length || myNotes.length ? `<ul class="ev-notes">${[
-          ...attached.map((s) => `<li class="mixed">${mixedText(s.text)}${s.kind === "reference" && s.source ? ` <em>(${esc(s.source)}${s.locator ? `, ${esc(s.locator)}` : ""})</em>` : ""}</li>`),
+          ...attached.map((s) => `<li class="mixed">${mixedText(s.text)}${s.kind === "reference" && (s.source || s.sourceKind) ? ` <em>(${s.source ? esc(s.source) : ""}${s.locator ? `, ${esc(s.locator)}` : ""}${s.source ? "; " : ""}${esc(kindOf(s))})</em>` : ""}</li>`),
           ...myNotes.map((n) => `<li class="mixed note-${n.kind}">${
             n.kind === "question" ? `<span class="qmark">?</span> ` : ""
           }${mixedText(n.text)}${
@@ -172,7 +185,7 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
       <div class="cluster-block">
         <h3 class="cluster-name mixed">${mixedText(g.name)} <span class="cluster-count">${inGroup.length} ${inGroup.length === 1 ? "āyah" : "āyāt"}</span></h3>
         ${slipsIn.length ? `<ul class="cluster-notes">${slipsIn
-          .map((s) => `<li class="mixed">${mixedText(s.text)}${s.kind === "reference" && s.source ? ` <em>(${esc(s.source)})</em>` : ""}</li>`)
+          .map((s) => `<li class="mixed">${mixedText(s.text)}${s.kind === "reference" && (s.source || s.sourceKind) ? ` <em>(${s.source ? `${esc(s.source)}; ` : ""}${esc(kindOf(s))})</em>` : ""}</li>`)
           .join("")}</ul>` : ""}
         ${inGroup.map(evidenceCard).join("")}
       </div>`;
@@ -217,7 +230,7 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
   const refRows = refs
     .map((s, i) => `
       <li id="ref${i + 1}">
-        <strong>${esc(s.source || "—")}</strong>${s.locator ? `, ${esc(s.locator)}` : ""}${s.text ? ` — ${mixedText(s.text)}` : ""}
+        <strong>${esc(s.source || "—")}</strong>${s.locator ? `, ${esc(s.locator)}` : ""} <span class="kind">(${esc(kindOf(s))})</span>${s.text ? ` — ${mixedText(s.text)}` : ""}
       </li>`)
     .join("");
 
@@ -257,6 +270,8 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
   .rpt-head-top h1 { flex:1 1 auto; }
   .status { flex:0 0 auto; margin-top:.35rem; }
   .meta .dot { color:var(--edge); margin:0 .1rem; }
+  .rests { color:var(--soft); font-size:.85rem; margin:.25rem 0 0; }
+  .kind { color:var(--soft); font-size:.85rem; }
   .verdict { font-size:1.05rem; font-style:italic; color:var(--blue);
     border-left:3px solid var(--blue); padding:.4rem 0 .4rem 1rem; margin:.5rem 0; }
   .meaning { display:flex; gap:1.2rem; align-items:baseline; padding:.5rem 0; border-bottom:1px dotted var(--edge); }
@@ -331,6 +346,7 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
       ${meanings.length ? `<span class="dot">·</span> ${meanings.length} established` : ""}
       <span class="dot">·</span> exported ${esc(date)}
     </div>
+    ${rests ? `<p class="rests">${esc(rests)}</p>` : ""}
   </header>
   ${c.description ? `<h2>The question</h2><p class="desc mixed">${mixedText(c.description)}</p>` : ""}
   ${d.rootCoreEn ? `<p class="rootcore"><strong>Root core (lexical reference, not authority):</strong> ${esc(d.rootCoreEn)}</p>` : ""}
@@ -352,6 +368,7 @@ export function buildCaseHtml(c: CaseRecord, d: ExportData): string {
   ${c.verdict
     ? `<h2>Conclusion</h2><p class="verdict mixed">“${mixedText(c.verdict)}”</p>`
     : `<h2>Conclusion</h2><p class="open-note">This case is still ${esc(c.status)} — no verdict has been recorded yet.</p>`}
+  ${c.falsifier ? `<p class="mixed"><strong>What would prove this wrong:</strong> ${mixedText(c.falsifier)}</p>` : ""}
 
   ${openForms.length ? `<h2>Still open</h2><ul>${openForms
       .map(([lemma]) => `<li class="quran">${esc(lemma)}</li>`).join("")}</ul>` : ""}
@@ -375,6 +392,8 @@ export function buildCaseMarkdown(c: CaseRecord, d: ExportData): string {
   lines.push(`# ${c.title}`);
   lines.push("");
   lines.push(`**Subject:** ${isAyah ? `ayah [${c.subject.value}](${quranUrl(c.subject.value)})` : `root ${c.subject.value}`} · **Status:** ${c.status} · **Exported:** ${date}`);
+  const rests = restsLine(c, d);
+  if (rests) lines.push(`\n${rests}`);
   if (c.description) lines.push(`\n## The question\n\n${c.description}`);
   if (d.rootCoreEn) lines.push(`\n**Root core (lexical reference, not authority):** ${d.rootCoreEn}`);
 
@@ -402,10 +421,10 @@ export function buildCaseMarkdown(c: CaseRecord, d: ExportData): string {
       (t.toCardId === cardId && t.fromCardId === s.id)),
   );
   const emitAyah = (card: EvidenceCardRecord) => {
-    lines.push(`\n**[${card.verseKey}](${quranUrl(card.verseKey)})**${card.source === "ai" ? " *(AI-added)*" : ""}`);
+    lines.push(`\n**[${card.verseKey}](${quranUrl(card.verseKey)})**${card.source === "ai" ? " *(AI-added)*" : ""}${card.stance === "against" ? " *(against)*" : ""}`);
     lines.push(`\n${ayahMd(card)}`);
     for (const s of attachedTo(card.id)) {
-      lines.push(`\n  - ${s.text}${s.kind === "reference" && s.source ? ` *(${s.source}${s.locator ? `, ${s.locator}` : ""})*` : ""}`);
+      lines.push(`\n  - ${s.text}${s.kind === "reference" && (s.source || s.sourceKind) ? ` *(${s.source ? `${s.source}${s.locator ? `, ${s.locator}` : ""}; ` : ""}${kindOf(s)})*` : ""}`);
     }
     // the reader's own notes/questions on this āyah, recorded while reading
     for (const n of (d.notes ?? []).filter((x) => x.verseKey === card.verseKey)) {
@@ -465,7 +484,7 @@ export function buildCaseMarkdown(c: CaseRecord, d: ExportData): string {
   if (refs.length) {
     lines.push(`\n## Sources consulted`);
     refs.forEach((s, i) => {
-      lines.push(`${i + 1}. **${s.source || "—"}**${s.locator ? `, ${s.locator}` : ""}${s.text ? ` — ${s.text}` : ""}`);
+      lines.push(`${i + 1}. **${s.source || "—"}**${s.locator ? `, ${s.locator}` : ""} (${kindOf(s)})${s.text ? ` — ${s.text}` : ""}`);
     });
   }
 
@@ -492,6 +511,7 @@ export function buildCaseMarkdown(c: CaseRecord, d: ExportData): string {
   lines.push(c.verdict
     ? `\n> ${c.verdict}`
     : `\nThis case is still ${c.status} — no verdict has been recorded yet.`);
+  if (c.falsifier) lines.push(`\n**What would prove this wrong:** ${c.falsifier}`);
 
   if (openForms.length) {
     lines.push(`\n## Still open`);

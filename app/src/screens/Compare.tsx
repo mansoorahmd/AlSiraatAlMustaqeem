@@ -85,6 +85,7 @@ export function Compare() {
               <button
                 className="cmp-set-del"
                 title="Delete comparison"
+                aria-label={`Delete the comparison ${s.title || "untitled"}`}
                 onClick={(e) => { e.stopPropagation(); remove(s.id); }}
               >✕</button>
             </div>
@@ -225,7 +226,7 @@ function CompareBoard({
                     <span className="cmp-card-key quran">
                       {it.kind === "ayah" ? `${it.ref} · ${surahName(it.ref)}` : spaced([...r.roots][0] ?? it.ref)}
                     </span>
-                    <button className="cmp-x" title="Remove" onClick={(e) => { e.stopPropagation(); drop(it.id); }}>✕</button>
+                    <button className="cmp-x" title="Remove from this comparison" aria-label={`Remove ${it.ref} from this comparison`} onClick={(e) => { e.stopPropagation(); drop(it.id); }}>✕</button>
                   </div>
 
                   {!isCollapsed && (

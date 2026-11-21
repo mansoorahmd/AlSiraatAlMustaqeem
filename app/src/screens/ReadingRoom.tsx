@@ -1,4 +1,4 @@
-// The Reading Room: manuscript index of all 114 surahs ↔ the reader itself.
+// The Reading Room: manuscript index of all 114 sūrahs ↔ the reader itself.
 
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
@@ -9,16 +9,24 @@ import { Reader } from "../components/reader/Reader";
 
 export function ReadingRoom() {
   const chapters = useAsync(() => api.chapters(), []);
-  const { jumpToVerseKey, activeTrailId } = useAppState();
+  const { jumpToVerseKey, activeTrailId, readerOpen, reading } = useAppState();
   const dispatch = useAppDispatch();
-  const [view, setView] = useState<"index" | "reader">("index");
+  // index or reader lives in the app state (and the address), so it survives a refresh and a
+  // visit to another tab
+  const view = readerOpen ? "reader" : "index";
+  const setView = (v: "index" | "reader") => dispatch({ type: "setReaderOpen", open: v === "reader" });
   const [trailsRefresh, setTrailsRefresh] = useState(0);
   const trails = useAsync(() => archive.trails.all(), [view, activeTrailId, trailsRefresh]);
 
-  // a jump (from a trail or elsewhere) always lands in the reader
+  // coming back to the Read tab with the reader open: return to the āyah you were on
+  // (a jump from elsewhere already says where to go, and opens the reader itself)
   useEffect(() => {
-    if (jumpToVerseKey) setView("reader");
-  }, [jumpToVerseKey]);
+    const last = reading.lastVerseKey;
+    if (readerOpen && !jumpToVerseKey && last && last.startsWith(`${reading.surahId}:`)) {
+      dispatch({ type: "jumpToVerse", verseKey: last, align: "top" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (view === "reader" && chapters.data) {
     return <Reader chapters={chapters.data} onBackToIndex={() => setView("index")} />;
@@ -27,13 +35,16 @@ export function ReadingRoom() {
   return (
     <div className="sheet">
       <h1>The Reading Room</h1>
-      <p className="subtitle">Choose a surah — every word on its pages can open a case.</p>
+      <p className="subtitle">Choose a sūrah — every word on its pages can open a case.</p>
       <div className="rule">۞</div>
 
       {chapters.loading && <p className="loading">Unrolling the index…</p>}
       {chapters.error && (
-        <p className="error-note">
-          Could not reach the archive. Is the API running on :8000? ({chapters.error.message})
+        <p className="error-note" role="alert">
+          {chapters.error.message.startsWith("cannot reach")
+            ? "The Qur'an text comes from the research server, which can't be reached right now. Check your connection and try again."
+            : "The research server didn't send the list of sūrahs. If you're signed out, sign in (top right) and try again."}
+          {" "}({chapters.error.message})
         </p>
       )}
 
@@ -47,7 +58,7 @@ export function ReadingRoom() {
                 dispatch({ type: "setSurah", surahId: c.id });
                 setView("reader");
               }}
-              title={`${c.name_simple} — ${c.verses_count} ayahs`}
+              title={`${c.name_simple} — ${c.verses_count} āyāt`}
             >
               <span className="num">{c.id}</span>
               <span className="name-ar">{c.name_arabic}</span>
@@ -82,6 +93,7 @@ export function ReadingRoom() {
                 <button
                   className="chip-x"
                   title="Delete this trail"
+                  aria-label={`Delete the trail ${t.name}`}
                   onClick={async () => {
                     await archive.trails.remove(t.id);
                     if (activeTrailId === t.id)

@@ -38,13 +38,17 @@ export const FEATURES = [
   { key: "spelling", group: "read", label: "Spelling variants", description: "words written more than one way" },
   { key: "wazn", group: "read", label: "Word pattern", description: "each word's pattern (wazn)" },
   { key: "linkages", group: "read", label: "Where roots meet", description: "roots that keep company, and where two occur together" },
-  { key: "lens", group: "read", label: "Āyah lens", description: "the focus map around an āyah" },
+  { key: "lens", group: "read", label: "Āyah lens", description: "an āyah's links to the rest of the Book, rarest first, and the list of rare links" },
   { key: "compare", group: "read", label: "Compare", description: "forms, roots and āyāt side by side" },
   // interaction
   { key: "notes", group: "interact", label: "Notes & questions", description: "notes and open questions on āyāt and words" },
   { key: "indications", group: "interact", label: "Indications", description: "your indications, refinements, and the Vault of established roots" },
   { key: "my-meanings", group: "interact", label: "My meanings", description: "your own meaning for a root" },
   { key: "motifs", group: "interact", label: "Motifs", description: "your root groupings (بيوت)" },
+  { key: "links", group: "interact", label: "Saved links", description: "links you save between āyāt, your leads, and your map of what you have linked" },
+  { key: "speakers", group: "interact", label: "Speakers", description: "who speaks and who is addressed, as you tag it" },
+  { key: "rules", group: "interact", label: "Rule checks", description: "a rule you state, set against every place it covers" },
+  { key: "characters", group: "interact", label: "Characters", description: "the names, titles and pronouns you point at one character" },
   // research & publication
   { key: "cases", group: "research", label: "Cases", description: "investigations, the evidence board, dossiers and export" },
   { key: "publish", group: "research", label: "Publish", description: "sending your work to the community for review" },
@@ -67,10 +71,16 @@ export function featureForCorpus(method: string, path: string): PlanFeature {
   if (/^\/roots\/[^/]+\/(with\/[^/]+|linkages)$/.test(p)) return "linkages";
   if (/^\/roots\/[^/]+\/occurrences$/.test(p)) return "follow-root";
   if (p === "/words/occurrences") return "follow-word";
-  if (/^\/roots(\/|$)/.test(p)) return "roots";
+  if (/^\/roots(\/|$)/.test(p) || p === "/spread") return "roots";
   if (p === "/phrase-search" || (method === "POST" && (p === "/search" || p === "/expression-search"))) return "search";
+  if (p === "/construction-search" || p === "/construction-presets") return "search";
+  if (p === "/occurrences" || p === "/wording-check" || p === "/supplications") return "search";
+  if (/^\/chapters\/[^/]+\/frame$/.test(p)) return "compare";
+  if (p === "/diff") return "similar";
+  if (p === "/spellings" || /^\/spellings\/[^/]+$/.test(p)) return "spelling";
   if (/^\/(chapters|verses)\/[^/]+\/echoes$/.test(p)) return "echoes";
   if (/^\/verses\/[^/]+\/similar$/.test(p)) return "similar";
+  if (/^\/verses\/[^/]+\/links$/.test(p) || /^\/links(\/|$)/.test(p)) return "lens";
   if (/^\/chapters\/[^/]+\/variants$/.test(p) || /^\/verses\/[^/]+\/spelling$/.test(p)) return "spelling";
   if (/^\/verses\/[^/]+\/wazn$/.test(p)) return "wazn";
   if (/^\/verses\/[^/]+\/translations$/.test(p) || p === "/translation-resources") return "translations";
@@ -89,12 +99,20 @@ export function featureForResearch(method: string, path: string): PlanFeature | 
     case "indications": case "refinements": return "indications";
     case "root-meanings": return "my-meanings";
     case "motifs": return "motifs";
+    case "links": return "links";
+    case "speech": case "speech-skips": return "speakers";
+    case "rules": return "rules";
+    case "characters": case "mentions": return "characters";
     case "cases": return "cases";
     case "compare-sets": return "compare";
     // a trail is saved by either kind of follow
     case "trails": return ["follow-root", "follow-word"];
-    case "proposed": return seg[1] === "indication" ? "indications" : "notes";
+    case "proposed":
+      return seg[1] === "indication" ? "indications" : seg[1] === "link" ? "links" : seg[1] === "speech" ? "speakers" : "notes";
     case "proposals": case "submission-log": return "publish";
+    // an earlier version belongs to what it is a version of; any of those features lets the
+    // reader say why they changed it
+    case "revisions": return ["cases", "my-meanings", "indications"];
     default: return null;   // settings: the reader's own preferences
   }
 }

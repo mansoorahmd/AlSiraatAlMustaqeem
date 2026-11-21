@@ -10,6 +10,12 @@
 import { z } from "zod";
 import type { McpState } from "./core.js";
 import { foldArabic, buckToArabic } from "../../corpus-core/src/text/normalize.js";
+import {
+  CONSTRUCTION_PRESETS, ConstructionQueryError, MAX_GAP, MAX_SLOTS, parseConstructionSearch, POS_CLASSES, POS_TAGS,
+  PREFIXES, presetByName, DERIVATIONS, VERB_FORMS, SUFFIXES,
+} from "../../corpus-core/src/constructions.js";
+import { OccurrenceRequestError, parseOccurrenceRequest } from "../../corpus-core/src/occurrences.js";
+import { MAX_CHECK_WORDS } from "../../corpus-core/src/wording.js";
 import { AI_SOURCE, guard, proposalId, WriteRefused } from "./core.js";
 import {
   caseSummary, expectVersion, findOwnItem, mustGetCase, placeItem, saveGuarded,
@@ -65,6 +71,9 @@ const SCRIPT = z
   .describe("Arabic script. Default uthmani (what the reader reads); *_simple is easier to match on.");
 
 const spaced = (r: string) => r.split("").join(" ");
+
+/** one value, or several of which any may match (find_construction's slots) */
+const TEXT_OR_LIST = z.union([z.string(), z.array(z.string())]).optional();
 
 // The stores return loose Record<string, unknown> rows (a legacy of the 1:1
 // Python port). Read them through these shapes at the boundary so the tools stay
@@ -390,6 +399,56 @@ const compare_forms: Tool = {
   },
 };
 
+// a saved link / a speaker tag, as the model reads it
+const linkSummary = (l: any) => ({
+  id: l.id, from: l.a, to: l.b, status: l.status, kind: l.kind || null,
+  shares: l.marker ? { kind: l.marker.kind, text: l.marker.text } : null,
+  group: l.label || null, note: l.note || null, proposed_by: l.source,
+  // a tension ("these seem to disagree") is open until the reader settles it
+  ...(l.kind === "tension" ? { settled: !!l.resolved, how_settled: l.resolution || null } : {}),
+});
+const speechSummary = (s: any) => ({
+  id: s.id, verse_key: s.verseKey, from_word: s.word, words: s.words,
+  speaker: s.speaker || null, addressee: s.addressee || null, also_hears: s.listeners || null,
+  speaker_is: s.basis || null, note: s.note || null, proposed_by: s.source,
+});
+const ruleSummary = (r: any) => ({
+  id: r.id, title: r.title, rule: r.statement || null, would_be_proved_wrong_by: r.falsifier || null,
+  // hand `covers` to list_occurrences to get every place the rule applies to
+  covers: r.scope, marked: r.counts,
+});
+const mentionSummary = (m: any) => ({
+  id: m.id, verse_key: m.verseKey, word: m.word, words: m.words, kind: m.kind,
+  ...(m.part ? { part: m.part } : {}),
+  filed_under: m.designation || null, status: m.status, note: m.note || null, proposed_by: m.source,
+});
+
+const my_links: Tool = {
+  name: "my_links",
+  title: "The links and leads the reader has saved",
+  description:
+    "The reader's saved links between places in the Book, and their leads (something noticed " +
+    "whose other end is still to find), with the kind of each, its group name and note. Filter " +
+    "by āyah, sūrah, status or group. Also who the reader has tagged as speaking, when you pass " +
+    "an āyah or a sūrah. Read this before proposing a link, so you do not repeat one.",
+  schema: {
+    verse_key: z.string().optional(),
+    chapter: z.number().int().min(1).max(114).optional(),
+    status: z.enum(["lead", "kept"]).optional(),
+    group: z.string().optional().describe("A group name the reader gave their links."),
+    kind: z.string().optional().describe('Only links of one kind, e.g. "tension" for places the reader finds in disagreement.'),
+  },
+  run: async (state, a) => {
+    const links = (await state.research.listLinks({ verse: a.verse_key, chapter: a.chapter, status: a.status, label: a.group, kind: a.kind }))
+      .map(linkSummary);
+    const out: Record<string, unknown> = { total: links.length, links };
+    if (a.verse_key || a.chapter) {
+      out.speakers = (await state.research.listSpeech({ verse: a.verse_key, chapter: a.chapter })).map(speechSummary);
+    }
+    return out;
+  },
+};
+
 const my_research_on: Tool = {
   name: "my_research_on",
   title: "What the reader has already established",
@@ -425,6 +484,13 @@ const my_research_on: Tool = {
     if (verse_key) {
       out.verse_key = verse_key;
       out.notes_on_ayah = await state.research.listNotes({ verse: verse_key });
+      out.links_on_ayah = (await state.research.listLinks({ verse: verse_key })).map(linkSummary);
+      out.speakers_on_ayah = (await state.research.listSpeech({ verse: verse_key })).map(speechSummary);
+      const mentions = (await state.research.listMentions({ verse: verse_key })) as any[];
+      if (mentions.length) {
+        const names = new Map(((await state.research.listCharacters()) as any[]).map((c) => [c.id, c.name]));
+        out.characters_on_ayah = mentions.map((m) => ({ character: names.get(m.characterId) ?? m.characterId, ...mentionSummary(m) }));
+      }
     }
     out.open_questions = (await state.research
       .listNotes(root ? { root } : { verse: verse_key }))
@@ -482,10 +548,115 @@ const thin: Tool[] = [
     run: (s, { verse_key }) => s.echoes.echoesForVerse(verse_key),
   },
   {
+    name: "find_links", title: "Everything an āyah shares with the rest of the Book",
+    description:
+      "Every marker in this āyah that also occurs elsewhere, rarest first: repeated phrases " +
+      "(three or more words), two-word pairs, written words (particles and names included), " +
+      "dictionary forms and roots. `ayahs` is how many āyāt carry the marker, this one " +
+      "included: 2 means it ties exactly this āyah and one other. `places` are the other " +
+      "āyāt with the word position where the marker starts. Markers in more than `max_ayahs` " +
+      "āyāt come back under `common`, counted only; `onlyHere` lists what occurs nowhere else. " +
+      "This counts shared wording. It does not say what a link means: that is for the reader.",
+    schema: { verse_key: z.string(), max_ayahs: z.number().int().min(2).max(200).default(20) },
+    run: async (s, { verse_key, max_ayahs }) =>
+      (await s.links.linksForVerse(verse_key, { max: max_ayahs })) ?? { error: `verse not found: ${verse_key}` },
+  },
+  {
+    name: "list_rare_links", title: "Markers that only a few āyāt share",
+    description:
+      "Every marker carried by exactly `ayahs` āyāt (2 by default) across the whole Book. " +
+      "kind=root: every word from the root occurs only there. kind=lemma: the word is that " +
+      "rare though its root is used elsewhere. kind=form: that exact written word is that " +
+      "rare though the word is used elsewhere. kind=phrase: the longest run of two or more " +
+      "words only those āyāt share (longest first). Use different_surahs to keep only " +
+      "markers that join different sūrahs, and chapter to keep those touching one sūrah. " +
+      "Read `total` for how many there are; page with limit and offset.",
+    schema: {
+      kind: z.enum(["root", "lemma", "form", "phrase"]).default("lemma"),
+      ayahs: z.number().int().min(2).max(5).default(2),
+      different_surahs: z.boolean().default(false),
+      chapter: z.number().int().min(1).max(114).optional(),
+      limit: z.number().int().min(1).max(200).default(50),
+      offset: z.number().int().min(0).default(0),
+    },
+    run: (s, a) => s.links.exclusive({
+      kind: a.kind, n: a.ayahs, cross: a.different_surahs, chapter: a.chapter, limit: a.limit, offset: a.offset,
+    }),
+  },
+  {
     name: "get_wazn", title: "Morphological pattern of a word",
     description: "The صرف pattern of one word: form I–XII, participle, masdar, aspect, voice.",
     schema: { verse_key: z.string(), word_position: z.number().int().min(1) },
     run: async (s, { verse_key, word_position }) => (await s.wazn(verse_key, word_position)) ?? { error: "no morphology for that word" },
+  },
+  {
+    name: "find_construction", title: "Find āyāt by grammatical construction",
+    description:
+      "Search the whole Book by how words are BUILT: a row of 1–4 word slots, each matching one " +
+      "word by any mix of written form (vowels ignored, a leading و / ف optional), lemma, root, " +
+      "part of speech, a prefix it carries, and verb features. Each slot after the first comes " +
+      "straight after the one before, or within `gap` words; `at_start` pins the first slot to " +
+      "the āyah's first word. Or pass a ready-made `preset`: " +
+      CONSTRUCTION_PRESETS.map((p) => `${p.name} (${p.label})`).join(", ") + ". " +
+      "Hits are in mushaf order with the 1-based word span matched; read `total` (matches) and " +
+      "`ayahs` for the true counts and page with limit/offset. This finds and counts a shared " +
+      "construction. It does not say what the construction means: that is for the reader.",
+    schema: {
+      preset: z.enum(CONSTRUCTION_PRESETS.map((p) => p.name) as [string, ...string[]]).optional()
+        .describe("A ready-made query. Give this OR slots."),
+      slots: z.array(z.object({
+        form: TEXT_OR_LIST.describe("The written word, e.g. إذ, سوف, أرأيت (vowels ignored)."),
+        lemma: TEXT_OR_LIST.describe("The dictionary form, e.g. ٱلَّذِى (covers ٱلَّتِى, ٱلَّذِينَ)."),
+        root: TEXT_OR_LIST.describe("Arabic (ر ء ي) or Buckwalter (rAy)."),
+        pos: TEXT_OR_LIST.describe(`A tag (${Object.keys(POS_TAGS).join(", ")}), its name ("verb"), or a class (${POS_CLASSES.join(", ")}).`),
+        prefix: TEXT_OR_LIST.describe(`A prefix the word carries: ${Object.entries(PREFIXES).map(([k, v]) => `${k} = ${v}`).join("; ")}.`),
+        verb: z.object({
+          aspect: z.enum(["PERF", "IMPF", "IMPV"]).optional(),
+          mood: z.enum(["IND", "SUBJ", "JUS"]).optional(),
+          voice: z.enum(["ACT", "PASS"]).optional(),
+          person: z.enum(["1", "2", "3"]).optional(),
+          number: z.enum(["S", "D", "P"]).optional(),
+          gender: z.enum(["M", "F"]).optional(),
+        }).optional().describe("Verb features; the word must be a verb."),
+        derivation: TEXT_OR_LIST.describe(`How a noun is derived, as the corpus marks it: ${Object.entries(DERIVATIONS).map(([k, v]) => `${k} = ${v}`).join("; ")}.`),
+        verbForm: TEXT_OR_LIST.describe(`The verb form of a verb or of a noun derived from one: ${VERB_FORMS.join(", ")} (the corpus marks no form for I; I is a verb or derived noun with none).`),
+        suffix: TEXT_OR_LIST.describe(`A pronoun attached at the end of the word, by person, gender and number: ${Object.keys(SUFFIXES).join(", ")} ("any" = any attached pronoun).`),
+        noun: z.object({
+          number: z.enum(["S", "D", "P"]).optional(),
+          gender: z.enum(["M", "F"]).optional(),
+        }).optional().describe("A noun's or adjective's number and gender (S also takes a noun with a gender and no number: the corpus leaves the singular unmarked)."),
+        gap: z.number().int().min(0).max(MAX_GAP).optional()
+          .describe("Slots after the first: at most this many words between it and the slot before (0 = the next word)."),
+      })).min(1).max(MAX_SLOTS).optional().describe("Your own query, in reading order. Give this OR preset."),
+      at_start: z.boolean().default(false).describe("The first slot must be the āyah's first word."),
+      limit: z.number().int().min(1).max(200).default(50),
+      offset: z.number().int().min(0).default(0),
+    },
+    run: async (s, a) => {
+      const preset = a.preset ? presetByName(a.preset) : undefined;
+      if (a.preset && !preset) return { error: `unknown preset: ${a.preset}` };
+      if (!preset && !a.slots) return { error: "pass a preset or slots" };
+      let q;
+      try {
+        q = parseConstructionSearch({
+          ...(preset ? preset.query : { slots: a.slots, atStart: a.at_start }),
+          limit: a.limit, offset: a.offset,
+        });
+      } catch (e) {
+        if (e instanceof ConstructionQueryError) return { error: e.message };
+        throw e;
+      }
+      const r = await s.constructions.search(q);
+      return {
+        ...(preset ? { preset: { name: preset.name, label: preset.label, description: preset.description } } : {}),
+        query: { slots: q.slots, at_start: q.atStart ?? false },
+        total: r.total,
+        ayahs: r.ayahs,
+        returned: r.hits.length,
+        truncated: (a.offset ?? 0) + r.hits.length < r.total,
+        hits: r.hits.map((h) => ({ verse_key: h.verse_key, start: h.start, length: h.length, match: h.match, text: h.text })),
+      };
+    },
   },
   {
     name: "get_spelling_variants", title: "Rasm variants of a word",
@@ -498,6 +669,165 @@ const thin: Tool[] = [
     description: "Composite similarity: shared roots, phrase runs and structure.",
     schema: { verse_key: z.string(), limit: z.number().int().min(1).max(50).default(10) },
     run: (s, { verse_key, limit }) => s.engine.similarVerses(verse_key, { topK: limit }),
+  },
+  // ---- study tools that find and count (corpus-core/src/occurrences.ts, spellings.ts, voices.ts, wording.ts)
+  {
+    name: "list_occurrences", title: "Every place one thing occurs",
+    description:
+      "Every place in the Book where one thing occurs, in mushaf order, several in one āyah where " +
+      "it recurs there. kind phrase|pair|form|lemma|root takes a marker's `key` from find_links " +
+      "(or typed Arabic: a form or lemma with or without vowels, a root spaced, unspaced or in " +
+      "Buckwalter); kind=spelling takes one exact written shape (vowels ignored: the word, or its " +
+      "stem, written exactly so, whatever word it is), or one spelling of one word as " +
+      "list_spellings counts it, as \"<group key>|<spelling>\" (3:35:3|ٱمْرَأَتُ): exactly the places " +
+      "that list shows; kind=construction takes a find_construction-style `query` " +
+      "({ slots, atStart }). `total` and `ayahs` are the full counts; `places` are capped by limit. " +
+      "This lists and counts. It does not say what the places share in meaning: that is for the reader.",
+    schema: {
+      kind: z.enum(["phrase", "pair", "form", "lemma", "root", "spelling", "construction"]),
+      key: z.string().default("").describe("The marker key, typed Arabic, or a written shape; for construction just a label."),
+      query: z.object({ slots: z.array(z.record(z.unknown())).min(1).max(MAX_SLOTS), atStart: z.boolean().optional() })
+        .optional().describe("kind=construction only: slots as in find_construction."),
+      limit: z.number().int().min(1).max(1000).default(200),
+      offset: z.number().int().min(0).default(0),
+    },
+    run: async (s, a) => {
+      let r;
+      try {
+        r = parseOccurrenceRequest({ kind: a.kind, key: a.key, query: a.query, limit: a.limit, offset: a.offset });
+      } catch (e) {
+        if (e instanceof OccurrenceRequestError) return { error: e.message };
+        throw e;
+      }
+      return s.tools.occurrences(r);
+    },
+  },
+  {
+    name: "list_spellings", title: "Words the Book writes in more than one way",
+    description:
+      "Every word the mushaf writes in more than one way, most places first (sort=alpha: by the " +
+      "Arabic alphabet), each spelling with its count, āyah count and first 12 places. A word is " +
+      "listed once: with and without ٱل, and a verb in every person, are counted together where " +
+      "the stem is written with the same letters. Where the bare word is written both ة and ت, " +
+      "its words that carry a pronoun are counted with neither (`withPronoun`): the script writes " +
+      "ت there either way. `kinds` names where two " +
+      "spellings part, by the letters only (ت or ة at the end, alif written or as a small mark, " +
+      "ى / ي / small ي, hamza seat, one ت or two, a letter doubled, …), with a count each; filter " +
+      "with `kind`, search with `q` (Arabic, vowels ignored). Groups whose shapes differ only by a " +
+      "grammatical ending (ذُو / ذِى, decided from the case the corpus gives) are left out of the list " +
+      "unless kind=ending; `hidden` says how many. Pass `group` (a key from the list) for one group " +
+      "with every place. It never says why a word is spelled so.",
+    schema: {
+      kind: z.string().optional().describe("One kind id from `kinds`."),
+      q: z.string().optional().describe("Arabic to look for, e.g. ابراهيم."),
+      group: z.string().optional().describe("One group's key (chapter:verse:word of its first word) for all its places."),
+      sort: z.enum(["count", "alpha"]).optional().describe("count (default): most places first; alpha: by the word, in the order of the Arabic alphabet."),
+      limit: z.number().int().min(1).max(200).default(30),
+      offset: z.number().int().min(0).default(0),
+    },
+    run: async (s, a) => {
+      if (a.group) return (await s.tools.spellingGroup(a.group)) ?? { error: `no spelling group: ${a.group}` };
+      return s.tools.spellingList({ kind: a.kind, q: a.q, sort: a.sort, limit: a.limit, offset: a.offset });
+    },
+  },
+  {
+    name: "find_speech_openers", title: "Where speech is introduced in a sūrah",
+    description:
+      "Each word in a sūrah that may introduce speech: every verb of the root ق و ل (قَالَ، قَالُوا، " +
+      "قُلْ، يَقُولُونَ …), `sure: true`, and every verb of ن د و (نَادَىٰ، نُودِىَ), `sure: true` only where " +
+      "the corpus marks what follows it with a vocative or the أَنْ of interpretation before another " +
+      "verb, else `sure: false` (a call; speech may or may not follow). `extra_roots` (Arabic letters, " +
+      "up to 10) adds the verbs of other roots, marked `added`, sure the same way as ن د و; a root the " +
+      "Book does not have finds nothing. Word positions are 1-based. Where the speech ends is not " +
+      "marked and is not guessed; who speaks is for the reader.",
+    schema: {
+      chapter: z.number().int().min(1).max(114),
+      extra_roots: z.array(z.string().min(1)).max(10).default([]).describe("More opener roots in Arabic letters, e.g. [\"د ع و\", \"سأل\"]."),
+    },
+    run: async (s, { chapter, extra_roots }) =>
+      (await s.tools.speechOpeners(chapter, extra_roots)) ?? { error: `chapter not found: ${chapter}` },
+  },
+  {
+    name: "find_pronouns", title: "The pronouns of an āyah",
+    description:
+      "The pronouns in one āyah from the morphology: separate words (هُوَ، إِيَّاكَ), attached to a word " +
+      "(the هِمْ of عَلَيْهِمْ, the تَ of أَنْعَمْتَ, the هُمْ of لَهُمْ), with the person, number and gender " +
+      "the corpus gives. With verbs=true also each verb's own person, number and gender (type " +
+      "\"verb\", nothing written, so `pronoun` is empty). An empty pronoun on an attached one means " +
+      "it is not written (رَبِّ). `part` numbers the pronouns of one word from 1 in the corpus's order, " +
+      "the verb's own subject counted even when verbs=false, so a number never changes (خَلَقْنَـٰكُمْ " +
+      "in 7:11: the verb 1, نَا 2, كُمْ 3); a mention names a pronoun by word and part. It does not say " +
+      "whom a pronoun points to: that is for the reader.",
+    schema: { verse_key: z.string(), verbs: z.boolean().default(false) },
+    run: async (s, { verse_key, verbs }) => (await s.tools.pronouns(verse_key, verbs)) ?? { error: `verse not found: ${verse_key}` },
+  },
+  {
+    name: "check_wording", title: "Is this wording in the Book?",
+    description:
+      `Any Arabic text (up to ${MAX_CHECK_WORDS} words) set against the Book word by word. Each word ` +
+      "is `written` (found exactly as written, vowels and all), `letters` (the same letters with other " +
+      "vowels; up to 5 of the Book's forms and their roots), `stem` (found once a leading و ف ب ل ك س " +
+      "and/or ال is set aside; which prefix is named) or `none`. Counts are words and āyāt; `sample` is " +
+      "one āyah to open. It checks wording only, never whether a reading is right.",
+    schema: { text: z.string().min(1) },
+    run: async (s, { text }) => {
+      try {
+        return await s.tools.wordingCheck(text);
+      } catch (e) {
+        return { error: (e as Error).message };
+      }
+    },
+  },
+  {
+    name: "compare_ayat", title: "What differs between two āyāt",
+    description:
+      "Two āyāt aligned word against word (the longest common run of their words, vowels ignored). " +
+      "Each row is labelled: same; marks (same letters, other vowels or marks); spelling (the same " +
+      "word written differently); changed (another word or form); only-a; only-b. `counts` totals " +
+      "them. It shows where the wording differs, never why.",
+    schema: { a: z.string(), b: z.string() },
+    run: async (s, { a, b }) => (await s.tools.diff(a, b)) ?? { error: `verse not found: ${a} or ${b}` },
+  },
+  {
+    name: "root_spread", title: "Where a set of roots occurs, by sūrah and by page",
+    description:
+      "Counts where 1 to 60 roots (Arabic letters, spaced or not, or Buckwalter) occur: places " +
+      "(words) and āyāt in each of the 114 sūrahs (with the sūrah's āyah count) and on each page " +
+      "of the muṣḥaf, zeros included; totals; how many sūrahs and pages have none; `unknown` for " +
+      "roots the Book does not have. An āyah holding two of the roots counts once in `ayahs`. Set " +
+      "compact=true for the totals and only the sūrahs and pages that have some. It counts; what a " +
+      "distribution means is for the reader.",
+    schema: {
+      roots: z.array(z.string().min(1)).min(1).max(60),
+      compact: z.boolean().default(false).describe("Leave out sūrahs and pages with no places."),
+    },
+    run: async (s, { roots, compact }) => {
+      const r = await s.tools.spread(roots);
+      return compact ? { ...r, chapters: r.chapters.filter((c) => c.places > 0), pages: r.pages.filter((p) => p.places > 0) } : r;
+    },
+  },
+  {
+    name: "find_supplications", title: "Where the Lord is addressed: رَبَّنَا، رَبِّ، ٱللَّهُمَّ",
+    description:
+      "Every place in Book order where the Lord is addressed with رَبَّنَا (رَبّ + نَا in the " +
+      "accusative, not after إِنَّ), رَبِّ (its ى of \"my\" not written; not رَبِّ ٱلْعَـٰلَمِينَ, not the " +
+      "statement رَبِّى) or ٱللَّهُمَّ, from the morphology, anywhere in an āyah; `openings` counts each. " +
+      "The morphology cannot tell an object from an address, so a رَبَّنَا that is a verb's object " +
+      "(25:21) is listed too. This lists where the address is written; whether a place is a " +
+      "supplication is the reader's to say.",
+    schema: { opening: z.enum(["rabbana", "rabbi", "allahumma"]).optional() },
+    run: (s, { opening }) => s.tools.supplications(opening),
+  },
+  {
+    name: "surah_frame", title: "What a sūrah's opening shares with its close",
+    description:
+      "The roots found both in the first `n` āyāt and in the last `n` āyāt of a sūrah (n 1 to 10, " +
+      "default 3, lowered so the two ends never overlap; the basmala is an āyah only in al-Fātiḥah). " +
+      "Only words with a root. Each shared root has its places at each end, `level` (form = the same " +
+      "written word at both ends, lemma = the same lemma, root = only the root) and `inBook` (how " +
+      "many words of the Book carry it); the rarest first. It finds what is shared, never what it means.",
+    schema: { chapter: z.number().int().min(1).max(114), n: z.number().int().min(1).max(10).default(3) },
+    run: async (s, { chapter, n }) => (await s.tools.surahFrame(chapter, n)) ?? { error: `chapter not found: ${chapter}` },
   },
 ];
 
@@ -534,6 +864,268 @@ const add_note: Tool = {
       text, lemma, root, source: AI_SOURCE,
     });
     return { proposed: true, id: saved.id, awaiting_review: true };
+  },
+};
+
+/** A word span that really is in the āyah, or a refusal that says what the āyah has. */
+async function mustBeSpan(state: any, verseKey: string, word: number, words: number, what: string): Promise<void> {
+  // the word list ends with the āyah's end mark, which has no text and is not a word
+  const count = ((await state.content.verseWords(verseKey)) as any[]).filter((w) => w.arabic).length;
+  if (count === 0) throw new WriteRefused(`${verseKey} is not an āyah in the Book.`);
+  if (word + words - 1 > count) {
+    throw new WriteRefused(`${what}: ${verseKey} has ${count} words, so words ${word}–${word + words - 1} are not in it.`);
+  }
+}
+
+const LINK_KIND = z.enum(["", "same-wording", "defined", "same-style", "same-image", "refers", "tension"]);
+
+const propose_link: Tool = {
+  name: "propose_link",
+  title: "Propose a link between two places, or a lead (proposal)",
+  description:
+    "Record that a run of words in one āyah is tied to a run of words in another. Saved as a " +
+    "PROPOSAL the reader accepts or dismisses. Leave the second place out to record a LEAD: " +
+    "something worth pursuing whose other end is not found yet. kind: same-wording (the same " +
+    "words), defined (the FIRST place explains a term the second uses), same-style (the same " +
+    "way of speaking), same-image (the same picture), refers (one points to the other), tension " +
+    "(the two seem to disagree: the reader keeps it open until they settle it, you cannot), or " +
+    "empty when you only want to note the tie. Say in the note what ties them and how rare it " +
+    "is (find_links gives the count). State what you found; what the link means is the " +
+    "reader's to decide.",
+  writes: true,
+  schema: {
+    from_verse: z.string().describe('Chapter:verse, e.g. "19:47".'),
+    from_word: z.number().int().min(1).describe("The word the span starts at (1-based, as read_ayah numbers them)."),
+    from_words: z.number().int().min(1).default(1).describe("How many words the span covers."),
+    to_verse: z.string().optional().describe("The other āyah. Leave out for a lead."),
+    to_word: z.number().int().min(1).optional(),
+    to_words: z.number().int().min(1).default(1),
+    kind: LINK_KIND.default(""),
+    shares_kind: z.enum(["phrase", "pair", "form", "lemma", "root"]).optional()
+      .describe("What the two places share, as find_links names it."),
+    shares_key: z.string().optional().describe("That marker's `key` from find_links, copied verbatim."),
+    shares_text: z.string().optional().describe("That marker's `text` from find_links."),
+    group: z.string().default("").describe("A group name, when this belongs with other links of one image or theme."),
+    note: z.string().describe("What ties the two places, in plain language."),
+  },
+  run: async (state, a) => {
+    const from = guard.verseKey(a.from_verse);
+    const note = guard.requireText(a.note, "note");
+    await mustBeSpan(state, from, a.from_word, a.from_words ?? 1, "from");
+    let b: Record<string, unknown> | null = null;
+    if (a.to_verse) {
+      const to = guard.verseKey(a.to_verse);
+      const word = a.to_word ?? 1;
+      await mustBeSpan(state, to, word, a.to_words ?? 1, "to");
+      if (to === from && word === a.from_word) throw new WriteRefused("A link needs two different places.");
+      b = { verseKey: to, word, words: a.to_words ?? 1 };
+    }
+    const saved = await state.research.saveLink({
+      id: proposalId("link"),
+      a: { verseKey: from, word: a.from_word, words: a.from_words ?? 1 }, b,
+      kind: a.kind ?? "",
+      marker: a.shares_key ? { kind: a.shares_kind ?? "form", key: a.shares_key, text: a.shares_text ?? a.shares_key } : null,
+      label: (a.group ?? "").trim(), note, source: AI_SOURCE,
+    });
+    return {
+      proposed: true, id: saved.id, status: saved.status, awaiting_review: true,
+      ...(b ? {} : { note: "Saved as a lead: the other end is still to find." }),
+    };
+  },
+};
+
+const propose_speaker: Tool = {
+  name: "propose_speaker",
+  title: "Propose who speaks in part of an āyah (proposal)",
+  description:
+    "Tag a run of words in an āyah with who speaks them and to whom. The corpus does not say " +
+    "who speaks; this is a reading, saved as a PROPOSAL the reader accepts or dismisses. Use " +
+    "the names the reader already uses (my_links with the āyah or sūrah shows them). Where " +
+    "the speaker is disputed or not stated in the text, say so in the note.",
+  writes: true,
+  schema: {
+    verse_key: z.string(),
+    from_word: z.number().int().min(1).default(1),
+    words: z.number().int().min(1).optional().describe("How many words. Leave out for: to the end of the āyah."),
+    speaker: z.string().default(""),
+    addressee: z.string().default(""),
+    also_hears: z.string().default("").describe("Who else hears it, when the passage shows someone does."),
+    speaker_is: z.enum(["", "stated", "inferred"]).default("")
+      .describe('"stated" when the text itself names the speaker, "inferred" when it is read from the passage.'),
+    note: z.string().default(""),
+  },
+  run: async (state, a) => {
+    const verseKey = guard.verseKey(a.verse_key);
+    const speaker = (a.speaker ?? "").trim();
+    const addressee = (a.addressee ?? "").trim();
+    if (!speaker && !addressee) throw new WriteRefused("Give a speaker or an addressee.");
+    await mustBeSpan(state, verseKey, a.from_word ?? 1, a.words ?? 1, "span");
+    const saved = await state.research.saveSpeech({
+      id: proposalId("speech"), verseKey, word: a.from_word ?? 1, words: a.words ?? null,
+      speaker, addressee, listeners: (a.also_hears ?? "").trim(), basis: a.speaker_is ?? "",
+      note: a.note ?? "", source: AI_SOURCE,
+    });
+    return { proposed: true, id: saved.id, awaiting_review: true };
+  },
+};
+
+/** Every place in a list must be a real word span; āyāt are looked up once each. */
+async function mustBePlaces(state: any, places: { verse_key: string; word: number; words?: number }[]): Promise<void> {
+  const counts = new Map<string, number>();
+  for (const p of places) {
+    const key = guard.verseKey(p.verse_key);
+    if (!counts.has(key)) counts.set(key, ((await state.content.verseWords(key)) as any[]).filter((w) => w.arabic).length);
+    const count = counts.get(key)!;
+    if (count === 0) throw new WriteRefused(`${key} is not an āyah in the Book.`);
+    const last = p.word + (p.words ?? 1) - 1;
+    if (last > count) throw new WriteRefused(`${key} has ${count} words, so word ${last} is not in it.`);
+  }
+}
+
+const my_rule_checks: Tool = {
+  name: "my_rule_checks",
+  title: "The rules the reader is checking against the Book",
+  description:
+    "The reader's rule checks: a rule they stated, what they say would prove it wrong, and what " +
+    "it covers. With no rule_id: every rule and its tally (fits, exception, unsure, and how many " +
+    "suggestions wait). With a rule_id: that rule and every mark on it. The marks cover only the " +
+    "places looked at so far: hand the rule's `covers` to list_occurrences to get EVERY place it " +
+    "applies to, and compare. One real exception breaks a rule, so the unmarked places matter most.",
+  schema: {
+    rule_id: z.string().optional(),
+    mark: z.enum(["fits", "exception", "unsure"]).optional().describe("With a rule_id: only the places marked this way."),
+  },
+  run: async (state, a) => {
+    if (!a.rule_id) {
+      const rules = ((await state.research.listRules()) as any[]).map(ruleSummary);
+      return { total: rules.length, rules };
+    }
+    const rule = (await state.research.getRule(a.rule_id)) as any;
+    if (!rule) return { error: `No rule with id ${a.rule_id}.`, hint: "my_rule_checks with no rule_id lists them." };
+    const marks = ((rule.marks ?? []) as any[]).filter((m) => !a.mark || m.mark === a.mark)
+      .map((m) => ({ verse_key: m.verseKey, word: m.word, mark: m.mark, note: m.note || null, by: m.source === "ai" ? "suggested" : "reader" }));
+    return { ...ruleSummary(rule), marks };
+  },
+};
+
+const suggest_rule_marks: Tool = {
+  name: "suggest_rule_marks",
+  title: "Suggest how places stand against one of the reader's rules (suggestions)",
+  description:
+    "For a rule the reader is checking, suggest for each place whether it FITS the rule, is an " +
+    "EXCEPTION to it, or you are UNSURE. Saved as SUGGESTIONS the reader accepts or dismisses; " +
+    "they do not count until then, and a place the reader has already marked is left alone. Take " +
+    "the places from list_occurrences with the rule's `covers` (use its verse_key and word), and " +
+    "read each āyah before marking it. Look hardest for exceptions: the reader gains most from a " +
+    "counter-example. Give a note for every exception and every unsure, quoting what in the āyah " +
+    "makes it so. Do not mark a place you have not read.",
+  writes: true,
+  schema: {
+    rule_id: z.string(),
+    marks: z.array(z.object({
+      verse_key: z.string(),
+      word: z.number().int().min(1).describe("The word the occurrence starts at, as list_occurrences gives it."),
+      mark: z.enum(["fits", "exception", "unsure"]),
+      note: z.string().default(""),
+    })).min(1).max(200),
+  },
+  run: async (state, a) => {
+    const rule = (await state.research.getRule(a.rule_id)) as any;
+    if (!rule) throw new WriteRefused(`No rule with id ${a.rule_id}. my_rule_checks lists the reader's rules; only the reader can state one.`);
+    for (const m of a.marks as any[]) {
+      if (m.mark !== "fits" && !String(m.note ?? "").trim()) {
+        throw new WriteRefused(`${m.verse_key} word ${m.word}: an exception or an unsure needs a note saying what in the āyah makes it so.`);
+      }
+    }
+    await mustBePlaces(state, a.marks);
+    const marks = (a.marks as any[]).map((m) => ({ verseKey: guard.verseKey(m.verse_key), word: m.word, mark: m.mark, note: m.note ?? "" }));
+    const { saved } = await state.research.suggestRuleMarks(rule.id, marks);
+    return {
+      suggested: saved, awaiting_review: true,
+      ...(saved < marks.length ? { left_alone: marks.length - saved, note: "The reader had already marked those places; their marks stand." } : {}),
+    };
+  },
+};
+
+const my_characters: Tool = {
+  name: "my_characters",
+  title: "The characters the reader has named, and what points to each",
+  description:
+    "The reader's characters: someone they named, the names and titles they filed under them, " +
+    "and how many places are established or still potential. With a character_id: every mention " +
+    "(a name, title, description or pronoun at a place), optionally only one āyah or sūrah. A " +
+    "mention is POTENTIAL until the reader establishes it; treat only established ones as the " +
+    "reader's reading. Read this before proposing mentions, and use the reader's own names.",
+  schema: {
+    character_id: z.string().optional(),
+    verse_key: z.string().optional(),
+    chapter: z.number().int().min(1).max(114).optional(),
+    status: z.enum(["potential", "established"]).optional(),
+  },
+  run: async (state, a) => {
+    if (!a.character_id) {
+      const characters = ((await state.research.listCharacters()) as any[]).map((c) => ({
+        id: c.id, name: c.name, note: c.note || null,
+        names_and_titles: ((c.designations ?? []) as any[]).map((d) => ({ as: d.as, text: d.text, covers: { kind: d.kind, key: d.key } })),
+        mentions: c.counts,
+      }));
+      return { total: characters.length, characters };
+    }
+    const c = (await state.research.getCharacter(a.character_id)) as any;
+    if (!c) return { error: `No character with id ${a.character_id}.`, hint: "my_characters with no character_id lists them." };
+    const mentions = ((await state.research.listMentions({
+      character: c.id, verse: a.verse_key, chapter: a.chapter, status: a.status,
+    })) as any[]).map(mentionSummary);
+    return { id: c.id, name: c.name, note: c.note || null, mentions_total: c.counts, shown: mentions.length, mentions };
+  },
+};
+
+const propose_mentions: Tool = {
+  name: "propose_mentions",
+  title: "Propose places that point to one of the reader's characters (potential)",
+  description:
+    "File places under a character the reader has named: where a name, a title, a description " +
+    "or a pronoun points to them. Each is saved as POTENTIAL; only the reader can establish it. " +
+    "A place already filed under that character is left as it is. Use find_pronouns for the " +
+    "pronouns of an āyah and list_occurrences for every place a name occurs. A word can carry " +
+    "two pronouns (خَلَقْنَـٰكُمْ): for a pronoun, pass its part as find_pronouns numbers it. For a pronoun or a " +
+    "description, say in the note what in the passage points to this character. You cannot " +
+    "create a character: if the reader has not named one, tell them and let them add it.",
+  writes: true,
+  schema: {
+    character_id: z.string().describe("From my_characters."),
+    kind: z.enum(["name", "title", "description", "pronoun"]),
+    filed_under: z.string().default("").describe("The name or title as the reader filed it (my_characters shows them); empty for a pronoun."),
+    places: z.array(z.object({
+      verse_key: z.string(),
+      word: z.number().int().min(1),
+      words: z.number().int().min(1).default(1),
+      part: z.number().int().min(0).max(20).default(0)
+        .describe("For a pronoun: which pronoun of the word, as find_pronouns numbers it (1, 2 …). 0 = the word itself (a name, a title)."),
+      note: z.string().default(""),
+    })).min(1).max(300),
+  },
+  run: async (state, a) => {
+    const c = (await state.research.getCharacter(a.character_id)) as any;
+    if (!c) throw new WriteRefused(`No character with id ${a.character_id}. my_characters lists them; only the reader can add one.`);
+    if (a.kind === "pronoun" || a.kind === "description") {
+      const bare = (a.places as any[]).find((p) => !String(p.note ?? "").trim());
+      if (bare) throw new WriteRefused(`${bare.verse_key} word ${bare.word}: a ${a.kind} needs a note saying what in the passage points to ${c.name}.`);
+    }
+    if (a.kind === "pronoun") {
+      const whole = (a.places as any[]).find((p) => !p.part);
+      if (whole) throw new WriteRefused(`${whole.verse_key} word ${whole.word}: say which pronoun of the word you mean (part, from find_pronouns).`);
+    }
+    await mustBePlaces(state, a.places);
+    const mentions = (a.places as any[]).map((p) => ({
+      characterId: c.id, verseKey: guard.verseKey(p.verse_key), word: p.word, words: p.words ?? 1, part: p.part ?? 0,
+      kind: a.kind, designation: (a.filed_under ?? "").trim(), note: p.note ?? "",
+    }));
+    const { saved } = await state.research.addMentions(mentions);
+    return {
+      proposed: saved, status: "potential", character: c.name,
+      ...(saved < mentions.length ? { left_alone: mentions.length - saved, note: "Those places were already filed under this character." } : {}),
+    };
   },
 };
 
@@ -691,13 +1283,16 @@ const add_evidence: Tool = {
   title: "Pin āyāt to a case (writes)",
   description:
     "Add āyāt as evidence cards. Optionally anchor a card to one word. Cards are placed on " +
-    "the board for you. Duplicates of an āyah already on the board are skipped.",
+    "the board for you. Duplicates of an āyah already on the board are skipped. An āyah that " +
+    "stands AGAINST what the case is arriving at belongs on the board too: pin it with " +
+    'stance "against". Looking for those is part of the work, and one of them outweighs many for.',
   writes: true,
   schema: {
     case_id: z.string(),
     ayat: z.array(z.object({
       verse_key: z.string(),
       word_position: z.number().int().min(1).optional(),
+      stance: z.enum(["for", "against"]).default("for").describe("Does this āyah support what the case is arriving at, or stand against it?"),
     })).min(1).max(40),
     expect_version: VERSION,
   },
@@ -721,9 +1316,10 @@ const add_evidence: Tool = {
       const card = {
         id: proposalId("card"), verseKey: vk, wordPosition: item.word_position ?? null,
         ...at, source: AI_SOURCE,
+        ...(item.stance === "against" ? { stance: "against" as const } : {}),
       };
       next.cards.push(card);
-      added.push({ id: card.id, verse_key: vk });
+      added.push({ id: card.id, verse_key: vk, ...(item.stance === "against" ? { stance: "against" } : {}) });
     }
     const saved = await saveGuarded(state, c, next);
     return { added, skipped, updated_at: saved.updatedAt };
@@ -735,7 +1331,9 @@ const add_slip: Tool = {
   title: "Add an observation or a citation to a case (writes)",
   description:
     "Put your own reasoning on the board as a comment slip, or a cited source as a reference " +
-    "slip (with source + locator). Attach it to one derived form, or to the root itself.",
+    "slip (with source + locator, and source_kind: a dictionary, a tafsīr, a narration, a story " +
+    "from outside the Book). The reader sees a tally of what their reading rests on, so say " +
+    "honestly what kind of work you are citing. Attach it to one derived form, or to the root itself.",
   writes: true,
   schema: {
     case_id: z.string(),
@@ -744,6 +1342,8 @@ const add_slip: Tool = {
     form: z.string().nullable().default(null).describe("The lemma this concerns, or null for the root."),
     source: z.string().default("").describe("Reference slips: e.g. \"Lisān al-ʿArab\"."),
     locator: z.string().default("").describe("Reference slips: e.g. \"under ر-ح-م\", \"vol 8 p. 2925\"."),
+    source_kind: z.enum(["lexicon", "tafsir", "narration", "story", "other"]).optional()
+      .describe("Reference slips: what kind of work the source is. A dictionary is 'lexicon'; a report about the Prophet or the companions is 'narration'; a story the Book does not itself tell is 'story'."),
     expect_version: VERSION,
   },
   run: async (state, a) => {
@@ -758,6 +1358,7 @@ const add_slip: Tool = {
     const slip = {
       id: proposalId("slip"), kind: a.kind, form: a.form ?? null, text,
       source: a.source || undefined, locator: a.locator || undefined,
+      sourceKind: a.kind === "reference" ? a.source_kind : undefined,
       ...at, author: AI_SOURCE,
     };
     next.slips.push(slip);
@@ -882,7 +1483,9 @@ const propose_conclusion: Tool = {
   description:
     "State what you think the case has shown — either the case verdict, or one form's " +
     "meaning. This is PARKED for the reader: it does not set the verdict, close the case, " +
-    "or mark any form established. Only the reader applies a conclusion.",
+    "or mark any form established. Only the reader applies a conclusion. A conclusion " +
+    "should rest on at least two separate āyāt: the answer's `rests_on_ayahs` says how many " +
+    "the case has pinned, and one āyah is a lead to pursue, not a finding.",
   writes: true,
   schema: {
     case_id: z.string(),
@@ -908,9 +1511,25 @@ const propose_conclusion: Tool = {
     };
     const entries = [...((c.proposals?.entries ?? []) as any[]), entry];
     const saved = await saveGuarded(state, c, { ...c, proposals: { entries } });
+    // two cards on one āyah are one āyah: what counts is how many separate places it stands on
+    // (an āyah pinned as standing AGAINST the case is counted apart, never as support)
+    const cards = (c.cards ?? []) as { verseKey: string; stance?: string }[];
+    const ayahs = new Set(cards.filter((card) => card.stance !== "against").map((card) => card.verseKey)).size;
+    const against = new Set(cards.filter((card) => card.stance === "against").map((card) => card.verseKey)).size;
+    // what else the case leans on: cited works, by the kind each reference slip names
+    const cited: Record<string, number> = {};
+    for (const s of (c.slips ?? []) as { kind?: string; sourceKind?: string }[]) {
+      if (s.kind !== "reference") continue;
+      const k = s.sourceKind ?? "kind_not_said";
+      cited[k] = (cited[k] ?? 0) + 1;
+    }
     return {
       proposed: true, id: entry.id, updated_at: saved.updatedAt,
       applied: false, awaiting_review: true,
+      rests_on_ayahs: ayahs,
+      ...(Object.keys(cited).length ? { rests_on_cited_works: cited, cited_works_note: "The reader sees this tally on the case. Tell them plainly which part of the conclusion comes from the āyāt and which from a cited work." } : {}),
+      ...(against > 0 ? { ayahs_against: against, against_note: "The case holds āyāt pinned as standing against it. Say in your reasoning how the conclusion answers each, or tell the reader it does not." } : {}),
+      ...(ayahs < 2 ? { caution: "This case has fewer than two separate āyāt pinned. Tell the reader the conclusion rests on a single lead, and look for a second, independent āyah (find_links, trace_word)." } : {}),
       note: "Parked for the reader. The case's verdict, status and established forms are unchanged.",
     };
   },
@@ -1004,7 +1623,8 @@ const remove_root_from_motif: Tool = {
 
 export const TOOLS: Tool[] = [
   study_root, read_ayah, find_where_roots_meet, trace_word, search_quran, compare_forms,
-  my_research_on, list_motifs, ...thin, add_note, propose_indication,
+  my_research_on, my_links, my_rule_checks, my_characters, list_motifs, ...thin, add_note, propose_link, propose_speaker,
+  suggest_rule_marks, propose_mentions, propose_indication,
   propose_motif, add_root_to_motif, remove_root_from_motif,
   // the Investigate board
   list_cases, read_case, open_case, add_evidence, add_slip, link_evidence, group_evidence,

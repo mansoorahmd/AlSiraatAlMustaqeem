@@ -140,6 +140,76 @@
       "section": "money",
       "text": "Done. (1) Moderators and maintainers pass every plan gate, whatever tier their account holds; learner rungs still need the plan. One check, in canRead. The older requirePlan guard, unused since plan features, is removed. (2) Removed: GET /pull with pull.ts and its diagnose CLI, POST /me/local-id and users.local_id, the sync_cursors table (migration 0015), and the root .env.example for the archived Python pipeline. Left alone: research.db in the repo root, which is not empty (7 cases, 56 notes, 58 trails, 250 indications) and is yours to keep or bin. Server tests 253/253.",
       "status": "done"
+    },
+    {
+      "ts": "2026-11-20T12:00:00Z",
+      "author": "Maintainer",
+      "section": "roadmap",
+      "text": "From a lecture on hyperlinks in the Qur'an: build the assistive tools (links per āyah with rarity, rare links, grammar search, saved links, highlighter, defined-at, image groups, speaker tags, evidence counter, coverage map, leads, the same for the MCP). Conclusions stay with the reader. The āyah lens is hidden and hard to use: make it friendly, and make the whole app easy to navigate.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-11-20T12:00:01Z",
+      "author": "Claude",
+      "section": "roadmap",
+      "text": "Built, with two Opus agents working in parallel. Links button and panel on every āyah (rarest first; widespread markers counted, not listed), Rare links, Search by grammar, saved links and leads with a highlighter and a defined-at pointer, groups, speaker tags, My links with a coverage map, the evidence count on meanings and verdicts, and six MCP tools. Search is a top-level tab and every screen is named in the Study menu and the palette. Checked: typecheck clean, corpus code 160/160, server 270/270, Postgres identical to quran.db over 3,239 requests, and the new screens looked at in a signed-in browser window. Open: the reviewer of a published reading does not yet see the evidence count; the reader's mark row is still mostly glyphs; nothing is committed or deployed yet.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-11-20T19:00:00Z",
+      "author": "Maintainer",
+      "section": "roadmap",
+      "text": "From a lecture on who is a scholar (falsifiability, the Book as a closed text): build the assistive tools it suggests. Characters should be things, with names, titles and pronouns pointing to them as potential or established. The app is a prototype: change the interaction and the reader where it makes things easier. Build all, then we evaluate.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-11-20T19:00:01Z",
+      "author": "Claude",
+      "section": "roadmap",
+      "text": "Built all eleven: rule checks, Spellings, evidence against, Dialogue, speech openers, characters and mentions, What differs, more grammar filters, the pronoun walk, tensions, the wording check. Migration 0017; ten new MCP tools; the Links panel as four tabs; the Study menu in two columns. Also fixed: a refresh no longer creeps upward, and lens jumps leave a way back. Awaiting the maintainer's evaluation; not committed or deployed.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-11-21T09:00:00Z",
+      "author": "Maintainer",
+      "section": "roadmap",
+      "text": "Build the fixes for the gaps of the checking tools and the six tools suggested by the lecture on what an interpreter needs (yt218).",
+      "status": "done"
+    },
+    {
+      "ts": "2026-11-21T15:00:00Z",
+      "author": "Maintainer",
+      "section": "reader",
+      "text": "Tag it in the reader takes me out of Dialogue with no way back. Either tag there, or give a way back wherever a jump is made, so we always return to where we started.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-11-21T16:00:00Z",
+      "author": "Maintainer",
+      "section": "corpus",
+      "text": "ٱمْرَأَتُ ٱلْعَزِيزِ: the word is also written with ة, but it is not listed in Spellings.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-11-21T17:00:00Z",
+      "author": "Claude",
+      "section": "roadmap",
+      "text": "Built all of it (migration 0018). Dialogue tags in place; every jump into the reader leaves Back to …, with the screen kept alive behind it. Spellings: ة turned ت by a pronoun is no longer a spelling and indefiniteness no longer splits a feminine noun, so ٱمْرَأَتُ shows its seven places and رَحْمَت its seven; 33 groups that existed only because of a pronoun are gone. Known: the corpus tags جَنَّتُ in 56:89 as a plural, so it is not set beside جَنَّة. Not committed or deployed.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-11-21T19:00:00Z",
+      "author": "Maintainer",
+      "section": "corpus",
+      "text": "Spellings: a rule from the ة row lists 4 places while the row says 17. كِتَٰب is listed as two cards. Also sort alphabetically in Arabic.",
+      "status": "done"
+    },
+    {
+      "ts": "2026-11-21T20:00:00Z",
+      "author": "Claude",
+      "section": "corpus",
+      "text": "A word is one entry (180 became 173; كِتَٰب 237 and 4). Where a word is written both ة and ت, its pronoun-carrying words are shown apart and counted with neither (ٱمْرَأَت: ت 7, ة 4, with a pronoun 13). A rule from a spelling lists exactly the entry's places, tested for every spelling. Order by most places or by the alphabet.",
+      "status": "done"
     }
   ]
 }

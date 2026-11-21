@@ -14,7 +14,7 @@ import { useMe } from "../hooks/useMe";
 export type PlanFeature =
   | "text" | "translations" | "search" | "roots" | "meanings" | "follow-root" | "follow-word"
   | "echoes" | "similar" | "spelling" | "wazn" | "linkages" | "lens" | "compare"
-  | "notes" | "indications" | "my-meanings" | "motifs"
+  | "notes" | "indications" | "my-meanings" | "motifs" | "links" | "speakers" | "rules" | "characters"
   | "cases" | "publish" | "community" | "divergences" | "ai";
 
 export interface FeatureInfo {

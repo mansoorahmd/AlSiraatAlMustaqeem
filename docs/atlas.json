@@ -109,10 +109,10 @@
     },
     "planFeatures": {
       "table": "resource_access (kind, key, min_plan). Kinds: 'feature', 'translation', 'lexicon' (migration 0013 replaced the single 'corpus' and 'community' rules). min_plan = a tier, 'free' (= any signed-in account), or NULL (= public, no sign-in). A missing feature rule reads as pro.",
-      "list": "23 features, defined in code (server/src/plan-features.ts) — a new one needs a line there and its routes in the maps; nothing in the database.",
+      "list": "27 features, defined in code (server/src/plan-features.ts) — a new one needs a line there and its routes in the maps; nothing in the database.",
       "groups": {
         "read (read-assist tools, default free)": "text, translations, search, roots, meanings, follow-root, follow-word, echoes, similar, spelling, wazn, linkages, lens, compare",
-        "interact (the reader's own study, default pro)": "notes, indications, my-meanings, motifs",
+        "interact (the reader's own study, default pro)": "notes, indications, my-meanings, motifs, links, speakers, rules, characters",
         "research (research & publication, default pro)": "cases, publish, community, divergences, ai"
       },
       "enforcement": {
@@ -343,6 +343,120 @@
       "path": "/health, /reset-password, /signed-in",
       "role": null,
       "note": "health check; the password-reset page; the magic-link landing page"
+    },
+    {
+      "method": "GET",
+      "path": "/corpus/verses/:key/links",
+      "role": "any (plan feature: lens)",
+      "note": "everything an āyah shares with the rest of the Book, rarest first: phrases, two-word pairs, written words, lemmas, roots, each with the number of āyāt that carry it; widespread markers counted only"
+    },
+    {
+      "method": "GET",
+      "path": "/corpus/links/exclusive",
+      "role": "any (plan feature: lens)",
+      "note": "every marker carried by exactly 2–5 āyāt (kind = root | lemma | form | phrase; cross, chapter, limit, offset)"
+    },
+    {
+      "method": "POST",
+      "path": "/corpus/construction-search",
+      "role": "any (plan feature: search)",
+      "note": "search by grammar: 1–4 word slots (written form, lemma, root, part of speech, prefix, verb features), adjacent or within a gap; GET /corpus/construction-presets lists the ready-made ones"
+    },
+    {
+      "method": "GET|PUT|DELETE",
+      "path": "/research/links",
+      "role": "any — your own (plan feature: links)",
+      "note": "saved links between two word spans, with kind, group label and note; one end only = a lead; /labels and /coverage summarise them"
+    },
+    {
+      "method": "GET|PUT|DELETE",
+      "path": "/research/speech",
+      "role": "any — your own (plan feature: speakers)",
+      "note": "who speaks in a span of an āyah and to whom, as the reader tags it; /speakers lists the names in use"
+    },
+    {
+      "method": "POST",
+      "path": "/corpus/occurrences",
+      "role": "any (plan feature: search)",
+      "note": "every place a marker (phrase, pair, written word, lemma, root), one written shape, one spelling of one word as Spellings counts it, or a grammar pattern occurs, complete and in Book order; keys may be a link marker's key or Arabic the reader typed"
+    },
+    {
+      "method": "GET",
+      "path": "/corpus/spellings",
+      "role": "any (plan feature: spelling)",
+      "note": "every word the Book writes in more than one way (173 words, and 13 more that differ only by a grammatical ending and are left out unless asked for), each word once, each spelling with its count and places, by kind of difference, by count or by the Arabic alphabet (sort=alpha); where the bare word is written both ة and ت, its pronoun-carrying words are counted with neither; /spellings/:key is one group with every place"
+    },
+    {
+      "method": "GET",
+      "path": "/corpus/chapters/:id/speech-openers",
+      "role": "any (plan feature: text)",
+      "note": "the words that introduce speech in a sūrah: every verb of ق و ل and of ن د و, the latter marked sure only where the corpus tags what follows; ?roots= adds the reader's own opener roots; where the speech ends is not guessed"
+    },
+    {
+      "method": "GET",
+      "path": "/corpus/verses/:key/pronouns",
+      "role": "any (plan feature: text)",
+      "note": "the pronouns of an āyah: separate, attached, and with verbs=1 the subject inside each verb; each has its number within its word (part), the same with or without verbs=1"
+    },
+    {
+      "method": "POST",
+      "path": "/corpus/wording-check",
+      "role": "any (plan feature: search)",
+      "note": "any Arabic text set against the Book word by word: as written, same letters, found once a prefix is set aside, or not found, with counts"
+    },
+    {
+      "method": "GET",
+      "path": "/corpus/diff",
+      "role": "any (plan feature: similar)",
+      "note": "two āyāt word against word: same, marks, spelling, changed, only in one"
+    },
+    {
+      "method": "GET|PUT|DELETE",
+      "path": "/research/rules",
+      "role": "any — your own (plan feature: rules)",
+      "note": "a rule the reader states, what would prove it wrong, and the scope it covers; /:id/marks marks places fits, exception or unsure (a token's marks wait as suggestions)"
+    },
+    {
+      "method": "GET|PUT|DELETE",
+      "path": "/research/characters",
+      "role": "any — your own (plan feature: characters)",
+      "note": "someone the reader names, with the names and titles filed under them"
+    },
+    {
+      "method": "GET|PUT|POST",
+      "path": "/research/mentions",
+      "role": "any — your own (plan feature: characters)",
+      "note": "a place that points to a character (name, title, description or pronoun), potential until the reader establishes it; a place is a word and a part (0 = the word, 1, 2 … = that pronoun of it); a token's are always potential"
+    },
+    {
+      "method": "POST",
+      "path": "/corpus/spread",
+      "role": "any (plan feature: roots)",
+      "note": "where a set of roots occurs: places and āyāt for each of the 114 sūrahs and each of the 604 pages, zeros included, and the roots the Book does not have"
+    },
+    {
+      "method": "GET",
+      "path": "/corpus/supplications",
+      "role": "any (plan feature: search)",
+      "note": "every place the Lord is addressed with رَبَّنَا, رَبِّ or ٱللَّهُمَّ, found from the morphology (143 places in 132 āyāt); it lists where the address is written, not whether it is a supplication"
+    },
+    {
+      "method": "GET",
+      "path": "/corpus/chapters/:id/frame",
+      "role": "any (plan feature: compare)",
+      "note": "the roots the first n āyāt of a sūrah share with its last n (n 1 to 10, lowered so the ends never overlap), each with its places, how close the match is, and its count in the Book; rarest first"
+    },
+    {
+      "method": "GET|PUT|DELETE",
+      "path": "/research/revisions",
+      "role": "any — your own (plan features: cases, my-meanings, indications)",
+      "note": "the earlier texts the reader replaced (a form's meaning, a verdict, a root meaning, an indication); the store keeps them as those are saved; the reader reads them, says why, or removes one"
+    },
+    {
+      "method": "GET|PUT|POST",
+      "path": "/research/speech-skips",
+      "role": "any — your own (plan feature: speakers)",
+      "note": "a speech opener the reader set aside as 'no speech here'"
     }
   ],
   "phases": [
@@ -506,6 +620,24 @@
       "summary": "2026-11-20: canRead lets a moderator or maintainer through whatever their tier. The older requirePlan guard, unused since plan features, is removed, so there is one plan check."
     },
     {
+      "id": "links-tools",
+      "title": "Reading the Book through its own links",
+      "status": "done",
+      "summary": "2026-11-20: a labelled Links button on every āyah opens what it shares with the rest of the Book, rarest first (corpus-core/src/links.ts), and starts the āyah lens; Rare links lists every marker that exactly 2–5 āyāt share; Search by grammar finds āyāt built the same way (corpus-core/src/constructions.ts). The reader saves links, leads and speaker tags (migration 0016) and sees them in My links with a coverage map of the 114 sūrahs. Each meaning and verdict in a case shows how many separate āyāt it rests on. The MCP gained find_links, list_rare_links, find_construction, my_links, propose_link, propose_speaker. Search is a top-level tab; the Study menu and the palette name every screen. Not yet committed or deployed when this was written."
+    },
+    {
+      "id": "checking-tools",
+      "title": "Checking a reading against the whole Book",
+      "status": "done",
+      "summary": "2026-11-20: eleven tools that list every place and record what the reader decides. Rule checks (a rule, what would prove it wrong, every place it covers marked fits, exception or unsure). Characters (names, titles and pronouns filed at places, potential until established). The āyah's Links panel became four tabs: Links, Speakers, Characters, Pronouns. Dialogue shows a sūrah as a script and lists speech openers not yet tagged; a speaker tag also records who else hears and whether the text states the speaker. A link can be a tension, open until settled. A case card counts for or against the reading, and a case says what would prove it wrong. From the corpus: every occurrence of a marker, shape or pattern; Spellings (229 words written more than one way); two āyāt word against word; a wording check for any Arabic text; grammar search by participle, verbal noun, verb form, attached pronoun, noun number and gender. Migration 0017. The MCP gained list_occurrences, list_spellings, find_speech_openers, find_pronouns, check_wording, compare_ayat, my_rule_checks, suggest_rule_marks, my_characters, propose_mentions. The Study menu is two columns: In the Book, Your study. A refresh keeps the reading place (#/read/19:47). Not yet committed or deployed when this was written."
+    },
+    {
+      "id": "rests-on",
+      "title": "What a reading rests on, and the gaps of the checking tools",
+      "status": "done",
+      "summary": "2026-11-21: six tools from a lecture on what an interpreter needs, and the gaps left by the checking tools. A reference slip says what kind of work it cites, and a case shows one line counting its āyāt, the reader's observations and each kind of cited work. The root page shows the Book's use first, then the reader's meaning, then the dictionaries with author and date. Earlier versions: a replaced verdict, established meaning, root meaning or indication is kept with its date and the reader's reason (migration 0018, which also gives a mention a part and adds set-aside openers). Motif spread by sūrah and page; Supplications; Opening and close of a sūrah. Fixes: Check as a rule from Spellings, a root's page, a word's menu and grammar search; a character and a rule have an address; rare-link phrases list the same places as a rule (464 of 6,151 differed, now none); every verb of ن د و is a speech opener, a call where the text shows no speech, with No speech here and the reader's own opener roots; the two pronouns of one word are two places; spelling kinds are named and grammar endings kept apart; ة turned ت by an attached pronoun is no longer a spelling, so ٱمْرَأَتُ shows its seven places. Dialogue tags an opener in place. A jump into the reader from a Study screen, Search or a case leaves Back to …, and the screen left stays alive behind the reader. The top bar is two rows on a narrow screen. The MCP gained root_spread, find_supplications and surah_frame. Not yet committed or deployed when this was written."
+    },
+    {
       "id": "next",
       "title": "Billing provider",
       "status": "todo",
@@ -619,6 +751,66 @@
       "id": "docs-as-context",
       "decision": "The repo's markdown is a clean, current working context, not a record of how things were built.",
       "why": "The maintainer, 2026-11-20: design, build-plan and migration docs were describing a system that no longer exists. Finished history belongs in git; a stale doc is merged or deleted rather than marked 'history'."
+    },
+    {
+      "id": "tools-find-reader-decides",
+      "decision": "The link tools only find and count. They never state what a link means or who a character is.",
+      "why": "The maintainer, 2026-11-20, after a lecture on reading the Qur'an through its internal cross-references: conclusions are subjective and are the reader's to argue in a case; the app and the assistant assist. So a link carries a count of the āyāt that share it, widespread markers are counted but not listed, and the evidence count reminds without blocking."
+    },
+    {
+      "id": "links-and-speakers-are-research",
+      "decision": "A saved link, a lead and a speaker tag are the reader's own research records, not corpus data.",
+      "why": "Which two places belong together, and who is speaking, are readings. They live in the account under row-level security (research.links, research.speech), an assistant may only propose them, and they get their own plan features (links, speakers)."
+    },
+    {
+      "id": "lens-reached-from-the-ayah",
+      "decision": "The āyah lens is started from a labelled Links button on every āyah, not only from the reader's menu.",
+      "why": "The maintainer found the lens hidden and hard to use. The panel that lists an āyah's links is where a reader decides to follow it, so the lens starts there with one sentence saying what it does."
+    },
+    {
+      "id": "characters-potential-established",
+      "decision": "Who a name, title or pronoun points to is recorded as a mention of a character the reader created, potential until the reader establishes it.",
+      "why": "The maintainer, 2026-11-20: characters should exist as things, with pronouns and titles pointing to them as potential or established, the words the app already uses for meanings. The app never says who is who; an assistant can only file potential mentions."
+    },
+    {
+      "id": "rules-are-checked-not-proved",
+      "decision": "A rule check lists every place the rule covers and records the reader's mark on each; it never says the rule holds.",
+      "why": "From a lecture on who a scholar is (falsifiability): the Book is a closed text, so every place can be looked at and one exception breaks a rule. The tool makes the counter-example findable and unmissable; the judgment on each place stays the reader's, and an assistant's marks wait as suggestions."
+    },
+    {
+      "id": "corpus-lists-research-decides",
+      "decision": "The corpus answers 'where does this occur'; the research records 'what the reader decided there'. A rule's and a character's scope is a corpus query, not a stored list of places.",
+      "why": "Keeps the corpus read-only and the same for everyone, and keeps a rule or a name honest: the places are always the Book's full list, so nothing unmarked can be forgotten."
+    },
+    {
+      "id": "prototype-ui-may-change",
+      "decision": "While the app is a prototype, the reader and its panels may be reshaped for ease, not only added to.",
+      "why": "The maintainer, 2026-11-20. Applied at once: the Links panel became tabs, and the Study menu two grouped columns."
+    },
+    {
+      "id": "revisions-kept-by-the-server",
+      "decision": "The earlier text of a verdict, an established meaning, a root meaning or an indication is kept by the server when it is replaced, only if it had stood for ten minutes, and at most once per edit.",
+      "why": "The app saves while the reader types, so the client cannot say what an earlier version is; without the ten-minute rule every keystroke would be one. The reader may add why they changed it, or remove an entry. An assistant can read them and change none."
+    },
+    {
+      "id": "sources-are-counted-not-judged",
+      "decision": "A case counts what it rests on (āyāt for and against, the reader's observations, and cited works by kind) and shows the count; it never ranks or warns.",
+      "why": "From a lecture on what an interpreter needs: know what is the Book and what is a later source. The reader sees how much of a reading stands on the Book itself; whether that is enough is theirs to say."
+    },
+    {
+      "id": "script-rules-are-not-spellings",
+      "decision": "A letter that the script changes because something is attached is not a spelling variant: a hamza's seat, and ة written ت before a pronoun. A difference only in a grammatical ending is kept apart from spellings.",
+      "why": "The maintainer, 2026-11-21: ٱمْرَأَتُ ٱلْعَزِيزِ was missing from Spellings. It was hidden because words were compared only in the same state, while pronoun-carrying words (ٱمْرَأَتُهُ) were counted as the ت spelling. Now the ت spelling is the seven places written with nothing attached. Later the same day: where the bare word is written both ways, the pronoun-carrying words are counted with neither spelling (ٱمْرَأَت: ت 7, ة 4, with a pronoun 13), so a spelling's count is the places it was written by choice."
+    },
+    {
+      "id": "always-a-way-back",
+      "decision": "Any jump from a screen into the reader leaves a way back to that screen, at the place that was left; the screen stays alive behind the reader.",
+      "why": "The maintainer, 2026-11-21: Tag it in the reader took them out of Dialogue with no way back. Tagging also became possible in place."
+    },
+    {
+      "id": "a-spelling-row-is-its-rule",
+      "decision": "A word is one entry in Spellings, and a rule started from one of its spellings lists exactly the places that entry counts.",
+      "why": "The maintainer, 2026-11-21: كِتَٰب stood as two cards (with ٱل, without), and a rule from a card listed other places than the card (145 of 390 rows differed: the rule matched any word written with those letters, إِنَّ 2,145 for a row of 1). Inflections of one word that write the stem alike are now joined (180 entries became 173), and the rule's scope names the entry and the spelling."
     }
   ],
   "fileMap": [
@@ -668,7 +860,7 @@
     },
     {
       "path": "server/src/plan-features.ts",
-      "purpose": "the 23 plan features and their groups; which feature a /corpus route or a research write uses"
+      "purpose": "the 27 plan features and their groups; which feature a /corpus route or a research write uses"
     },
     {
       "path": "server/src/resource-access.ts",
@@ -785,6 +977,78 @@
     {
       "path": "deploy/{docker-compose.yml,Caddyfile,web.Dockerfile,entrypoint.sh,update.sh,backup.sh}",
       "purpose": "the VPS deployment: Postgres + server + Caddy (which carries the built web app); updating; nightly dumps"
+    },
+    {
+      "path": "corpus-core/src/links.ts",
+      "purpose": "the link index: for an āyah, every phrase, pair, written word, lemma and root it shares, with the number of āyāt carrying each; and the markers carried by exactly 2–5 āyāt"
+    },
+    {
+      "path": "corpus-core/src/constructions.ts",
+      "purpose": "search by grammar: word slots matched on form, lemma, root, part of speech, prefix and verb features; the ready-made presets"
+    },
+    {
+      "path": "server/migrations/0016_links_speech.sql",
+      "purpose": "research.links and research.speech under row-level security; seeds the plan features links and speakers"
+    },
+    {
+      "path": "app/src/components/reader/LinksPanel.tsx, LinkForms.tsx",
+      "purpose": "the Links panel under an āyah: saved links and leads, what the āyah shares (rarest first), who speaks here, use as lens"
+    },
+    {
+      "path": "app/src/screens/RareLinks.tsx, MyLinks.tsx, GrammarSearch.tsx",
+      "purpose": "Rare links (shared by exactly 2–5 āyāt); My links (links, leads, groups, coverage, speakers); the By grammar mode of Search"
+    },
+    {
+      "path": "app/src/components/case/EvidenceCount.tsx",
+      "purpose": "the line that says how many separate āyāt a meaning or verdict rests on"
+    },
+    {
+      "path": "corpus-core/src/occurrences.ts, voices.ts, wording.ts",
+      "purpose": "every occurrence of a marker, shape or pattern; speech openers and pronouns; the wording check; two āyāt word against word (routes/tools.ts)"
+    },
+    {
+      "path": "server/migrations/0017_rules_characters.sql",
+      "purpose": "research.rules, rule_marks, characters, mentions under row-level security; listeners and basis on speech; resolved and resolution on links; seeds the plan features rules and characters"
+    },
+    {
+      "path": "app/src/screens/RuleChecks.tsx, Characters.tsx, Dialogue.tsx, Spellings.tsx, WordingCheck.tsx",
+      "purpose": "Rule checks; Characters; Dialogue (a sūrah as a script); Spellings; the Check wording mode of Search"
+    },
+    {
+      "path": "app/src/components/research/places.tsx, app/src/lib/ruleHandoff.ts",
+      "purpose": "shared pieces for lists of places (scope labels, a place's lit line, the in-page confirm); handing a scope from the Links panel to a new rule"
+    },
+    {
+      "path": "app/src/components/reader/AyahDiff.tsx",
+      "purpose": "What differs: two āyāt word against word, inside compare here"
+    },
+    {
+      "path": "app/src/components/case/FalsifierField.tsx",
+      "purpose": "What would prove this wrong? on a case"
+    },
+    {
+      "path": "corpus-core/src/spread.ts, supplications.ts, frame.ts",
+      "purpose": "where roots occur by sūrah and page; where the Lord is addressed; the roots a sūrah's ends share (routes/tools.ts)"
+    },
+    {
+      "path": "server/migrations/0018_revisions_parts_skips.sql",
+      "purpose": "research.revisions (taking over from form_revisions), a part on mentions, research.speech_skips"
+    },
+    {
+      "path": "app/src/components/research/RevisionTrail.tsx, MotifSpread.tsx",
+      "purpose": "Earlier versions, used on dossiers, verdicts, root meanings and indications; a motif's spread by sūrah and page"
+    },
+    {
+      "path": "app/src/screens/Supplications.tsx, SurahFrame.tsx",
+      "purpose": "Supplications; Opening and close"
+    },
+    {
+      "path": "app/src/lib/searchHandoff.ts",
+      "purpose": "another screen asks Search to open in one mode (Supplications asks for Check wording)"
+    },
+    {
+      "path": "app/src/App.tsx (Screens)",
+      "purpose": "the showing screen and, behind the reader, the screen a jump was made from, kept alive for the way back"
     }
   ],
   "glossary": {
@@ -801,7 +1065,17 @@
     "dissent": "A recorded disagreement with a globally established reading, preserved not resolved.",
     "divergence (⚖)": "A form you established whose meaning differs from the group's. Computed live on the server ('Where I stand apart').",
     "audience": "Who may see a published result: at least a role and at least a plan. Proposed by the author, confirmed by the reviewer.",
-    "role ladder": "reader < student < researcher < scholar < moderator < maintainer — data the maintainer edits; the three fixed rungs carry the staff powers."
+    "role ladder": "reader < student < researcher < scholar < moderator < maintainer — data the maintainer edits; the three fixed rungs carry the staff powers.",
+    "link (marker)": "Something two or more āyāt share: a phrase of three or more words, two adjacent words, a written word, a dictionary form or a root. Its rarity is the number of āyāt that carry it; a marker in two āyāt ties exactly those two.",
+    "saved link / lead": "A link the reader keeps between two word spans, with what they share, a kind, a group name and a note. With only one end it is a lead: noticed, the other end still to find.",
+    "speaker tag": "The reader's record of who speaks in a span of an āyah and to whom. The corpus does not say, so it is research, not corpus data.",
+    "rule check": "A rule the reader states, what they say would prove it wrong, and a mark on each place it covers: fits, exception or not sure. The places come from the corpus, complete.",
+    "character / mention": "A character is someone the reader names. A mention points one place at a character as a name, title, description or pronoun; it is potential until the reader establishes it.",
+    "tension": "A saved link of the kind 'these two seem to disagree, to me'. Open until the reader settles it and says how.",
+    "speech opener": "A word that introduces speech (قال، قالوا، قل، نادى). The corpus finds them; who speaks is the reader's speaker tag.",
+    "earlier version": "A text the reader replaced (a verdict, an established meaning, a root meaning, an indication), kept with its date and, if they say, why they changed it.",
+    "rests on": "The count of what stands behind a case: āyāt for and against, the reader's observations, and cited works by kind (dictionary, tafsīr, narration, outside story).",
+    "part (of a mention)": "Which pronoun of a word a mention points at: 0 is the word itself, 1, 2 … the pronouns in the corpus's order."
   },
   "notice": "After migration 0013 the read-assist tools are free to any signed-in account, while the reader's own study (notes, indications, my meanings, motifs) and research & publication (cases, publish, community, divergences, the AI assistant) default to pro. Moderators and maintainers pass every plan gate, so staff never see those locks; grant plans to everyone else in Admin → People, or relax a rule in Admin → What each plan may use.",
   "openQuestions": [

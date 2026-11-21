@@ -3,7 +3,11 @@
 // MCP's own guard (mcp/src/core.ts, cases.ts), so the rules hold even if something calls the
 // API directly with a token:
 //
-//   • may ADD notes, indications (+ per-form refinements), motifs and cases — all tagged 'ai'
+//   • may ADD notes, indications (+ per-form refinements), motifs, cases, links and speaker
+//     tags — all tagged 'ai'
+//   • on the reader's rule checks may SUGGEST marks (they wait as suggestions and never replace
+//     the reader's own mark); on the reader's characters may file POTENTIAL mentions. It may not
+//     write a rule or a character, establish a mention, settle a tension, or remove any of these
 //   • may change only what it added itself; never edit or delete the reader's records
 //   • may never set a primary indication (the reader's default gloss)
 //   • on a case (even the reader's own) may add its OWN board items and park proposals, but the
@@ -57,6 +61,8 @@ export const aiBoundary: AiBoundary = {
       ...incoming,
       verdict: existing.verdict ?? "",
       status: existing.status ?? "open",
+      // what would prove the conclusion wrong is the reader's to say
+      falsifier: existing.falsifier,
       formResearch: existing.formResearch ?? {},
       ...(aiCase ? {} : { title: existing.title, subject: existing.subject, description: existing.description }),
       source: existing.source,

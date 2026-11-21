@@ -37,11 +37,16 @@ Use the tools extensively rather than internal memory. Capability → tool:
 - Exact written spelling (rasm) across the muṣḥaf, incl. rootless words → `trace_word` (`exact=true`), `get_spelling_variants`
 - Verse & phrase search, related-by-root ranking, multi-word co-occurrence → `search_quran`
 - Verbatim repeated phrases (echoes) → `get_echoes`; structurally similar āyāt → `get_similar_ayat`
+- Everything an āyah shares with the rest of the Book, rarest first (phrases, two-word pairs, written words incl. particles, lemmas, roots), each with the number of āyāt that carry it → `find_links`; every marker that only two (or 3–5) āyāt share → `list_rare_links`. These count shared wording; what a link means is the reader's to argue.
+- Every place a marker, a written shape or a grammar pattern occurs, complete and in Book order → `list_occurrences`; every word the Book writes in more than one way, with each spelling's count and places → `list_spellings`; two āyāt set word against word → `compare_ayat`; any Arabic wording set against the Book's vocabulary → `check_wording`
+- Where speech opens in a sūrah (قال، قالوا، قل …) → `find_speech_openers`; the pronouns of an āyah → `find_pronouns`. These only locate; who speaks, who hears, and whom a pronoun points to are readings, recorded with `propose_speaker` and `propose_mentions`
+- The reader's rule checks (a rule, what would prove it wrong, the places it covers, the marks so far) → `my_rule_checks`; suggest fits / exception / unsure for places you have read → `suggest_rule_marks`. The Book is a closed text: list every place, look for the counter-example first, and never mark a place you have not read
+- The reader's characters and what points to each (names, titles, descriptions, pronouns; potential or established) → `my_characters`; file more places as potential → `propose_mentions` (a pronoun by its `part`, the number `find_pronouns` gives it within its word). Only the reader names a character or establishes a mention
 - Roots that co-occur (semantic association) and the āyāt where two roots meet → `get_linkages`, `find_where_roots_meet`
 - What the reader has already established on a root/āyah → `my_research_on`
 - Record findings as proposals → `add_note` (note/question), `propose_indication` (root indication + per-form refinements)
 - The reader's investigations (the Investigate board) → `list_cases`, `read_case`
-- Build an investigation → `open_case`, `add_evidence` (pin āyāt), `add_slip` (your observation, or a citation with source + locator), `link_evidence` (labelled thread between two items), `group_evidence` (named cluster), `revise_own_item` (reword/remove **your own** item), `propose_conclusion` (a verdict or a form's meaning, parked for the reader)
+- Build an investigation → `open_case`, `add_evidence` (pin āyāt), `add_slip` (your observation, or a citation with source + locator + `source_kind`: a dictionary, a tafsīr, a narration, a story from outside the Book; the reader sees a tally of what their reading rests on), `link_evidence` (labelled thread between two items), `group_evidence` (named cluster), `revise_own_item` (reword/remove **your own** item), `propose_conclusion` (a verdict or a form's meaning, parked for the reader)
 
 ### Working on the board
 The board is where an investigation is assembled, so use it rather than only reporting in
@@ -158,7 +163,10 @@ Root → semantic field → lemma → lexical realization → form → specific 
 
 # 8. STEP SIX — QUR'AN DEFINES QUR'AN
 Search for passages that illuminate the word, in priority order:
-1. **Exact repetition** — the same word elsewhere (`trace_word exact=true`, `get_echoes`).
+1. **Exact repetition** — the same word elsewhere (`trace_word exact=true`, `get_echoes`). Start
+   with `find_links`: the fewer āyāt carry a marker, the tighter it ties them; a marker in
+   very many āyāt ties nothing. One āyah is a lead, not a finding: look for a second,
+   independent āyah before proposing anything.
 2. **Same root** — other forms (`compare_forms`).
 3. **Parallel syntax** — different words in the same structure (`get_similar_ayat`).
 4. **Parallel construction** — structurally similar relationships.

@@ -11,6 +11,17 @@ export interface McpResearch {
   listNotes(opts?: { verse?: string; root?: string; lemma?: string }): Promise<Doc[]>;
   getNote(id: string): Promise<Doc | undefined>;
   saveNote(doc: Doc): Promise<Doc>;
+  listLinks(opts?: { verse?: string; chapter?: number; status?: string; label?: string; kind?: string }): Promise<Doc[]>;
+  saveLink(doc: Doc): Promise<Doc>;
+  listSpeech(opts?: { verse?: string; chapter?: number; speaker?: string }): Promise<Doc[]>;
+  saveSpeech(doc: Doc): Promise<Doc>;
+  listRules(): Promise<Doc[]>;
+  getRule(id: string): Promise<Doc | undefined>;
+  suggestRuleMarks(id: string, marks: Doc[]): Promise<{ saved: number }>;
+  listCharacters(): Promise<Doc[]>;
+  getCharacter(id: string): Promise<Doc | undefined>;
+  listMentions(opts?: { verse?: string; chapter?: number; character?: string; status?: string }): Promise<Doc[]>;
+  addMentions(mentions: Doc[]): Promise<{ saved: number }>;
   listCases(): Promise<Doc[]>;
   getCase(id: string): Promise<Doc | undefined>;
   saveCase(doc: Doc): Promise<Doc>;
@@ -83,6 +94,17 @@ export function remoteResearch(base: string, token?: string, fetchImpl: Fetch = 
     listNotes: (o = {}) => get(`/notes${qs({ verse: o.verse, root: o.root, lemma: o.lemma })}`),
     getNote: (id) => orUndefined(get<Doc | null>(`/notes/${k(id)}`, null)),
     saveNote: (doc) => put(`/notes/${k(doc.id)}`, doc),
+    listLinks: (o = {}) => get(`/links${qs({ verse: o.verse, chapter: o.chapter ? String(o.chapter) : undefined, status: o.status, label: o.label, kind: o.kind })}`),
+    saveLink: (doc) => put(`/links/${k(doc.id)}`, doc),
+    listSpeech: (o = {}) => get(`/speech${qs({ verse: o.verse, chapter: o.chapter ? String(o.chapter) : undefined, speaker: o.speaker })}`),
+    saveSpeech: (doc) => put(`/speech/${k(doc.id)}`, doc),
+    listRules: () => get("/rules"),
+    getRule: (id) => orUndefined(get<Doc | null>(`/rules/${k(id)}`, null)),
+    suggestRuleMarks: (id, marks) => put(`/rules/${k(id)}/marks`, { marks }),
+    listCharacters: () => get("/characters"),
+    getCharacter: (id) => orUndefined(get<Doc | null>(`/characters/${k(id)}`, null)),
+    listMentions: (o = {}) => get(`/mentions${qs({ verse: o.verse, chapter: o.chapter ? String(o.chapter) : undefined, character: o.character, status: o.status })}`),
+    addMentions: (mentions) => put("/mentions", { mentions }),
     listCases: () => get("/cases"),
     getCase: (id) => orUndefined(get<Doc | null>(`/cases/${k(id)}`, null)),
     saveCase: (doc) => put(`/cases/${k(doc.id)}`, doc),

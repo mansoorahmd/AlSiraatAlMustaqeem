@@ -9,12 +9,16 @@ import { useAppState, useAppDispatch } from "../../state/store";
 import type { RootOccurrence, Word } from "../../api/types";
 import type { CaseRecord, NoteRecord } from "../../persistence/types";
 import {
-  withCardAdded, withCardRemoved, withAyahCardAdded, cardIdFor, normalizeCase,
+  withCardAdded, withCardRemoved, withAyahCardAdded, cardIdFor, normalizeCase, restsOn, restsOnLine,
 } from "../../cases/ops";
+import { RestsOnLine } from "./EvidenceCount";
+import { VerdictField } from "./VerdictField";
+import { revisionsMayHaveChanged } from "../research/RevisionTrail";
 import { EvidenceDrawer } from "./EvidenceDrawer";
 import { RelatedAyahsDrawer } from "./RelatedAyahsDrawer";
 import { FormDossier } from "./FormDossier";
 import { AyahDossier } from "./AyahDossier";
+import { FalsifierField } from "./FalsifierField";
 import { CaseBoard } from "./CaseBoard";
 import { WordMenu, type WordMenuTarget } from "../reader/WordMenu";
 import { SideSheet } from "../SideSheet";
@@ -66,11 +70,14 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
     });
   };
 
+  // the case as last sent to the server, to tell when a save replaced a verdict or a form's
+  // meaning (the server then keeps the earlier text, and the "Earlier versions" lists re-read)
+  const lastSaved = useRef<CaseRecord | null>(null);
   useEffect(() => {
     let cancelled = false;
     archive.cases.get(caseId).then((c) => {
       if (cancelled) return;
-      if (c) setCaseRec(normalizeCase(c));
+      if (c) { const n = normalizeCase(c); lastSaved.current = n; setCaseRec(n); }
       else setMissing(true);
     });
     return () => { cancelled = true; };
@@ -85,8 +92,14 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
   );
 
   const mutate = (next: CaseRecord) => {
+    const prev = lastSaved.current;
+    lastSaved.current = next;
     setCaseRec(next);
-    void archive.cases.save(next);
+    const replacedText = !prev || prev.verdict !== next.verdict ||
+      Object.keys({ ...prev.formResearch, ...next.formResearch }).some(
+        (k) => prev.formResearch[k]?.meaning !== next.formResearch[k]?.meaning,
+      );
+    void archive.cases.save(next).then(() => { if (replacedText) revisionsMayHaveChanged(); });
   };
 
   // accepting is the ONLY path from a proposal into the case's own conclusions —
@@ -207,6 +220,8 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
   for (const o of occs.data ?? []) byId.set(cardIdFor(o), o);
 
   const proposalCount = caseRec.proposals?.entries?.length ?? 0;
+  // what the whole case rests on, said in the case details
+  const caseRests = restsOn(caseRec, (id) => byId.get(id)?.lemma_arabic ?? null, "case");
 
   return (
     <div className={`case-canvas script-${reading.script}`}>
@@ -305,15 +320,16 @@ export function CaseDesk({ caseId, onBackToArchive }: Props) {
           />
         </div>
         <div className="sheet-field">
-          <label className="sheet-label">Verdict</label>
-          <textarea
-            className="board-input"
-            rows={3}
-            placeholder="your verdict — what did you conclude?"
-            value={caseRec.verdict ?? ""}
-            onChange={(e) => setCaseRec({ ...caseRec, verdict: e.target.value })}
-            onBlur={() => mutate(caseRec)}
-          />
+          <span className="sheet-label">What the case rests on</span>
+          {restsOnLine(caseRests)
+            ? <RestsOnLine rests={caseRests} />
+            : <p className="rests-on">Nothing pinned or written on the board yet.</p>}
+        </div>
+        <div className="sheet-field">
+          <VerdictField caseRec={caseRec} mutate={mutate} />
+        </div>
+        <div className="sheet-field">
+          <FalsifierField caseRec={caseRec} mutate={mutate} />
         </div>
         {proposalCount > 0 && (
           <section className="desk-proposals">

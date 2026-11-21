@@ -8,9 +8,9 @@ import { useFeature } from "../../lib/features";
 import { PlanLock } from "../PlanLock";
 import { archive, fetchFormStatus, type FormStatusRow } from "../../persistence/db";
 import { normalizeCase } from "../../cases/ops";
-import { useAppState, useAppDispatch } from "../../state/store";
+import { useAppState, useAppDispatch, SCREEN_LABEL } from "../../state/store";
 import type { Script, Word, Chapter } from "../../api/types";
-import type { NoteRecord } from "../../persistence/types";
+import type { NoteRecord, SavedLink } from "../../persistence/types";
 import { AyahBlock } from "./AyahBlock";
 import { WordMenu, type WordMenuTarget } from "./WordMenu";
 import { IndicationEditor } from "./IndicationEditor";
@@ -24,14 +24,17 @@ const SCRIPTS: { id: Script; label: string; fontClass: string }[] = [
   { id: "indopak", label: "ہندی", fontClass: "script-indopak" },
 ];
 
+/** How far below the top of the scrolling page the reading line sits, in pixels. */
+const READ_GAP = 40;
+
 interface Props {
   chapters: Chapter[];
   onBackToIndex: () => void;
 }
 
 export function Reader({ chapters, onBackToIndex }: Props) {
-  const { reading, activeTrailId, jumpToVerseKey, trailHighlight, echoHighlight, focusCaseId, focusAyahKey } =
-    useAppState();
+  const { reading, activeTrailId, jumpToVerseKey, jumpAlign, trailHighlight, echoHighlight, focusCaseId,
+    focusAyahKey, jumpBack, reopenLinksFor, returnTo } = useAppState();
   const dispatch = useAppDispatch();
   const { surahId, script, translationOn, myGlossOn, fontScale } = reading;
 
@@ -102,6 +105,25 @@ export function Reader({ chapters, onBackToIndex }: Props) {
   }, [notesAll.data]);
   const bumpNotes = useCallback(() => setNotesVersion((v) => v + 1), []);
 
+  // the reader's saved links (and leads) — loaded once, refreshed after an edit in a Links panel;
+  // each āyah gets the links with an end in it, so both ends stay marked while reading
+  const [linksVersion, setLinksVersion] = useState(0);
+  const linksAll = useAsync(() => archive.links.all(), [linksVersion]);
+  const linksMap = useMemo(() => {
+    const m = new Map<string, SavedLink[]>();
+    const add = (key: string, l: SavedLink) => {
+      const list = m.get(key);
+      if (!list) m.set(key, [l]);
+      else if (!list.includes(l)) list.push(l);
+    };
+    for (const l of linksAll.data ?? []) {
+      add(l.a.verseKey, l);
+      if (l.b) add(l.b.verseKey, l);
+    }
+    return m;
+  }, [linksAll.data]);
+  const bumpLinks = useCallback(() => setLinksVersion((v) => v + 1), []);
+
   // verbatim-echo marks: which ayahs in this surah carry a repeated phrase
   // a locked tool (lib/features.ts) isn't fetched at all: its marks simply don't appear
   const canEchoes = useFeature("echoes");
@@ -118,26 +140,39 @@ export function Reader({ chapters, onBackToIndex }: Props) {
     return m;
   }, [variantData.data]);
 
-  // remember the top-most ayah in view, so Home can "continue reading" there
+  // Remember the āyah being read, so Home can "continue reading" there and the address can name
+  // it. That is the first āyah still showing below the READING LINE: a line a little under the
+  // top of the scrolling page (under the lens banner when one is pinned there). A refresh or a
+  // return to the tab puts the remembered āyah back on that same line (see `land` below), so
+  // what is restored is what was recorded and the place does not creep.
   const lastSeen = useRef<string | null>(reading.lastVerseKey);
   const settle = useRef<number | null>(null);
+  const [topCover, setTopCover] = useState(0); // height of the pinned lens banner, 0 without one
+  const readLine = useRef(READ_GAP);
   useEffect(() => {
     if (!verses.data) return;
     const els = Array.from(
       document.querySelectorAll<HTMLElement>(".reader-sheet .ayah[data-key]"),
     );
     if (!els.length) return;
-    const tops = new Map<string, number>();
+    readLine.current = topCover + READ_GAP;
+    // document order decides, not a measured position: positions go stale while off-screen
+    // āyāt are still being laid out at their real height
+    const order = new Map(els.map((el, i) => [el.dataset.key!, i]));
+    const below = new Set<string>();
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
           const key = (e.target as HTMLElement).dataset.key!;
-          if (e.isIntersecting) tops.set(key, e.boundingClientRect.top);
-          else tops.delete(key);
+          if (e.isIntersecting) below.add(key);
+          else below.delete(key);
         }
         let best: string | null = null;
-        let bestTop = Infinity;
-        for (const [k, top] of tops) if (top < bestTop) { bestTop = top; best = k; }
+        let bestAt = Infinity;
+        for (const k of below) {
+          const at = order.get(k) ?? Infinity;
+          if (at < bestAt) { bestAt = at; best = k; }
+        }
         if (best && best !== lastSeen.current) {
           lastSeen.current = best;
           // Collapse bursts into one dispatch. Expanding a panel (echo compare,
@@ -151,8 +186,8 @@ export function Reader({ chapters, onBackToIndex }: Props) {
           }, 200);
         }
       },
-      // a thin band near the top of the page = "what I'm currently reading"
-      { rootMargin: "-8% 0px -82% 0px" },
+      // everything on the page from the reading line down
+      { root: els[0]!.closest(".main"), rootMargin: `-${readLine.current}px 0px 0px 0px` },
     );
     els.forEach((el) => io.observe(el));
     return () => {
@@ -160,7 +195,22 @@ export function Reader({ chapters, onBackToIndex }: Props) {
       if (settle.current !== null) window.clearTimeout(settle.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verses.data, surahId]);
+  }, [verses.data, surahId, topCover]);
+
+  // The āyah the reader is on. After a jump that is the āyah jumped to, shown mid-page, for as
+  // long as it is still on screen; otherwise the āyah on the reading line.
+  const landedOn = useRef<string | null>(null);
+  const whereIAm = (): string | null => {
+    const el = landedOn.current
+      ? document.querySelector<HTMLElement>(`.reader-sheet .ayah[data-key="${landedOn.current}"]`)
+      : null;
+    const page = el?.closest(".main");
+    if (el && page) {
+      const at = el.getBoundingClientRect().top, p = page.getBoundingClientRect();
+      if (at >= p.top && at < p.bottom) return landedOn.current;
+    }
+    return lastSeen.current;
+  };
 
   // scroll to a jumped-to verse once it is on the page
   const stopSettling = useRef<(() => void) | null>(null);
@@ -168,7 +218,19 @@ export function Reader({ chapters, onBackToIndex }: Props) {
     if (!jumpToVerseKey || !verses.data) return;
     const el = document.querySelector(`[data-key="${jumpToVerseKey}"]`);
     if (!el) return;
-    el.scrollIntoView({ block: "center" });
+    // A jump to somewhere new shows the āyah mid-page. A restore (refresh, back to the tab, an
+    // address typed in) puts it just on the reading line, where the address recorded it; the
+    // first āyah goes back to the top of the page, heading and all.
+    const restoring = jumpAlign === "top";
+    const firstAyah = jumpToVerseKey.endsWith(":1");
+    landedOn.current = restoring ? null : jumpToVerseKey;
+    const land = () => {
+      const page = el.closest<HTMLElement>(".main");
+      if (!restoring || !page) el.scrollIntoView({ block: "center" });
+      else if (firstAyah) page.scrollTop = 0;
+      else page.scrollTop += el.getBoundingClientRect().top - (page.getBoundingClientRect().top + readLine.current - 2);
+    };
+    land();
     // Āyāt off screen are laid out at an ESTIMATED height (content-visibility: auto,
     // styles.css), so that first scroll lands on a guess. As the āyāt around the target
     // render at their real height the target drifts — in a surah of short āyāt, clean off
@@ -186,7 +248,7 @@ export function Reader({ chapters, onBackToIndex }: Props) {
     const settle = () => {
       const now = el.getBoundingClientRect().top;
       if (Math.abs(now - top) > 1) {
-        el.scrollIntoView({ block: "center" });
+        land();
         top = el.getBoundingClientRect().top;
         still = 0;
       } else still++;
@@ -196,8 +258,11 @@ export function Reader({ chapters, onBackToIndex }: Props) {
     inputs.forEach((t) => window.addEventListener(t, stop, { passive: true }));
     raf = requestAnimationFrame(settle);
     stopSettling.current = stop;
-    el.classList.add("flash");
-    window.setTimeout(() => el.classList.remove("flash"), 1800);
+    // the flash says "here is where you landed"; coming back to your own place needs none
+    if (!restoring) {
+      el.classList.add("flash");
+      window.setTimeout(() => el.classList.remove("flash"), 1800);
+    }
     dispatch({ type: "clearJump" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jumpToVerseKey, verses.data]);
@@ -273,18 +338,43 @@ export function Reader({ chapters, onBackToIndex }: Props) {
   const baseText =
     baseVerse.data && typeof baseVerse.data.text === "string" ? baseVerse.data.text : "";
 
+  // the pinned lens banner covers the top of the page, so the reading line sits under it
+  const lensPinned = focusSpec !== null;
+  useEffect(() => {
+    const banner = document.querySelector<HTMLElement>(".reader .focus-banner");
+    if (!banner) { setTopCover(0); return; }
+    const ro = new ResizeObserver(() => setTopCover(banner.offsetHeight));
+    ro.observe(banner);
+    return () => ro.disconnect();
+  }, [lensPinned]);
+
+  // Walking the lens leaves a way back to where the walk began: the āyah that was being read
+  // when the first step was taken. Every step names that same āyah, so it is kept once. A new
+  // walk begins after going back, or with another lens.
+  const lensOrigin = useRef<string | null>(null);
+  const backDepth = useRef(jumpBack.length);
+  useEffect(() => {
+    if (jumpBack.length < backDepth.current) lensOrigin.current = null;
+    backDepth.current = jumpBack.length;
+  }, [jumpBack.length]);
+  useEffect(() => { lensOrigin.current = null; }, [focusCaseId, focusAyahKey]);
+  const lensJump = (verseKey: string) => {
+    lensOrigin.current ??= whereIAm();
+    dispatch({ type: "jumpToVerse", verseKey, from: lensOrigin.current ?? undefined });
+  };
+
   const stepFocus = (dir: 1 | -1) => {
     if (!focusSpec || focusSpec.jumpKeys.length === 0) return;
     const n = focusSpec.jumpKeys.length;
     const i = (focusIdx + dir + n) % n;
     setFocusIdx(i);
-    dispatch({ type: "jumpToVerse", verseKey: focusSpec.jumpKeys[i] });
+    lensJump(focusSpec.jumpKeys[i]);
   };
   const jumpToFocus = (key: string) => {
     if (!focusSpec) return;
     const i = focusSpec.jumpKeys.indexOf(key);
     if (i >= 0) setFocusIdx(i);
-    dispatch({ type: "jumpToVerse", verseKey: key });
+    lensJump(key);
     setMapOpen(false);
   };
   useEffect(() => { setMapOpen(false); }, [focusCaseId, focusAyahKey]);
@@ -333,7 +423,8 @@ export function Reader({ chapters, onBackToIndex }: Props) {
       <div className="reader-fab" ref={navRef}>
         <button
           className="fab-btn"
-          title="Navigate"
+          title="Go to a surah or āyah, or set the āyah lens"
+          aria-label={navOpen ? "Close navigation" : "Go to a surah or āyah, or set the āyah lens"}
           onClick={() => setNavOpen((o) => !o)}
           aria-expanded={navOpen}
         >
@@ -386,7 +477,8 @@ export function Reader({ chapters, onBackToIndex }: Props) {
 
             {chapter && (
               <label className="fab-ayah">
-                <span className="ctl-hint">focus an ayah (lens){!canLens && <> <PlanLock feature="lens" /></>}</span>
+                <span className="fab-section">Āyah lens{!canLens && <> <PlanLock feature="lens" /></>}</span>
+                <span className="ctl-hint">use an āyah (or press Links on any āyah)</span>
                 <select
                   disabled={!canLens}
                   className="ayah-jump"
@@ -396,23 +488,23 @@ export function Reader({ chapters, onBackToIndex }: Props) {
                     if (e.target.value) setNavOpen(false);
                   }}
                 >
-                  <option value="">none</option>
+                  <option value="">no lens</option>
                   {Array.from({ length: chapter.verses_count }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={`${surahId}:${n}`}>ayah {n}</option>
+                    <option key={n} value={`${surahId}:${n}`}>āyah {surahId}:{n}</option>
                   ))}
                 </select>
               </label>
             )}
 
             <label className="fab-ayah">
-              <span className="ctl-hint">focus case (lens){!canLens && <> <PlanLock feature="lens" /></>}</span>
+              <span className="ctl-hint">or one of your cases</span>
               <select
                 disabled={!canLens}
                 className="ayah-jump"
                 value={focusCaseId ?? ""}
                 onChange={(e) => dispatch({ type: "setFocusCase", caseId: e.target.value || null })}
               >
-                <option value="">none</option>
+                <option value="">no lens</option>
                 {(allCases.data ?? [])
                   .filter((c) => c.subject.type === "root" || c.subject.type === "ayah")
                   .map((c) => (
@@ -427,26 +519,39 @@ export function Reader({ chapters, onBackToIndex }: Props) {
       {focusSpec && (
         <div className="focus-banner">
          <div className="fb-row">
-          <span className="fb-eye">🔎 Focus</span>
+          <span className="fb-eye">{focusSpec.kind === "ayah" ? "Āyah lens" : "Root lens"}</span>
           <span className="fb-label">
             {focusSpec.kind === "ayah"
-              ? `ayah ${focusSpec.base.label}${surahName(focusSpec.base.label) ? ` · ${surahName(focusSpec.base.label)}` : ""}`
+              ? `${focusSpec.base.label}${surahName(focusSpec.base.label) ? ` · ${surahName(focusSpec.base.label)}` : ""}`
               : focusSpec.label}
           </span>
           {focusSpec.jumpKeys.length > 0 && (
             <span className="fb-step">
-              <button className="ctl" onClick={() => stepFocus(-1)} title="Previous match">‹</button>
-              <span className="fb-count">{focusIdx + 1} / {focusSpec.jumpKeys.length}</span>
-              <button className="ctl" onClick={() => stepFocus(1)} title="Next match">›</button>
+              <button
+                className="ctl"
+                onClick={() => stepFocus(-1)}
+                title="Previous related āyah"
+                aria-label="Previous related āyah"
+              >‹</button>
+              <span className="fb-count">
+                {focusIdx + 1} of {focusSpec.jumpKeys.length}
+                {focusSpec.kind === "ayah" ? " related, closest first" : ""}
+              </span>
+              <button
+                className="ctl"
+                onClick={() => stepFocus(1)}
+                title="Next related āyah"
+                aria-label="Next related āyah"
+              >›</button>
             </span>
           )}
           {focusSpec.kind === "ayah" && focusSpec.jumpKeys.length > 0 && (
             <button
               className="fb-order"
-              title="Open the connections map — jump to any linked ayah"
+              title="See every related āyah, grouped by sūrah, and jump to any of them"
               onClick={() => setMapOpen(true)}
             >
-              ⊞ closest first · map
+              Map of related āyāt
             </button>
           )}
           <span className="fb-legend">
@@ -455,15 +560,19 @@ export function Reader({ chapters, onBackToIndex }: Props) {
             {focusSpec.patternKeys.size > 0 && <span className="lg lg-pattern">similar structure</span>}
           </span>
           <span className="spacer" />
-          <button className="ctl" onClick={() => dispatch({ type: "setFocusCase", caseId: null })}>✕ clear</button>
+          <button
+            className="ctl"
+            title="Stop using the lens"
+            onClick={() => dispatch({ type: "setFocusCase", caseId: null })}
+          >✕ Close lens</button>
          </div>
          {focusSpec.kind === "ayah" && baseText && (
            <button
              className={`fb-base-verse ${scriptDef.fontClass}`}
-             title="Jump back to the ayah you're comparing against"
-             onClick={() => dispatch({ type: "jumpToVerse", verseKey: focusSpec.base.label })}
+             title="Go back to the lens āyah"
+             onClick={() => lensJump(focusSpec.base.label)}
            >
-             <span className="fb-base-tag">comparing against</span>
+             <span className="fb-base-tag">lens āyah</span>
              <span className="fb-base-text quran" dir="rtl">{baseText}</span>
            </button>
          )}
@@ -532,10 +641,54 @@ export function Reader({ chapters, onBackToIndex }: Props) {
                 ? { start: echoHighlight.start, end: echoHighlight.end }
                 : null
             }
+            savedLinks={linksMap.get(v.verse_key) ?? null}
+            onLinksChanged={bumpLinks}
+            openLinks={reopenLinksFor === v.verse_key}
             onWordTap={onWordTap}
           />
         ))}
       </div>
+
+      {/* the ways back: to the screen the reader was reached from, and to the āyah a jump was made from */}
+      {(jumpBack.length > 0 || returnTo) && (
+        <div className="reader-back" role="status">
+          {returnTo && (
+            <>
+              <button
+                className="ctl reader-back-go"
+                title={`Go back to ${SCREEN_LABEL[returnTo.tab]}, where you were`}
+                onClick={() => dispatch({ type: "returnToOrigin" })}
+              >
+                <span aria-hidden>←</span> Back to {SCREEN_LABEL[returnTo.tab]}
+              </button>
+              <button
+                className="ctl reader-back-x"
+                title="Dismiss"
+                aria-label={`Dismiss the way back to ${SCREEN_LABEL[returnTo.tab]}`}
+                onClick={() => dispatch({ type: "clearReturn" })}
+              >✕</button>
+            </>
+          )}
+          {jumpBack.length > 0 && (
+            <>
+          <button
+            className="ctl reader-back-go"
+            title="Go back to the āyah you were reading before you jumped"
+            onClick={() => dispatch({ type: "jumpBack" })}
+          >
+            <span aria-hidden>←</span> Back to {jumpBack[jumpBack.length - 1]!.verseKey}
+            {surahName(jumpBack[jumpBack.length - 1]!.verseKey) ? ` · ${surahName(jumpBack[jumpBack.length - 1]!.verseKey)}` : ""}
+          </button>
+          <button
+            className="ctl reader-back-x"
+            title="Dismiss"
+            aria-label="Dismiss the way back"
+            onClick={() => dispatch({ type: "clearJumpBack" })}
+          >✕</button>
+            </>
+          )}
+        </div>
+      )}
 
       {mapOpen && focusSpec && (
         <FocusMap

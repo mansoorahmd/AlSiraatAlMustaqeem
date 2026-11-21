@@ -17,6 +17,9 @@ import { contentRoutes } from "../../../corpus-core/src/routes/content.js";
 import { rootRoutes } from "../../../corpus-core/src/routes/roots.js";
 import { similarityRoutes } from "../../../corpus-core/src/routes/similarity.js";
 import { echoRoutes } from "../../../corpus-core/src/routes/echoes.js";
+import { linkRoutes } from "../../../corpus-core/src/routes/links.js";
+import { constructionRoutes } from "../../../corpus-core/src/routes/constructions.js";
+import { toolRoutes } from "../../../corpus-core/src/routes/tools.js";
 import { corpusRoutes as versionRoutes } from "../../../corpus-core/src/routes/corpus.js";
 
 /**
@@ -47,6 +50,9 @@ export function corpusApp(svc: CorpusServices, access?: SqlRunner): Hono<Env> {
   app.route("/", rootRoutes(svc, ent));
   app.route("/", similarityRoutes(svc));
   app.route("/", echoRoutes(svc));
+  app.route("/", linkRoutes(svc));
+  app.route("/", constructionRoutes(svc));
+  app.route("/", toolRoutes(svc));
   app.route("/", versionRoutes(svc));
   return app;
 }

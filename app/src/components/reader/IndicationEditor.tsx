@@ -18,6 +18,7 @@ import { proposals, readingHash, type Refinement } from "../../persistence/db";
 import { tokenizeVerse } from "./format";
 import { useFeature } from "../../lib/features";
 import { PlanLock } from "../PlanLock";
+import { RevisionTrail, revisionsMayHaveChanged } from "../research/RevisionTrail";
 
 /** the first occurrence of a form, for the click-to-peek */
 interface Occ { ref: string | null; text: string | null; pos: number | null }
@@ -503,8 +504,11 @@ function IndicationForms({
   const [meaning, setMeaning] = useState(indication.meaning);
   useEffect(() => { setLabel(indication.label); setMeaning(indication.meaning); }, [indication.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const saveIndication = async () => {
+    // a blur with nothing changed is not a save (and must not look like one to the revision trail)
+    if (label.trim() === indication.label && meaning.trim() === indication.meaning) return;
     await archive.indications.save({ id: indication.id, root: indication.root, label: label.trim(), meaning: meaning.trim(), primary: indication.primary });
     onChanged();
+    revisionsMayHaveChanged(); // the server may now keep the text this replaced
   };
 
   // this indication's per-form refinements. `lemma` may hold a SURFACE form (new) or, for
@@ -602,6 +606,7 @@ function IndicationForms({
             )}
           </div>
         )}
+        <RevisionTrail kind="indication" target={indication.id} feature="indications" />
       </div>
 
       {proposing && indication.root && (

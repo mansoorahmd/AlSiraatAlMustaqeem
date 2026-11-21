@@ -16,6 +16,9 @@ import { contentRoutes } from "../src/routes/content.js";
 import { rootRoutes } from "../src/routes/roots.js";
 import { similarityRoutes } from "../src/routes/similarity.js";
 import { echoRoutes } from "../src/routes/echoes.js";
+import { linkRoutes } from "../src/routes/links.js";
+import { constructionRoutes } from "../src/routes/constructions.js";
+import { toolRoutes } from "../src/routes/tools.js";
 import { mcpTestState } from "./mcp-state.js";
 import { localReads, remoteReads, CorpusAccessError } from "../../mcp/src/corpus-client.js";
 import { TOOLS } from "../../mcp/src/tools.js";
@@ -28,7 +31,7 @@ beforeAll(async () => {
   const corpus = new Hono();
   corpus.onError((err, c) => err instanceof HttpError
     ? c.json({ detail: err.message }, err.status as 400) : c.json({ detail: String(err) }, 500));
-  for (const r of [contentRoutes(svc), rootRoutes(svc), similarityRoutes(svc), echoRoutes(svc)]) corpus.route("/", r);
+  for (const r of [contentRoutes(svc), rootRoutes(svc), similarityRoutes(svc), echoRoutes(svc), linkRoutes(svc), constructionRoutes(svc), toolRoutes(svc)]) corpus.route("/", r);
   const app = new Hono().route("/corpus", corpus);
 
   // an empty account's research, the same for both (study_root and read_ayah show the reader's own)
@@ -61,9 +64,50 @@ const CASES: [string, Record<string, unknown>][] = [
   ["get_linkages", { root: "hdy", scope: "ayah", limit: 5 }],
   ["get_linkages", { root: "hdy", scope: "adjacent", limit: 5 }],
   ["get_echoes", { verse_key: "1:1" }],
+  ["find_links", { verse_key: "19:47", max_ayahs: 20 }],
+  ["find_links", { verse_key: "55:13", max_ayahs: 40 }],
+  ["find_links", { verse_key: "999:1", max_ayahs: 20 }],
+  ["list_rare_links", { kind: "lemma", ayahs: 2, different_surahs: true, chapter: 12, limit: 20, offset: 0 }],
+  ["list_rare_links", { kind: "phrase", ayahs: 3, different_surahs: false, limit: 5, offset: 5 }],
   ["get_wazn", { verse_key: "2:2", word_position: 2 }],
+  ["find_construction", { preset: "oath-ta", at_start: false, limit: 50, offset: 0 }],
+  ["find_construction", { preset: "sawfa-verb", at_start: false, limit: 5, offset: 10 }],
+  ["find_construction", { slots: [{ form: "إذ" }], at_start: true, limit: 5, offset: 0 }],
+  ["find_construction", { slots: [{ form: "لم" }, { verb: { mood: "JUS" }, gap: 2 }], at_start: false, limit: 5, offset: 0 }],
+  ["find_construction", { slots: [{ pos: "nope" }], at_start: false, limit: 5, offset: 0 }],
   ["get_spelling_variants", { verse_key: "1:1", word_position: 3 }],
   ["get_similar_ayat", { verse_key: "1:1", limit: 5 }],
+  ["find_construction", { preset: "rabbana-opening", at_start: false, limit: 5, offset: 0 }],
+  ["find_construction", { slots: [{ derivation: "PASS_PCPL", verbForm: "I", noun: { number: "P" } }], at_start: false, limit: 5, offset: 0 }],
+  ["find_construction", { slots: [{ lemma: "رَبّ", suffix: "any" }], at_start: true, limit: 5, offset: 0 }],
+  ["list_occurrences", { kind: "pair", key: "قال سلم", limit: 200, offset: 0 }],
+  ["list_occurrences", { kind: "root", key: "ق و ل", limit: 5, offset: 3 }],
+  ["list_occurrences", { kind: "spelling", key: "إِبْرَٰهِـۧمَ", limit: 200, offset: 0 }],
+  ["list_occurrences", { kind: "construction", key: "x", query: { slots: [{ derivation: "VN" }] }, limit: 5, offset: 0 }],
+  ["list_occurrences", { kind: "root", key: "", limit: 5, offset: 0 }],
+  ["list_occurrences", { kind: "spelling", key: "3:35:3|ٱمْرَأَتُ", limit: 200, offset: 0 }],
+  ["list_spellings", { kind: "ta", limit: 3, offset: 0 }],
+  ["list_spellings", { sort: "alpha", limit: 5, offset: 0 }],
+  ["list_spellings", { q: "ابراهيم", limit: 3, offset: 0 }],
+  ["list_spellings", { group: "2:124:3", limit: 3, offset: 0 }],
+  ["list_spellings", { group: "9:9:99", limit: 3, offset: 0 }],
+  ["list_spellings", { kind: "ending", limit: 5, offset: 0 }],
+  ["find_speech_openers", { chapter: 20 }],
+  ["find_speech_openers", { chapter: 11, extra_roots: ["د ع و", "زززز"] }],
+  ["find_pronouns", { verse_key: "7:11", verbs: false }],
+  ["find_pronouns", { verse_key: "1:7", verbs: true }],
+  ["find_pronouns", { verse_key: "999:1", verbs: false }],
+  ["check_wording", { text: "بِسْمِ ٱللَّهِ الرحمن وكتابهم زرقطون" }],
+  ["check_wording", { text: "قال ".repeat(201) }],
+  ["compare_ayat", { a: "2:35", b: "7:19" }],
+  ["compare_ayat", { a: "2:35", b: "999:1" }],
+  ["root_spread", { roots: ["ص ب ر", "Slw", "زززز"] }],
+  ["root_spread", { roots: ["قول"], compact: true }],
+  ["find_supplications", {}],
+  ["find_supplications", { opening: "allahumma" }],
+  ["surah_frame", { chapter: 2 }],
+  ["surah_frame", { chapter: 103, n: 10 }],
+  ["surah_frame", { chapter: 115 }],
 ];
 
 describe("the MCP's corpus tools answer the same over HTTP as locally", () => {

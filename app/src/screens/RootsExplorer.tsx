@@ -1,7 +1,7 @@
 // The Roots Explorer — every root in the Book, orderable rarest → most common,
 // with its occurrence count, form count, and core meaning. The rarest roots are
-// where the most distinctive language lives, so "unique first" is the default.
-// Click a root to jump to its first occurrence in the reader.
+// where the most distinctive language lives, so "rarest first" is the default.
+// Click a root to open its page (RootDetail).
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
@@ -67,7 +67,7 @@ export function RootsExplorer() {
         <h1>The Roots</h1>
         <p className="subtitle">
           Every trilateral and quadrilateral root in the Book — the rarest carry the most distinctive
-          meaning. Tap one to read where it first appears.
+          meaning. Choose one to open its page: its words, where they occur, and what the dictionaries say.
         </p>
       </header>
 
@@ -78,19 +78,27 @@ export function RootsExplorer() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <button className="ctl" onClick={() => setKbOpen((o) => !o)} title="Arabic keyboard">⌨</button>
+        <button
+          className="ctl"
+          onClick={() => setKbOpen((o) => !o)}
+          title="Arabic keyboard"
+          aria-label="Arabic keyboard"
+          aria-pressed={kbOpen}
+        ><span aria-hidden="true">⌨</span> Keyboard</button>
         <div className="roots-order">
           <button
             className={`ctl${rarestFirst ? " active" : ""}`}
+            aria-pressed={rarestFirst}
             onClick={() => setRarestFirst(true)}
           >
-            unique first
+            rarest first
           </button>
           <button
             className={`ctl${!rarestFirst ? " active" : ""}`}
+            aria-pressed={!rarestFirst}
             onClick={() => setRarestFirst(false)}
           >
-            common first
+            most common first
           </button>
         </div>
       </div>

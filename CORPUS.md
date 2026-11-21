@@ -151,7 +151,8 @@ written once**, async, against a small interface — `CorpusDb {query, one, scal
 | `pgCorpus(runner)` | `server/src/corpus/pg-corpus.ts` (`?` → `$n`) | the research server's `/corpus` |
 
 `createCorpusServices(db)` (`corpus-core/src/corpus-services.ts`) builds all of them — content,
-roots, linkages, wazn, expressions, echoes, spellings, free-text, similarity, word forms. The route
+roots, linkages, wazn, expressions, echoes, links, constructions, spellings, free-text, similarity,
+word forms. The route
 builders in `corpus-core/src/routes/` take the services plus optional *entitlements* (translation
 and lexicon filters); the research server mounts them at `/corpus` (`server/src/corpus/serve.ts`)
 with the plan filters plugged in, and the tests mount the same builders over `quran.db`. Expensive
@@ -176,6 +177,32 @@ occurrences, linkages), root pairs, word occurrences, phrase / expression / free
 `-- --quick` samples ~3,000. `server/test/corpus-parity.test.ts` runs ~50 URLs on a fixture in CI,
 and `corpus-core/test/mcp-remote-corpus.test.ts` proves the MCP's tools answer identically over
 HTTP.
+
+### Study tools that find and count
+
+`corpus-core/src/routes/tools.ts`, over `occurrences.ts`, `spellings.ts`, `voices.ts`,
+`wording.ts`, `spread.ts`, `supplications.ts` and `frame.ts`; tests in
+`corpus-core/test/study-tools.test.ts`. None interprets.
+
+| Route | Answers |
+|---|---|
+| `POST /occurrences` `{kind, key, query?, limit?, offset?}` | every place a thing occurs, Book order, several per āyah where it recurs; `total` / `ayahs` are full counts, `places` capped at 6000 (`truncated`). Kinds: `phrase`, `pair`, `form`, `lemma`, `root` take a `LinkMarker.key` first, then typed Arabic (a form or lemma with or without marks, a root spaced, unspaced or in Buckwalter); `spelling` one rasm shape (the whole word or its stem written so, whatever the word), or `<group key>|<spelling>` (`3:35:3|ٱمْرَأَتُ`): one spelling of one word exactly as `GET /spellings` counts it, no place when the list has no such spelling; `construction` a grammar `query`. A pair key, or a Rare-links phrase key (n 2–5), answers from that marker's own āyāt (`LinkIndex.runPlaces`), so its count is the list's by construction; a Links-panel phrase whose key is also a Rare link's is counted the Rare link's way (first word with or without a leading و / ف) |
+| `GET /spellings?kind=&q=&sort=` · `GET /spellings/:key` | every word written more than one way (the ✍ grouping), most places first, or by the Arabic alphabet with `sort=alpha`. A word is one group: inflections that agree once case and definiteness are set aside (for a verb also person, gender, number and mood) and write the stem with the same letters somewhere are joined, so كِتَٰب is listed once with and without ٱل and قَالَ counts قَالُوا۟; tense, voice, verb form and a noun's number keep words apart. Each spelling is shown in the vocalisation most of its words carry; each spelling's count, āyāt and places (12 in the list, all in a group). `kinds` names where two spellings part by the letters only (ت/ة at the end, alif or small alif, ى/ي/small ي, ا or ى, و or ا, hamza seat, one ت or two, a letter doubled; آ against ا is a mark, named only alone) or `ending`: the shapes differ only in final long vowels that are the case ending of each shape's commonest case (و/وا nominative, ى/ي genitive or accusative, ا in a nominative dual or an accusative with tanwīn). Without `kind`, groups whose only kind is `ending` are left out and counted in `hidden`; their words are not ✍ variants (`/verses/:key/spelling`, `/chapters/:id/variants`). A feminine noun is one group whether or not it is indefinite, so ٱمْرَأَتُ (12:30) meets ٱمْرَأَةً (27:23). A ة that a pronoun turned into ت (ٱمْرَأَتُهُ, رَحْمَتِهِ) is the script's rule, not a spelling. Where the bare word is written both ة and ت, its pronoun-carrying words are counted with neither and returned as the group's `withPronoun` (ٱمْرَأَت: ت 7, ة 4, with a pronoun 13), and they carry no ✍ mark; where the bare word is only ever ة, such a word is read with ة and counted in that spelling's `attached`, so a difference elsewhere still shows (صَلَوٰة, صَلَاتِهِمْ). `ending` is strict about two cases: the ا of tanwīn only where every indefinite accusative has it and nothing else does, and ا beside ى only in a dual or where the ى keeps to its case (so the ا of هُدَاىَ is a spelling). Not grouped at all: a stem's ا / آ after the question ءَ (آللَّهُ, read as ٱللَّه), and verbs ending in weak letters with a different short vowel before them (يَبْلُوَ / يَبْلَىٰ, يَسْقِى / يُسْقَىٰ). A group's key is its first word, `chapter:verse:word` |
+| `GET /chapters/:id/speech-openers?roots=` | every verb of ق و ل (`sure: true`) and of ن د و (`sure` only where the corpus tags a vocative (VOC) or an explaining أَنْ (INT) after it before another verb). `roots` = up to 10 more roots, Arabic letters, comma-separated (422 beyond): their verbs come `added: true`, `sure` as for ن د و; unknown roots find nothing. Where speech ends is not guessed |
+| `GET /verses/:key/pronouns?verbs=1` | separate pronouns (PRON stems), attached ones (PRON suffixes, and a PRON stem after a preposition prefix), and with `verbs=1` each verb's person / number / gender (`type: "verb"`, `pronoun` empty). `part` numbers a word's pronouns from 1 in segment order, the verb's subject counted even when not returned, so it never shifts (mentions are stored by it) |
+| `POST /spread` `{roots}` | 1–60 roots (Arabic or Buckwalter; 422 otherwise): places (words) and āyāt per sūrah (all 114, with `verses`) and per page (`verses.page_number`, all 604), totals, `emptyChapters`, `emptyPages`, `unknown`. An āyah with two of the roots counts once |
+| `GET /supplications?opening=` | every رَبَّنَا (رَبّ + نَا, accusative, not after an ACC-tagged particle such as إِنَّ), رَبِّ (the ى of "my" not written) and ٱللَّهُمَّ (its own lemma), Book order; `openings` always counts all three. The morphology cannot tell an object from an address (25:21 is listed) |
+| `GET /chapters/:id/frame?n=` | the roots both in the first and the last `n` āyāt (1–10, default 3, lowered to half the sūrah); per root its places at each end, `level` (`form` = same rasm, `lemma`, `root`), `inBook` (words with the root); rarest first |
+| `POST /wording-check` `{text}` | up to 200 words (422 beyond): `written` (exact, vowels and all), `letters` (same letters, other vowels; also the long ā the Book writes with و, ٱلصَّلَوٰة for الصلاة), `stem` (after setting aside و ف, then ب ل ك س, then ال), `none` |
+| `GET /diff?a=&b=` | two āyāt aligned (longest common run of their folded words; the stretches between by least cost on lemma, root, part of speech); rows `same`, `marks`, `spelling`, `changed`, `only-a`, `only-b` |
+
+Construction search also takes `derivation` (`ACT_PCPL`, `PASS_PCPL`, `VN`: the corpus's own
+marks), `verbForm` (I–XII; the corpus writes no form for I, so a verb or derived noun with none
+is I), `suffix` (the attached pronoun's person-gender-number code, or `any`) and `noun`
+(`number`, `gender`; a noun with a gender and no number is singular, as the corpus leaves the
+singular unmarked). Text copied from the displayed āyah writes two things differently from the
+morphology (a hamza on a tatweel, the small high ي U+06E7); `asSegments` in `spellings.ts`
+reconciles them before any lookup.
 
 ---
 

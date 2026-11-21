@@ -43,12 +43,26 @@ const GET = [
   "/roots", "/roots?order_by=alpha&descending=false", "/roots?order_by=letters", "/roots?order_by=nope",
   "/roots/Hmd", "/roots/حمد", "/roots/Hmd/forms", "/roots/Hmd/occurrences", "/roots/Hmd/with/rHm",
   "/roots/Hmd/linkages", "/roots/Hmd/linkages?scope=adjacent&min_count=1", "/roots/nope",
-  "/verses/1:2/similar", "/verses/9:9/similar", "/corpus/version",
+  "/verses/1:2/similar", "/verses/9:9/similar", "/corpus/version", "/construction-presets",
+  "/spellings", "/spellings?kind=alif", "/spellings/1:1:1", "/chapters/1/speech-openers", "/chapters/0/speech-openers",
+  "/verses/1:2/pronouns?verbs=1", "/verses/1:7/pronouns", "/diff?a=1:2&b=1:3", "/diff?a=1:2&b=9:9",
+  "/spellings?kind=ending", `/chapters/1/speech-openers?roots=${encodeURIComponent("حمد,رحم")}`,
+  "/supplications", "/supplications?opening=rabbi", "/supplications?opening=nope",
+  "/chapters/1/frame", "/chapters/1/frame?n=1", "/chapters/1/frame?n=0", "/chapters/999/frame",
 ];
 const POST: [string, unknown][] = [
   ["/search", { text: "الحمد لله" }],
   ["/expression-search", { terms: [{ surface: "الحمد", root: "Hmd" }], mode: "roots" }],
   ["/expression-search", { terms: [{ surface: "الحمد" }], mode: "verbatim" }],
+  ["/construction-search", { slots: [{ form: "حمد" }] }],
+  ["/construction-search", { slots: [{ root: "حمد" }], atStart: true }],
+  ["/construction-search", { slots: [] }],
+  ["/occurrences", { kind: "root", key: "حمد" }],
+  ["/occurrences", { kind: "lemma", key: "رب" }],
+  ["/occurrences", { kind: "construction", key: "x", query: { slots: [{ derivation: "ACT_PCPL" }] } }],
+  ["/wording-check", { text: "الحمد لله رب العلمين" }],
+  ["/spread", { roots: ["حمد", "rHm", "زززز"] }],
+  ["/spread", { roots: [] }],
 ];
 
 async function both(path: string, init?: RequestInit): Promise<[string, string]> {

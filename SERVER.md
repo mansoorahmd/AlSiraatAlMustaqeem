@@ -23,7 +23,7 @@ say what you may use and read**, and every published result is seen only by its 
 - **Roles** — `src/roles.ts` (guards: `requireRole(min)`, `requireSession`; 401 unauthenticated,
   403 below the rung) and `src/role-ladder.ts` (the ladder as data, `requireFeature`, audiences).
   Hand-rolled, not a permissions library.
-- **Plans** — `src/plans.ts` (the tier ladder), `src/plan-features.ts` (the 23 plan features),
+- **Plans** — `src/plans.ts` (the tier ladder), `src/plan-features.ts` (the 27 plan features),
   `src/resource-access.ts` (the rules and their guards).
 - **Authentication** — `src/auth.ts`: Better Auth with email + password and the magic-link
   plugin, mapped onto our snake_case `users` table, year-long sessions.
@@ -232,17 +232,18 @@ while an account holds it or a rule needs it.
 | `translation` | resource id | that translation in any result | **left out** — the request still succeeds |
 | `lexicon` | source (`lanes_lexicon`, `lisan_ul_arab`, …) | that dictionary's entries on a root page | **left out** |
 
-The **23 plan features** are defined in code (`src/plan-features.ts`), in three groups, each with a
-default set by migration 0013:
+The **27 plan features** are defined in code (`src/plan-features.ts`), in three groups, each with a
+default set by migration 0013 (`links` and `speakers` by 0016, `rules` and `characters` by 0017):
 
 | Group | Features | Default |
 |---|---|---|
 | Read-assist tools | `text`, `translations`, `search`, `roots`, `meanings`, `follow-root`, `follow-word`, `echoes`, `similar`, `spelling`, `wazn`, `linkages`, `lens`, `compare` | `free` |
-| Interaction | `notes`, `indications`, `my-meanings`, `motifs` | `pro` |
+| Interaction | `notes`, `indications`, `my-meanings`, `motifs`, `links`, `speakers`, `rules`, `characters` | `pro` |
 | Research & publication | `cases`, `publish`, `community`, `divergences`, `ai` | `pro` |
 
 - Every `/corpus` route belongs to one feature (`featureForCorpus`) and answers 401 / 402 by its
-  rule. Meanings and translations ride inside other answers too, so a locked one is also filtered
+  rule. An āyah's links and the rare-links list (`/verses/:key/links`, `/links/exclusive`) belong
+  to `lens`; search by grammar (`/construction-search`, `/construction-presets`) to `search`. Meanings and translations ride inside other answers too, so a locked one is also filtered
   out of those (`src/corpus/serve.ts`).
 - Interaction and research features are the reader's own records. A locked one is **read-only**:
   what they made stays visible, but writes are refused (`featureForResearch` looks only at writes).
@@ -318,11 +319,73 @@ No query names a user: row-level security and the `user_id` default do that. Rec
 stamped with your account id as their author. `server/test/research-store.test.ts` covers what the
 research does, `research-cloud.test.ts` the privacy and the AI boundary.
 
+**Saved links and speaker tags** (migration 0016, `research.links` and `research.speech`).
+A saved link ties a run of words in one āyah to a run of words in another, with what they share
+(the marker it was saved from), a kind (`same-wording`, `defined`, `same-style`, `same-image`,
+`refers`, or empty), a note, and a free label that groups links. With only its first end it is a
+**lead**: noticed, the other end still to find. A speaker tag says who speaks in a span and to
+whom; the corpus does not say, so it is the reader's own reading and lives with their research.
+Routes: `/research/links` (filter by `verse`, `chapter`, `status`, `kind`, `label`,
+`marker_kind` + `marker_key`), `/research/links/labels`, `/research/links/coverage` (per sūrah,
+the āyāt that are an end of a kept link and those with only a lead), `/research/speech`,
+`/research/speech/speakers`. `server/test/links-speech.test.ts` covers them.
+
+**Rule checks, characters and mentions** (migration 0017). These record what the reader decides
+about places the corpus finds; the corpus lists the places (`POST /corpus/occurrences` with a
+scope: a marker, a written shape, or a grammar pattern), the research holds the decisions.
+
+- A **rule** (`research.rules`) is a statement in the reader's words, what would prove it wrong
+  (`falsifier`), and the scope it covers. A **mark** (`research.rule_marks`) says of one place
+  that it `fits`, is an `exception`, or is `unsure`. `GET /research/rules` lists rules with their
+  tally; `GET /research/rules/:id` adds every mark, in Book order; `PUT …/marks` marks up to 6,000
+  places at once; `POST …/marks/remove` and `POST …/marks/accept` take marks off and take AI
+  suggestions as the reader's own.
+- A **character** (`research.characters`) is someone the reader names, with the names and
+  titles filed under them (each a scope the corpus can list). A **mention**
+  (`research.mentions`) points one place at a character as a `name`, `title`, `description` or
+  `pronoun`, and is `potential` until the reader makes it `established`. There is one mention
+  per character per place. A place is a word and a `part`: 0 is the word itself, and 1, 2 … is
+  that pronoun of the word as the corpus numbers them (migration 0018), so the two pronouns of
+  خَلَقْنَـٰكُمْ are two places. Its id is `character|verse|word|part`. `PUT /research/mentions` files up
+  to 6,000 places at once (a place already filed keeps its status unless the reader asks for
+  `established`); `POST /research/mentions/status`, `/note` and `/remove` are the reader's.
+- The same migration gives a speaker tag `listeners` (who else hears) and `basis` (`stated` in
+  the text, or `inferred`), and gives a link of kind `tension` ("these two seem to disagree, to
+  me") the fields `resolved` and `resolution`: open until the reader settles it and says how.
+
+`server/test/rules-characters.test.ts` covers them.
+
+**Earlier versions and set-aside openers** (migration 0018).
+
+- A **revision** (`research.revisions`) is a text the reader replaced, kept with its date and,
+  if they say, why they changed it. Four kinds: `form` (a word form's established meaning on a
+  case, target `case|lemma`), `verdict` (a case's verdict, target the case id), `root-meaning`
+  (the reader's own meaning for a root) and `indication` (an indication's or a refinement's
+  text). The store keeps one as those are saved, never the client. The app saves while the
+  reader types, so a text is kept only if it had stood for ten minutes, and one edit keeps one
+  revision (`ResearchStore.STOOD_MS`). A case carries `verdictAt`, the time its verdict last
+  changed, set by the server whatever the client sends. `GET /research/revisions?kind=&target=`
+  lists them newest first; `PUT /research/revisions/:id` sets the reason; `DELETE` removes one.
+  They go with the case or the indication they belong to. This replaced `form_revisions`.
+- A **set-aside opener** (`research.speech_skips`) is a word the corpus lists as opening speech
+  (`GET /corpus/chapters/:id/speech-openers`) that the reader marked "no speech here".
+  `GET /research/speech-skips?chapter=`, `PUT /research/speech-skips`, and
+  `POST /research/speech-skips/remove`.
+- A reference slip on a case may say what kind of work it cites (`sourceKind`: `lexicon`,
+  `tafsir`, `narration`, `story`, `other`). It lives in the case document; the app counts what
+  a case rests on from it.
+
+`server/test/revisions-parts-skips.test.ts` covers them.
+
 **The AI boundary, on the server.** A request made with an API token (the MCP) may only propose:
 records are tagged `ai` and are never primary; nothing is deleted or overwritten; on a case (even
 yours) it may add its own items but never touch yours, the verdict, the status or established
 meanings; it can't publish, accept its own proposals, or change settings
-(`src/research/boundary.ts`).
+(`src/research/boundary.ts`). On rule checks and characters it may only suggest: a mark it sends
+waits as a suggestion and never replaces the reader's own mark; a mention it files is always
+`potential` and never touches one already filed. It can't write a rule or a character,
+establish a mention, settle a tension, or say what would prove a case's conclusion wrong. It
+may read the reader's earlier versions and set-aside openers, and change neither.
 
 **No file.** Research lives only in the account — there is no research.db, no import or export.
 (Migration 0011 removed what existed for files: the `owner` record, and author ids derived from

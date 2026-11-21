@@ -3,7 +3,9 @@
 // by row-level security), reached through /research/* with the session cookie. Nothing of it
 // is shared unless the reader publishes it. There is no browser-side storage.
 
-import type { CaseRecord, TrailRecord, NoteRecord, UserRootMeaning, Motif } from "./types";
+import type { CaseRecord, TrailRecord, NoteRecord, UserRootMeaning, Motif, SavedLink, SpeakerTag, LinkCoverage } from "./types";
+import type { RuleCheck, RuleMarkValue, Character, Mention, MentionDraft, MentionKind, MentionStatus } from "./types";
+import type { Revision, RevisionKind } from "./types";
 import type { CompareSet, CompareItemRow, WordIndication, IndicationsForWord, IndicationGloss, Proposed } from "../api/types";
 import { remote, REMOTE_URL } from "../api/remote";
 import { announceAccess, announcePlanLock } from "../api/client";
@@ -43,6 +45,13 @@ async function fail(res: Response, what: string): Promise<never> {
 const json = (method: string, body: unknown): RequestInit =>
   ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
+/** How many times this session changed the reader's research (their settings aside). A screen
+ *  kept behind the reader is rebuilt on the way back when this has moved, so it shows what was
+ *  done meanwhile. */
+let writes = 0;
+export const researchWriteCount = (): number => writes;
+const wrote = (path: string): void => { if (!path.startsWith("/settings")) writes++; };
+
 async function srvGet<T>(path: string): Promise<T> {
   const res = await research(path);
   if (!res.ok) return fail(res, `GET ${path}`);
@@ -51,16 +60,19 @@ async function srvGet<T>(path: string): Promise<T> {
 async function srvPut<T>(path: string, body: unknown): Promise<T> {
   const res = await research(path, json("PUT", body));
   if (!res.ok) return fail(res, `PUT ${path}`);
+  wrote(path);
   return res.json() as Promise<T>;
 }
 async function srvPost<T>(path: string, body: unknown): Promise<T> {
   const res = await research(path, json("POST", body));
   if (!res.ok) return fail(res, `POST ${path}`);
+  wrote(path);
   return res.json() as Promise<T>;
 }
 async function srvDelete(path: string): Promise<void> {
   const res = await research(path, { method: "DELETE" });
   if (!res.ok && res.status !== 404) return fail(res, `DELETE ${path}`);
+  wrote(path);
 }
 
 // ---- the community layer: read LIVE from the remote, never mirrored locally ----
@@ -363,12 +375,102 @@ export const archive = {
     },
   },
 
+  /** Links the reader saved between two places in the Book; one end only = a lead. */
+  links: {
+    all: async (): Promise<SavedLink[]> => srvGet<SavedLink[]>("/links"),
+    /** every link with an end in this āyah */
+    forVerse: async (verseKey: string): Promise<SavedLink[]> =>
+      srvGet<SavedLink[]>(`/links?verse=${encodeURIComponent(verseKey)}`),
+    /** every link saved on this marker (e.g. kind "lemma", the lemma itself) */
+    forMarker: async (kind: string, key: string): Promise<SavedLink[]> =>
+      srvGet<SavedLink[]>(`/links?marker_kind=${encodeURIComponent(kind)}&marker_key=${encodeURIComponent(key)}`),
+    labels: async (): Promise<{ label: string; count: number }[]> => srvGet("/links/labels"),
+    coverage: async (): Promise<LinkCoverage[]> => srvGet<LinkCoverage[]>("/links/coverage"),
+    save: async (l: SavedLink): Promise<SavedLink> => srvPut<SavedLink>(`/links/${encodeURIComponent(l.id)}`, l),
+    remove: async (id: string): Promise<void> => srvDelete(`/links/${encodeURIComponent(id)}`),
+  },
+
+  /** Who speaks and who is addressed, as the reader tags it. */
+  speech: {
+    all: async (): Promise<SpeakerTag[]> => srvGet<SpeakerTag[]>("/speech"),
+    forVerse: async (verseKey: string): Promise<SpeakerTag[]> =>
+      srvGet<SpeakerTag[]>(`/speech?verse=${encodeURIComponent(verseKey)}`),
+    /** every tag in one sūrah */
+    forChapter: async (chapter: number): Promise<SpeakerTag[]> => srvGet<SpeakerTag[]>(`/speech?chapter=${chapter}`),
+    bySpeaker: async (name: string): Promise<SpeakerTag[]> =>
+      srvGet<SpeakerTag[]>(`/speech?speaker=${encodeURIComponent(name)}`),
+    byAddressee: async (name: string): Promise<SpeakerTag[]> =>
+      srvGet<SpeakerTag[]>(`/speech?addressee=${encodeURIComponent(name)}`),
+    /** the names in use, with how many spans each speaks and is addressed in */
+    speakers: async (): Promise<{ name: string; speaks: number; addressed: number }[]> => srvGet("/speech/speakers"),
+    save: async (t: SpeakerTag): Promise<SpeakerTag> => srvPut<SpeakerTag>(`/speech/${encodeURIComponent(t.id)}`, t),
+    remove: async (id: string): Promise<void> => srvDelete(`/speech/${encodeURIComponent(id)}`),
+    /** speech openers the reader set aside as "no speech here", in one sūrah */
+    skips: async (chapter: number): Promise<{ verseKey: string; word: number }[]> => srvGet(`/speech-skips?chapter=${chapter}`),
+    skip: async (verseKey: string, word: number): Promise<void> => { await srvPut("/speech-skips", { verseKey, word }); },
+    unskip: async (verseKey: string, word: number): Promise<void> => { await srvPost("/speech-skips/remove", { verseKey, word }); },
+  },
+
+  /** Earlier texts the reader replaced: a form's meaning, a verdict, a root meaning, an indication.
+   *  The server keeps one whenever such a text changes; the reader may add why, or remove it. */
+  revisions: {
+    list: async (kind: RevisionKind, target: string): Promise<Revision[]> =>
+      srvGet<Revision[]>(`/revisions?kind=${encodeURIComponent(kind)}&target=${encodeURIComponent(target)}`),
+    setReason: async (id: string, reason: string): Promise<Revision> =>
+      srvPut<Revision>(`/revisions/${encodeURIComponent(id)}`, { reason }),
+    remove: async (id: string): Promise<void> => srvDelete(`/revisions/${encodeURIComponent(id)}`),
+  },
+
+  /** Rule checks: a rule the reader states, and a mark on each place it applies. */
+  rules: {
+    all: async (): Promise<RuleCheck[]> => srvGet<RuleCheck[]>("/rules"),
+    /** one rule with all its marks */
+    get: async (id: string): Promise<RuleCheck> => srvGet<RuleCheck>(`/rules/${encodeURIComponent(id)}`),
+    save: async (r: RuleCheck): Promise<RuleCheck> => srvPut<RuleCheck>(`/rules/${encodeURIComponent(r.id)}`, r),
+    remove: async (id: string): Promise<void> => srvDelete(`/rules/${encodeURIComponent(id)}`),
+    /** mark places (one or many): each replaces that place's mark */
+    mark: async (id: string, marks: { verseKey: string; word: number; mark: RuleMarkValue; note?: string }[]): Promise<{ saved: number }> =>
+      srvPut(`/rules/${encodeURIComponent(id)}/marks`, { marks }),
+    unmark: async (id: string, places: { verseKey: string; word: number }[]): Promise<{ removed: number }> =>
+      srvPost(`/rules/${encodeURIComponent(id)}/marks/remove`, { places }),
+    /** take AI suggestions as your own marks; no places = all of them */
+    accept: async (id: string, places?: { verseKey: string; word: number }[]): Promise<{ accepted: number }> =>
+      srvPost(`/rules/${encodeURIComponent(id)}/marks/accept`, { places }),
+  },
+
+  /** Characters, and the places (names, titles, pronouns) that point to each. */
+  characters: {
+    all: async (): Promise<Character[]> => srvGet<Character[]>("/characters"),
+    /** one character with all its mentions */
+    get: async (id: string): Promise<Character> => srvGet<Character>(`/characters/${encodeURIComponent(id)}`),
+    save: async (c: Character): Promise<Character> => srvPut<Character>(`/characters/${encodeURIComponent(c.id)}`, c),
+    /** removes the character and every mention of it */
+    remove: async (id: string): Promise<void> => srvDelete(`/characters/${encodeURIComponent(id)}`),
+  },
+  mentions: {
+    forVerse: async (verseKey: string): Promise<Mention[]> => srvGet<Mention[]>(`/mentions?verse=${encodeURIComponent(verseKey)}`),
+    forChapter: async (chapter: number): Promise<Mention[]> => srvGet<Mention[]>(`/mentions?chapter=${chapter}`),
+    list: async (q: { character?: string; status?: MentionStatus; kind?: MentionKind; source?: "me" | "ai" } = {}): Promise<Mention[]> => {
+      const p = new URLSearchParams();
+      for (const [k, v] of Object.entries(q)) if (v) p.set(k, v);
+      const s = p.toString();
+      return srvGet<Mention[]>(`/mentions${s ? `?${s}` : ""}`);
+    },
+    /** file places under a character. New ones are added (potential unless said otherwise); one
+     *  already there keeps its status unless this says "established" */
+    add: async (mentions: MentionDraft[]): Promise<{ saved: number }> => srvPut("/mentions", { mentions }),
+    setStatus: async (ids: string[], status: MentionStatus): Promise<{ changed: number }> =>
+      srvPost("/mentions/status", { ids, status }),
+    setNote: async (id: string, note: string): Promise<{ changed: number }> => srvPost("/mentions/note", { id, note }),
+    remove: async (ids: string[]): Promise<{ removed: number }> => srvPost("/mentions/remove", { ids }),
+  },
+
   /** Proposals an AI made through the MCP server, for the reader to review. */
   proposed: {
     all: async (): Promise<Proposed> => {
       return srvGet<Proposed>("/proposed");
     },
-    accept: async (kind: "note" | "indication", id: string): Promise<void> => {
+    accept: async (kind: "note" | "indication" | "link" | "speech", id: string): Promise<void> => {
       await srvPut(`/proposed/${kind}/${encodeURIComponent(id)}/accept`, {});
     },
   },
@@ -434,18 +536,4 @@ export interface FormStatusRow {
 
 export async function fetchFormStatus(): Promise<FormStatusRow[]> {
   return srvGet<FormStatusRow[]>("/form-status");
-}
-
-export interface FormRevision {
-  meaning: string;
-  replaced_at: number;
-}
-
-export async function fetchFormRevisions(
-  caseId: string,
-  lemma: string,
-): Promise<FormRevision[]> {
-  return srvGet<FormRevision[]>(
-    `/cases/${encodeURIComponent(caseId)}/forms/${encodeURIComponent(lemma)}/revisions`,
-  );
 }

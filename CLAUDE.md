@@ -44,10 +44,12 @@ AlSiraatAlMustaqeem/
   lexicons, translations. Read-only. Served from Postgres at `/corpus`; `quran.db` is the source it
   is loaded from and the reference the parity checks compare against.
 - **Research**: what a reader builds (cases and boards, notes and questions, indications and
-  refinements, root meanings, motifs, trails, comparisons, settings). It lives only in the
+  refinements, root meanings, motifs, trails, comparisons, saved links and leads, speaker tags,
+  rule checks, characters and their mentions, the earlier versions of what they replaced,
+  settings). It lives only in the
   reader's account on the research server, private by row-level security. There is no local file.
 - **Access**: roles say what you may **do** (publish, review, establish, administer); plans say
-  what you may **use and read** (23 plan features, plus per-translation and per-lexicon rules).
+  what you may **use and read** (27 plan features, plus per-translation and per-lexicon rules).
   Staff (moderator and maintainer) pass every plan gate. Every published result is seen only
   by the audience it names. Everything fails closed.
 - **AI boundary**: a request made with an API token may only propose. Its writes are tagged

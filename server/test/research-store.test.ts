@@ -29,11 +29,12 @@ describe("cases, trails, notes, root meanings", () => {
     expect(await r.get(`${B}/form-status`)).toHaveLength(1);
     // change an established meaning → a revision is recorded
     await r.put(`${B}/cases/c1`, c1("a measured middle community"));
-    expect(await r.get(`${B}/cases/c1/forms/${q("أُمَّة")}/revisions`)).toEqual([
-      { meaning: "community", replaced_at: expect.any(Number) }]);
+    expect(await r.get(`${B}/revisions?kind=form&target=${q("c1|أُمَّة")}`)).toEqual([
+      { id: expect.any(String), kind: "form", target: "c1|أُمَّة", before: "community", reason: "", replacedAt: expect.any(Number) }]);
     expect((await r.del(`${B}/cases/c1`)).status).toBe(200);
     expect(await r.get(`${B}/cases`)).toHaveLength(0);
     expect(await r.get(`${B}/form-status`)).toHaveLength(0);   // its form research went with it
+    expect(await r.get(`${B}/revisions?kind=form&target=${q("c1|أُمَّة")}`)).toEqual([]);   // and its earlier versions
     expect((await r.put(`${B}/cases/c9`, { id: "other" })).status).toBe(400);
   });
 
@@ -178,7 +179,7 @@ describe("provenance", () => {
     expect(proposed.indications.map((x: any) => x.id)).toEqual(["p_ind"]);
     expect((await r.put(`${B}/proposed/note/p_ai/accept`)).status).toBe(200);
     expect((await r.put(`${B}/proposed/indication/p_ind/accept`)).status).toBe(200);
-    expect(await r.get(`${B}/proposed`)).toEqual({ notes: [], indications: [] });
+    expect(await r.get(`${B}/proposed`)).toEqual({ notes: [], indications: [], links: [], speech: [] });
     expect((await r.get(`${B}/notes?verse=2:3`))[0].source).toBe("me");
   });
 
@@ -258,7 +259,7 @@ describe("the outbound ledgers: what the reader has offered upstream", () => {
       .map((t) => t.table_name);
     expect(tables.filter((t) => t.startsWith("derived_"))).toEqual(["derived_proposed_claims", "derived_submissions"]);
     expect(tables.filter((t) => !t.startsWith("derived_"))).toEqual([
-      "cases", "compare_items", "compare_sets", "form_research", "form_revisions", "motif_roots", "motifs",
-      "notes", "settings", "trails", "user_root_meanings", "word_indications"]);
+      "cases", "characters", "compare_items", "compare_sets", "form_research", "links", "mentions", "motif_roots", "motifs",
+      "notes", "revisions", "rule_marks", "rules", "settings", "speech", "speech_skips", "trails", "user_root_meanings", "word_indications"]);
   });
 });
